@@ -1,29 +1,37 @@
-// =====================
-// DATOS
-let clientes = [
-    { telefono: "987654321", zona: "SMP", estado: "NUEVO", obs: "" },
-    { telefono: "912345678", zona: "LIMA", estado: "NUEVO", obs: "" }
-];
+/* ================================================
+   DASHBOARD.JS — Asesor Netcontact
+   ================================================ */
+
+const API = 'http://127.0.0.1:3000/api';
+
+// Sin números hardcodeados — se cargan desde el backend
+let clientes = [];
 
 let seleccionado = null;
 let llamadas = 0;
 let ventas = 0;
 let instaladas = 0;
 
-// =====================
-// CAMBIO DE PANTALLA
 function mostrar(pantalla, btn) {
     document.querySelectorAll(".pantalla").forEach(p => p.classList.add("hidden"));
     document.getElementById(pantalla).classList.remove("hidden");
     document.querySelectorAll(".tabs .tab").forEach(b => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
-    if (pantalla === "rendimiento") setTimeout(iniciarGraficos, 50);
+    if (pantalla === "rendimiento")   setTimeout(iniciarGraficos, 50);
+    if (pantalla === "frases")        cargarFrasesSuper();
+    if (pantalla === "ventassubidas") cargarVentasSubidas();
 }
 
-// =====================
-// RENDER TABLA
 function render() {
     let tabla = document.getElementById("tabla");
+    if (!clientes.length) {
+        tabla.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">
+            📋 Sin registros asignados por ahora.<br>
+            <span style="font-size:11px;margin-top:6px;display:block;">El Back Office asignará registros a tu usuario.</span>
+        </td></tr>`;
+        actualizarStats();
+        return;
+    }
     tabla.innerHTML = "";
     clientes.forEach((c, i) => {
         tabla.innerHTML += `
@@ -47,14 +55,8 @@ function render() {
     actualizarStats();
 }
 
-// =====================
-// GUARDAR OBSERVACION
-function guardarObs(i, valor) {
-    clientes[i].obs = valor;
-}
+function guardarObs(i, valor) { clientes[i].obs = valor; }
 
-// =====================
-// MODALES
 function abrirModal(i) {
     seleccionado = i;
     document.getElementById("modalTipos").classList.add("show");
@@ -64,10 +66,16 @@ function abrirModal(i) {
 function cerrarModal() {
     document.getElementById("modalTipos").classList.remove("show");
     document.getElementById("modalVenta").classList.remove("show");
+    const s = document.getElementById("tipSearch");
+    if (s) { s.value = ""; filtrarTips(""); }
 }
 
-// =====================
-// TIPIFICAR
+function filtrarTips(q) {
+    const chips = document.querySelectorAll("#tipGrid .tip-chip");
+    const b = q.trim().toLowerCase();
+    chips.forEach(c => { c.style.display = !b || c.textContent.toLowerCase().includes(b) ? "" : "none"; });
+}
+
 function tipificar(tipo) {
     llamadas++;
     if (tipo === "VENTA CERRADA") {
@@ -77,36 +85,42 @@ function tipificar(tipo) {
         actualizarStats();
         return;
     }
-    clientes[seleccionado].estado = tipo;
+    if (seleccionado !== null) clientes[seleccionado].estado = tipo;
     cerrarModal();
     render();
 }
 
-// =====================
-// GUARDAR VENTA
+function actualizarLabelDoc() {
+    const tipo = document.getElementById("mv_tipoDoc")?.value || "DNI";
+    const labels = { DNI: "Número de DNI", CE: "Número de Carnet de Extranjería", RUC: "Número de RUC" };
+    const el = document.getElementById("mv_docLabel");
+    if (el) el.textContent = labels[tipo] || "Número de documento";
+}
+
+function irANuevaVenta() {
+    const dni = document.getElementById("mv_dni")?.value.trim();
+    if (!dni) { const el = document.getElementById("mv_dni"); if (el) el.style.borderColor = "#ef4444"; return; }
+    cerrarModal();
+    const tabVS = document.querySelector(".tab:nth-child(3)");
+    mostrar("ventassubidas", tabVS);
+    const panel = document.getElementById("panelNuevaVenta");
+    if (panel) panel.style.display = "flex";
+    const nvDni = document.getElementById("nv_dni");
+    if (nvDni) nvDni.value = dni;
+    const tipo = document.getElementById("mv_tipoDoc")?.value || "DNI";
+    const nvTipo = document.getElementById("nv_tipoDoc");
+    if (nvTipo) { nvTipo.value = tipo; actualizarLabelDocNV(); }
+    if (panel) panel.scrollIntoView({ behavior: "smooth" });
+}
+
 function guardarVenta() {
-    clientes[seleccionado].estado = "VENTA CERRADA";
+    if (seleccionado !== null) clientes[seleccionado].estado = "VENTA CERRADA";
     instaladas++;
-    const campos = [
-        "mv_nombre","mv_dni","mv_email","mv_departamento","mv_provincia",
-        "mv_distrito","mv_canal","mv_puntoVenta","mv_tipoVenta","mv_tipoDomicilio",
-        "mv_telefono1","mv_telefono2","mv_fechaNac","mv_lugarNac","mv_padre",
-        "mv_madre","mv_direccion","mv_coordenadas","mv_relacionPredio",
-        "mv_cuotaInstalacion","mv_claroHogar","mv_tecnologia","mv_paquete",
-        "mv_fullClaro","mv_decos","mv_mesh","mv_cuotaMesh","mv_plano",
-        "mv_estadoVenta","mv_observacion"
-    ];
-    campos.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
-    });
     cerrarModal();
     seleccionado = null;
     render();
 }
 
-// =====================
-// STATS
 function actualizarStats() {
     const lc = document.getElementById("llamadasCount");
     const vc = document.getElementById("ventasCount");
@@ -120,149 +134,140 @@ function actualizarStats() {
     if (ni) ni.innerText = Math.max(0, ventas - instaladas);
     if (chartDiario) {
         chartDiario.data.datasets[0].data = getVentasDiarias();
-        chartDiario.data.datasets[0].backgroundColor = getVentasDiarias().map((v, i) =>
-            i === 6 ? "rgba(255,45,45,0.85)" : "rgba(99,102,241,0.65)"
-        );
+        chartDiario.data.datasets[0].backgroundColor = getVentasDiarias().map((v, i) => i === 6 ? "rgba(255,45,45,0.85)" : "rgba(99,102,241,0.65)");
         chartDiario.update();
         actualizarMeta();
     }
 }
 
-// =====================
-// FRASES
-const FRASES = [
-    "No vendas precio, vende valor",
-    "Cada llamada cuenta, cada cliente importa",
-    "Escucha al cliente antes de hablar",
-    "La confianza se gana con cada conversación",
-    "Un NO hoy puede ser un SÍ mañana — no te rindas",
-    "Tu actitud determina tus resultados",
-    "La persistencia vence a la resistencia",
-    "El éxito es la suma de pequeños esfuerzos repetidos"
-];
-
-function cargarFrase() {
-    const r = Math.floor(Math.random() * FRASES.length);
-    const fraseEl = document.getElementById("frase");
-    if (fraseEl) fraseEl.innerText = FRASES[r];
-    const grid = document.getElementById("frasesGrid");
-    if (!grid) return;
-    grid.innerHTML = FRASES.map((f, i) => `
-        <div class="frase-card">
-            <div class="frase-card-num">#${i + 1}</div>
-            <div class="frase-card-texto">${f}</div>
-        </div>
-    `).join('');
+async function cargarFrasesSuper() {
+    const cont = document.getElementById("frasesSupContainer");
+    if (!cont) return;
+    try {
+        const u   = ncGetSesion();
+        const url = u?.sala ? `${API}/frases?sala=${encodeURIComponent(u.sala)}` : `${API}/frases`;
+        const res  = await fetch(url, { headers: ncHeaders() });
+        const data = await res.json();
+        if (!data.ok || !data.data?.length) {
+            cont.innerHTML = `<div style="text-align:center;padding:60px 24px;color:#9ca3af;"><div style="font-size:40px;margin-bottom:12px;">💬</div><div style="font-size:15px;font-weight:600;color:#374151;margin-bottom:6px;">Sin mensajes por ahora</div><div style="font-size:13px;">Tu supervisor aún no ha publicado mensajes hoy.</div></div>`;
+            return;
+        }
+        const frases = data.data;
+        const principal = frases[0];
+        const resto = frases.slice(1);
+        cont.innerHTML = `
+            <div class="frase-destacada">
+                <div class="frase-comilla">"</div>
+                <p class="frase-texto">${principal.texto}</p>
+                <div class="frase-autor">— ${principal.supervisor_nombre || "Tu supervisor"}</div>
+            </div>
+            ${resto.length ? `<div class="frases-grid">${resto.map((f, i) => `<div class="frase-card"><div class="frase-card-num">#${i + 1}</div><div class="frase-card-texto">${f.texto}</div></div>`).join("")}</div>` : ""}`;
+    } catch(e) {
+        const cont2 = document.getElementById("frasesSupContainer");
+        if (cont2) cont2.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">Sin mensajes disponibles.</div>`;
+    }
 }
 
-// =====================
-// COLORES ESTADO
 function colorEstado(e) {
     const map = {
-        "VENTA CERRADA":        "estado-venta-cerrada",
-        "CORTA LLAMADA":        "estado-corta-llamada",
-        "PREVENTA":             "estado-preventa",
-        "NO CONTESTA":          "estado-no-contesta",
-        "EN EJECUCION":         "estado-en-ejecucion",
-        "SIN COBERTURA":        "estado-sin-cobertura",
-        "DESEA MOVIL":          "estado-desea-movil",
-        "SERVICIO ACTIVO":      "estado-servicio-activo",
-        "AGENDADO":             "estado-agendado",
-        "NO CALIFICA":          "estado-no-califica",
-        "EDIFICIO NO LIBERADO": "estado-sh-edificio-no-liberado",
-        "CONTACTO CON TERCEROS":"estado-contacto-con-terceros",
-        "NO DESEA":             "estado-no-desea",
-        "BUZON DE VOZ":         "estado-buzon-voz",
-        "NUEVO":                "estado-nuevo",
+        "VENTA CERRADA":"estado-venta-cerrada","CORTA LLAMADA":"estado-corta-llamada","PREVENTA":"estado-preventa",
+        "NO CONTESTA":"estado-no-contesta","EN EJECUCION":"estado-en-ejecucion","SIN COBERTURA":"estado-sin-cobertura",
+        "DESEA MOVIL":"estado-desea-movil","SERVICIO ACTIVO":"estado-servicio-activo","AGENDADO":"estado-agendado",
+        "NO CALIFICA":"estado-no-califica","EDIFICIO NO LIBERADO":"estado-sh-edificio-no-liberado",
+        "CONTACTO CON TERCEROS":"estado-contacto-con-terceros","NO DESEA":"estado-no-desea",
+        "BUZON DE VOZ":"estado-buzon-voz","NUEVO":"estado-nuevo",
     };
     return map[e] || "estado-nuevo";
 }
 
-// =====================
-// SALUDO
 function cargarSaludo() {
-    let usuario = localStorage.getItem("usuario") || "ASESOR";
-    let genero  = localStorage.getItem("genero")  || "M";
-    let hora    = new Date().getHours();
-    let saludoHora = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
-    let saludoGenero = genero === "F" ? "Bienvenida" : "Bienvenido";
+    const u = ncGetSesion();
+    const nombre = u?.nombre || 'ASESOR';
+    const genero = u?.genero || 'M';
+    const hora   = new Date().getHours();
+    const saludoHora   = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+    const saludoGenero = genero === "F" ? "Bienvenida" : "Bienvenido";
     const el = document.getElementById("saludoUsuario");
-    if (el) el.innerText = `${saludoHora}, ${saludoGenero} ${usuario} 👋`;
+    if (el) el.innerText = `${saludoHora}, ${nombre} 👋`;
 }
 
-// =====================
-// VENTAS SUBIDAS
 let ventasSubidas = [];
 
+async function cargarVentasSubidas() {
+    try {
+        const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() });
+        const data = await res.json();
+        if (data.ok) { ventasSubidas = data.data; actualizarTablaVentas(ventasSubidas); }
+    } catch(e) { console.error("Error cargando ventas:", e); }
+}
+
 function buscarVentas() {
-    actualizarTablaVentas(ventasSubidas);
+    const dni   = document.getElementById("filtroDni")?.value.trim().toLowerCase() || "";
+    const desde = document.getElementById("fechaDesde")?.value || "";
+    const hasta = document.getElementById("fechaHasta")?.value || "";
+    const filtradas = ventasSubidas.filter(v => {
+        const matchDni   = !dni   || (v.dni||"").toLowerCase().includes(dni);
+        const fechaV     = (v.created_at || "").split(" ")[0];
+        const matchDesde = !desde || fechaV >= desde;
+        const matchHasta = !hasta || fechaV <= hasta;
+        return matchDni && matchDesde && matchHasta;
+    });
+    actualizarTablaVentas(filtradas);
 }
 
 function borrarFiltros() {
-    const dni   = document.getElementById("filtroDni");
-    const desde = document.getElementById("fechaDesde");
-    const hasta = document.getElementById("fechaHasta");
-    if (dni)   dni.value   = "";
-    if (desde) desde.value = "";
-    if (hasta) hasta.value = "";
+    ["filtroDni","fechaDesde","fechaHasta"].forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+    actualizarTablaVentas(ventasSubidas);
 }
 
-function refrescarVentas() { buscarVentas(); }
+function refrescarVentas() { cargarVentasSubidas(); }
 
 function badgeEstado(e) {
-    const map = {
-        "PROGRAMADO": "vs-badge-programado",
-        "VENTA":      "vs-badge-venta",
-        "VALIDADO":   "vs-badge-validado",
-        "DUPLICADA":  "vs-badge-duplicada",
-    };
-    const cls = map[e] || "vs-badge-venta";
-    return e ? `<span class="vs-badge ${cls}">${e}</span>` : '-';
+    const map = { "PROGRAMADO":"vs-badge-programado","VENTA":"vs-badge-venta","VALIDADO":"vs-badge-validado","DUPLICADA":"vs-badge-duplicada" };
+    const cls = map[(e||"").toUpperCase()] || "vs-badge-venta";
+    return e ? `<span class="vs-badge ${cls}">${e.toUpperCase()}</span>` : "-";
 }
 
 function actualizarTablaVentas(data) {
     const tbody  = document.getElementById("tablaVentasSubidas");
     const contEl = document.getElementById("vsContador");
-    if (contEl) contEl.innerText = `Registros del 1 al ${data.length} de ${data.length} registros`;
+    if (contEl) contEl.innerText = `${data.length} registros`;
     if (!tbody) return;
-    if (!data.length) {
-        tbody.innerHTML = `<tr class="vs-empty"><td colspan="33">Sin registros encontrados.</td></tr>`;
-        return;
-    }
+    if (!data.length) { tbody.innerHTML = `<tr class="vs-empty"><td colspan="33">Sin registros encontrados.</td></tr>`; return; }
     tbody.innerHTML = data.map((v, i) => `
         <tr>
-            <td>${badgeEstado(v.estadoVenta)}</td>
-            <td>${v.obsBackOffice || '-'}</td>
-            <td>${v.agendado || '-'}</td>
-            <td>${v.tipoVenta || '-'}</td>
-            <td>${v.fechaIngreso || '-'}</td>
-            <td>${v.nombre || '-'}</td>
-            <td>${v.tipoDocumento || 'DNI'}</td>
-            <td>${v.dni || '-'}</td>
-            <td>${v.representanteLegal || '-'}</td>
-            <td>${v.telefonoContacto || '-'}</td>
-            <td>${v.telefonoReferencia || '-'}</td>
-            <td>${v.departamento || '-'}</td>
-            <td>${v.provincia || '-'}</td>
-            <td>${v.distrito || '-'}</td>
-            <td>${v.direccion || '-'}</td>
-            <td>${v.coordenadas || '-'}</td>
-            <td>${v.vendedor || '-'}</td>
-            <td>${v.supervisor || '-'}</td>
-            <td>${v.canal || '-'}</td>
-            <td>${v.tipoDomicilio || '-'}</td>
-            <td>${v.email || '-'}</td>
-            <td>${v.relacionPredio || '-'}</td>
-            <td>${v.cuotasPagoInstalacion || '-'}</td>
-            <td>${v.claroHogar || '-'}</td>
-            <td>${v.tecnologia || '-'}</td>
-            <td>${v.paquete || '-'}</td>
-            <td>${v.fullClaro || '-'}</td>
-            <td>${v.cantidadDecos || '0'}</td>
-            <td>${v.cantidadMesh || '0'}</td>
-            <td>${v.cuotaPagoMesh || '-'}</td>
-            <td>${v.plano || '-'}</td>
-            <td>${v.observacion || '-'}</td>
+            <td>${badgeEstado(v.estado)}</td>
+            <td>${v.obs_backoffice || "-"}</td>
+            <td>${v.agendado || "-"}</td>
+            <td>${v.tipoVenta || "-"}</td>
+            <td>${(v.created_at || "-").split(" ")[0]}</td>
+            <td>${v.nombre || "-"}</td>
+            <td>${v.tipo_doc || "DNI"}</td>
+            <td>${v.dni || "-"}</td>
+            <td>${v.representanteLegal || "-"}</td>
+            <td>${v.telefono1 || "-"}</td>
+            <td>${v.telefono2 || "-"}</td>
+            <td>${v.departamento || "-"}</td>
+            <td>${v.provincia || "-"}</td>
+            <td>${v.distrito || "-"}</td>
+            <td>${v.direccion || "-"}</td>
+            <td>${v.coordenadas || "-"}</td>
+            <td>${v.asesor_nombre || "-"}</td>
+            <td>${v.supervisor || "-"}</td>
+            <td>${v.canal || "-"}</td>
+            <td>${v.tipoDomicilio || "-"}</td>
+            <td>${v.email || "-"}</td>
+            <td>${v.predio || "-"}</td>
+            <td>${v.cuota_inst || "-"}</td>
+            <td>${v.claro_hogar || "-"}</td>
+            <td>${v.tecnologia || "-"}</td>
+            <td>${v.paquete || "-"}</td>
+            <td>${v.full_claro || "-"}</td>
+            <td>${v.cant_decos || "0"}</td>
+            <td>${v.cant_mesh || "0"}</td>
+            <td>${v.cuotaPagoMesh || "-"}</td>
+            <td>${v.plano || "-"}</td>
+            <td>${v.observacion || "-"}</td>
             <td>
                 <div class="vs-acciones-cell">
                     <button class="vs-btn-editar"   onclick="editarVenta(${i})">Editar</button>
@@ -271,100 +276,155 @@ function actualizarTablaVentas(data) {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `).join("");
 }
 
-function editarVenta(i)   { alert("Editar — conectar backend"); }
-function fotosVenta(i)    { alert("Fotos — conectar backend"); }
-function adjuntarVenta(i) { alert("Adjuntar — conectar backend"); }
+function editarVenta(i)   { alert("Editar — próximamente"); }
+function fotosVenta(i)    { alert("Fotos — próximamente"); }
+function adjuntarVenta(i) { alert("Adjuntar — próximamente"); }
 
-// =====================
-// GRAFICOS RENDIMIENTO
-const META_DIARIA = 5;
-let chartDiario  = null;
-let chartSemanal = null;
-let chartMensual = null;
+function toggleNuevaVenta() {
+    const p   = document.getElementById("panelNuevaVenta");
+    const btn = document.getElementById("btnNuevaVenta");
+    if (!p) return;
+    const visible = p.style.display === "flex";
+    p.style.display = visible ? "none" : "flex";
+    if (btn) btn.textContent = visible ? "+ Nueva Venta" : "✕ Cerrar";
+}
 
-let datosBackend = {
-    semanal: { labels:["Sem 1","Sem 2","Sem 3","Sem 4"], ventas:[0,0,0,0], instaladas:[0,0,0,0] },
-    mensual: {
-        labels:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
-        ventas:[0,0,0,0,0,0,0,0,0,0,0,0],
-        instaladas:[0,0,0,0,0,0,0,0,0,0,0,0],
-        ejecutadas:[0,0,0,0,0,0,0,0,0,0,0,0],
-        noInstaladas:[0,0,0,0,0,0,0,0,0,0,0,0]
+function actualizarLabelDocNV() {
+    const tipo = document.getElementById("nv_tipoDoc")?.value || "DNI";
+    const labels = { DNI: "Número DNI *", CE: "Número Carnet Extranjería *", RUC: "Número RUC *" };
+    const el = document.getElementById("nv_docLabel");
+    if (el) el.textContent = labels[tipo] || "Número de documento *";
+}
+
+async function guardarNuevaVenta() {
+    const dni    = document.getElementById("nv_dni")?.value.trim();
+    const nombre = document.getElementById("nv_nombre")?.value.trim();
+    if (!dni)    { const el=document.getElementById("nv_dni");    if(el) el.style.borderColor="#ef4444"; return; }
+    if (!nombre) { const el=document.getElementById("nv_nombre"); if(el) el.style.borderColor="#ef4444"; return; }
+
+    const venta = {
+        tipoDoc: document.getElementById("nv_tipoDoc")?.value || "DNI",
+        dni, nombre,
+        email:        document.getElementById("nv_email")?.value?.trim()    || "",
+        telefono1:    document.getElementById("nv_tel1")?.value.trim()     || "",
+        telefono2:    document.getElementById("nv_tel2")?.value.trim()     || "",
+        departamento: document.getElementById("nv_dpto")?.value.trim()     || "",
+        provincia:    document.getElementById("nv_prov")?.value.trim()     || "",
+        distrito:     document.getElementById("nv_dist")?.value.trim()     || "",
+        direccion:    document.getElementById("nv_dir")?.value.trim()      || "",
+        coordenadas:  document.getElementById("nv_coord")?.value.trim()    || "",
+        fechaNac:     document.getElementById("nv_fechaNac")?.value        || "",
+        lugarNac:     document.getElementById("nv_lugarNac")?.value.trim() || "",
+        padre:        document.getElementById("nv_padre")?.value.trim()    || "",
+        madre:        document.getElementById("nv_madre")?.value.trim()    || "",
+        predio:       document.getElementById("nv_predio")?.value          || "",
+        cuotaInstalacion: document.getElementById("nv_cuota")?.value       || "",
+        hogar:        document.getElementById("nv_hogar")?.value           || "",
+        tec:          document.getElementById("nv_tec")?.value             || "",
+        paquete:      document.getElementById("nv_paquete")?.value         || "",
+        full:         document.getElementById("nv_full")?.value            || "",
+        cantDecos:    document.getElementById("nv_decos")?.value           || "0",
+        cantMesh:     document.getElementById("nv_mesh")?.value            || "0",
+        plano:        document.getElementById("nv_plano")?.value.trim()    || "",
+        estado:       document.getElementById("nv_estado")?.value          || "VENTA",
+        obs:          document.getElementById("nv_obs")?.value.trim()      || "",
+    };
+
+    const btnGuardar = document.querySelector('[onclick="guardarNuevaVenta()"]');
+    if (btnGuardar) { btnGuardar.disabled=true; btnGuardar.textContent="⏳ Guardando..."; }
+
+    try {
+        const res  = await fetch(`${API}/ventas`, { method:"POST", headers:ncHeaders(), body:JSON.stringify(venta) });
+        const data = await res.json();
+        if (!data.ok) {
+            mostrarToastDash("❌ " + (data.mensaje || "Error al guardar"));
+            if (btnGuardar) { btnGuardar.disabled=false; btnGuardar.textContent="💾 Guardar venta"; }
+            return;
+        }
+        ["nv_dni","nv_nombre","nv_email","nv_tel1","nv_tel2","nv_dpto","nv_prov","nv_dist","nv_dir","nv_coord","nv_lugarNac","nv_padre","nv_madre","nv_plano","nv_obs","nv_fechaNac"].forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+        ["nv_predio","nv_cuota","nv_hogar","nv_tec","nv_paquete","nv_full"].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+        ["nv_decos","nv_mesh"].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+        if (btnGuardar) { btnGuardar.disabled=false; btnGuardar.textContent="💾 Guardar venta"; }
+        toggleNuevaVenta();
+        await cargarVentasSubidas();
+        mostrarToastDash("✅ Venta guardada correctamente");
+    } catch(e) {
+        mostrarToastDash("❌ Error conectando al servidor");
+        if (btnGuardar) { btnGuardar.disabled=false; btnGuardar.textContent="💾 Guardar venta"; }
     }
-};
+}
+
+function mostrarToastDash(msg) {
+    const t = document.createElement("div");
+    t.textContent = msg;
+    t.style.cssText = "position:fixed;bottom:20px;right:20px;background:#111827;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.2);";
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+const META_DIARIA = 5;
+let chartDiario=null, chartSemanal=null, chartMensual=null;
+let datosBackend = { semanal:{labels:["Sem 1","Sem 2","Sem 3","Sem 4"],ventas:[0,0,0,0],instaladas:[0,0,0,0]}, mensual:{labels:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],ventas:[0,0,0,0,0,0,0,0,0,0,0,0],instaladas:[0,0,0,0,0,0,0,0,0,0,0,0],ejecutadas:[0,0,0,0,0,0,0,0,0,0,0,0],noInstaladas:[0,0,0,0,0,0,0,0,0,0,0,0]} };
 
 function getDiasLabels() {
     const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
     const hoy  = new Date().getDay();
-    return Array.from({length:7}, (_, i) => {
-        const idx = (hoy - (6-i) + 7) % 7;
-        return i === 6 ? "Hoy" : dias[idx];
-    });
+    return Array.from({length:7}, (_,i) => { const idx=(hoy-(6-i)+7)%7; return i===6?"Hoy":dias[idx]; });
 }
-
-function getVentasDiarias() {
-    return [0,0,0,0,0,0,ventas];
-}
+function getVentasDiarias() { return [0,0,0,0,0,0,ventas]; }
 
 function iniciarGraficos() {
-    const ctxD = document.getElementById("chartDiario");
-    if (!ctxD) return;
+    const ctxD = document.getElementById("chartDiario"); if(!ctxD) return;
     const vd = getVentasDiarias();
-    if (chartDiario) chartDiario.destroy();
-    chartDiario = new Chart(ctxD, {
-        type: "bar",
-        data: {
-            labels: getDiasLabels(),
-            datasets: [{ label:"Ventas", data: vd, backgroundColor: vd.map((_,i) => i===6?"rgba(255,45,45,0.85)":"rgba(99,102,241,0.65)"), borderRadius:6 }]
-        },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
-    });
-
+    if(chartDiario) chartDiario.destroy();
+    chartDiario = new Chart(ctxD, { type:"bar", data:{ labels:getDiasLabels(), datasets:[{label:"Ventas",data:vd,backgroundColor:vd.map((_,i)=>i===6?"rgba(255,45,45,0.85)":"rgba(99,102,241,0.65)"),borderRadius:6}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}} });
     const ctxS = document.getElementById("chartSemanal");
-    if (chartSemanal) chartSemanal.destroy();
-    chartSemanal = new Chart(ctxS, {
-        type:"bar",
-        data:{ labels:datosBackend.semanal.labels, datasets:[
-            {label:"Ventas",    data:datosBackend.semanal.ventas,    backgroundColor:"rgba(34,197,94,0.75)",  borderRadius:6},
-            {label:"Instaladas",data:datosBackend.semanal.instaladas,backgroundColor:"rgba(139,92,246,0.75)",borderRadius:6}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:11}}}},scales:{y:{beginAtZero:true}}}
-    });
-
+    if(chartSemanal) chartSemanal.destroy();
+    chartSemanal = new Chart(ctxS, { type:"bar", data:{labels:datosBackend.semanal.labels,datasets:[{label:"Ventas",data:datosBackend.semanal.ventas,backgroundColor:"rgba(34,197,94,0.75)",borderRadius:6},{label:"Instaladas",data:datosBackend.semanal.instaladas,backgroundColor:"rgba(139,92,246,0.75)",borderRadius:6}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:11}}}},scales:{y:{beginAtZero:true}}} });
     const ctxM = document.getElementById("chartMensual");
-    if (chartMensual) chartMensual.destroy();
-    chartMensual = new Chart(ctxM, {
-        type:"line",
-        data:{ labels:datosBackend.mensual.labels, datasets:[
-            {label:"Ventas",       data:datosBackend.mensual.ventas,      borderColor:"#22c55e", backgroundColor:"rgba(34,197,94,0.08)",  tension:0.4,fill:true, pointRadius:4},
-            {label:"Instaladas",   data:datosBackend.mensual.instaladas,  borderColor:"#8b5cf6", backgroundColor:"rgba(139,92,246,0.08)", tension:0.4,fill:true, pointRadius:4},
-            {label:"Ejecutadas",   data:datosBackend.mensual.ejecutadas,  borderColor:"#3b82f6", backgroundColor:"rgba(59,130,246,0.08)", tension:0.4,fill:false,pointRadius:4,borderDash:[5,3]},
-            {label:"No instaladas",data:datosBackend.mensual.noInstaladas,borderColor:"#ef4444", backgroundColor:"rgba(239,68,68,0.08)",  tension:0.4,fill:false,pointRadius:4,borderDash:[5,3]}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:11}}}},scales:{y:{beginAtZero:true}}}
-    });
+    if(chartMensual) chartMensual.destroy();
+    chartMensual = new Chart(ctxM, { type:"line", data:{labels:datosBackend.mensual.labels,datasets:[{label:"Ventas",data:datosBackend.mensual.ventas,borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,0.08)",tension:0.4,fill:true,pointRadius:4},{label:"Instaladas",data:datosBackend.mensual.instaladas,borderColor:"#8b5cf6",backgroundColor:"rgba(139,92,246,0.08)",tension:0.4,fill:true,pointRadius:4}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:11}}}},scales:{y:{beginAtZero:true}}} });
     actualizarMeta();
 }
 
 function actualizarMeta() {
-    const pct = Math.min(Math.round((ventas / META_DIARIA) * 100), 100);
-    const mt  = document.getElementById("metaTexto");
-    const mb  = document.getElementById("metaBarra");
-    const mp  = document.getElementById("metaPct");
-    if (mt) mt.innerText = `${ventas} / ${META_DIARIA} ventas`;
-    if (mb) mb.style.width = pct + "%";
-    if (mp) mp.innerText  = pct + "%";
-    const ni = document.getElementById("noInstaladasCount");
-    if (ni) ni.innerText = Math.max(0, ventas - instaladas);
+    const pct = Math.min(Math.round((ventas/META_DIARIA)*100),100);
+    const mt=document.getElementById("metaTexto"), mb=document.getElementById("metaBarra"), mp=document.getElementById("metaPct");
+    if(mt) mt.innerText=`${ventas} / ${META_DIARIA} ventas`;
+    if(mb) mb.style.width=pct+"%";
+    if(mp) mp.innerText=pct+"%";
+    const ni=document.getElementById("noInstaladasCount"); if(ni) ni.innerText=Math.max(0,ventas-instaladas);
 }
 
-// =====================
-// INIT
 window.onload = () => {
     render();
-    cargarFrase();
     cargarSaludo();
+    cargarFrasesSuper();
+    cargarVentasSubidas();
+    cargarLeadsAsesor();
+    setInterval(cargarFrasesSuper, 30000);
+    setInterval(cargarLeadsAsesor, 60000);
 };
+
+/* ===================== CARGAR LEADS DEL ASESOR ===================== */
+async function cargarLeadsAsesor() {
+    try {
+        const res  = await fetch(`${API}/leads`, { headers: ncHeaders() });
+        const data = await res.json();
+        if (data.ok && data.data.length) {
+            clientes = data.data.map(l => ({
+                id:       l.id,
+                telefono: l.n1,
+                n2:       l.n2 || '',
+                zona:     l.distrito || l.campana || '—',
+                campana:  l.campana || '—',
+                estado:   'NUEVO',
+                obs:      '',
+            }));
+            render();
+        }
+    } catch(e) { console.error('Error cargando leads:', e); }
+}

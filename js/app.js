@@ -1,119 +1,211 @@
-// 👁️ Mostrar / ocultar contraseña
+/* ================================================
+   APP.JS — Login Central Netcontact
+   Conectado a Node.js backend
+   ================================================ */
+
+const API = 'http://127.0.0.1:3000/api';
+
+/* ===== RUTAS POR CARGO ===== */
+const RUTAS = {
+  asesor:      'dashboard.html',
+  supervisor:  'supervisor.html',
+  backoffice:  'backoffice.html',
+  validacion:  'validacion.html',
+  grabaciones: 'grabaciones.html',
+  seguimiento: 'seguimiento.html',
+  jefatura:    'jefatura.html',
+  usuarios:    'usuarios.html',
+  instalacion: 'instalacion.html',
+  postventa:   'postventa.html',
+};
+
+/* ===== LABELS DE CARGO ===== */
+const CARGO_LABELS = {
+  asesor:      'Asesor',
+  supervisor:  'Supervisor',
+  backoffice:  'Back Office',
+  validacion:  'Validación',
+  grabaciones: 'Grabaciones',
+  seguimiento: 'Seguimiento',
+  jefatura:    'Jefatura',
+  usuarios:    'Usuarios',
+  instalacion: 'Instalación',
+  postventa:   'Post Venta',
+};
+
+/* ===== TOGGLE CONTRASEÑA ===== */
 function togglePassword() {
-    const input = document.getElementById("password");
-    input.type = input.type === "password" ? "text" : "password";
+  const input = document.getElementById('password');
+  const icon  = document.getElementById('eyeIcon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.add('active');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('active');
+  }
 }
 
+/* ===== SALUDO DINÁMICO ===== */
 function actualizarNombre() {
+  const input  = document.getElementById('usuario');
+  const nombre = document.getElementById('nombreUsuario');
+  const saludo = document.getElementById('saludo');
+  if (!input || !nombre || !saludo) return;
 
-    let input = document.getElementById("usuario");
-    let nombre = document.getElementById("nombreUsuario");
-    let saludo = document.getElementById("saludo");
+  const val = input.value.trim();
 
-    if (!input || !nombre || !saludo) return;
+  nombre.classList.remove('typing');
+  void nombre.offsetWidth;
+  nombre.classList.add('typing');
 
-    let user = input.value.trim().toUpperCase();
+  if (val.length < 2) {
+    nombre.textContent = '...';
+    nombre.classList.remove('dots');
+    void nombre.offsetWidth;
+    nombre.classList.add('dots');
+    saludo.textContent = 'Bienvenido a Netcontact';
+    return;
+  }
 
-    if (user.length < 3) {
-        nombre.textContent = "...";
+  nombre.classList.remove('dots');
+  nombre.textContent = val.toUpperCase();
+  nombre.style.animation = 'none';
+  setTimeout(() => { nombre.style.animation = 'popPro .3s cubic-bezier(.22,1,.36,1)'; }, 10);
 
-        nombre.classList.remove("dots");
-        void nombre.offsetWidth;
-        nombre.classList.add("dots");
-
-        let textoBase = "Bienvenido a Netcontact";
-
-        if (saludo.textContent !== textoBase) {
-            saludo.textContent = textoBase;
-
-            saludo.classList.remove("fade-title");
-            void saludo.offsetWidth;
-            saludo.classList.add("fade-title");
-        }
-
-        return;
-    }
-
-    nombre.classList.remove("dots");
-
-    nombre.textContent = user;
-    nombre.style.animation = "none";
-    setTimeout(() => {
-        nombre.style.animation = "popPro 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-    }, 10);
-
-    let genero = user.endsWith("A") ? "Femenino" : "Masculino";
-
-    localStorage.setItem("usuario", user);
-    localStorage.setItem("genero", genero);
-
-    let nuevoSaludo = genero === "Femenino"
-        ? "Bienvenida a Netcontact"
-        : "Bienvenido a Netcontact";
-    if (saludo.textContent !== nuevoSaludo) {
-
-        saludo.textContent = nuevoSaludo;
-
-        saludo.classList.remove("fade-title");
-        void saludo.offsetWidth;
-        saludo.classList.add("fade-title");
-    }
+  const femenino = val.toUpperCase().endsWith('A');
+  saludo.textContent = femenino ? 'Bienvenida a Netcontact' : 'Bienvenido a Netcontact';
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+/* ===== ERROR / LIMPIEZA ===== */
+function mostrarError(msg) {
+  const el = document.getElementById('errorMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  document.getElementById('usuario')?.classList.add('error');
+  document.getElementById('password')?.classList.add('error');
+}
+function ocultarError() {
+  document.getElementById('errorMsg')?.classList.remove('show');
+  document.getElementById('usuario')?.classList.remove('error');
+  document.getElementById('password')?.classList.remove('error');
+}
 
-    const form = document.getElementById("loginForm");
-    const btn = document.getElementById("btnLogin");
-    const loader = document.getElementById("loader");
-    const input = document.getElementById("usuario");
+/* ===== ANIMACIÓN DE BIENVENIDA ===== */
+function mostrarBienvenida(user, callback) {
+  const screen = document.getElementById('welcomeScreen');
+  if (!screen) { callback(); return; }
 
-    if (input) {
-        input.addEventListener("input", actualizarNombre);
+  const primerNombre = user.nombre.split(' ')[0];
+  const femenino     = primerNombre.toUpperCase().endsWith('A');
+
+  document.getElementById('wSaludo').textContent =
+    femenino ? '¡Bienvenida de nuevo,' : '¡Bienvenido de nuevo,';
+
+  const wNombre = document.getElementById('wNombre');
+  wNombre.innerHTML = primerNombre
+    .split('')
+    .map((c, i) => i === 0 ? `<span class="accent">${c}</span>` : c)
+    .join('');
+
+  document.getElementById('wCargo').textContent =
+    CARGO_LABELS[user.cargo] || user.cargo;
+
+  screen.classList.add('show');
+
+  setTimeout(() => {
+    const barra = document.getElementById('wBarra');
+    if (barra) barra.style.width = '100%';
+  }, 100);
+
+  setTimeout(callback, 1600);
+}
+
+/* ===== LOGIN ===== */
+async function doLogin(e) {
+  if (e) e.preventDefault();
+  ocultarError();
+
+  const usuario  = (document.getElementById('usuario')?.value  || '').trim().toLowerCase();
+  const password = (document.getElementById('password')?.value || '').trim();
+
+  if (!usuario)  { mostrarError('Ingresa tu usuario.');    return; }
+  if (!password) { mostrarError('Ingresa tu contraseña.'); return; }
+
+  const btn = document.getElementById('btnLogin');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+
+  try {
+    const res = await fetch(`${API}/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ usuario, password }),
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      mostrarError(data.mensaje || 'Usuario o contraseña incorrectos.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+      return;
     }
 
-    if (form) {
-        form.addEventListener("submit", (e) => {
-            e.preventDefault();
+    // Guardar token y sesión en localStorage (persiste entre pestañas)
+    localStorage.setItem('nc_token',   data.token);
+    localStorage.setItem('nc_usuario', JSON.stringify(data.usuario));
 
-            let usuario = document.getElementById("usuario").value.trim().toUpperCase();
+    const ruta = RUTAS[data.usuario.cargo] || 'dashboard.html';
+    mostrarBienvenida(data.usuario, () => {
+      window.location.href = ruta;
+    });
 
-            if (!usuario) return;
+  } catch(err) {
+    console.error('Error de conexión:', err);
+    mostrarError('No se pudo conectar al servidor. ¿Está corriendo el backend?');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+  }
+}
 
-            let rol = "ASESOR";
+/* ===== PARTÍCULAS ===== */
+function crearParticulas() {
+  const cont = document.querySelector('.particles');
+  if (!cont) return;
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('span');
+    s.style.left              = Math.random() * 100 + 'vw';
+    s.style.width             = (Math.random() * 5 + 3) + 'px';
+    s.style.height            = s.style.width;
+    s.style.opacity           = Math.random() * 0.5 + 0.2;
+    s.style.animationDuration = (Math.random() * 10 + 8) + 's';
+    s.style.animationDelay    = (Math.random() * 8) + 's';
+    cont.appendChild(s);
+  }
+}
 
-            if (usuario.includes("SUP")) rol = "SUPERVISOR";
-            else if (usuario.includes("BACK")) rol = "BACK";
-            else if (usuario.includes("GRAB")) rol = "GRABACIONES";
-            else if (usuario.includes("SEGU")) rol = "SEGUIMIENTO";
-            else if (usuario.includes("ADMIN")) rol = "JEFATURA";
+/* ===== INIT ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  crearParticulas();
 
-            localStorage.setItem("usuario", usuario);
-            localStorage.setItem("rol", rol);
+  const inputU = document.getElementById('usuario');
+  const inputP = document.getElementById('password');
+  const form   = document.getElementById('loginForm');
 
-            btn.classList.add("loading");
+  inputU?.addEventListener('input', actualizarNombre);
+  inputU?.addEventListener('keydown', e => { if (e.key === 'Enter') inputP?.focus(); });
+  inputP?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  form?.addEventListener('submit', doLogin);
 
-            if (loader) loader.style.display = "flex";
+  inputU?.focus();
 
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 800);
-        });
+  // Si ya hay sesión activa → redirigir directamente
+  try {
+    const token = localStorage.getItem('nc_token');
+    const raw   = localStorage.getItem('nc_usuario');
+    if (token && raw) {
+      const u    = JSON.parse(raw);
+      const ruta = RUTAS[u.cargo];
+      if (ruta) window.location.href = ruta;
     }
-
-});
-document.addEventListener("DOMContentLoaded", () => {
-    const input = document.getElementById("usuario");
-    const nombre = document.getElementById("nombreUsuario");
-
-    if (input && nombre) {
-        input.addEventListener("input", () => {
-
-            nombre.classList.remove("typing");
-            void nombre.offsetWidth;
-            nombre.classList.add("typing");
-
-        });
-    }
-
-    crearParticulas();
+  } catch(e) {}
 });

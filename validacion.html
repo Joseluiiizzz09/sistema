@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validación — Netcontact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/validacion.css">
+</head>
+<body>
+
+<!-- ===================== TOPBAR ===================== -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo-circle">
+      <img src="assets/logo3.png" alt="NC" onerror="this.parentNode.textContent='🏢'">
+    </div>
+    <div class="brand-text">
+      <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
+      <span class="brand-sub">Validación de Ventas</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-badge">VALIDACIÓN</span>
+    <span class="topbar-user" id="topbarUser">Validador</span>
+    <button id="btnSalir" class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
+  </div>
+</div>
+
+<!-- ===================== MAIN ===================== -->
+<div class="main-content">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Ventas — Validación</h2>
+      <p>Gestiona y valida las ventas del sistema · Mes actual por defecto</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn-export btn-export-csv" onclick="exportarCSV()">📥 CSV</button>
+      <button class="btn-export btn-export-excel" onclick="exportarExcel()">📊 Excel</button>
+      <button class="btn-export btn-export-pdf" onclick="exportarPDF()">📄 PDF</button>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi-item k-blue">
+      <div><div class="kpi-num" id="kpi-total">0</div><div class="kpi-label">Total ventas</div></div>
+    </div>
+    <div class="kpi-item k-green">
+      <div><div class="kpi-num" id="kpi-validados">0</div><div class="kpi-label">Validadas</div></div>
+    </div>
+    <div class="kpi-item k-red">
+      <div><div class="kpi-num" id="kpi-novalidados">0</div><div class="kpi-label">No validadas</div></div>
+    </div>
+  </div>
+  <!-- FILTROS -->
+  <div class="filtros-panel">
+    <div class="filtros-titulo">Filtros de búsqueda</div>
+    <div class="filtros-grid">
+      <div class="fg"><label>Estado</label>
+        <select id="f_estado" onchange="aplicarFiltros()"></select>
+      </div>
+      <div class="fg"><label>Vendedor / Asesor</label>
+        <input id="f_asesor" placeholder="Buscar vendedor..." oninput="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Supervisor</label>
+        <input id="f_supervisor" placeholder="Buscar supervisor..." oninput="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Canal</label>
+        <select id="f_canal" onchange="aplicarFiltros()"></select>
+      </div>
+      <div class="fg"><label>Desde</label>
+        <input type="date" id="f_desde" onchange="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Hasta</label>
+        <input type="date" id="f_hasta" onchange="aplicarFiltros()">
+      </div>
+      <div class="filtros-acciones">
+        <button class="btn-borrar" onclick="limpiarFiltros()">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-wrap">
+    <div class="tabla-header">
+      <div class="tabla-header-left">
+        <span class="tabla-title">Registros de ventas</span>
+        <span class="tabla-count" id="tablaCount">0 registros</span>
+        <span class="paginacion-info" id="pagInfo"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="text" class="tabla-search" id="busquedaInput"
+          placeholder="🔍 Buscar por nombre, DNI, teléfono..."
+          oninput="busquedaVal=this.value;aplicarFiltros()">
+        <div class="pag-size">
+          <select id="selectPorPagina" title="Registros por página">
+            <option value="18">18 / pág</option>
+            <option value="30">30 / pág</option>
+            <option value="50">50 / pág</option>
+            <option value="100">100 / pág</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA PRINCIPAL — scroll horizontal + vertical -->
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th class="th-accion">ACCIÓN</th>
+            <th class="th-estado">ESTADO VENTA</th>
+            <th class="th-obs-bo">OBS. BACK OFFICE</th>
+            <th class="th-tipoventa">TIPO VENTA</th>
+            <th class="th-fecha">FECHA INGRESO</th>
+            <th class="th-nombre">NOMBRE Y APELLIDOS</th>
+            <th class="th-dni">DNI / DOC.</th>
+            <th class="th-repr">REPR. LEGAL</th>
+            <th class="th-tel">TEL. CONTACTO</th>
+            <th class="th-tel">TEL. REFERENCIA</th>
+            <th class="th-email">EMAIL</th>
+            <th class="th-dpto">DEPARTAMENTO</th>
+            <th class="th-prov">PROVINCIA</th>
+            <th class="th-dist">DISTRITO</th>
+            <th class="th-dir">DIRECCIÓN</th>
+            <th class="th-coord">COORDENADAS</th>
+            <th class="th-tipodom">TIPO DOMICILIO</th>
+            <th class="th-relacion">RELACIÓN PREDIO</th>
+            <th class="th-cuota">CUOTA INSTALACIÓN</th>
+            <th class="th-claro">CLARO HOGAR</th>
+            <th class="th-tec">TECNOLOGÍA</th>
+            <th class="th-paquete">PAQUETE</th>
+            <th class="th-full">FULL CLARO</th>
+            <th class="th-num">DECOS</th>
+            <th class="th-num">MESH</th>
+            <th class="th-cuotam">CUOTA MESH</th>
+            <th class="th-plano">PLANO</th>
+            <th class="th-obs">OBSERVACIÓN</th>
+            <th class="th-vendedor">VENDEDOR</th>
+            <th class="th-superv">SUPERVISOR</th>
+            <th class="th-canal">CANAL</th>
+            <th class="th-umod">USER MODIFICA</th>
+            <th class="th-fmod">ÚLTIMA MODIF.</th>
+          </tr>
+        </thead>
+        <tbody id="tablaBody">
+          <tr class="tabla-empty"><td colspan="33">Cargando datos...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINACIÓN -->
+    <div class="paginacion">
+      <span class="pag-info" id="pagInfo2"></span>
+      <div class="pag-btns" id="paginacionBtns"></div>
+    </div>
+  </div>
+
+</div><!-- fin main-content -->
+
+<!-- ===================== MODAL: CAMBIAR ESTADO ===================== -->
+<div class="modal-bg" id="modalEstado">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-title">Cambiar estado</div>
+    <div class="modal-sub">Estado actual: <strong id="re_estadoActual"></strong></div>
+    <div class="modal-campo modal-grid col1" style="margin-bottom:16px;">
+      <label>Nuevo estado</label>
+      <select id="re_nuevoEstado" style="padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fafafa;"></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-modal" onclick="cerrarModal('modalEstado')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarEstado()">Guardar estado</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: OBSERVACIÓN ===================== -->
+<div class="modal-bg" id="modalObs">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-title">💬 Agregar observación</div>
+    <div class="modal-sub" id="obs_nombre"></div>
+    <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:14px;font-size:11px;color:#6b7280;line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;" id="obs_historial"></div>
+    <div class="modal-campo" style="margin-bottom:14px;">
+      <label>Nueva observación</label>
+      <textarea id="obs_nueva" placeholder="Escribe tu observación aquí..." rows="4"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-modal" onclick="cerrarModal('modalObs')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarObservacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: EDITAR COMPLETO ===================== -->
+<div class="modal-bg" id="modalEditar">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-title" id="modalEditarTitulo">Editar registro</div>
+    <div class="modal-sub">Modifica los datos del registro. Los cambios se guardan con tu usuario.</div>
+
+    <div class="modal-grid">
+      <div class="modal-sep-label">Estado y fechas</div>
+      <div class="modal-campo"><label>Estado</label><select id="e_estado"></select></div>
+      <div class="modal-campo"><label>Tipo Venta</label><select id="e_tipoVenta"></select></div>
+
+      <div class="modal-sep-label">Datos del cliente</div>
+      <div class="modal-campo span2"><label>Nombre y Apellidos</label><input id="e_nombreApellidos" placeholder="Nombre completo"></div>
+      <div class="modal-campo"><label>DNI / Documento</label><input id="e_dni"></div>
+      <div class="modal-campo"><label>Representante Legal</label><input id="e_nombreRepresentante"></div>
+      <div class="modal-campo"><label>Email</label><input type="email" id="e_email"></div>
+      <div class="modal-campo"><label>Tel. Contacto</label><input id="e_telefonoContacto" style="font-family:monospace"></div>
+      <div class="modal-campo"><label>Tel. Referencia</label><input id="e_telefonoReferencia" style="font-family:monospace"></div>
+
+      <div class="modal-sep-label">Domicilio</div>
+      <div class="modal-campo"><label>Departamento</label><input id="e_departamento"></div>
+      <div class="modal-campo"><label>Provincia</label><input id="e_provincia"></div>
+      <div class="modal-campo"><label>Distrito</label><input id="e_distrito"></div>
+      <div class="modal-campo"><label>Tipo Domicilio</label><input id="e_tipoDomicilio"></div>
+      <div class="modal-campo span2"><label>Dirección</label><input id="e_direccion"></div>
+      <div class="modal-campo span2"><label>Coordenadas</label><input id="e_coordenadas"></div>
+      <div class="modal-campo"><label>Relación Predio</label><select id="e_relacionPredio"></select></div>
+
+      <div class="modal-sep-label">Servicio</div>
+      <div class="modal-campo"><label>Cuotas Instalación</label><select id="e_cuotasInstalacion"></select></div>
+      <div class="modal-campo"><label>Claro Hogar</label><select id="e_claroHogar"></select></div>
+      <div class="modal-campo"><label>Tecnología</label><select id="e_tecnologia"></select></div>
+      <div class="modal-campo span2"><label>Paquete</label><select id="e_paquete"></select></div>
+      <div class="modal-campo"><label>Full Claro</label><select id="e_fullClaro"></select></div>
+      <div class="modal-campo"><label>Cantidad Decos</label><input type="number" id="e_cantDecos" min="0"></div>
+      <div class="modal-campo"><label>Cantidad Mesh</label><input type="number" id="e_cantMesh" min="0"></div>
+      <div class="modal-campo"><label>Cuota Mesh</label><input id="e_cuotaMesh"></div>
+      <div class="modal-campo"><label>Plano</label><input id="e_plano"></div>
+
+      <div class="modal-sep-label">Comercial</div>
+      <div class="modal-campo"><label>Vendedor</label><input id="e_vendedor"></div>
+      <div class="modal-campo"><label>Supervisor</label><input id="e_supervisor"></div>
+      <div class="modal-campo"><label>Canal</label><select id="e_canal"></select></div>
+
+      <div class="modal-sep-label">Observaciones</div>
+      <div class="modal-campo span2"><label>Obs. Back Office</label><textarea id="e_obsBackOffice" rows="2"></textarea></div>
+      <div class="modal-campo span2"><label>Observación general</label><textarea id="e_observacion" rows="3"></textarea></div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancelar-modal" onclick="cerrarModal('modalEditar')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarEdicion()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/historial.js"></script>
+<script src="js/session.js"></script>
+<script src="js/validacion.js"></script>
+</body>
+</html>

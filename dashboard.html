@@ -23,8 +23,13 @@
         <button class="tab" onclick="mostrar('ventassubidas', this)">Ventas Subidas</button>
         <button class="tab" onclick="mostrar('frases', this)">Frases</button>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <span id="saludoUsuario" style="font-size:12px;color:#6b7280;font-weight:500;"></span>
+        <button class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
+    </div>
 </div>
 
+<!-- LLAMADAS -->
 <div id="llamadas" class="pantalla">
     <h2>Base de llamadas</h2>
     <table class="tabla-crm">
@@ -37,14 +42,19 @@
                 <th>Acción</th>
             </tr>
         </thead>
-        <tbody id="tabla"></tbody>
+        <tbody id="tabla">
+            <tr>
+                <td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">
+                    ⏳ Esperando asignación del Back Office...
+                </td>
+            </tr>
+        </tbody>
     </table>
 </div>
 
+<!-- RENDIMIENTO -->
 <div id="rendimiento" class="pantalla hidden">
     <h2>Mi rendimiento</h2>
-
-    <!-- TARJETAS KPI -->
     <div class="rend-kpis">
         <div class="rend-kpi rend-kpi-azul">
             <div class="rend-kpi-icon"></div>
@@ -72,8 +82,6 @@
             <div class="rend-kpi-label">No instaladas</div>
         </div>
     </div>
-
-    <!-- META DEL DIA -->
     <div class="rend-meta">
         <div class="rend-meta-texto">
             <span>Meta del día:</span>
@@ -84,40 +92,179 @@
         </div>
         <span class="rend-meta-pct" id="metaPct">0%</span>
     </div>
-
-    <!-- GRAFICOS -->
     <div class="rend-graficos">
-
-        <!-- Ventas diarias (barras) -->
         <div class="rend-card">
             <div class="rend-card-title">📅 Ventas diarias (esta semana)</div>
-            <div class="rend-chart-wrap">
-                <canvas id="chartDiario"></canvas>
-            </div>
+            <div class="rend-chart-wrap"><canvas id="chartDiario"></canvas></div>
         </div>
-
-        <!-- Ventas y instaladas semanales -->
         <div class="rend-card">
             <div class="rend-card-title">📆 Ventas e instaladas semanales</div>
-            <div class="rend-chart-wrap">
-                <canvas id="chartSemanal"></canvas>
-            </div>
+            <div class="rend-chart-wrap"><canvas id="chartSemanal"></canvas></div>
         </div>
-
-        <!-- Ventas y instaladas mensuales -->
         <div class="rend-card rend-card-full">
             <div class="rend-card-title">🗓️ Ventas e instaladas mensuales</div>
-            <div class="rend-chart-wrap">
-                <canvas id="chartMensual"></canvas>
-            </div>
+            <div class="rend-chart-wrap"><canvas id="chartMensual"></canvas></div>
         </div>
-
     </div>
 </div>
 
+<!-- VENTAS SUBIDAS -->
 <div id="ventassubidas" class="pantalla hidden">
 
-    <!-- FILTROS -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div>
+      <h2 style="margin-bottom:4px;">Ventas Subidas</h2>
+      <p style="font-size:12px;color:#9ca3af;">Historial de ventas · Registra una nueva desde el botón</p>
+    </div>
+    <button onclick="toggleNuevaVenta()" id="btnNuevaVenta"
+      style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;
+             background:#111827;color:#fff;border:none;border-radius:10px;
+             font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;
+             transition:background .2s;box-shadow:0 3px 10px rgba(0,0,0,.15);">
+      + Nueva Venta
+    </button>
+  </div>
+
+  <div id="panelNuevaVenta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;overflow-y:auto;padding:20px;">
+    <div style="background:#fff;border-radius:16px;width:min(680px,96vw);max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:aparecer .2s ease;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid #f3f4f6;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#ff2d2d;font-size:14px;">📋</span>
+          <span style="font-size:15px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.3px;">Nueva Venta</span>
+        </div>
+        <button onclick="toggleNuevaVenta()" style="width:28px;height:28px;border:none;border-radius:8px;background:#f3f4f6;color:#6b7280;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>
+      </div>
+      <div style="padding:20px 24px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+          <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Nombres y Apellidos *</label>
+            <input id="nv_nombre" placeholder="Nombres y apellidos completos" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;width:100%;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Tipo de documento</label>
+            <select id="nv_tipoDoc" onchange="actualizarLabelDocNV()" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="DNI">DNI</option><option value="CE">Carnet de Extranjería</option><option value="RUC">RUC</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label id="nv_docLabel" style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">DNI</label>
+            <input id="nv_dni" placeholder="Número de documento" maxlength="15" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:monospace;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Teléfono Contacto</label>
+            <input id="nv_tel1" placeholder="9XXXXXXXX" maxlength="12" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:monospace;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Teléfono Referencia</label>
+            <input id="nv_tel2" placeholder="9XXXXXXXX" maxlength="12" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:monospace;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Departamento</label>
+            <input id="nv_dpto" placeholder="Departamento" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Provincia</label>
+            <input id="nv_prov" placeholder="Provincia" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Distrito</label>
+            <input id="nv_dist" placeholder="Distrito" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="grid-column:span 2;display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Dirección</label>
+            <input id="nv_dir" placeholder="Dirección completa" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Coordenadas</label>
+            <input id="nv_coord" placeholder="-12.000000, -77.000000" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:monospace;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Fecha de Nacimiento</label>
+            <input id="nv_fechaNac" type="date" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Lugar de Nacimiento</label>
+            <input id="nv_lugarNac" placeholder="Ciudad/Región" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Nombres del Padre</label>
+            <input id="nv_padre" placeholder="Nombres del padre" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Nombres de la Madre</label>
+            <input id="nv_madre" placeholder="Nombres de la madre" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Relación Predio</label>
+            <select id="nv_predio" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>PROPIETARIO</option><option>INQUILINO</option><option>FAMILIAR</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Cuota Instalación</label>
+            <select id="nv_cuota" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>S/.0 SOLES</option><option>S/.100 SOLES</option><option>S/.200 SOLES</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Claro Hogar</label>
+            <select id="nv_hogar" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>1 PLAY</option><option>2 PLAY - INTERNET + TELEVISOR ESTANDAR</option><option>2 PLAY - INTERNET + TELEFONO</option><option>3 PLAY</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Tecnología</label>
+            <select id="nv_tec" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>HFC</option><option>FTTH</option><option>HFC+FTTH</option>
+            </select>
+          </div>
+          <div style="grid-column:span 2;display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Paquete Real</label>
+            <select id="nv_paquete" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>150 MBPS S/65.00</option><option>400 MBPS S/94.00</option><option>400 MBPS S/170.00</option><option>1500 MBPS S/200.00</option><option>PROM ENTRADA 200 X 12 M 400 MBPS X 6M 39.5</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Full Claro</label>
+            <select id="nv_full" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option><option>Si</option><option>No</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Cantidad Decos</label>
+            <select id="nv_decos" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Cantidad Mesh</label>
+            <select id="nv_mesh" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Plano</label>
+            <input id="nv_plano" placeholder="Código de plano" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Estado Venta</label>
+            <select id="nv_estado" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="VENTA">VENTA</option><option value="PROGRAMADO">PROGRAMADO</option>
+            </select>
+          </div>
+          <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Observación</label>
+            <textarea id="nv_obs" placeholder="Observaciones adicionales..." rows="2" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;resize:vertical;width:100%;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 24px 20px;border-top:1px solid #f3f4f6;">
+        <button onclick="toggleNuevaVenta()" style="padding:10px 20px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;color:#6b7280;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Cerrar</button>
+        <button onclick="guardarNuevaVenta()" style="display:flex;align-items:center;gap:6px;padding:10px 24px;border:none;border-radius:10px;background:#111827;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">💾 Guardar venta</button>
+      </div>
+    </div>
+  </div>
+
     <div class="vs-filtros">
         <div class="vs-filtros-grid">
             <div class="vs-filtro-row">
@@ -138,152 +285,103 @@
             <button class="vs-btn vs-btn-refrescar" onclick="refrescarVentas()">↻ Refrescar</button>
         </div>
     </div>
-
-    <!-- CONTADOR -->
     <div class="vs-barra-info">
-        <span id="vsContador">Registros seleccionados: 0</span>
+        <span id="vsContador">0 registros</span>
     </div>
-
-    <!-- TABLA -->
     <div class="vs-tabla-wrap">
         <table class="vs-tabla">
-            <thead>
-                <tr>
-                    <th>Estado Venta</th>
-                    <th>Obs. Back Office</th>
-                    <th>Agendado</th>
-                    <th>Tipo de Venta</th>
-                    <th>Fecha Ingreso</th>
-                    <th>Nombre y Apellidos</th>
-                    <th>Tipo Documento</th>
-                    <th>DNI</th>
-                    <th>Representante Legal</th>
-                    <th>Teléfono Contacto</th>
-                    <th>Teléfono Referencia</th>
-                    <th>Departamento</th>
-                    <th>Provincia</th>
-                    <th>Distrito</th>
-                    <th>Dirección</th>
-                    <th>Coordenadas</th>
-                    <th>Vendedor</th>
-                    <th>Supervisor</th>
-                    <th>Canal</th>
-                    <th>Tipo Domicilio</th>
-                    <th>Email</th>
-                    <th>Relación Predio</th>
-                    <th>Cuotas Pago Instalación</th>
-                    <th>Claro Hogar</th>
-                    <th>Tecnología</th>
-                    <th>Paquete</th>
-                    <th>Full Claro</th>
-                    <th>Cantidad Decos</th>
-                    <th>Cantidad Mesh</th>
-                    <th>Cuota Pago Mesh</th>
-                    <th>Plano</th>
-                    <th>Observación</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
+            <thead><tr>
+                <th>Estado Venta</th><th>Obs. Back Office</th><th>Agendado</th>
+                <th>Tipo de Venta</th><th>Fecha Ingreso</th><th>Nombre y Apellidos</th>
+                <th>Tipo Documento</th><th>DNI</th><th>Representante Legal</th>
+                <th>Teléfono Contacto</th><th>Teléfono Referencia</th><th>Departamento</th>
+                <th>Provincia</th><th>Distrito</th><th>Dirección</th><th>Coordenadas</th>
+                <th>Vendedor</th><th>Supervisor</th><th>Canal</th><th>Tipo Domicilio</th>
+                <th>Email</th><th>Relación Predio</th><th>Cuotas Pago Instalación</th>
+                <th>Claro Hogar</th><th>Tecnología</th><th>Paquete</th><th>Full Claro</th>
+                <th>Cantidad Decos</th><th>Cantidad Mesh</th><th>Cuota Pago Mesh</th>
+                <th>Plano</th><th>Observación</th><th>Acción</th>
+            </tr></thead>
             <tbody id="tablaVentasSubidas">
-                <tr class="vs-empty">
-                    <td colspan="33">Sin registros. Usa los filtros para buscar.</td>
-                </tr>
+                <tr class="vs-empty"><td colspan="33">Sin registros. Usa los filtros para buscar.</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
+<!-- FRASES -->
 <div id="frases" class="pantalla hidden">
-
     <div class="frases-header">
         <h2>💬 Frases del día</h2>
-        <span class="frases-sub">Mensaje de tu supervisor para hoy</span>
+        <span class="frases-sub">Mensajes de tu supervisor para hoy</span>
     </div>
-
-    <!-- FRASE PRINCIPAL DESTACADA -->
-    <div class="frase-destacada">
-        <div class="frase-comilla">"</div>
-        <p class="frase-texto" id="frase">Cargando frase...</p>
-        <div class="frase-autor">— Tu supervisor</div>
-    </div>
-
-    <!-- TODAS LAS FRASES -->
-    <div class="frases-grid" id="frasesGrid"></div>
-
-</div>
-
-<div class="modal hidden" id="modalTipos">
-    <div class="modal-content">
-        <h3>Tipificar</h3>
-        <button class="tip-btn tip-venta"                onclick="tipificar('VENTA CERRADA')">VENTA CERRADA</button>
-        <button class="tip-btn tip-corta"                onclick="tipificar('CORTA LLAMADA')">CORTA LLAMADA</button>
-        <button class="tip-btn tip-preventa"             onclick="tipificar('PREVENTA')">PREVENTA</button>
-        <button class="tip-btn tip-nocontesta"           onclick="tipificar('NO CONTESTA')">NO CONTESTA</button>
-        <button class="tip-btn tip-ejecucion"            onclick="tipificar('EN EJECUCION')">EN EJECUCION</button>
-        <button class="tip-btn tip-sincobertura"         onclick="tipificar('SIN COBERTURA')">SIN COBERTURA</button>
-        <button class="tip-btn tip-deseamovil"           onclick="tipificar('DESEA MOVIL')">DESEA MOVIL</button>
-        <button class="tip-btn tip-servicioactivo"       onclick="tipificar('SERVICIO ACTIVO')">SERVICIO ACTIVO</button>
-        <button class="tip-btn tip-agendado"             onclick="tipificar('AGENDADO')">AGENDADO</button>
-        <button class="tip-btn tip-nocalifica"           onclick="tipificar('NO CALIFICA')">NO CALIFICA</button>
-        <button class="tip-btn tip-shedificionoliberado" onclick="tipificar('EDIFICIO NO LIBERADO')">EDIFICIO NO LIBERADO</button>
-        <button class="tip-btn tip-contactoconterceros"  onclick="tipificar('CONTACTO CON TERCEROS')">CONTACTO CON TERCEROS</button>
-        <button class="tip-btn tip-nodesea"              onclick="tipificar('NO DESEA')">NO DESEA</button>
-        <button class="tip-btn tip-buzon"                onclick="tipificar('BUZON DE VOZ')">BUZON DE VOZ</button>
-        <button class="btn-cancelar"                     onclick="cerrarModal()">Cancelar</button>
-    </div>
-</div>
-
-<div class="modal hidden" id="modalVenta">
-    <div class="modal-content modal-venta-completa">
-        <h3>📋 Registrar Venta</h3>
-        <div class="mv-campo"><label>Nombres y Apellidos</label><input id="mv_nombre" placeholder="Nombres y Apellidos"></div>
-        <div class="mv-campo"><label>DNI / Carnet de Extranjería</label><input id="mv_dni" placeholder="Número de documento"></div>
-        <div class="mv-campo"><label>Email</label><input id="mv_email" type="email" placeholder="correo@ejemplo.com"></div>
-        <div class="mv-campo"><label>Departamento</label><input id="mv_departamento" placeholder="Departamento"></div>
-        <div class="mv-campo"><label>Provincia</label><input id="mv_provincia" placeholder="Provincia"></div>
-        <div class="mv-campo"><label>Distrito</label><input id="mv_distrito" placeholder="Distrito"></div>
-        <div class="mv-campo"><label>Canal de Venta</label><input id="mv_canal" placeholder="Ej: ECOMMERCE"></div>
-        <div class="mv-campo"><label>Punto de Venta</label><input id="mv_puntoVenta" placeholder="Ej: ECOMMERCE-LIMA"></div>
-        <div class="mv-campo"><label>Tipo de Venta</label>
-            <select id="mv_tipoVenta"><option value="">Seleccione</option><option>VENTA HOGAR</option><option>VENTA EMPRESAS</option><option>PORTABILIDAD</option></select></div>
-        <div class="mv-campo"><label>Tipo Domicilio</label>
-            <select id="mv_tipoDomicilio"><option value="">Seleccione</option><option>CASA</option><option>DEPARTAMENTO</option><option>EDIFICIO</option><option>LOCAL COMERCIAL</option></select></div>
-        <div class="mv-campo"><label>Teléfono 1</label><input id="mv_telefono1" placeholder="Teléfono principal"></div>
-        <div class="mv-campo"><label>Teléfono 2</label><input id="mv_telefono2" placeholder="Teléfono referencia"></div>
-        <div class="mv-campo"><label>Fecha de Nacimiento</label><input id="mv_fechaNac" type="date"></div>
-        <div class="mv-campo"><label>Lugar de Nacimiento</label><input id="mv_lugarNac" placeholder="Ciudad/Región"></div>
-        <div class="mv-campo"><label>Nombres del Padre</label><input id="mv_padre" placeholder="Nombres del padre"></div>
-        <div class="mv-campo"><label>Nombres de la Madre</label><input id="mv_madre" placeholder="Nombres de la madre"></div>
-        <div class="mv-campo"><label>Dirección</label><textarea id="mv_direccion" placeholder="Dirección completa" rows="2"></textarea></div>
-        <div class="mv-campo"><label>Coordenadas</label><textarea id="mv_coordenadas" placeholder="-12.000000, -77.000000" rows="2"></textarea></div>
-        <div class="mv-campo"><label>Relación Predio</label>
-            <select id="mv_relacionPredio"><option value="">Seleccione</option><option>PROPIETARIO</option><option>INQUILINO</option><option>FAMILIAR</option></select></div>
-        <div class="mv-campo"><label>Cuota de Pago Instalación</label>
-            <select id="mv_cuotaInstalacion"><option value="">Seleccione</option><option>S/.0 SOLES</option><option>S/.100 SOLES</option><option>S/.200 SOLES</option></select></div>
-        <div class="mv-campo"><label>Claro Hogar</label>
-            <select id="mv_claroHogar"><option value="">Seleccione</option><option>1 PLAY</option><option>2 PLAY - INTERNET + TELEVISOR ESTANDAR</option><option>2 PLAY - INTERNET + TELEFONO</option><option>3 PLAY</option></select></div>
-        <div class="mv-campo"><label>Tecnología</label>
-            <select id="mv_tecnologia"><option value="">Seleccione</option><option>HFC</option><option>FTTH</option><option>HFC+FTTH</option></select></div>
-        <div class="mv-campo"><label>Paquete Real</label>
-            <select id="mv_paquete"><option value="">Seleccione</option><option>150 MBPS S/65.00</option><option>400 MBPS S/94.00</option><option>400 MBPS S/170.00</option><option>1500 MBPS S/200.00</option><option>PROM ENTRADA 200 X 12 M 400 MBPS X 6M 39.5</option></select></div>
-        <div class="mv-campo"><label>Full Claro</label>
-            <select id="mv_fullClaro"><option value="">Seleccione</option><option>Si</option><option>No</option></select></div>
-        <div class="mv-campo"><label>Cantidad Decos</label><input id="mv_decos" type="number" placeholder="0" min="0"></div>
-        <div class="mv-campo"><label>Cantidad de Mesh</label><input id="mv_mesh" type="number" placeholder="0" min="0"></div>
-        <div class="mv-campo"><label>Cuota de Pago Instalación Mesh</label><input id="mv_cuotaMesh" placeholder="S/.0 SOLES"></div>
-        <div class="mv-campo"><label>Plano</label><input id="mv_plano" placeholder="Código de plano"></div>
-        <div class="mv-campo"><label>Estado Venta</label>
-            <select id="mv_estadoVenta"><option value="PROGRAMADO">PROGRAMADO</option><option value="VENTA">VENTA</option></select></div>
-        <div class="mv-campo"><label>Observación</label><textarea id="mv_observacion" placeholder="Observaciones adicionales" rows="3"></textarea></div>
-        <div class="mv-botones">
-            <button onclick="guardarVenta()">Guardar Venta</button>
-            <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    <div id="frasesSupContainer">
+        <div style="text-align:center;padding:60px 24px;color:#9ca3af;">
+            <div style="font-size:40px;margin-bottom:12px;">💬</div>
+            <div style="font-size:15px;font-weight:600;color:#374151;margin-bottom:6px;">Sin mensajes por ahora</div>
+            <div style="font-size:13px;line-height:1.5;">Tu supervisor aún no ha publicado mensajes hoy.<br>Vuelve más tarde.</div>
         </div>
     </div>
 </div>
 
+<!-- MODAL TIPIFICACIÓN -->
+<div class="modal hidden" id="modalTipos">
+  <div class="tip-modal">
+    <div class="tip-modal-header">
+      <div class="tip-modal-title">
+        <div class="tip-modal-icon">📋</div>
+        <span>Tipificar llamada</span>
+      </div>
+      <button class="tip-modal-close" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="tip-search-wrap">
+      <input type="text" class="tip-search" id="tipSearch" placeholder="🔍 Buscar tipificación..." oninput="filtrarTips(this.value)">
+    </div>
+    <div class="tip-grid" id="tipGrid">
+      <button class="tip-chip tip-chip-venta"        onclick="tipificar('VENTA CERRADA')"><span class="tip-chip-dot"></span>VENTA CERRADA</button>
+      <button class="tip-chip tip-chip-corta"        onclick="tipificar('CORTA LLAMADA')"><span class="tip-chip-dot"></span>CORTA LLAMADA</button>
+      <button class="tip-chip tip-chip-preventa"     onclick="tipificar('PREVENTA')"><span class="tip-chip-dot"></span>PREVENTA</button>
+      <button class="tip-chip tip-chip-nocontesta"   onclick="tipificar('NO CONTESTA')"><span class="tip-chip-dot"></span>NO CONTESTA</button>
+      <button class="tip-chip tip-chip-agendado"     onclick="tipificar('AGENDADO')"><span class="tip-chip-dot"></span>AGENDADO</button>
+      <button class="tip-chip tip-chip-buzon"        onclick="tipificar('BUZON DE VOZ')"><span class="tip-chip-dot"></span>BUZON DE VOZ</button>
+      <button class="tip-chip tip-chip-ejecucion"    onclick="tipificar('EN EJECUCION')"><span class="tip-chip-dot"></span>EN EJECUCION</button>
+      <button class="tip-chip tip-chip-sincobertura" onclick="tipificar('SIN COBERTURA')"><span class="tip-chip-dot"></span>SIN COBERTURA</button>
+      <button class="tip-chip tip-chip-deseamovil"   onclick="tipificar('DESEA MOVIL')"><span class="tip-chip-dot"></span>DESEA MOVIL</button>
+      <button class="tip-chip tip-chip-servicio"     onclick="tipificar('SERVICIO ACTIVO')"><span class="tip-chip-dot"></span>SERVICIO ACTIVO</button>
+      <button class="tip-chip tip-chip-nocalifica"   onclick="tipificar('NO CALIFICA')"><span class="tip-chip-dot"></span>NO CALIFICA</button>
+      <button class="tip-chip tip-chip-nodesea"      onclick="tipificar('NO DESEA')"><span class="tip-chip-dot"></span>NO DESEA</button>
+      <button class="tip-chip tip-chip-terceros"     onclick="tipificar('CONTACTO CON TERCEROS')"><span class="tip-chip-dot"></span>CONTACTO CON TERCEROS</button>
+      <button class="tip-chip tip-chip-edificio"     onclick="tipificar('EDIFICIO NO LIBERADO')"><span class="tip-chip-dot"></span>EDIFICIO NO LIBERADO</button>
+    </div>
+    <button class="tip-cancelar" onclick="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL REGISTRAR VENTA -->
+<div class="modal hidden" id="modalVenta">
+    <div class="modal-content" style="min-width:320px;max-width:380px;border-radius:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:#111827;border-bottom:1px solid #f3f4f6;padding-bottom:10px;margin-bottom:4px;">📋 Registrar Venta</h3>
+        <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;">Ingresa el documento del cliente para continuar.</p>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
+          <label style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Tipo de documento</label>
+          <select id="mv_tipoDoc" onchange="actualizarLabelDoc()" style="padding:9px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;color:#111827;">
+            <option value="DNI">DNI</option><option value="CE">Carnet de Extranjería</option><option value="RUC">RUC</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+          <label id="mv_docLabel" style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Número de DNI</label>
+          <input id="mv_dni" placeholder="Ingresa el número de documento" maxlength="15"
+            style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;font-family:monospace;outline:none;background:#fafafa;color:#111827;letter-spacing:2px;transition:border .2s;"
+            onfocus="this.style.borderColor='#ff2d2d';this.style.background='#fff'"
+            onblur="this.style.borderColor='#e5e7eb';this.style.background='#fafafa'">
+        </div>
+        <button onclick="irANuevaVenta()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#111827;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:8px;">Continuar a registro completo →</button>
+        <button class="btn-cancelar" onclick="cerrarModal()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#f3f4f6;color:#6b7280;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Cancelar</button>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/session.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>

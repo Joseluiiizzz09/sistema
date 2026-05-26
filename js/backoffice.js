@@ -1,661 +1,840 @@
-// =====================
-// DATOS
-let asesores = [
-    { id: 1, nombre: "Jose Luis Romero", usuario: "jose.romero", sala: "SALA 2", numeros: 0 },
-    { id: 2, nombre: "Ana García",       usuario: "ana.garcia",  sala: "SALA 1", numeros: 0 },
-    { id: 3, nombre: "Carlos Flores",    usuario: "carlos.flores", sala: "SALA 3", numeros: 0 },
-];
+/* ================================================
+   BACKOFFICE.JS — Conectado a Node.js backend
+   ================================================ */
+const API_BO = 'http://127.0.0.1:3000/api';
 
-let numerosEnCola = [];
-let asesorSeleccionado = null;
-let historial = [];
-let leads = [];
-let ventasRegistradas = [];
+const COLORES_AV = ["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899"];
+const DOT_COLORS = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626'];
 
-const COLORES_AVATAR = ["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899"];
+let asesores    = [];
+let baseVendedor = {};
 
-// =====================
-// NAVEGACION — UNA SOLA FUNCION, SIN SOBREESCRITURA
-function mostrarSeccion(id, btn) {
-    document.querySelectorAll(".bo-seccion").forEach(s => s.classList.add("hidden"));
-    const sec = document.getElementById("sec-" + id);
-    if (!sec) return;
-    sec.classList.remove("hidden");
-
-    document.querySelectorAll(".bo-nav").forEach(b => b.classList.remove("active"));
-    if (btn) btn.classList.add("active");
-
-    // Acciones por sección
-    if (id === "base")       { poblarFiltroAsesorBase(); renderBase(); }
-    if (id === "asesores")   renderAsesoresCards();
-    if (id === "historial")  renderHistorial();
-    if (id === "leads")      { poblarSelects(); renderLeads(); }
-    if (id === "ventas")     { poblarSelects(); renderVentas(); }
-    if (id === "rotacion")   { poblarSelects(); renderRotacion(); }
-    if (id === "rendimiento") renderRendimiento();
+function fechaHoy()  { return new Date().toISOString().split('T')[0]; }
+function horaAhora() { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}); }
+function formatFecha(f){ if(!f) return f; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
+function colorAv(n)  { let s=0; for(let c of n) s+=c.charCodeAt(0); return COLORES_AV[s%COLORES_AV.length]; }
+function iniciales(n){ return n.trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase(); }
+function mostrarToast(msg){
+  const n=document.getElementById('notifyToast');
+  n.textContent=msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),3200);
 }
 
-// =====================
-// UTILS
-function colorAvatar(nombre) {
-    let sum = 0;
-    for (let c of nombre) sum += c.charCodeAt(0);
-    return COLORES_AVATAR[sum % COLORES_AVATAR.length];
-}
-
-function iniciales(nombre) {
-    return nombre.trim().split(" ").slice(0,2).map(p => p[0]).join("").toUpperCase();
-}
-
-function fechaHoy() {
-    return new Date().toISOString().split("T")[0];
-}
-
-function horaAhora() {
-    return new Date().toLocaleTimeString("es-PE", {hour:"2-digit", minute:"2-digit"});
-}
-
-// =====================
-// POBLAR SELECTS
-function poblarSelects() {
-    [
-        { id: "lead_asesor",  placeholder: "-- Sin asignar --" },
-        { id: "venta_asesor", placeholder: "-- Seleccionar --" },
-        { id: "rot_asesor",   placeholder: "-- Seleccionar asesor --" },
-    ].forEach(({ id, placeholder }) => {
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        const val = sel.value;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        asesores.forEach(a => {
-            sel.innerHTML += `<option value="${a.id}">${a.nombre}</option>`;
-        });
-        sel.value = val;
-    });
-}
-
-// =====================
-// ASIGNAR NUMEROS
-function procesarNumeros() {
-    const raw = document.getElementById("inputNumeros").value.trim();
-    if (!raw) { alert("Escribe o pega números primero."); return; }
-
-    const zona = document.getElementById("zonaDefecto").value || "LIMA";
-    raw.split("\n").map(l => l.trim()).filter(Boolean).forEach(num => {
-        if (!numerosEnCola.find(n => n.telefono === num))
-            numerosEnCola.push({ telefono: num, zona });
-    });
-
-    document.getElementById("inputNumeros").value = "";
-    renderPreview();
-}
-
-function agregarUno() {
-    const num  = document.getElementById("inputUnico").value.trim();
-    const zona = document.getElementById("inputZona").value.trim() || "LIMA";
-    if (!num) return;
-    if (!numerosEnCola.find(n => n.telefono === num))
-        numerosEnCola.push({ telefono: num, zona });
-    document.getElementById("inputUnico").value = "";
-    document.getElementById("inputZona").value = "";
-    renderPreview();
-}
-
-function renderPreview() {
-    const wrap = document.getElementById("previewNumeros");
-    if (!numerosEnCola.length) { wrap.style.display = "none"; return; }
-    wrap.style.display = "block";
-    document.getElementById("previewCount").innerText = numerosEnCola.length;
-    document.getElementById("previewLista").innerHTML = numerosEnCola.map((n, i) => `
-        <div class="bo-preview-item">
-            <span>📱 ${n.telefono} <small style="color:#9ca3af">— ${n.zona}</small></span>
-            <button onclick="quitarNumero(${i})">✕</button>
-        </div>
-    `).join('');
-}
-
-function quitarNumero(i) {
-    numerosEnCola.splice(i, 1);
-    renderPreview();
-}
-
-function renderAsesoresSelector() {
-    const lista = document.getElementById("listaAsesores");
-    if (!lista) return;
-    lista.innerHTML = asesores.map(a => `
-        <div class="bo-asesor-item ${asesorSeleccionado === a.id ? 'selected' : ''}"
-             onclick="seleccionarAsesor(${a.id})">
-            <div class="bo-asesor-avatar">${iniciales(a.nombre)}</div>
-            <div class="bo-asesor-info">
-                <div class="bo-asesor-nombre">${a.nombre}</div>
-                <div class="bo-asesor-sala">${a.sala}</div>
-            </div>
-            <div class="bo-asesor-badge">${a.numeros} nums</div>
-        </div>
-    `).join('');
-}
-
-function seleccionarAsesor(id) {
-    asesorSeleccionado = id;
-    renderAsesoresSelector();
-}
-
-function asignarNumeros() {
-    if (!numerosEnCola.length) { alert("No hay números en la cola."); return; }
-    if (!asesorSeleccionado)   { alert("Selecciona un asesor primero."); return; }
-
-    const asesor = asesores.find(a => a.id === asesorSeleccionado);
-    asesor.numeros += numerosEnCola.length;
-
-    historial.unshift({
-        fecha: new Date().toLocaleString("es-PE"),
-        asesor: asesor.nombre,
-        cantidad: numerosEnCola.length,
-        zona: numerosEnCola[0]?.zona || "-",
-        numeros: numerosEnCola.map(n => n.telefono).join(", ")
-    });
-
-    const res = document.getElementById("resultadoAsignacion");
-    document.getElementById("resultadoTexto").innerText =
-        `${numerosEnCola.length} números asignados a ${asesor.nombre} correctamente`;
-    res.style.display = "block";
-    setTimeout(() => res.style.display = "none", 4000);
-
-    numerosEnCola = [];
-    renderPreview();
-    renderAsesoresSelector();
-}
-
-// =====================
-// ASESORES CARDS
-function renderAsesoresCards() {
-    const el = document.getElementById("asesoresCards");
-    if (!el) return;
-    el.innerHTML = asesores.map(a => `
-        <div class="bo-asesor-card">
-            <div class="bo-asesor-card-avatar">${iniciales(a.nombre)}</div>
-            <div class="bo-asesor-card-nombre">${a.nombre}</div>
-            <div class="bo-asesor-card-sala">${a.sala}</div>
-            <div class="bo-asesor-card-nums">${a.numeros}</div>
-            <div class="bo-asesor-card-label">números asignados</div>
-        </div>
-    `).join('');
-}
-
-// =====================
-// HISTORIAL
-function renderHistorial() {
-    const tbody = document.getElementById("tablaHistorial");
-    if (!tbody) return;
-    if (!historial.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="bo-empty">Sin asignaciones aún.</td></tr>`;
-        return;
+/* ── Cargar asesores desde backend ── */
+async function cargarAsesoresBackend() {
+  try {
+    const res  = await fetch(API_BO + '/usuarios', { headers: ncHeaders() });
+    const data = await res.json();
+    if (data.ok) {
+      asesores = data.data
+        .filter(u => u.cargo === 'asesor' && u.activo)
+        .map(u => ({ id: u.id, nombre: u.nombre, usuario: u.usuario, sala: u.sala }));
+      localStorage.setItem('bo_asesores', JSON.stringify(asesores));
     }
-    tbody.innerHTML = historial.map(h => `
-        <tr>
-            <td>${h.fecha}</td>
-            <td>${h.asesor}</td>
-            <td><strong>${h.cantidad}</strong></td>
-            <td>${h.zona}</td>
-            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.numeros}</td>
-        </tr>
-    `).join('');
+  } catch(e) { console.error('Error cargando asesores:', e); }
 }
 
-// =====================
-// MODAL NUEVO ASESOR
-function abrirModalAsesor() {
-    document.getElementById("modalAsesor").classList.remove("hidden");
-}
-function cerrarModalAsesor() {
-    document.getElementById("modalAsesor").classList.add("hidden");
-}
-function guardarAsesor() {
-    const nombre  = document.getElementById("asesor_nombre").value.trim();
-    const usuario = document.getElementById("asesor_usuario").value.trim();
-    const sala    = document.getElementById("asesor_sala").value.trim();
-    if (!nombre) { alert("Ingresa el nombre del asesor."); return; }
-
-    asesores.push({ id: Date.now(), nombre, usuario, sala: sala || "SIN SALA", numeros: 0 });
-
-    ["asesor_nombre","asesor_usuario","asesor_sala"].forEach(id =>
-        document.getElementById(id).value = "");
-
-    cerrarModalAsesor();
-    renderAsesoresCards();
-    renderAsesoresSelector();
-}
-
-// =====================
-// LEADS
-function agregarLead() {
-    const nombre = document.getElementById("lead_nombre").value.trim();
-    if (!nombre) { alert("El nombre es obligatorio."); return; }
-
-    const asesorId = parseInt(document.getElementById("lead_asesor").value) || null;
-    const asesor   = asesores.find(a => a.id === asesorId);
-
-    leads.push({
-        id: Date.now(), nombre,
-        telefono: document.getElementById("lead_telefono").value.trim(),
-        producto: document.getElementById("lead_producto").value.trim() || "—",
-        notas:    document.getElementById("lead_notas").value.trim(),
-        estado: "Nuevo",
-        asesorId,
-        asesorNombre: asesor ? asesor.nombre : "— Sin asignar —",
-        horaAsig: asesor ? horaAhora() : "—",
-        rotaciones: 0,
-        fecha: fechaHoy(),
-        asignadoA: asesor ? [asesor.id] : []
+/* ── Guardar lead en backend ── */
+async function guardarLeadBackend(lead) {
+  try {
+    const res  = await fetch(API_BO + '/leads', {
+      method:  'POST',
+      headers: ncHeaders(),
+      body:    JSON.stringify(lead),
     });
-
-    ["lead_nombre","lead_telefono","lead_producto","lead_notas"].forEach(id =>
-        document.getElementById(id).value = "");
-    document.getElementById("lead_asesor").value = "";
-
-    renderLeads();
-    renderRotacion();
-    renderRendimiento();
+    const data = await res.json();
+    return data.ok;
+  } catch(e) { return false; }
 }
 
-function cambiarEstadoLead(id, estado) {
-    const lead = leads.find(l => l.id === id);
-    if (lead) { lead.estado = estado; renderLeads(); renderRotacion(); }
-}
-
-function eliminarLead(id) {
-    leads = leads.filter(l => l.id !== id);
-    renderLeads(); renderRotacion(); renderRendimiento();
-}
-
-function reasignarLead(id, asesorId) {
-    const lead   = leads.find(l => l.id === parseInt(id));
-    const asesor = asesores.find(a => a.id === parseInt(asesorId));
-    if (!lead) return;
-    lead.asesorId     = asesor ? asesor.id : null;
-    lead.asesorNombre = asesor ? asesor.nombre : "— Sin asignar —";
-    lead.horaAsig     = asesor ? horaAhora() : "—";
-    if (asesor && !lead.asignadoA.includes(asesor.id)) lead.asignadoA.push(asesor.id);
-    renderLeads(); renderRotacion(); renderRendimiento();
-}
-
-function estadoColor(e) {
-    const map = { "Nuevo":"#3b82f6","No contesta":"#ef4444","Buzón":"#6b7280","Contactado":"#f97316","Ganado":"#22c55e" };
-    return map[e] || "#374151";
-}
-
-function renderLeads() {
-    const el = document.getElementById("leadsCount");
-    if (el) el.innerText = leads.length;
-    const tbody = document.getElementById("tablaLeads");
-    if (!tbody) return;
-
-    if (!leads.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="bo-empty">Sin leads aún.</td></tr>`;
-        return;
-    }
-
-    const optsAsesores = asesores.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
-
-    tbody.innerHTML = leads.map(l => `
-        <tr>
-            <td>
-                <div class="bo-cliente-cell">
-                    <div class="bo-cliente-avatar" style="background:${colorAvatar(l.nombre)}">${iniciales(l.nombre)}</div>
-                    <div>
-                        <div style="font-weight:600">${l.nombre}</div>
-                        <div style="font-size:11px;color:#9ca3af">${l.telefono || ''}</div>
-                    </div>
-                </div>
-            </td>
-            <td>${l.producto}</td>
-            <td>
-                <select class="select-asesor-tabla" style="border:none;background:none;font-size:12px;font-weight:600;color:${estadoColor(l.estado)};padding:0"
-                    onchange="cambiarEstadoLead(${l.id}, this.value)">
-                    ${["Nuevo","No contesta","Buzón","Contactado","Ganado"].map(e =>
-                        `<option value="${e}" ${l.estado===e?'selected':''}>${e}</option>`
-                    ).join('')}
-                </select>
-            </td>
-            <td>
-                <select class="select-asesor-tabla" onchange="reasignarLead(${l.id}, this.value)">
-                    <option value="">— Sin asignar —</option>
-                    ${optsAsesores}
-                </select>
-            </td>
-            <td><span class="hora-asig">${l.horaAsig}</span></td>
-            <td>${l.rotaciones > 0 ? `<span class="rot-badge">🔁 ${l.rotaciones}x</span>` : '—'}</td>
-            <td>${l.fecha}</td>
-            <td style="display:flex;gap:6px;align-items:center">
-                <button class="bo-btn-eliminar" onclick="eliminarLead(${l.id})">🗑️</button>
-                <button class="bo-btn-editar-tabla">✏️</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// =====================
-// VENTAS
-function registrarVenta() {
-    const cliente = document.getElementById("venta_cliente").value.trim();
-    if (!cliente) { alert("El cliente es obligatorio."); return; }
-
-    const monto    = parseFloat(document.getElementById("venta_monto").value) || 0;
-    const asesorId = parseInt(document.getElementById("venta_asesor").value) || null;
-    const asesor   = asesores.find(a => a.id === asesorId);
-
-    ventasRegistradas.push({
-        id: Date.now(), cliente,
-        producto: document.getElementById("venta_producto").value.trim() || "—",
-        monto, asesorNombre: asesor ? asesor.nombre : "—", asesorId,
-        notas: document.getElementById("venta_notas").value.trim(),
-        fecha: fechaHoy()
+/* ── Actualizar asesor de un lead en backend ── */
+async function actualizarLeadBackend(id, cambios) {
+  try {
+    await fetch(`${API_BO}/leads/${id}`, {
+      method:  'PATCH',
+      headers: ncHeaders(),
+      body:    JSON.stringify(cambios),
     });
-
-    ["venta_cliente","venta_producto","venta_monto","venta_notas"].forEach(id =>
-        document.getElementById(id).value = "");
-
-    renderVentas(); renderRendimiento();
+  } catch(e) { console.error('Error actualizando lead:', e); }
 }
 
-function eliminarVenta(id) {
-    ventasRegistradas = ventasRegistradas.filter(v => v.id !== id);
-    renderVentas(); renderRendimiento();
+/* ===================== ESTADO GLOBAL ===================== */
+let fechaPestanas   = [fechaHoy()];
+let fechaActiva     = fechaHoy();
+let baseData        = {};
+let baseIdCnt       = 1;
+let histOpen        = {};
+let rotandoId       = null;
+let historialGlobal = [];
+
+function getTipifVendedor(n1){
+  const n = n1.replace(/[\s\-]/g,'');
+  return baseVendedor[n] || null;
 }
 
-function renderVentas() {
-    const total   = ventasRegistradas.length;
-    const ingreso = ventasRegistradas.reduce((s,v) => s + v.monto, 0);
-    const prom    = total ? Math.round(ingreso / total) : 0;
-
-    const kv = document.getElementById("kpiTotalVentas");
-    const ki = document.getElementById("kpiIngresoTotal");
-    const kp = document.getElementById("kpiPromedio");
-    if (kv) kv.innerText = total;
-    if (ki) ki.innerText = `S/ ${ingreso.toLocaleString()}`;
-    if (kp) kp.innerText = `S/ ${prom.toLocaleString()}`;
-
-    const tbody = document.getElementById("tablaVentas");
-    if (!tbody) return;
-
-    if (!ventasRegistradas.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="bo-empty">Sin ventas registradas.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = ventasRegistradas.map(v => `
-        <tr>
-            <td>
-                <div class="bo-cliente-cell">
-                    <div class="bo-cliente-avatar" style="background:${colorAvatar(v.cliente)}">${iniciales(v.cliente)}</div>
-                    <span style="font-weight:600">${v.cliente}</span>
-                </div>
-            </td>
-            <td>${v.producto}</td>
-            <td><span class="monto-verde">S/ ${v.monto.toLocaleString()}</span></td>
-            <td>${v.asesorNombre}</td>
-            <td>${v.fecha}</td>
-            <td style="color:#9ca3af;font-size:12px">${v.notas || ''}</td>
-            <td><button class="bo-btn-eliminar" onclick="eliminarVenta(${v.id})">🗑️</button></td>
-        </tr>
-    `).join('');
-}
-
-// =====================
-// ROTACION
-function renderRotacion() {
-    const tbody = document.getElementById("tablaRotacion");
-    if (!tbody) return;
-
-    const aptos = leads.filter(l => ["Nuevo","No contesta","Buzón"].includes(l.estado));
-
-    if (!aptos.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="bo-empty">Sin leads disponibles para rotar.</td></tr>`;
-        return;
-    }
-
-    const optsAsesores = asesores.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
-
-    tbody.innerHTML = aptos.map(l => `
-        <tr>
-            <td style="font-weight:600">${l.nombre}</td>
-            <td>${l.telefono || '—'}</td>
-            <td><span style="font-weight:600;color:${estadoColor(l.estado)}">${l.estado}</span></td>
-            <td>${l.asesorNombre}</td>
-            <td><span class="tiempo-ok">✅ Apto</span></td>
-            <td>—</td>
-            <td>
-                <select class="select-asesor-tabla" onchange="rotarLead(${l.id}, this.value)">
-                    <option value="">Selecciona asesor</option>
-                    ${optsAsesores}
-                </select>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function rotarLead(leadId, asesorId) {
-    if (!asesorId) return;
-    const lead   = leads.find(l => l.id === leadId);
-    const asesor = asesores.find(a => a.id === parseInt(asesorId));
-    if (!lead || !asesor) return;
-
-    if (lead.asignadoA.includes(asesor.id)) {
-        alert(`${asesor.nombre} ya tuvo este lead. Regla: sin repetir.`); return;
-    }
-
-    lead.asesorId = asesor.id; lead.asesorNombre = asesor.nombre;
-    lead.horaAsig = horaAhora(); lead.rotaciones++;
-    lead.asignadoA.push(asesor.id);
-
-    renderLeads(); renderRotacion(); renderRendimiento();
-}
-
-function ejecutarRotacion() {
-    const asesorId = parseInt(document.getElementById("rot_asesor").value);
-    const cantidad = parseInt(document.getElementById("rot_cantidad").value) || 4;
-    const asesor   = asesores.find(a => a.id === asesorId);
-    if (!asesor) { alert("Selecciona un asesor destino."); return; }
-
-    const aptos = leads.filter(l =>
-        ["Nuevo","No contesta","Buzón"].includes(l.estado) && !l.asignadoA.includes(asesorId)
-    ).slice(0, Math.min(cantidad, 4));
-
-    if (!aptos.length) { alert("No hay leads aptos para rotar a este asesor."); return; }
-
-    aptos.forEach(l => {
-        l.asesorId = asesor.id; l.asesorNombre = asesor.nombre;
-        l.horaAsig = horaAhora(); l.rotaciones++;
-        l.asignadoA.push(asesor.id);
+function syncTipifVendedor(){
+  let actualizado = 0;
+  for(const f in baseData){
+    baseData[f].forEach(reg=>{
+      const tip = getTipifVendedor(reg.n1);
+      if(tip && reg._tipifVend !== tip.tipif){
+        reg._tipifVend = tip.tipif;
+        reg._tipifHora = tip.hora;
+        actualizado++;
+      }
     });
-
-    alert(`✅ ${aptos.length} leads rotados a ${asesor.nombre}`);
-    renderLeads(); renderRotacion(); renderRendimiento();
+  }
+  if(actualizado > 0){ renderBase(); mostrarToast(`🔄 ${actualizado} tipificaciones actualizadas`); }
 }
 
-// =====================
-// RENDIMIENTO
-function renderRendimiento() {
-    const totalLeads  = leads.length;
-    const totalVentas = ventasRegistradas.length;
-    const ingreso     = ventasRegistradas.reduce((s,v) => s + v.monto, 0);
-    const conv        = totalLeads ? Math.round((totalVentas / totalLeads) * 100) : 0;
-
-    const ids = {
-        rend_totalLeads: totalLeads,
-        rend_totalVentas: totalVentas,
-        rend_conversion: conv + "%",
-        rend_ingreso: `S/ ${ingreso.toLocaleString()}`,
-        rend_asesores: asesores.length
-    };
-    Object.entries(ids).forEach(([id, val]) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = val;
-    });
-
-    const tbody = document.getElementById("tablaRendimiento");
-    if (!tbody) return;
-
-    if (!asesores.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="bo-empty">Sin asesores registrados.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = asesores.map(a => {
-        const misLeads    = leads.filter(l => l.asesorId === a.id).length;
-        const misVentas   = ventasRegistradas.filter(v => v.asesorId === a.id);
-        const misIngresos = misVentas.reduce((s,v) => s + v.monto, 0);
-        const miConv      = misLeads ? Math.round((misVentas.length / misLeads) * 100) : 0;
-
-        return `
-        <tr>
-            <td>
-                <div class="rend-asesor-cell">
-                    <div class="bo-cliente-avatar" style="background:${colorAvatar(a.nombre)}">${iniciales(a.nombre)}</div>
-                    <div>
-                        <div class="rend-asesor-nombre">${a.nombre}</div>
-                        <div class="rend-asesor-user">${a.usuario || ''}</div>
-                    </div>
-                </div>
-            </td>
-            <td><span class="rend-rol-badge">Asesor</span></td>
-            <td>${misLeads}</td>
-            <td>${misVentas.length}</td>
-            <td>${miConv}%</td>
-            <td><span class="monto-verde">S/ ${misIngresos.toLocaleString()}</span></td>
-        </tr>`;
+/* ===================== NAVEGADOR DE FECHA ===================== */
+function renderFechaTabs(){
+  const idx   = fechaPestanas.indexOf(fechaActiva);
+  const total = fechaPestanas.length;
+  const sel = document.getElementById('fnav-select');
+  if(sel){
+    sel.innerHTML = fechaPestanas.map(f=>{
+      const c = (baseData[f]||[]).length;
+      return `<option value="${f}" ${f===fechaActiva?'selected':''}>${formatFecha(f)} (${c})</option>`;
     }).join('');
+  }
+  const count = document.getElementById('fnav-count');
+  if(count) count.textContent = `${idx+1} / ${total}`;
+  const prev = document.getElementById('fnav-prev');
+  const next = document.getElementById('fnav-next');
+  if(prev) prev.disabled = idx >= total-1;
+  if(next) next.disabled = idx <= 0;
+  const lbl = document.getElementById('fechaActivaLabel');
+  if(lbl) lbl.textContent = formatFecha(fechaActiva);
+  poblarSelectAsesorForm();
 }
 
-// =====================
-// INIT — UN SOLO HANDLER
-window.onload = () => {
-    renderAsesoresSelector();
-    poblarSelects();
-};
+function cambiarFechaSelect(f){ fechaActiva=f; renderFechaTabs(); renderBase(); }
+function navegarFecha(dir){
+  const idx = fechaPestanas.indexOf(fechaActiva);
+  const nuevoIdx = idx - dir;
+  if(nuevoIdx < 0 || nuevoIdx >= fechaPestanas.length) return;
+  fechaActiva = fechaPestanas[nuevoIdx];
+  renderFechaTabs(); renderBase();
+}
+function cambiarFecha(f){ fechaActiva=f; renderFechaTabs(); renderBase(); }
 
-// =====================
-// BASE DE LLAMADAS
-// Cuando conectes el backend, llena este array con tu API:
-// baseRegistros = await fetch('/api/base').then(r => r.json())
-let baseRegistros = [
-    // Datos de ejemplo — reemplazar con backend
-    { zona:"NKT", distrito:"SMP",      num1:"987654321", num2:"998877665", tipifBO:"BUZON",        comentario:"",           dniVenta:"",         tipif:"NO CONTESTA",   hora:"10:15", asesor1:"JOSE OUT",    asesor2:"",          asesor3:"",         asesor4:"" },
-    { zona:"NKT", distrito:"LIMA",     num1:"912345678", num2:"",          tipifBO:"",             comentario:"",           dniVenta:"47593188", tipif:"VENTA CERRADA", hora:"11:22", asesor1:"ANA OUT",     asesor2:"JOSE OUT",  asesor3:"",         asesor4:"" },
-    { zona:"C1",  distrito:"CALLAO",   num1:"923456789", num2:"",          tipifBO:"DER CHAMO",    comentario:"No atiende", dniVenta:"",         tipif:"NO CONTESTA",   hora:"09:40", asesor1:"CARLOS OUT",  asesor2:"",          asesor3:"",         asesor4:"" },
-    { zona:"NKT", distrito:"HUANCAYO", num1:"934567890", num2:"",          tipifBO:"",             comentario:"",           dniVenta:"",         tipif:"SIN COBERTURA", hora:"13:05", asesor1:"JOSE OUT",    asesor2:"",          asesor3:"",         asesor4:"" },
-    { zona:"NKT", distrito:"TACNA",    num1:"945678901", num2:"",          tipifBO:"",             comentario:"",           dniVenta:"75152423", tipif:"VENTA CERRADA", hora:"15:30", asesor1:"ANA OUT",     asesor2:"CARLOS OUT",asesor3:"JOSE OUT", asesor4:"" },
-    { zona:"SCW", distrito:"LIMA",     num1:"956789012", num2:"",          tipifBO:"BUZON",        comentario:"",           dniVenta:"",         tipif:"BUZON DE VOZ",  hora:"08:50", asesor1:"CARLOS OUT",  asesor2:"",          asesor3:"",         asesor4:"" },
-    { zona:"NKT", distrito:"COMAS",    num1:"967890123", num2:"",          tipifBO:"CORTA",        comentario:"",           dniVenta:"",         tipif:"CORTA LLAMADA", hora:"12:10", asesor1:"JOSE OUT",    asesor2:"",          asesor3:"",         asesor4:"" },
-    { zona:"C1",  distrito:"LIMA",     num1:"978901234", num2:"911223344", tipifBO:"",             comentario:"AGENDADO",   dniVenta:"",         tipif:"AGENDADO",      hora:"14:00", asesor1:"ANA OUT",     asesor2:"",          asesor3:"",         asesor4:"" },
-];
-
-function tipRowClass(tipif) {
-    const t = (tipif || "").toUpperCase();
-    if (t.includes("VENTA CERRADA"))       return "tip-row-venta";
-    if (t.includes("NO CONTESTA"))         return "tip-row-nocontesta";
-    if (t.includes("BUZON"))               return "tip-row-buzon";
-    if (t.includes("SIN COBERTURA"))       return "tip-row-sincobertura";
-    if (t.includes("NO DESEA"))            return "tip-row-nodesea";
-    if (t.includes("CORTA"))               return "tip-row-corta";
-    if (t.includes("PREVENTA"))            return "tip-row-preventa";
-    if (t.includes("EN EJECUCION"))        return "tip-row-ejecucion";
-    if (t.includes("AGENDADO"))            return "tip-row-agendado";
-    if (t.includes("NO CALIFICA"))         return "tip-row-nocalifica";
-    if (t.includes("EDIFICIO"))            return "tip-row-edificio";
-    if (t.includes("CONTACTO"))            return "tip-row-contacto";
-    return "tip-row-default";
+function agregarFechaCalendario(){
+  const picker = document.getElementById('calPicker');
+  const f = picker ? picker.value : '';
+  if(!f){ mostrarToast('⚠️ Selecciona una fecha primero'); return; }
+  if(!fechaPestanas.includes(f)){
+    fechaPestanas.push(f);
+    fechaPestanas.sort().reverse();
+    if(!baseData[f]) baseData[f] = [];
+    mostrarToast('✅ Fecha ' + formatFecha(f) + ' agregada');
+  } else {
+    mostrarToast('Esa fecha ya existe');
+  }
+  picker.value = '';
+  fechaActiva = f;
+  renderFechaTabs(); renderBase();
 }
 
-function tipBadgeClass(tipif) {
-    const t = (tipif || "").toUpperCase();
-    if (t.includes("VENTA CERRADA"))  return "tip-venta-badge";
-    if (t.includes("NO CONTESTA"))    return "tip-nocon-badge";
-    if (t.includes("BUZON"))          return "tip-buzon-badge";
-    if (t.includes("SIN COBERTURA"))  return "tip-sinco-badge";
-    if (t.includes("NO DESEA"))       return "tip-nodesea-badge";
-    if (t.includes("CORTA"))          return "tip-corta-badge";
-    if (t.includes("PREVENTA"))       return "tip-preventa-badge";
-    if (t.includes("EN EJECUCION"))   return "tip-ejec-badge";
-    if (t.includes("AGENDADO"))       return "tip-agend-badge";
-    if (t.includes("NO CALIFICA"))    return "tip-nocal-badge";
-    if (t.includes("EDIFICIO"))       return "tip-edif-badge";
-    if (t.includes("CONTACTO"))       return "tip-cont-badge";
-    return "tip-default-badge";
+/* ===================== FORM BASE ===================== */
+function poblarSelectAsesorForm(){
+  ['f_asesor_form','modal-asesor','rotSelAsesor','filtro_asesor_base'].forEach(sid=>{
+    const sel = document.getElementById(sid); if(!sel) return;
+    const ph = {'f_asesor_form':'— Sin asignar —','modal-asesor':'-- Seleccionar nuevo asesor --','rotSelAsesor':'-- Seleccionar asesor destino --','filtro_asesor_base':'Todos'}[sid]||'—';
+    const val = sel.value;
+    sel.innerHTML = `<option value="">${ph}</option>`;
+    asesores.forEach(a => sel.innerHTML += `<option value="${a.nombre}">${a.nombre}</option>`);
+    sel.value = val;
+  });
 }
 
-function poblarFiltroAsesorBase() {
-    const sel = document.getElementById("filtro_asesor_base");
-    if (!sel) return;
-    // Recoger todos los asesores únicos de los registros
-    const nombres = new Set();
-    baseRegistros.forEach(r => {
-        [r.asesor1, r.asesor2, r.asesor3, r.asesor4].forEach(a => {
-            if (a && a.trim()) nombres.add(a.trim());
-        });
+async function agregarRegistroBase(){
+  const n1 = document.getElementById('f_n1').value.trim();
+  if(!n1){ document.getElementById('f_n1').classList.add('obligatorio-error'); mostrarToast('⚠️ El campo N1 es obligatorio'); return; }
+  document.getElementById('f_n1').classList.remove('obligatorio-error');
+  const campana  = document.getElementById('f_campana').value.trim()||'—';
+  const distrito = document.getElementById('f_distrito').value||'—';
+  const n2       = document.getElementById('f_n2').value.trim();
+  const tipifBack= document.getElementById('f_tipif_back').value;
+  const asesor   = document.getElementById('f_asesor_form').value;
+  const hora     = asesor ? horaAhora() : '';
+  if(!baseData[fechaActiva]) baseData[fechaActiva] = [];
+  const tipAuto = getTipifVendedor(n1);
+
+  const reg = {
+    id:baseIdCnt++, campana, distrito, n1, n2, tipifBack, asesor, horaAsig:hora,
+    sinAsignar:!asesor, rotaciones:0,
+    _tipifVend: tipAuto ? tipAuto.tipif : '',
+    _tipifHora: tipAuto ? tipAuto.hora  : '',
+    historial: asesor ? [{asesor, hora, fecha:fechaActiva, motivo:'Asignación inicial'}] : []
+  };
+  baseData[fechaActiva].unshift(reg);
+
+  // Guardar en backend y guardar el id devuelto
+  try {
+    const res = await fetch(API_BO + '/leads', {
+      method: 'POST', headers: ncHeaders(),
+      body: JSON.stringify({ campana, distrito, n1, n2, tipif_back: tipifBack,
+        asesor_nombre: asesor, fecha: fechaActiva, hora_asig: hora }),
     });
-    sel.innerHTML = '<option value="">Todos</option>';
-    [...nombres].sort().forEach(n => {
-        sel.innerHTML += `<option value="${n}">${n}</option>`;
-    });
+    const data = await res.json();
+    if (data.ok && data.ids && data.ids[0]) reg._backendId = data.ids[0];
+    else if (data.ok && data.id) reg._backendId = data.id;
+  } catch(e) {}
+
+  if(asesor) historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana,asesor,n1,n2:n2||'—',tipif:tipifBack||'—',accion:'Asignación inicial'});
+  limpiarFormBase(); renderFechaTabs(); renderBase();
+  mostrarToast(`✅ N1: ${n1} agregado${asesor?' → '+asesor:''}${tipAuto?' · Tipif.: '+tipAuto.tipif:''}`);
 }
 
-function renderBase() {
-    const tbody = document.getElementById("tablaBaseBody");
-    const contEl = document.getElementById("baseContador");
-    if (!tbody) return;
+function limpiarFormBase(){
+  ['f_campana','f_n1','f_n2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('f_distrito').value='';
+  document.getElementById('f_tipif_back').value='';
+  document.getElementById('f_asesor_form').value='';
+}
 
-    const filtroTip      = (document.getElementById("filtro_tip")?.value || "").toUpperCase();
-    const filtroAsesor   = (document.getElementById("filtro_asesor_base")?.value || "").toUpperCase();
-    const filtroDistrito = (document.getElementById("filtro_distrito")?.value || "").toUpperCase();
-    const filtroNumero   = (document.getElementById("filtro_numero")?.value || "").trim();
+/* ===================== RENDER BASE ===================== */
+function tipifBadgeClass(t){
+  if(!t) return 'b-default';
+  const u = t.toUpperCase();
+  if(u.includes('VENTA'))       return 'b-venta';
+  if(u.includes('BUZON'))       return 'b-buzon';
+  if(u.includes('NO CONTESTA')) return 'b-nocontesta';
+  if(u.includes('DER'))         return 'b-derivado';
+  return 'b-default';
+}
 
-    let datos = baseRegistros.filter(r => {
-        if (filtroTip      && !(r.tipif || "").toUpperCase().includes(filtroTip)) return false;
-        if (filtroDistrito && !(r.distrito || "").toUpperCase().includes(filtroDistrito)) return false;
-        if (filtroNumero   && !r.num1.includes(filtroNumero) && !r.num2.includes(filtroNumero)) return false;
-        if (filtroAsesor) {
-            const asesores = [r.asesor1, r.asesor2, r.asesor3, r.asesor4].map(a => (a||"").toUpperCase());
-            if (!asesores.some(a => a.includes(filtroAsesor))) return false;
-        }
-        return true;
+function tipifVendHtml(tipif, hora){
+  if(!tipif) return '<span class="tipif-empty">— Pendiente —</span>';
+  const cls = {'CONTESTA':'tipif-contesta','NC':'tipif-nc','SIN COBERTURA':'tipif-sincobert','DERIVADO':'tipif-derivado'}[tipif]||'';
+  return `<div style="display:flex;flex-direction:column;gap:2px;"><span class="tipif-auto ${cls}">${tipif}</span>${hora?`<span class="tipif-source">vendedor · ${hora}</span>`:''}</div>`;
+}
+
+function actualizarStats(){
+  const todos = Object.values(baseData).flat();
+  document.getElementById('statTotal').textContent      = todos.length;
+  document.getElementById('statVentas').textContent     = todos.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length;
+  document.getElementById('statAsignados').textContent  = todos.filter(r=>r.asesor&&r.asesor!=='').length;
+  document.getElementById('statSinAsignar').textContent = todos.filter(r=>r.sinAsignar).length;
+  document.getElementById('statRotados').textContent    = todos.reduce((s,r)=>s+r.rotaciones,0);
+  document.getElementById('baseContador').textContent   = todos.length+' registros';
+  syncLocalStorage();
+}
+
+function renderBase(){
+  for(const f in baseData){
+    baseData[f].forEach(reg=>{
+      const tip = getTipifVendedor(reg.n1);
+      if(tip){ reg._tipifVend = tip.tipif; reg._tipifHora = tip.hora; }
     });
+  }
+  actualizarStats();
+  const tbody = document.getElementById('tablaBaseBody'); if(!tbody) return;
+  const mostrarTV = document.getElementById('mostrarTipVend')?.checked;
+  const thTV = document.getElementById('thTipVend');
+  if(thTV) thTV.style.display = mostrarTV ? '' : 'none';
 
-    if (contEl) contEl.innerText = `${datos.length} registros`;
+  const ft  = (document.getElementById('filtro_tip')?.value||'').toUpperCase();
+  const ftv = (document.getElementById('filtro_tip_vend')?.value||'').toUpperCase();
+  const fa  = (document.getElementById('filtro_asesor_base')?.value||'').toUpperCase();
+  const fn  = (document.getElementById('filtro_numero')?.value||'').trim();
 
-    if (!datos.length) {
-        tbody.innerHTML = `<tr><td colspan="14" class="bo-empty">Sin registros con esos filtros.</td></tr>`;
-        return;
+  let datos = (baseData[fechaActiva]||[]).filter(r=>{
+    if(ft  && !(r.tipifBack||'').toUpperCase().includes(ft))  return false;
+    if(ftv && (r._tipifVend||'').toUpperCase() !== ftv)       return false;
+    if(fa  && !(r.asesor||'').toUpperCase().includes(fa))     return false;
+    if(fn  && !r.n1.includes(fn) && !(r.n2||'').includes(fn))return false;
+    return true;
+  });
+
+  if(!datos.length){ tbody.innerHTML=`<tr><td colspan="12" class="bo-empty">Sin registros en ${formatFecha(fechaActiva)}.</td></tr>`; return; }
+
+  const asesorOpts = (asesor)=>asesores.map(a=>`<option value="${a.nombre}" ${a.nombre===asesor?'selected':''}>${a.nombre}</option>`).join('');
+
+  tbody.innerHTML = datos.map((r,i)=>{
+    const badgeTip  = r.tipifBack ? `<span class="badge ${tipifBadgeClass(r.tipifBack)}">${r.tipifBack}</span>` : '<span style="color:#ccc;font-size:10px">—</span>';
+    const sinAsig   = r.sinAsignar ? '<span class="sin-asig-badge">Sin asig.</span>' : '<span style="color:#d1d5db;font-size:10px">—</span>';
+    const rotBadge  = r.rotaciones>0 ? `<span style="background:#EDE9FE;color:#4C1D95;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;display:inline-block">${r.rotaciones}x</span>` : '<span style="color:#d1d5db;font-size:11px">0</span>';
+    const tvCell    = mostrarTV ? `<td style="display:table-cell">${tipifVendHtml(r._tipifVend,r._tipifHora)}</td>` : `<td style="display:none"></td>`;
+    const histAbierto = histOpen[r.id] ? 'open' : '';
+    return `
+    <tr id="fila-${r.id}">
+      <td style="color:#9ca3af;font-size:10px">${i+1}</td>
+      <td><strong>${r.campana}</strong></td>
+      <td style="font-size:11px">${r.distrito}</td>
+      <td style="font-family:monospace;font-weight:700;color:#111827">${r.n1}</td>
+      <td style="font-family:monospace;color:#6b7280">${r.n2||'—'}</td>
+      <td>${badgeTip}</td>
+      <td><select class="sel-asesor-tabla" onchange="reasignarBase(${r.id},this.value)">
+        <option value="">— Sin asignar —</option>${asesorOpts(r.asesor)}
+      </select></td>
+      <td>${r.horaAsig?`<span class="hora-cell">${r.horaAsig}</span> <span class="hora-date">${formatFecha(fechaActiva)}</span>`:'<span class="hora-empty">—</span>'}</td>
+      ${tvCell}
+      <td>${sinAsig}</td>
+      <td style="text-align:center">${rotBadge}</td>
+      <td>
+        <div class="acciones-cell">
+          <button class="btn-rotar" onclick="abrirModalRotar(${r.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Rotar
+          </button>
+          <button class="btn-hist" onclick="toggleHist(${r.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Historial
+          </button>
+          <button class="btn-del" onclick="eliminarBase(${r.id})" title="Eliminar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+    <tr class="historial-row ${histAbierto}" id="hist-${r.id}">
+      <td colspan="12">
+        <div class="historial-inner">
+          <div class="hist-label">Historial de asignaciones — N1: ${r.n1}</div>
+          ${r.historial.length
+            ? r.historial.map((h,hi)=>`<div class="hist-item"><div class="hist-dot" style="background:${DOT_COLORS[hi%DOT_COLORS.length]}"></div><span style="font-weight:600">${h.asesor}</span><span class="hora-cell" style="margin-left:4px">${h.hora}</span><span style="color:#9ca3af;margin-left:4px">${h.fecha}</span><span style="color:#6b7280;font-style:italic;margin-left:8px">${h.motivo}</span></div>`).join('')
+            : '<div style="font-size:11px;color:#ccc">Sin historial.</div>'}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleHist(id){ histOpen[id]=!histOpen[id]; renderBase(); }
+
+async function reasignarBase(id, nuevoAsesor){
+  let reg=null;
+  for(const f in baseData){ reg=baseData[f].find(r=>r.id===id); if(reg) break; }
+  if(!reg) return;
+  const hora = horaAhora();
+  if(!nuevoAsesor){
+    reg.asesor=''; reg.horaAsig=''; reg.sinAsignar=true;
+    if(reg._backendId) await actualizarLeadBackend(reg._backendId, { asesor_nombre:'', hora_asig:'' });
+    renderBase(); return;
+  }
+  reg.asesor=nuevoAsesor; reg.horaAsig=hora; reg.sinAsignar=false;
+  reg.historial.push({asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignación directa'});
+  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:'Asignación directa'});
+
+  // Actualizar en backend
+  if(reg._backendId){
+    await actualizarLeadBackend(reg._backendId, {
+      asesor_nombre: nuevoAsesor, hora_asig: hora,
+      historial: reg.historial,
+    });
+  }
+
+  renderFechaTabs(); renderBase();
+  mostrarToast(`✅ N1 ${reg.n1} → ${nuevoAsesor} · ${hora}`);
+}
+
+function eliminarBase(id){
+  for(const f in baseData) baseData[f]=baseData[f].filter(r=>r.id!==id);
+  delete histOpen[id];
+  renderFechaTabs(); renderBase();
+}
+
+function limpiarFiltrosBase(){
+  ['filtro_tip','filtro_tip_vend','filtro_asesor_base'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const fn=document.getElementById('filtro_numero'); if(fn) fn.value='';
+  renderBase();
+}
+
+/* ===================== MODAL ROTACIÓN MANUAL ===================== */
+function abrirModalRotar(id){
+  let reg=null;
+  for(const f in baseData){ reg=baseData[f].find(r=>r.id===id); if(reg) break; }
+  if(!reg) return;
+  rotandoId = id;
+  document.getElementById('modal-desc').textContent = `N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`;
+  poblarSelectAsesorForm();
+  document.getElementById('modal-asesor').value = '';
+  document.getElementById('modal-motivo').value = '';
+  Array.from(document.getElementById('modal-asesor').options).forEach(o=>{o.disabled=o.value===reg.asesor; o.style.color=o.value===reg.asesor?'#ccc':'';});
+  document.getElementById('modal-rotar').classList.add('open');
+}
+function cerrarModalRotar(){ document.getElementById('modal-rotar').classList.remove('open'); rotandoId=null; }
+
+async function confirmarRotacion(){
+  const nuevoAsesor = document.getElementById('modal-asesor').value;
+  const motivo = document.getElementById('modal-motivo').value.trim()||'Rotación manual';
+  if(!nuevoAsesor){ document.getElementById('modal-asesor').style.borderColor='#ef4444'; return; }
+  document.getElementById('modal-asesor').style.borderColor='#e5e7eb';
+  let reg=null;
+  for(const f in baseData){ reg=baseData[f].find(r=>r.id===rotandoId); if(reg) break; }
+  if(!reg) return;
+  const anterior=reg.asesor, hora=horaAhora();
+  reg.asesor=nuevoAsesor; reg.horaAsig=hora; reg.sinAsignar=false; reg.rotaciones+=1;
+  reg.historial.push({asesor:nuevoAsesor,hora,fecha:fechaHoy(),motivo});
+  histOpen[rotandoId]=true;
+  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:`Rotación desde ${anterior}`});
+
+  if(reg._backendId){
+    await actualizarLeadBackend(reg._backendId, {
+      asesor_nombre: nuevoAsesor, hora_asig: hora,
+      historial: reg.historial, sumarRotacion: true,
+    });
+  }
+
+  cerrarModalRotar(); renderFechaTabs(); renderBase();
+  mostrarToast(`🔄 Rotado: ${anterior} → ${nuevoAsesor} · ${hora}`);
+}
+
+/* ===================== ASESORES ===================== */
+function renderAsesoresCards(){
+  const el=document.getElementById('asesoresCards'); if(!el) return;
+  const todos=Object.values(baseData).flat();
+  el.innerHTML=asesores.map(a=>{
+    const cnt=todos.filter(r=>r.asesor===a.nombre).length;
+    return `<div class="bo-asesor-card">
+      <div class="bo-asesor-card-avatar" style="background:${colorAv(a.nombre)}">${iniciales(a.nombre)}</div>
+      <div class="bo-asesor-card-nombre">${a.nombre}</div>
+      <div class="bo-asesor-card-sala">${a.sala||'—'}</div>
+      <div class="bo-asesor-card-nums">${cnt}</div>
+      <div class="bo-asesor-card-label">registros asignados</div>
+    </div>`;
+  }).join('');
+}
+
+/* ===================== RENDIMIENTO ===================== */
+function onRendFiltroTipo(){
+  const t=document.getElementById('rendFiltroTipo').value;
+  document.getElementById('rendFiltroFechaWrap').style.display  = t==='dia'   ? '' : 'none';
+  document.getElementById('rendFiltroDesdeWrap').style.display  = t==='rango' ? '' : 'none';
+  document.getElementById('rendFiltroHastaWrap').style.display  = t==='rango' ? '' : 'none';
+  renderRendimiento();
+}
+function setRendOrden(o){ document.getElementById('rendOrden').value=o; renderRendimiento(); }
+
+function renderRendimiento(){
+  const tipo    = document.getElementById('rendFiltroTipo')?.value||'mes';
+  const mesActual = new Date().toISOString().slice(0,7);
+  const diaFiltro = document.getElementById('rendFiltroFecha')?.value||fechaHoy();
+  const desde   = document.getElementById('rendFiltroDesde')?.value||'';
+  const hasta   = document.getElementById('rendFiltroHasta')?.value||'';
+  const orden   = document.getElementById('rendOrden')?.value||'ventas_desc';
+
+  let todosReg=[];
+  for(const f in baseData){
+    if(tipo==='mes'   && !f.startsWith(mesActual)) continue;
+    if(tipo==='dia'   && f!==diaFiltro)            continue;
+    if(tipo==='rango' && desde && f < desde)        continue;
+    if(tipo==='rango' && hasta && f > hasta)        continue;
+    todosReg = todosReg.concat(baseData[f]);
+  }
+
+  let rendData = asesores.map(a=>{
+    const miRegs   = todosReg.filter(r=>r.asesor===a.nombre);
+    const leads    = miRegs.length;
+    const contesta = miRegs.filter(r=>r._tipifVend==='CONTESTA').length;
+    const nc       = miRegs.filter(r=>r._tipifVend==='NC').length;
+    const ventas   = miRegs.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length;
+    const conv     = leads ? Math.round(ventas/leads*100) : 0;
+    return {nombre:a.nombre, usuario:a.usuario||'', leads, contesta, nc, ventas, conv};
+  });
+
+  const sortMap = {
+    'ventas_desc':(a,b)=>b.ventas-a.ventas,'ventas_asc':(a,b)=>a.ventas-b.ventas,
+    'conv_desc':(a,b)=>b.conv-a.conv,'leads_desc':(a,b)=>b.leads-a.leads,
+    'contesta_desc':(a,b)=>b.contesta-a.contesta,'nc_desc':(a,b)=>b.nc-a.nc,
+  };
+  rendData.sort(sortMap[orden]||sortMap['ventas_desc']);
+
+  const totLeads=rendData.reduce((s,r)=>s+r.leads,0);
+  const totVentas=rendData.reduce((s,r)=>s+r.ventas,0);
+  const totConv=totLeads?Math.round(totVentas/totLeads*100):0;
+  const maxVentas=Math.max(...rendData.map(r=>r.ventas),1);
+
+  const kpis=document.getElementById('rendKpis');
+  if(kpis) kpis.innerHTML=[['Total Leads',totLeads],['Total Ventas',totVentas],['Conversión',totConv+'%'],['Asesores',asesores.length]]
+    .map(([l,v])=>`<div class="rend-kpi"><div class="rend-kpi-label">${l}</div><div class="rend-kpi-valor">${v}</div></div>`).join('');
+
+  const tbody=document.getElementById('tablaRendimiento'); if(!tbody) return;
+  if(!rendData.length){ tbody.innerHTML=`<tr><td colspan="8" class="bo-empty">Sin datos.</td></tr>`; return; }
+  const pc=['p1','p2','p3'];
+  tbody.innerHTML=rendData.map((r,i)=>`<tr>
+    <td><div class="rend-pos ${pc[i]||''}">${i+1}</div></td>
+    <td><div class="bo-cliente-cell"><div class="bo-cliente-avatar" style="background:${colorAv(r.nombre)}">${iniciales(r.nombre)}</div><div><div style="font-weight:600;font-size:13px">${r.nombre}</div><div style="font-size:10px;color:#9ca3af">${r.usuario}</div></div></div></td>
+    <td style="font-weight:600">${r.leads}</td>
+    <td style="color:#16a34a;font-weight:600">${r.contesta}</td>
+    <td style="color:#d97706;font-weight:600">${r.nc}</td>
+    <td><span style="font-size:18px;font-weight:800;color:#111827">${r.ventas}</span></td>
+    <td><span class="badge ${r.conv>=30?'b-venta':r.conv>=15?'b-nocontesta':'b-default'}">${r.conv}%</span></td>
+    <td><div class="rend-bar-wrap"><div class="rend-bar"><div class="rend-bar-fill" style="width:${Math.round(r.ventas/maxVentas*100)}%"></div></div><span style="font-size:10px;color:#9ca3af">${Math.round(r.ventas/maxVentas*100)}%</span></div></td>
+  </tr>`).join('');
+}
+
+/* ===================== ROTACIÓN MASIVA ===================== */
+const ahoraNow = new Date();
+function hace(h,m=0){ const d=new Date(ahoraNow); d.setHours(d.getHours()-h); d.setMinutes(d.getMinutes()-m); return d; }
+
+function buildRotLeads(){
+  const lista=[];
+  fechaPestanas.forEach(fecha=>{
+    (baseData[fecha]||[]).forEach(reg=>{
+      if(!reg.asesor) return;
+      let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'08:00')+':00');
+      if(isNaN(ultimaAsig)) ultimaAsig = hace(24);
+      lista.push({ id:reg.id, nombre:reg.n1, campana:reg.campana, tel:reg.n1, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', asesor:reg.asesor, ultimaAsig, fecha, histAsesores:reg.historial?reg.historial.map(h=>h.asesor):[reg.asesor], _reg:reg });
+    });
+  });
+  return lista;
+}
+
+let rotSel=new Set(), rotAsesor='', rotRotados=0;
+function rotMins(f){ return Math.floor((ahoraNow-f)/60000); }
+function rotTxt(f){ const m=rotMins(f); if(m<60) return m+' min'; const h=Math.floor(m/60),r=m%60; return h+'h'+(r>0?' '+r+'min':''); }
+function rotApto(lead,asesor){
+  if(!asesor) return {apto:false};
+  const sinRepetir=!lead.histAsesores.includes(asesor);
+  const mins=rotMins(lead.ultimaAsig), tiempo=mins>=120;
+  const estadoOk=['Buzón','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado);
+  return {apto:sinRepetir&&tiempo&&estadoOk, sinRepetir, tiempo, estadoOk};
+}
+
+function rotRenderAsesores(){
+  const el=document.getElementById('rotAsesoresDisp'); if(!el) return;
+  const todos=Object.values(baseData).flat();
+  el.innerHTML=asesores.map(a=>{
+    const cnt=todos.filter(r=>r.asesor===a.nombre).length;
+    return `<div class="rot-asesor-row"><span>${a.nombre}</span><span class="rot-asesor-badge">${cnt} registros</span></div>`;
+  }).join('');
+}
+function rotFiltrarAptos(){
+  rotAsesor=document.getElementById('rotSelAsesor').value;
+  rotSel.clear(); document.getElementById('rotChkAll').checked=false;
+  rotRenderTabla(); document.getElementById('rotBtnRotar').disabled=!rotAsesor;
+}
+function rotRenderTabla(){
+  const tbody=document.getElementById('rotTablaLeads');
+  const allLeads=buildRotLeads(); let aptos=0;
+  if(!allLeads.length){ tbody.innerHTML=`<tr><td colspan="9" class="bo-empty">Sin leads.</td></tr>`; document.getElementById('rotTagAptos').textContent='0 aptos'; document.getElementById('rotStatAptos').textContent=0; document.getElementById('rotStatNoAptos').textContent=0; document.getElementById('rotStatTotal').textContent=0; return; }
+  tbody.innerHTML=allLeads.map(l=>{
+    const{apto,sinRepetir,tiempo}=rotApto(l,rotAsesor);
+    if(apto) aptos++;
+    const mins=rotMins(l.ultimaAsig), checked=rotSel.has(l.id);
+    const esFechaHoy=l.fecha===fechaHoy();
+    const fechaLabel=esFechaHoy?`<span style="background:#dcfce7;color:#166534;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px">HOY</span>`:`<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 6px;border-radius:99px">${formatFecha(l.fecha)}</span>`;
+    return `<tr class="${(!rotAsesor||apto)?'':'row-noapto'}">
+      <td><input type="checkbox" ${checked?'checked':''} ${!apto&&rotAsesor?'disabled':''} onchange="rotToggleSel(${l.id},this.checked)"></td>
+      <td><div style="font-family:monospace;font-weight:700;color:#111827;font-size:12px">${l.tel}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px">${l.campana} · ${l.n2||'—'}</div></td>
+      <td>${fechaLabel}</td>
+      <td><span class="badge ${l.estado.toUpperCase().includes('VENTA')?'b-venta':l.estado.toUpperCase().includes('NO CONT')||l.estado==='No contesta'?'b-nocontesta':'b-default'}">${l.estado||'Sin tipif.'}</span></td>
+      <td style="font-size:12px">${l.asesor}</td>
+      <td class="hora-color">${l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="${tiempo?'timer-ok':'timer-fail'}">${rotTxt(l.ultimaAsig)} ${tiempo?'✅':'⏳ falta '+(120-mins)+'min'}</td>
+      <td>${!rotAsesor?'—':sinRepetir?'<span class="check-ok">✓ OK</span>':'<span class="check-fail">✗ Ya tuvo</span>'}</td>
+      <td>${!rotAsesor?'—':apto?'<span class="badge-apto">Apto</span>':'<span class="badge-noapto">No apto</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rotTagAptos').textContent=aptos+' aptos';
+  document.getElementById('rotStatAptos').textContent=aptos;
+  document.getElementById('rotStatNoAptos').textContent=allLeads.length-aptos;
+  document.getElementById('rotStatTotal').textContent=allLeads.length;
+}
+function rotToggleSel(id,checked){
+  const cant=parseInt(document.getElementById('rotCant').value)||4;
+  if(checked){ if(rotSel.size>=cant){mostrarToast('⚠️ Máximo '+cant+' leads');rotRenderTabla();return;} rotSel.add(id); } else rotSel.delete(id);
+  rotRenderTabla();
+}
+function rotToggleAll(){
+  const cant=parseInt(document.getElementById('rotCant').value)||4;
+  rotSel.clear();
+  if(document.getElementById('rotChkAll').checked) buildRotLeads().filter(l=>rotApto(l,rotAsesor).apto).slice(0,cant).forEach(l=>rotSel.add(l.id));
+  rotRenderTabla();
+}
+function rotEjecutar(){
+  if(!rotAsesor) return;
+  const cant=parseInt(document.getElementById('rotCant').value)||4;
+  if(rotSel.size===0) buildRotLeads().filter(l=>rotApto(l,rotAsesor).apto).slice(0,cant).forEach(l=>rotSel.add(l.id));
+  if(rotSel.size===0){ mostrarToast('❌ No hay leads aptos para '+rotAsesor); return; }
+  const btn=document.getElementById('rotBtnRotar'); btn.disabled=true; btn.textContent='Rotando...';
+  let p=0;
+  const iv=setInterval(()=>{
+    p+=25; document.getElementById('rotProgress').style.width=p+'%';
+    if(p>=100){ clearInterval(iv); rotFinalizar(); btn.textContent='Rotar ahora'; btn.disabled=false; }
+  },200);
+}
+async function rotFinalizar(){
+  const hora=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  const allLeads=buildRotLeads();
+  const rotados=allLeads.filter(l=>rotSel.has(l.id));
+  for(const l of rotados){
+    const reg=l._reg;
+    reg.asesor=rotAsesor; reg.horaAsig=hora; reg.sinAsignar=false;
+    reg.rotaciones=(reg.rotaciones||0)+1;
+    reg.historial.push({asesor:rotAsesor,hora,fecha:fechaHoy(),motivo:'Rotación masiva'});
+    historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:rotAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:`Rotación masiva`});
+    if(reg._backendId){
+      await actualizarLeadBackend(reg._backendId, {
+        asesor_nombre:rotAsesor, hora_asig:hora,
+        historial:reg.historial, sumarRotacion:true,
+      });
     }
-
-    tbody.innerHTML = datos.map((r, i) => `
-        <tr class="${tipRowClass(r.tipif)}">
-            <td style="color:#9ca3af;font-size:10px">${i + 1}</td>
-            <td><strong>${r.zona || '—'}</strong></td>
-            <td>${r.distrito || '—'}</td>
-            <td style="font-family:monospace;font-weight:600">${r.num1 || '—'}</td>
-            <td style="font-family:monospace;color:#6b7280">${r.num2 || '—'}</td>
-            <td>${r.tipifBO ? `<span class="tip-cell tip-default-badge">${r.tipifBO}</span>` : '—'}</td>
-            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;color:#6b7280">${r.comentario || '—'}</td>
-            <td style="font-family:monospace">${r.dniVenta || '—'}</td>
-            <td><span class="tip-cell ${tipBadgeClass(r.tipif)}">${r.tipif || '—'}</span></td>
-            <td style="color:#3b82f6;font-weight:600">${r.hora || '—'}</td>
-            <td>${r.asesor1 || '—'}</td>
-            <td>${r.asesor2 || '—'}</td>
-            <td>${r.asesor3 || '—'}</td>
-            <td>${r.asesor4 || '—'}</td>
-        </tr>
-    `).join('');
+  }
+  rotRotados+=rotados.length;
+  document.getElementById('rotStatRotados').textContent=rotRotados;
+  const res=document.getElementById('rotResultado'); res.classList.add('show');
+  document.getElementById('rotResLista').innerHTML=rotados.map(l=>`<div class="rot-res-item"><div class="rot-res-dot"></div><strong>${l.tel}</strong> → <strong>${rotAsesor}</strong> · ${hora}</div>`).join('');
+  rotSel.clear(); rotRenderTabla(); rotRenderAsesores(); renderFechaTabs(); renderBase();
+  mostrarToast(`✅ ${rotados.length} leads rotados a ${rotAsesor}`);
 }
 
-function limpiarFiltrosBase() {
-    ["filtro_tip","filtro_asesor_base"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
-    });
-    ["filtro_distrito","filtro_numero"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
-    });
-    renderBase();
+function toggleRotacion(){
+  const panel=document.getElementById('panelRotacion');
+  const btn=document.getElementById('btnRotToggle');
+  const abierto=panel.style.display!=='none';
+  panel.style.display=abierto?'none':'';
+  btn.classList.toggle('abierto',!abierto);
+  if(!abierto){ rotRenderAsesores(); rotRenderTabla(); }
 }
+
+/* ===================== CARGA MASIVA ===================== */
+let archivoRows=[];
+
+function switchTabCarga(tab){
+  ['pegar','archivo','legacy'].forEach(t=>{
+    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===tab);
+    document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)).style.display=t===tab?'':'none';
+  });
+  if(tab==='legacy') poblarLegacyFecha();
+}
+
+function poblarSelectMasiva(){
+  const sel=document.getElementById('masivaasesor'); if(!sel) return;
+  const val=sel.value;
+  sel.innerHTML='<option value="">— Sin asignar —</option>';
+  asesores.forEach(a=>sel.innerHTML+=`<option value="${a.nombre}">${a.nombre}</option>`);
+  sel.value=val;
+}
+
+function previsualizarMasiva(){
+  const raw=document.getElementById('masivaNums').value.trim();
+  if(!raw){ mostrarToast('⚠️ Pega números primero'); return; }
+  const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
+  if(!nums.length){ mostrarToast('⚠️ No se encontraron números válidos'); return; }
+  const lote=parseInt(document.getElementById('masivaLote').value)||10;
+  const lista=lote>0?nums.slice(0,lote):nums;
+  const campana=document.getElementById('masivacamp').value.trim()||'—';
+  const asesor=document.getElementById('masivaasesor').value;
+  const tbody=document.getElementById('masivaPreviewBody');
+  tbody.innerHTML=lista.map((n,i)=>`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;color:#9ca3af">${i+1}</td><td style="padding:5px 10px;font-family:monospace;font-weight:600">${n}</td><td style="padding:5px 10px;color:#374151">${campana}</td><td style="padding:5px 10px;color:#374151">${formatFecha(fechaActiva)}</td><td style="padding:5px 10px;color:#374151">${asesor||'Sin asignar'}</td></tr>`).join('');
+  document.getElementById('masivaPreview').style.display='';
+  document.getElementById('masivaStatus').textContent=`${lista.length} de ${nums.length} números listos`;
+  document.getElementById('btnCargaMasiva').disabled=false;
+  document.getElementById('btnCargaMasiva').textContent=`Cargar ${lista.length} registros`;
+}
+
+async function ejecutarCargaMasiva(){
+  const raw=document.getElementById('masivaNums').value.trim();
+  const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
+  const lote=parseInt(document.getElementById('masivaLote').value)||10;
+  const lista=lote>0?nums.slice(0,lote):nums;
+  const campana=document.getElementById('masivacamp').value.trim()||'—';
+  const asesor=document.getElementById('masivaasesor').value;
+  const hora=asesor?horaAhora():'';
+  if(!baseData[fechaActiva]) baseData[fechaActiva]=[];
+
+  // Preparar lote para backend
+  const leadsParaBackend = [];
+  let importados=0;
+  lista.forEach(n1=>{
+    if(baseData[fechaActiva].find(r=>r.n1===n1)) return;
+    const tipAuto=getTipifVendedor(n1);
+    const reg = {id:baseIdCnt++,campana,distrito:'—',n1,n2:'',tipifBack:'',asesor,horaAsig:hora,sinAsignar:!asesor,rotaciones:0,_tipifVend:tipAuto?tipAuto.tipif:'',_tipifHora:tipAuto?tipAuto.hora:'',historial:asesor?[{asesor,hora,fecha:fechaActiva,motivo:'Carga masiva'}]:[]};
+    baseData[fechaActiva].push(reg);
+    leadsParaBackend.push({ campana, distrito:'—', n1, n2:'', tipif_back:'', asesor_nombre:asesor, fecha:fechaActiva, hora_asig:hora });
+    if(asesor) historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana,asesor,n1,n2:'—',tipif:'—',accion:'Carga masiva'});
+    importados++;
+  });
+
+  // Enviar al backend en lote y guardar _backendIds
+  if(leadsParaBackend.length){
+    try {
+      const res = await fetch(API_BO + '/leads', {
+        method:'POST', headers:ncHeaders(),
+        body: JSON.stringify(leadsParaBackend),
+      });
+      const data = await res.json();
+      if(data.ok && data.ids){
+        const regs = baseData[fechaActiva].slice(-data.ids.length);
+        data.ids.forEach((id,i) => { if(regs[i]) regs[i]._backendId = id; });
+      }
+    } catch(e){}
+  }
+
+  document.getElementById('masivaNums').value='';
+  document.getElementById('masivaPreview').style.display='none';
+  document.getElementById('btnCargaMasiva').disabled=true;
+  document.getElementById('masivaStatus').textContent='';
+  renderFechaTabs(); renderBase();
+  mostrarToast(`✅ ${importados} registros cargados${asesor?' → '+asesor:''}`);
+}
+
+function handleFileDrop(files){ if(files.length) procesarArchivo(files[0]); }
+function handleFileSelect(files){ if(files.length) procesarArchivo(files[0]); }
+
+function procesarArchivo(file){
+  const st=document.getElementById('archivoStatus');
+  st.textContent=`Leyendo ${file.name}...`;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const lineas=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+    if(!lineas.length){ st.textContent='Archivo vacío'; return; }
+    const sep=lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':',';
+    const primeraCelda=lineas[0].split(sep)[0].trim();
+    const tieneCabecera=isNaN(primeraCelda.replace(/\s/g,''))&&primeraCelda.length>0&&!/^\d{7,}$/.test(primeraCelda);
+    const cabecera=tieneCabecera?lineas[0].split(sep).map(c=>c.trim().toLowerCase()):null;
+    const datos=tieneCabecera?lineas.slice(1):lineas;
+    const iN1=cabecera?(cabecera.findIndex(c=>c.includes('n1')||c.includes('numero')||c.includes('telefono'))):0;
+    const iN2=cabecera?(cabecera.findIndex(c=>c.includes('n2'))):-1;
+    const iCamp=cabecera?(cabecera.findIndex(c=>c.includes('camp')||c.includes('zona'))):-1;
+    const iDist=cabecera?(cabecera.findIndex(c=>c.includes('dist'))):-1;
+    const iTip=cabecera?(cabecera.findIndex(c=>c.includes('tipif')||c.includes('estado'))):-1;
+    archivoRows=datos.map(linea=>{
+      const cols=linea.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''));
+      const n1=cols[iN1>=0?iN1:0]||'';
+      if(!n1||n1.length<6) return null;
+      return {n1,n2:iN2>=0?(cols[iN2]||''):'',camp:iCamp>=0?(cols[iCamp]||'—'):'—',dist:iDist>=0?(cols[iDist]||'—'):'—',tipif:iTip>=0?(cols[iTip]||''):''};
+    }).filter(Boolean);
+    if(!archivoRows.length){ st.textContent='No se encontraron registros válidos'; return; }
+    st.textContent='';
+    document.getElementById('archivoInfo').textContent=`${archivoRows.length} registros en "${file.name}"`;
+    const tbody=document.getElementById('archivoPreviewBody');
+    tbody.innerHTML=archivoRows.slice(0,50).map((r,i)=>`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;color:#9ca3af">${i+1}</td><td style="padding:5px 10px;font-family:monospace;font-weight:600">${r.n1}</td><td style="padding:5px 10px">${r.camp}</td><td style="padding:5px 10px">${r.dist}</td><td style="padding:5px 10px">${r.tipif||'—'}</td></tr>`).join('');
+    document.getElementById('archivoPreview').style.display='';
+    document.getElementById('btnCargaArchivo').textContent=`Cargar ${archivoRows.length} registros`;
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+async function ejecutarCargaArchivo(){
+  if(!archivoRows.length){ mostrarToast('⚠️ No hay datos'); return; }
+  if(!baseData[fechaActiva]) baseData[fechaActiva]=[];
+  let importados=0,omitidos=0;
+  const leadsBackend=[];
+  archivoRows.forEach(r=>{
+    if(baseData[fechaActiva].find(x=>x.n1===r.n1)){omitidos++;return;}
+    const tipAuto=getTipifVendedor(r.n1);
+    baseData[fechaActiva].push({id:baseIdCnt++,campana:r.camp,distrito:r.dist,n1:r.n1,n2:r.n2,tipifBack:r.tipif,asesor:'',horaAsig:'',sinAsignar:true,rotaciones:0,_tipifVend:tipAuto?.tipif||'',_tipifHora:tipAuto?.hora||'',historial:[]});
+    leadsBackend.push({campana:r.camp,distrito:r.dist,n1:r.n1,n2:r.n2,tipif_back:r.tipif,asesor_nombre:'',fecha:fechaActiva,hora_asig:''});
+    importados++;
+  });
+  if(leadsBackend.length){
+    try { await fetch(API_BO+'/leads',{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)}); } catch(e){}
+  }
+  archivoRows=[];
+  document.getElementById('archivoPreview').style.display='none';
+  document.getElementById('archivoStatus').textContent='';
+  document.getElementById('archivoInput').value='';
+  renderFechaTabs(); renderBase();
+  mostrarToast(`✅ ${importados} importados${omitidos?' · '+omitidos+' omitidos':''}`);
+}
+
+let legacyRows=[];
+function poblarLegacyFecha(){
+  const sel=document.getElementById('legacyFecha'); if(!sel) return;
+  sel.innerHTML=fechaPestanas.map(f=>`<option value="${f}" ${f===fechaActiva?'selected':''}>${formatFecha(f)}</option>`).join('');
+}
+function handleLegacyDrop(files){ if(files.length) procesarLegacy(files[0]); }
+function handleLegacySelect(files){ if(files.length) procesarLegacy(files[0]); }
+
+function procesarLegacy(file){
+  const st=document.getElementById('legacyStatus');
+  st.textContent=`Leyendo ${file.name}...`;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const lineas=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+    if(!lineas.length){ st.textContent='Archivo vacío'; return; }
+    const sep=lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':',';
+    const primera=lineas[0].split(sep);
+    const tieneCab=isNaN((primera[3]||'').replace(/\s/g,''))||(primera[3]||'').length<6;
+    const datos=tieneCab?lineas.slice(1):lineas;
+    const fechaDest=document.getElementById('legacyFecha')?.value||fechaActiva;
+    const usarFechaFila=document.getElementById('legacyUsarFecha')?.value==='si';
+    legacyRows=[];
+    datos.forEach(linea=>{
+      const c=linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''));
+      const n1=c[3]||c[0]||'';
+      if(!n1||n1.length<6) return;
+      const asesoresHist=[];
+      for(let i=8;i<=13;i++){ const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a); }
+      let fechaFila=fechaDest;
+      if(usarFechaFila){ for(let i=0;i<c.length;i++){ const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
+      legacyRows.push({campana:c[0]||'—',distrito:c[1]||'—',n2:c[2]||'',n1,tipifBack:c[4]||'',comentario:c[5]||'',tipifVend:c[6]||'',hora:c[7]||'',asesores:asesoresHist,fecha:fechaFila});
+    });
+    if(!legacyRows.length){ st.textContent='No se encontraron filas válidas'; return; }
+    st.textContent='';
+    document.getElementById('legacyInfo').textContent=`${legacyRows.length} registros desde "${file.name}"`;
+    const tbody=document.getElementById('legacyPreviewBody');
+    tbody.innerHTML=legacyRows.slice(0,60).map((r,i)=>`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:4px 10px;color:#9ca3af">${i+1}</td><td style="padding:4px 10px;font-weight:600">${r.campana}</td><td style="padding:4px 10px">${r.distrito}</td><td style="padding:4px 10px;font-family:monospace;font-weight:700;color:#111827">${r.n1}</td><td style="padding:4px 10px;font-family:monospace;color:#6b7280">${r.n2||'—'}</td><td style="padding:4px 10px">${r.tipifBack||'—'}</td><td style="padding:4px 10px">${r.tipifVend||'—'}</td><td style="padding:4px 10px;color:#185FA5;font-weight:600">${r.hora||'—'}</td><td style="padding:4px 10px;color:#6b7280">${r.asesores.join(' → ')||'—'}</td><td style="padding:4px 10px;color:#374151">${formatFecha(r.fecha)}</td></tr>`).join('');
+    document.getElementById('legacyPreview').style.display='';
+    document.getElementById('btnCargaLegacy').textContent=`Importar ${legacyRows.length} registros`;
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+async function ejecutarCargaLegacy(){
+  if(!legacyRows.length){ mostrarToast('⚠️ No hay datos'); return; }
+  let importados=0,omitidos=0,nuevasFechas=0;
+  const leadsBackend=[];
+  legacyRows.forEach(r=>{
+    const fecha=r.fecha;
+    if(!fechaPestanas.includes(fecha)){ fechaPestanas.push(fecha); fechaPestanas.sort().reverse(); if(!baseData[fecha]) baseData[fecha]=[]; nuevasFechas++; }
+    if(!baseData[fecha]) baseData[fecha]=[];
+    if(baseData[fecha].find(x=>x.n1===r.n1)){ omitidos++; return; }
+    const hist=r.asesores.map((a,i)=>({asesor:a,hora:r.hora||'—',fecha,motivo:i===0?'Asignación inicial':`Rotación ${i}`}));
+    const tipAuto=getTipifVendedor(r.n1);
+    baseData[fecha].push({id:baseIdCnt++,campana:r.campana,distrito:r.distrito,n1:r.n1,n2:r.n2,tipifBack:r.tipifBack,asesor:r.asesores[r.asesores.length-1]||'',horaAsig:r.hora,sinAsignar:r.asesores.length===0,rotaciones:Math.max(0,r.asesores.length-1),_tipifVend:tipAuto?.tipif||r.tipifVend||'',_tipifHora:tipAuto?.hora||r.hora||'',_comentario:r.comentario,historial:hist});
+    leadsBackend.push({campana:r.campana,distrito:r.distrito,n1:r.n1,n2:r.n2,tipif_back:r.tipifBack,asesor_nombre:r.asesores[r.asesores.length-1]||'',fecha,hora_asig:r.hora});
+    importados++;
+  });
+  if(leadsBackend.length){
+    try { await fetch(API_BO+'/leads',{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)}); } catch(e){}
+  }
+  legacyRows=[];
+  document.getElementById('legacyPreview').style.display='none';
+  document.getElementById('legacyStatus').textContent='';
+  document.getElementById('legacyInput').value='';
+  renderFechaTabs(); renderBase();
+  mostrarToast(`✅ ${importados} importados${nuevasFechas?' · '+nuevasFechas+' fechas nuevas':''}${omitidos?' · '+omitidos+' omitidos':''}`);
+}
+
+/* ===================== NAVEGACIÓN ===================== */
+function mostrarSeccion(id,btn){
+  document.querySelectorAll('.bo-seccion').forEach(s=>s.classList.add('hidden'));
+  const sec=document.getElementById('sec-'+id); if(sec) sec.classList.remove('hidden');
+  document.querySelectorAll('.bo-nav').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id==='base')        { renderFechaTabs(); renderBase(); }
+  if(id==='asesores')    renderAsesoresCards();
+  if(id==='rendimiento') renderRendimiento();
+}
+
+function syncLocalStorage(){
+  try{ localStorage.setItem('bo_baseData', JSON.stringify(baseData)); }catch(e){}
+}
+
+/* ===================== INIT ===================== */
+window.onload = async ()=>{
+  await cargarAsesoresBackend();
+  poblarSelectAsesorForm();
+  poblarSelectMasiva();
+  renderFechaTabs();
+  renderBase();
+  setInterval(syncTipifVendedor, 30000);
+  document.getElementById('modal-rotar')?.addEventListener('click',e=>{if(e.target===document.getElementById('modal-rotar'))cerrarModalRotar();});
+
+  // Aplicar sesión en topbar
+  const u = ncGetSesion();
+  if(u){
+    const el = document.querySelector('.bo-usuario');
+    if(el) el.textContent = u.nombre || 'Back Office';
+  }
+  const btnSalir = document.querySelector('.bo-salir');
+  if(btnSalir) btnSalir.onclick = (e)=>{ e.preventDefault(); ncCerrarSesion(); };
+};

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grabaciones — Netcontact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/grabaciones.css">
+</head>
+<body>
+
+<!-- ===== TOPBAR ===== -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo-circle">
+      <img src="assets/logo3.png" alt="NC" onerror="this.parentNode.textContent='🏢'">
+    </div>
+    <div class="brand-text">
+      <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
+      <span class="brand-sub">Grabaciones</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-fecha" id="topbarFecha"></span>
+    <span class="topbar-badge">GRABACIONES</span>
+    <span class="topbar-user" id="topbarUser">Grabaciones</span>
+    <button id="btnSalir" class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="main-content">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Módulo de Grabaciones</h2>
+      <p>Solo ventas validadas — hoy y pendientes de días anteriores</p>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi-item k-blue">
+      <div><div class="kpi-num" id="kpi-hoy">0</div><div class="kpi-label">Ventas de hoy</div></div>
+    </div>
+    <div class="kpi-item k-orange">
+      <div><div class="kpi-num" id="kpi-pendientes">0</div><div class="kpi-label">Pendientes anteriores</div></div>
+    </div>
+    <div class="kpi-item k-green">
+      <div><div class="kpi-num" id="kpi-grabados">0</div><div class="kpi-label">Grabados</div></div>
+    </div>
+    <div class="kpi-item k-purple">
+      <div><div class="kpi-num" id="kpi-observados">0</div><div class="kpi-label">Observados</div></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-bar">
+    <button class="tab-btn active" onclick="cambiarTab('hoy',this)">
+      🗓️ Hoy
+      <span class="tab-count" id="countHoy">0</span>
+    </button>
+    <button class="tab-btn" onclick="cambiarTab('pendientes',this)">
+      ⏳ Pendientes anteriores
+      <span class="tab-count" id="countPend">0</span>
+    </button>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros-panel">
+    <div class="filtros-titulo">Filtros</div>
+    <div class="filtros-grid">
+      <div class="fg">
+        <label>Estado grabación</label>
+        <select id="f_estado" onchange="aplicarFiltros()"></select>
+      </div>
+      <div class="fg">
+        <label>Vendedor / Asesor</label>
+        <input id="f_vendedor" placeholder="Buscar vendedor..." oninput="aplicarFiltros()">
+      </div>
+      <div class="fg">
+        <label>Desde</label>
+        <input type="date" id="f_desde" onchange="aplicarFiltros()">
+      </div>
+      <div class="fg">
+        <label>Hasta</label>
+        <input type="date" id="f_hasta" onchange="aplicarFiltros()">
+      </div>
+      <div style="align-self:flex-end;">
+        <button class="btn-limpiar" onclick="limpiarFiltros()">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-wrap">
+    <div class="tabla-header">
+      <div class="tabla-header-left">
+        <span class="tabla-title">Ventas validadas</span>
+        <span class="tabla-count" id="tablaCount">0 registros</span>
+        <span style="font-size:11px;color:#9ca3af;font-weight:600;" id="pagInfo"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="text" class="tabla-search" id="busquedaInput"
+          placeholder="🔍 Buscar por nombre, DNI, vendedor..."
+          oninput="busquedaVal=this.value;aplicarFiltros()">
+        <div class="pag-size">
+          <select id="selectPorPagina" title="Por página">
+            <option value="18">18 / pág</option>
+            <option value="30">30 / pág</option>
+            <option value="50">50 / pág</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th style="width:240px;">ACCIONES</th>
+            <th style="width:110px;">ESTADO GRAB.</th>
+            <th style="width:120px;">FECHA</th>
+            <th style="width:160px;">NOMBRE Y APELLIDOS</th>
+            <th style="width:90px;">DNI</th>
+            <th style="width:110px;">TEL. CONTACTO</th>
+            <th style="width:130px;">VENDEDOR</th>
+            <th style="width:120px;">SUPERVISOR</th>
+            <th style="width:160px;">ARCHIVO AUDIO</th>
+            <th style="width:180px;">ÚLTIMA OBS.</th>
+          </tr>
+        </thead>
+        <tbody id="tablaBody">
+          <tr><td colspan="10" class="tabla-empty">
+            Cargando ventas validadas...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="paginacion">
+      <span class="pag-info" id="pagInfo2"></span>
+      <div class="pag-btns" id="paginacionBtns"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== MODAL: CAMBIAR ESTADO ===== -->
+<div class="modal-bg" id="modalEstado">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-title">Cambiar estado de grabación</div>
+    <div class="modal-sub">Estado actual: <strong id="re_estadoActual"></strong></div>
+    <div class="modal-campo">
+      <label>Nuevo estado</label>
+      <select id="re_nuevoEstado"></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalEstado')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: SUBIR GRABACIÓN ===== -->
+<div class="modal-bg" id="modalSubir">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-title">📎 Subir grabación</div>
+    <div class="modal-sub">Cliente: <strong id="subir_nombre"></strong></div>
+
+    <div class="upload-zone" id="subir_dropzone"
+      onclick="document.getElementById('archivoGrab').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#2563eb';this.style.background='#eff6ff';"
+      ondragleave="this.style.borderColor='';this.style.background='';"
+      ondrop="event.preventDefault();this.style.borderColor='';this.style.background='';handleFileSelect(event.dataTransfer.files)">
+      <div class="upload-icon">🎙️</div>
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-top:6px;">
+        Arrastra tu archivo aquí o haz clic
+      </div>
+      <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
+      <input type="file" id="archivoGrab" accept=".mp3,.wav,.ogg,.m4a,.mp4,.webm" style="display:none"
+        onchange="handleFileSelect(this.files)">
+    </div>
+    <div id="subir_info"></div>
+
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalSubir')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarAudio()">✅ Subir grabación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: ESCUCHAR AUDIO ===== -->
+<div class="modal-bg" id="modalAudio">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-title">🎙️ Grabación</div>
+    <div class="modal-sub">
+      Cliente: <strong id="audio_nombre"></strong> ·
+      Vendedor: <strong id="audio_asesor"></strong> ·
+      Fecha: <strong id="audio_fecha"></strong>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Archivo</div>
+      <div style="font-size:12px;color:#374151;font-weight:600;" id="audio_archivo"></div>
+    </div>
+
+    <div class="audio-player">
+      <audio id="audioPlayer" controls style="width:100%;height:40px;"></audio>
+      <div class="audio-no" id="audioNoDisp" style="display:none;">
+        Sin grabación cargada para esta venta.
+      </div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalAudio');document.getElementById('audioPlayer').pause();">Cerrar</button>
+      <button class="btn-guardar" style="background:#2563eb;" onclick="cerrarModal('modalAudio');document.getElementById('audioPlayer').pause();abrirModalSubir(editandoId);">
+        📎 Cambiar archivo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: OBSERVACIÓN ===== -->
+<div class="modal-bg" id="modalObs">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-title">💬 Observación</div>
+    <div class="modal-sub">Cliente: <strong id="obs_nombre"></strong></div>
+    <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Historial</div>
+    <div class="obs-historial" id="obs_historial"></div>
+    <div class="modal-campo">
+      <label>Nueva observación</label>
+      <textarea id="obs_nueva" placeholder="Escribe aquí tu observación..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalObs')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarObservacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/historial.js"></script>
+<script src="js/session.js"></script>
+<script src="js/grabaciones.js"></script>
+</body>
+</html>

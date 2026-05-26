@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento — Netcontact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/seguimiento.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo-circle">
+      <img src="assets/logo3.png" alt="NC" onerror="this.parentNode.textContent='🏢'">
+    </div>
+    <div class="brand-text">
+      <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
+      <span class="brand-sub">Seguimiento</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-badge">SEGUIMIENTO</span>
+    <span class="topbar-user" id="topbarUser">Seguimiento</span>
+    <button id="btnSalir" class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
+  </div>
+</div>
+
+<div class="main-content">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Seguimiento de Ventas</h2>
+      <p>Todas las ventas — haz clic en un estado para filtrar</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn-export" onclick="exportarCSV()">📥 Exportar CSV</button>
+    </div>
+  </div>
+
+  <!-- LEYENDA — clic para filtrar -->
+  <div class="leyenda">
+    <div class="leyenda-item l-todos" onclick="filtrarPorEstado('',this)">
+      Todos <span class="leyenda-count" id="cnt-todos">0</span>
+    </div>
+    <div class="leyenda-item l-ejec" onclick="filtrarPorEstado('ejecucion',this)">
+      EN EJECUCIÓN <span class="leyenda-count" id="cnt-ejecucion">0</span>
+    </div>
+    <div class="leyenda-item l-inst" onclick="filtrarPorEstado('instalado',this)">
+      INSTALADO <span class="leyenda-count" id="cnt-instalado">0</span>
+    </div>
+    <div class="leyenda-item l-noval" onclick="filtrarPorEstado('novalidado',this)">
+      NO VALIDADO <span class="leyenda-count" id="cnt-novalidado">0</span>
+    </div>
+    <div class="leyenda-item l-rech" onclick="filtrarPorEstado('rechazo',this)">
+      RECHAZO EN CAMPO <span class="leyenda-count" id="cnt-rechazo">0</span>
+    </div>
+    <div class="leyenda-item l-caida" onclick="filtrarPorEstado('caida',this)">
+      CAÍDA <span class="leyenda-count" id="cnt-caida">0</span>
+    </div>
+    <div class="leyenda-item l-tecnico" onclick="filtrarPorEstado('tecnico',this)">
+      TÉCNICOS EN CASA <span class="leyenda-count" id="cnt-tecnico">0</span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi-item k-total" ><div><div class="kpi-num" id="kpi-total">0</div><div class="kpi-label">Total</div></div></div>
+    <div class="kpi-item k-ejec"  ><div><div class="kpi-num" id="kpi-ejec">0</div><div class="kpi-label">En ejecución</div></div></div>
+    <div class="kpi-item k-inst"  ><div><div class="kpi-num" id="kpi-inst">0</div><div class="kpi-label">Instalados</div></div></div>
+    <div class="kpi-item k-noval" ><div><div class="kpi-num" id="kpi-noval">0</div><div class="kpi-label">No validados</div></div></div>
+    <div class="kpi-item k-rech"  ><div><div class="kpi-num" id="kpi-rech">0</div><div class="kpi-label">Rechazos</div></div></div>
+    <div class="kpi-item k-caida" ><div><div class="kpi-num" id="kpi-caida">0</div><div class="kpi-label">Caídas</div></div></div>
+    <div class="kpi-item k-tec"   ><div><div class="kpi-num" id="kpi-tec">0</div><div class="kpi-label">Técnicos en casa</div></div></div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros-panel">
+    <div class="filtros-titulo">Filtros avanzados</div>
+    <div class="filtros-grid">
+      <div class="fg"><label>Estado</label>
+        <select id="f_estado" onchange="aplicarFiltros()"></select>
+      </div>
+      <div class="fg"><label>Vendedor</label>
+        <input id="f_vendedor" placeholder="Buscar vendedor..." oninput="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Distrito</label>
+        <input id="f_distrito" placeholder="Buscar distrito..." oninput="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Tramo</label>
+        <select id="f_tramo" onchange="aplicarFiltros()"></select>
+      </div>
+      <div class="fg"><label>Desde</label>
+        <input type="date" id="f_desde" onchange="aplicarFiltros()">
+      </div>
+      <div class="fg"><label>Hasta</label>
+        <input type="date" id="f_hasta" onchange="aplicarFiltros()">
+      </div>
+      <div style="align-self:flex-end;">
+        <button class="btn-limpiar" onclick="limpiarFiltros()">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-wrap">
+    <div class="tabla-header">
+      <div class="tabla-header-left">
+        <span class="tabla-title">Registros de seguimiento</span>
+        <span class="tabla-count" id="tablaCount">0 registros</span>
+        <span class="pag-info-top" id="pagInfoTop"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="text" class="tabla-search" id="busquedaInput"
+          placeholder="🔍 Buscar nombre, DNI, vendedor..."
+          oninput="busquedaVal=this.value;aplicarFiltros()">
+        <div class="pag-size">
+          <select id="selectPorPagina">
+            <option value="18">18 / pág</option>
+            <option value="30">30 / pág</option>
+            <option value="50">50 / pág</option>
+            <option value="100">100 / pág</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead><tr>
+          <th class="th-acc">ACCIÓN</th>
+          <th class="th-est">ESTADO</th>
+          <th class="th-fecha">FECHA</th>
+          <th class="th-cliente">NOMBRE Y APELLIDOS</th>
+          <th class="th-dni">DNI</th>
+          <th class="th-dist">DISTRITO</th>
+          <th class="th-dir">DIRECCIÓN</th>
+          <th class="th-coord">COORDENADAS</th>
+          <th class="th-vend">VENDEDOR</th>
+          <th class="th-superv">SUPERVIS.</th>
+          <th class="th-hogar">CLARO HOGAR</th>
+          <th class="th-olt">OLT</th>
+          <th class="th-plan">PLAN</th>
+          <th class="th-codigo">TEL. CONT.</th>
+          <th class="th-tramo">TRAMO</th>
+          <th class="th-comment">COMENTARIO</th>
+          <th class="th-motivo">MOTIVO DE REC.</th>
+          <th class="th-nodecon">NODECON</th>
+          <th class="th-efono">EFONODEC</th>
+        </tr></thead>
+        <tbody id="tablaBody">
+          <tr><td colspan="19" style="text-align:center;color:#9ca3af;padding:36px;font-size:13px;">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="paginacion">
+      <span class="pag-info" id="pagInfo2"></span>
+      <div class="pag-btns" id="paginacionBtns"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: CAMBIAR ESTADO -->
+<div class="modal-bg" id="modalEstado">
+  <div class="modal-box">
+    <div class="modal-title">Cambiar estado</div>
+    <div class="modal-sub">Cliente: <strong id="est_nombre"></strong> · Actual: <strong id="est_actual"></strong></div>
+    <div class="modal-grid">
+      <div class="modal-campo">
+        <label>Nuevo estado *</label>
+        <select id="est_nuevo"></select>
+      </div>
+      <div class="modal-campo">
+        <label>Tramo</label>
+        <select id="est_tramo"></select>
+      </div>
+      <div class="modal-campo" id="motivoWrap" style="display:none;">
+        <label>Motivo</label>
+        <select id="est_motivo"></select>
+      </div>
+      <div class="modal-campo">
+        <label>NODECON</label>
+        <input id="est_nodecon" placeholder="Código NODECON">
+      </div>
+      <div class="modal-campo">
+        <label>EFONODEC</label>
+        <input id="est_efonodec" placeholder="EFONODEC">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalEstado')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR LLAMADA -->
+<div class="modal-bg" id="modalObs">
+  <div class="modal-box">
+    <div class="modal-title">📞 Registrar llamada</div>
+    <div class="modal-sub">Cliente: <strong id="obs_nombre"></strong></div>
+    <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">Historial</div>
+    <div class="obs-historial" id="obs_historial"></div>
+    <div class="modal-campo">
+      <label>Resultado</label>
+      <select id="obs_resultado"></select>
+    </div>
+    <div class="modal-campo">
+      <label>Observación *</label>
+      <textarea id="obs_nueva" placeholder="Detalla el resultado..."></textarea>
+    </div>
+    <div class="modal-campo">
+      <label>Comentario general (actualizar)</label>
+      <input id="obs_comentario" placeholder="Comentario visible en tabla...">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalObs')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarObservacion()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGENDAR -->
+<div class="modal-bg" id="modalAgenda">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-title">📅 Agendar seguimiento</div>
+    <div class="modal-sub">Cliente: <strong id="ag_nombre"></strong></div>
+    <div class="modal-campo">
+      <label>Fecha *</label>
+      <input type="date" id="ag_fecha">
+    </div>
+    <div class="modal-campo">
+      <label>Nota</label>
+      <textarea id="ag_nota" placeholder="Motivo del agendamiento..." rows="3"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalAgenda')">Cancelar</button>
+      <button class="btn-guardar"    onclick="guardarAgenda()">Agendar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="js/historial.js"></script>
+<script src="js/session.js"></script>
+<script src="js/seguimiento.js"></script>
+</body>
+</html>

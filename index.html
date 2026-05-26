@@ -2,49 +2,57 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Login CRM</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Netcontact</title>
 <link rel="stylesheet" href="css/login.css">
-
 </head>
-
 <body>
 
-<div id="loader">
-    <div class="spinner"></div>
+<!-- PARTÍCULAS -->
+<div class="particles"></div>
+
+<!-- PANTALLA DE BIENVENIDA (se activa al login exitoso) -->
+<div id="welcomeScreen">
+  <div class="welcome-logo">
+    <img src="assets/logo3.png" alt="NC" onerror="this.parentNode.innerHTML='&#127968;'">
+  </div>
+  <div class="welcome-saludo" id="wSaludo">Bienvenido de nuevo,</div>
+  <div class="welcome-nombre" id="wNombre">Usuario</div>
+  <div class="welcome-cargo"  id="wCargo">Cargo</div>
+  <div class="welcome-barra-wrap">
+    <div class="welcome-barra" id="wBarra"></div>
+  </div>
+  <div class="welcome-redirect">Redirigiendo a tu panel...</div>
 </div>
 
+<!-- CARD LOGIN -->
 <div class="login-box">
 
-    <div class="logo-circle">
-        <img src="assets/logo3.png">
+  <div class="logo-circle">
+    <img src="assets/logo3.png" alt="Netcontact"
+      onerror="this.parentNode.innerHTML='<span style=font-size:28px>&#127968;</span>'">
+  </div>
+
+  <h2 id="saludo">Bienvenido a Netcontact</h2>
+  <p id="nombreUsuario">...</p>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <form id="loginForm" autocomplete="off">
+    <div class="input-group">
+      <input type="text" id="usuario" placeholder=" " required autocomplete="off">
+      <label>Usuario</label>
     </div>
-
-    <h2 id="saludo">Bienvenido a Netcontact</h2>
-    <p id="nombreUsuario"></p>
-
-    <form id="loginForm">
-
-        <div class="input-group">
-            <input type="text" id="usuario" placeholder=" " required>
-            <label>Usuario</label>
-        </div>
-
-        <div class="input-group">
-            <input type="password" id="password" placeholder=" " required>
-            <label>Contraseña</label>
-            <span onclick="togglePassword()">👁️</span>
-        </div>
-
-        <button type="submit" id="btnLogin">
-            <span id="btnText">Iniciar sesión</span>
-            <span class="btn-loader"></span>
-        </button>
-
-    </form>
+    <div class="input-group">
+      <input type="password" id="password" placeholder=" " required autocomplete="new-password">
+      <label>Contraseña</label>
+      <span class="eye" id="eyeIcon" onclick="togglePassword()">&#128065;&#65039;</span>
+    </div>
+    <button type="submit" id="btnLogin">Iniciar sesión</button>
+  </form>
 
 </div>
-<script src="js/app.js"></script>
 
+<script src="js/app.js"></script>
 </body>
 </html>
