@@ -10,12 +10,9 @@
 </head>
 <body>
 
-<!-- ===================== TOPBAR ===================== -->
 <div class="topbar">
   <div class="brand">
-    <div class="logo-circle">
-        <img src="assets/logo3.png" alt="Netcontact">
-    </div>
+    <div class="logo-circle"><img src="assets/logo3.png" alt="Netcontact"></div>
     <div class="brand-text">
       <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
       <span class="brand-sub">Back Office</span>
@@ -29,11 +26,14 @@
 
 <div class="bo-layout">
 
-  <!-- ===================== SIDEBAR ===================== -->
+  <!-- SIDEBAR -->
   <aside class="bo-sidebar">
     <div class="sidebar-sep">Principal</div>
     <button class="bo-nav active" onclick="mostrarSeccion('base',this)">
       <span class="nav-dot"></span> Base
+    </button>
+    <button class="bo-nav" onclick="mostrarSeccion('carga-masiva',this)">
+      <span class="nav-dot"></span> Carga Masiva
     </button>
     <div class="sidebar-sep">Reportes</div>
     <button class="bo-nav" onclick="mostrarSeccion('rendimiento',this)">
@@ -41,7 +41,6 @@
     </button>
   </aside>
 
-  <!-- ===================== CONTENIDO PRINCIPAL ===================== -->
   <main class="bo-main">
 
     <!-- ========== SECCIÓN: BASE ========== -->
@@ -64,7 +63,7 @@
         </div>
       </div>
 
-      <!-- PANEL ROTACIÓN — colapsable -->
+      <!-- PANEL ROTACIÓN -->
       <div id="panelRotacion" style="display:none;margin-bottom:14px;">
         <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05);">
           <div style="background:#111827;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
@@ -106,8 +105,17 @@
               <div id="rotResLista"></div>
             </div>
             <div class="rot-table-wrap">
-              <div class="rot-table-header">
-                Leads disponibles <span class="tag-aptos" id="rotTagAptos">0 aptos</span>
+              <div class="rot-table-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  Leads disponibles <span class="tag-aptos" id="rotTagAptos">0 aptos</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <label style="font-size:11px;color:#6b7280;font-weight:600;">Fecha:</label>
+                  <select id="rotFiltroFecha" onchange="rotFiltrarAptos()" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;outline:none;background:#fff;cursor:pointer;">
+                    <option value="">Todas las fechas</option>
+                  </select>
+                  <button onclick="rotLimpiarFiltroFecha()" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#6b7280;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;">✕ Limpiar</button>
+                </div>
               </div>
               <div style="overflow-x:auto" class="rot-table">
                 <table>
@@ -138,13 +146,13 @@
       <div class="fecha-nav-row">
         <span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Fecha activa:</span>
         <div class="fecha-nav-ctrl">
-          <button class="fnav-btn" id="fnav-prev" onclick="navegarFecha(-1)" title="Fecha anterior">&#8592;</button>
+          <button class="fnav-btn" id="fnav-prev" onclick="navegarFecha(-1)">&#8592;</button>
           <select class="fnav-select" id="fnav-select" onchange="cambiarFechaSelect(this.value)"></select>
-          <button class="fnav-btn" id="fnav-next" onclick="navegarFecha(1)" title="Fecha siguiente">&#8594;</button>
+          <button class="fnav-btn" id="fnav-next" onclick="navegarFecha(1)">&#8594;</button>
         </div>
         <span class="fnav-count" id="fnav-count">1 / 1</span>
         <div class="fecha-add-wrap">
-          <input type="date" id="calPicker" class="fecha-add-input" title="Seleccionar fecha">
+          <input type="date" id="calPicker" class="fecha-add-input">
           <button class="fecha-add-btn" onclick="agregarFechaCalendario()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -153,158 +161,6 @@
           </button>
         </div>
       </div>
-
-      <!-- CARGA MASIVA -->
-      <div class="bo-panel" style="margin-bottom:14px;border:1.5px dashed #e5e7eb;background:#fafafa;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <div>
-            <div class="bo-panel-title" style="margin-bottom:2px;">Carga masiva de base</div>
-            <div style="font-size:11px;color:#9ca3af;">Pega números directamente · importa CSV/TXT · o usa tu sistema antiguo</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="btn-tab-carga active" id="tabPegar" onclick="switchTabCarga('pegar')">Pegar números</button>
-            <button class="btn-tab-carga" id="tabArchivo" onclick="switchTabCarga('archivo')">Subir CSV / TXT</button>
-            <button class="btn-tab-carga" id="tabLegacy" onclick="switchTabCarga('legacy')" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">Sistema antiguo</button>
-          </div>
-        </div>
-
-        <!-- TAB: PEGAR NÚMEROS -->
-        <div id="panelPegar">
-          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:10px;">
-            <div class="bo-input-group" style="margin:0;">
-              <label>Pegar lista de N1 (uno por línea, o separados por coma)</label>
-              <textarea id="masivaNums" rows="5" placeholder="987654321&#10;976543210&#10;965432109&#10;...&#10;&#10;También acepta: 987654321, 976543210, 965432109"></textarea>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;min-width:140px;">
-              <div class="bo-input-group" style="margin:0;"><label>Campaña</label><input id="masivacamp" placeholder="NKT"></div>
-              <div class="bo-input-group" style="margin:0;"><label>Asesor (opcional)</label>
-                <select id="masivaasesor"><option value="">— Sin asignar —</option></select>
-              </div>
-              <div class="bo-input-group" style="margin:0;"><label>Lote máx.</label>
-                <select id="masivaLote">
-                  <option value="10">10 por lote</option>
-                  <option value="25">25 por lote</option>
-                  <option value="50">50 por lote</option>
-                  <option value="0">Todos</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <button class="btn-masiva-preview" onclick="previsualizarMasiva()">Vista previa</button>
-            <button class="btn-masiva-go" onclick="ejecutarCargaMasiva()" id="btnCargaMasiva" disabled>Cargar base</button>
-            <span id="masivaStatus" style="font-size:12px;color:#6b7280;"></span>
-          </div>
-          <div id="masivaPreview" style="display:none;margin-top:10px;max-height:160px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
-            <table style="width:100%;border-collapse:collapse;font-size:11px;">
-              <thead><tr style="background:#f9fafb;">
-                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
-                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">N1</th>
-                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Campaña</th>
-                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Fecha</th>
-                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Asesor</th>
-              </tr></thead>
-              <tbody id="masivaPreviewBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB: SUBIR ARCHIVO CSV / TXT -->
-        <div id="panelArchivo" style="display:none;">
-          <div id="dropzone" onclick="document.getElementById('archivoInput').click()"
-            style="border:2px dashed #d1d5db;border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
-            ondragover="event.preventDefault();this.style.borderColor='#111827';this.style.background='#f9fafb';"
-            ondragleave="this.style.borderColor='#d1d5db';this.style.background='#fff';"
-            ondrop="event.preventDefault();this.style.borderColor='#d1d5db';this.style.background='#fff';handleFileDrop(event.dataTransfer.files)">
-            <div style="font-size:24px;margin-bottom:8px;">📂</div>
-            <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">Arrastra tu archivo aquí o haz clic</div>
-            <div style="font-size:11px;color:#9ca3af;">Acepta CSV · TXT — columnas: N1, N2, Campaña, Distrito, Tipif</div>
-            <input type="file" id="archivoInput" accept=".csv,.txt" style="display:none" onchange="handleFileSelect(this.files)">
-          </div>
-          <div id="archivoStatus" style="margin-top:10px;font-size:12px;color:#6b7280;"></div>
-          <div id="archivoPreview" style="display:none;margin-top:10px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <span style="font-size:12px;font-weight:600;color:#374151;" id="archivoInfo"></span>
-              <button class="btn-masiva-go" onclick="ejecutarCargaArchivo()" id="btnCargaArchivo">Cargar todos los registros</button>
-            </div>
-            <div style="max-height:160px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
-              <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                <thead><tr style="background:#f9fafb;position:sticky;top:0;">
-                  <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
-                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N1</th>
-                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Campaña</th>
-                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Distrito</th>
-                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipif.</th>
-                </tr></thead>
-                <tbody id="archivoPreviewBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB: SISTEMA ANTIGUO -->
-        <div id="panelLegacy" style="display:none;">
-          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:4px;">Importación de sistema antiguo — migración única</div>
-            <div style="font-size:11px;color:#92400e;line-height:1.6;">
-              Formato: <strong>CAMPAÑA · DISTRITO · N2 · N1 · TIPIF.BACK · COMENTARIO · TIPIFICACIÓN · HORA · ASESOR 1 · ASESOR 2 · ... · ASESOR 6</strong><br>
-              El historial de asesores se reconstruye automáticamente desde las columnas ASESOR.
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 180px;gap:12px;margin-bottom:12px;">
-            <div id="dropzoneLegacy" onclick="document.getElementById('legacyInput').click()"
-              style="border:2px dashed #fed7aa;border-radius:10px;padding:20px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
-              ondragover="event.preventDefault();this.style.borderColor='#c2410c';this.style.background='#fff7ed';"
-              ondragleave="this.style.borderColor='#fed7aa';this.style.background='#fff';"
-              ondrop="event.preventDefault();this.style.borderColor='#fed7aa';this.style.background='#fff';handleLegacyDrop(event.dataTransfer.files)">
-              <div style="font-size:22px;margin-bottom:6px;">📋</div>
-              <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:3px;">Arrastra tu base o haz clic</div>
-              <div style="font-size:11px;color:#9ca3af;">CSV exportado desde tu sistema anterior</div>
-              <input type="file" id="legacyInput" accept=".csv,.txt" style="display:none" onchange="handleLegacySelect(this.files)">
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div class="bo-input-group" style="margin:0;">
-                <label>Fecha destino</label>
-                <select id="legacyFecha" style="font-size:12px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;background:#fff;"></select>
-              </div>
-              <div class="bo-input-group" style="margin:0;">
-                <label>Fecha de la fila</label>
-                <select id="legacyUsarFecha" style="font-size:12px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;background:#fff;">
-                  <option value="no">Usar fecha seleccionada</option>
-                  <option value="si">Leer fecha de la fila</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div id="legacyStatus" style="font-size:12px;color:#6b7280;margin-bottom:8px;"></div>
-          <div id="legacyPreview" style="display:none;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
-              <span style="font-size:12px;font-weight:600;color:#374151;" id="legacyInfo"></span>
-              <div style="display:flex;gap:6px;">
-                <button class="btn-masiva-preview" onclick="document.getElementById('legacyPreview').style.display='none';legacyRows=[];">Cancelar</button>
-                <button class="btn-masiva-go" onclick="ejecutarCargaLegacy()" style="background:#c2410c;" id="btnCargaLegacy">Importar al sistema</button>
-              </div>
-            </div>
-            <div style="max-height:180px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
-              <table style="width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;">
-                <thead><tr style="background:#f9fafb;position:sticky;top:0;">
-                  <th style="padding:5px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Camp.</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Dist.</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N1</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N2</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipif. Back</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipificación</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Hora</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Asesores</th>
-                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Fecha</th>
-                </tr></thead>
-                <tbody id="legacyPreviewBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div><!-- fin carga masiva -->
 
       <!-- FORMULARIO AGREGAR INDIVIDUAL -->
       <div class="bo-panel" style="margin-bottom:14px;">
@@ -323,8 +179,7 @@
               <option>SJL</option><option>COMAS</option><option>LOS OLIVOS</option>
               <option>INDEPENDENCIA</option><option>RIMAC</option><option>BREÑA</option>
               <option>CHORRILLOS</option><option>BARRANCO</option><option>LA VICTORIA</option>
-              <option>TACNA</option><option>AREQUIPA</option><option>TRUJILLO</option>
-              <option>HUANCAYO</option>
+              <option>TACNA</option><option>AREQUIPA</option><option>TRUJILLO</option><option>HUANCAYO</option>
             </select>
           </div>
           <div class="bo-input-group"><label>N1 *</label><input id="f_n1" placeholder="Número principal" style="font-family:monospace;"></div>
@@ -348,7 +203,7 @@
         </div>
       </div>
 
-      <!-- FILTROS DE TABLA -->
+      <!-- FILTROS -->
       <div class="base-filtros">
         <div class="bo-input-group"><label>Tipificación back</label>
           <select id="filtro_tip" onchange="renderBase()">
@@ -378,7 +233,7 @@
         </div>
       </div>
 
-      <!-- TABLA PRINCIPAL -->
+      <!-- TABLA -->
       <div class="base-tabla-wrap">
         <table class="base-tabla">
           <thead>
@@ -396,12 +251,190 @@
         </table>
       </div>
 
-    </section><!-- fin sec-base -->
+    </section>
+
+    <!-- ========== SECCIÓN: CARGA MASIVA ========== -->
+    <section id="sec-carga-masiva" class="bo-seccion hidden">
+
+      <div class="bo-seccion-header">
+        <div>
+          <h2>Carga Masiva de Base</h2>
+          <p class="bo-sub">Pega números directamente · importa CSV/TXT · o usa tu sistema antiguo</p>
+        </div>
+      </div>
+
+      <!-- NAVEGADOR DE FECHA -->
+      <div class="fecha-nav-row" style="margin-bottom:16px;">
+        <span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Fecha activa:</span>
+        <div class="fecha-nav-ctrl">
+          <button class="fnav-btn" onclick="navegarFecha(-1)">&#8592;</button>
+          <select class="fnav-select" id="cm-fnav-select" onchange="cambiarFechaCargaMasiva(this.value)"></select>
+          <button class="fnav-btn" onclick="navegarFecha(1)">&#8594;</button>
+        </div>
+        <span class="fnav-count" id="cm-fnav-count">1 / 1</span>
+        <div class="fecha-add-wrap">
+          <input type="date" id="cm-calPicker" class="fecha-add-input">
+          <button class="fecha-add-btn" onclick="agregarFechaCargaMasiva()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Agregar fecha
+          </button>
+        </div>
+      </div>
+
+      <div class="bo-panel" style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <div class="bo-panel-title" style="margin-bottom:0;">Selecciona el método de importación</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn-tab-carga active" id="tabPegar" onclick="switchTabCarga('pegar')">Pegar números</button>
+            <button class="btn-tab-carga" id="tabArchivo" onclick="switchTabCarga('archivo')">Subir CSV / TXT</button>
+            <button class="btn-tab-carga" id="tabLegacy" onclick="switchTabCarga('legacy')" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">Sistema antiguo</button>
+          </div>
+        </div>
+
+        <!-- TAB: PEGAR NÚMEROS -->
+        <div id="panelPegar">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:10px;">
+            <div class="bo-input-group" style="margin:0;">
+              <label>Pegar lista de N1 (uno por línea, o separados por coma)</label>
+              <textarea id="masivaNums" rows="8" placeholder="987654321&#10;976543210&#10;965432109&#10;...&#10;&#10;También acepta: 987654321, 976543210, 965432109"></textarea>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
+              <div class="bo-input-group" style="margin:0;"><label>Campaña</label><input id="masivacamp" placeholder="NKT"></div>
+              <div class="bo-input-group" style="margin:0;"><label>Asesor (opcional)</label>
+                <select id="masivaasesor"><option value="">— Sin asignar —</option></select>
+              </div>
+              <div class="bo-input-group" style="margin:0;"><label>Lote máx.</label>
+                <select id="masivaLote">
+                  <option value="10">10 por lote</option>
+                  <option value="25">25 por lote</option>
+                  <option value="50">50 por lote</option>
+                  <option value="0">Todos</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button class="btn-masiva-preview" onclick="previsualizarMasiva()">Vista previa</button>
+            <button class="btn-masiva-go" onclick="ejecutarCargaMasiva()" id="btnCargaMasiva" disabled>Cargar base</button>
+            <span id="masivaStatus" style="font-size:12px;color:#6b7280;"></span>
+          </div>
+          <div id="masivaPreview" style="display:none;margin-top:10px;max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+              <thead><tr style="background:#f9fafb;">
+                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
+                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">N1</th>
+                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Campaña</th>
+                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Fecha</th>
+                <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">Asesor</th>
+              </tr></thead>
+              <tbody id="masivaPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: SUBIR ARCHIVO -->
+        <div id="panelArchivo" style="display:none;">
+          <div id="dropzone" onclick="document.getElementById('archivoInput').click()"
+            style="border:2px dashed #d1d5db;border-radius:10px;padding:36px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
+            ondragover="event.preventDefault();this.style.borderColor='#111827';this.style.background='#f9fafb';"
+            ondragleave="this.style.borderColor='#d1d5db';this.style.background='#fff';"
+            ondrop="event.preventDefault();this.style.borderColor='#d1d5db';this.style.background='#fff';handleFileDrop(event.dataTransfer.files)">
+            <div style="font-size:32px;margin-bottom:10px;">📂</div>
+            <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:4px;">Arrastra tu archivo aquí o haz clic</div>
+            <div style="font-size:12px;color:#9ca3af;">Acepta CSV · TXT — columnas: N1, N2, Campaña, Distrito, Tipif</div>
+            <input type="file" id="archivoInput" accept=".csv,.txt" style="display:none" onchange="handleFileSelect(this.files)">
+          </div>
+          <div id="archivoStatus" style="margin-top:10px;font-size:12px;color:#6b7280;"></div>
+          <div id="archivoPreview" style="display:none;margin-top:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:600;color:#374151;" id="archivoInfo"></span>
+              <button class="btn-masiva-go" onclick="ejecutarCargaArchivo()" id="btnCargaArchivo">Cargar todos los registros</button>
+            </div>
+            <div style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+              <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                <thead><tr style="background:#f9fafb;position:sticky;top:0;">
+                  <th style="padding:6px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
+                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N1</th>
+                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Campaña</th>
+                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Distrito</th>
+                  <th style="padding:6px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipif.</th>
+                </tr></thead>
+                <tbody id="archivoPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SISTEMA ANTIGUO -->
+        <div id="panelLegacy" style="display:none;">
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:4px;">Importación de sistema antiguo — migración única</div>
+            <div style="font-size:11px;color:#92400e;line-height:1.6;">
+              Formato: <strong>CAMPAÑA · DISTRITO · N2 · N1 · TIPIF.BACK · COMENTARIO · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 180px;gap:12px;margin-bottom:12px;">
+            <div id="dropzoneLegacy" onclick="document.getElementById('legacyInput').click()"
+              style="border:2px dashed #fed7aa;border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
+              ondragover="event.preventDefault();this.style.borderColor='#c2410c';this.style.background='#fff7ed';"
+              ondragleave="this.style.borderColor='#fed7aa';this.style.background='#fff';"
+              ondrop="event.preventDefault();this.style.borderColor='#fed7aa';this.style.background='#fff';handleLegacyDrop(event.dataTransfer.files)">
+              <div style="font-size:28px;margin-bottom:8px;">📋</div>
+              <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:3px;">Arrastra tu base o haz clic</div>
+              <div style="font-size:11px;color:#9ca3af;">CSV exportado desde tu sistema anterior</div>
+              <input type="file" id="legacyInput" accept=".csv,.txt" style="display:none" onchange="handleLegacySelect(this.files)">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="bo-input-group" style="margin:0;">
+                <label>Fecha destino</label>
+                <select id="legacyFecha" style="font-size:12px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;background:#fff;"></select>
+              </div>
+              <div class="bo-input-group" style="margin:0;">
+                <label>Fecha de la fila</label>
+                <select id="legacyUsarFecha" style="font-size:12px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;background:#fff;">
+                  <option value="no">Usar fecha seleccionada</option>
+                  <option value="si">Leer fecha de la fila</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div id="legacyStatus" style="font-size:12px;color:#6b7280;margin-bottom:8px;"></div>
+          <div id="legacyPreview" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+              <span style="font-size:12px;font-weight:600;color:#374151;" id="legacyInfo"></span>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-masiva-preview" onclick="document.getElementById('legacyPreview').style.display='none';legacyRows=[];">Cancelar</button>
+                <button class="btn-masiva-go" onclick="ejecutarCargaLegacy()" style="background:#c2410c;" id="btnCargaLegacy">Importar al sistema</button>
+              </div>
+            </div>
+            <div style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+              <table style="width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;">
+                <thead><tr style="background:#f9fafb;position:sticky;top:0;">
+                  <th style="padding:5px 10px;text-align:left;color:#6b7280;font-size:9px;text-transform:uppercase;">#</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Camp.</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Dist.</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N1</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">N2</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipif. Back</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Tipificación</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Hora</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Asesores</th>
+                  <th style="padding:5px 10px;color:#6b7280;font-size:9px;text-transform:uppercase;text-align:left;">Fecha</th>
+                </tr></thead>
+                <tbody id="legacyPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
 
     <!-- ========== SECCIÓN: RENDIMIENTO ========== -->
     <section id="sec-rendimiento" class="bo-seccion hidden">
       <div class="bo-seccion-header"><h2>Rendimiento de Asesores</h2></div>
-
       <div class="rend-filtros">
         <div class="bo-input-group" style="min-width:150px;">
           <label>Filtrar por</label>
@@ -434,18 +467,15 @@
           </select>
         </div>
         <div style="align-self:flex-end;padding-bottom:2px;">
-          <button class="bo-btn-limpiar" style="font-size:11px;padding:6px 12px;"
-            onclick="document.getElementById('rendFiltroTipo').value='global';onRendFiltroTipo()">Ver todo</button>
+          <button class="bo-btn-limpiar" style="font-size:11px;padding:6px 12px;" onclick="document.getElementById('rendFiltroTipo').value='global';onRendFiltroTipo()">Ver todo</button>
         </div>
       </div>
-
       <div class="rend-kpis" id="rendKpis"></div>
-
       <div class="bo-tabla-wrap">
         <table class="bo-tabla">
           <thead><tr>
             <th>#</th><th>Asesor</th>
-            <th onclick="setRendOrden('leads_desc')" title="Ordenar">Leads ↕</th>
+            <th onclick="setRendOrden('leads_desc')">Leads ↕</th>
             <th onclick="setRendOrden('contesta_desc')">Contesta ↕</th>
             <th onclick="setRendOrden('nc_desc')">NC ↕</th>
             <th onclick="setRendOrden('ventas_desc')">Ventas ↕</th>
@@ -457,9 +487,9 @@
           </tbody>
         </table>
       </div>
-    </section><!-- fin sec-rendimiento -->
+    </section>
 
-    <!-- ========== SECCIÓN: ASESORES (oculta, accesible por JS) ========== -->
+    <!-- SECCIÓN ASESORES (oculta) -->
     <section id="sec-asesores" class="bo-seccion hidden">
       <div class="bo-seccion-header">
         <h2>Gestión de Asesores</h2>
@@ -471,7 +501,7 @@
   </main>
 </div>
 
-<!-- ===================== MODAL: ROTACIÓN MANUAL ===================== -->
+<!-- MODAL ROTACIÓN MANUAL -->
 <div class="modal-bg" id="modal-rotar">
   <div class="modal-box">
     <h3>Rotar lead manualmente</h3>
@@ -485,7 +515,7 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: NUEVO ASESOR ===================== -->
+<!-- MODAL NUEVO ASESOR -->
 <div class="bo-modal hidden" id="modalAsesor">
   <div class="bo-modal-content">
     <h3>Nuevo Asesor</h3>
@@ -499,7 +529,6 @@
   </div>
 </div>
 
-<!-- NOTIFICACIÓN TOAST -->
 <div class="notify-toast" id="notifyToast"></div>
 
 <script src="js/session.js"></script>

@@ -120,6 +120,7 @@ function renderSeccion(id){
   if(id==='ventas')      renderVentas();
   if(id==='rendimiento') renderRendimiento();
   if(id==='frases')      renderFrases();
+  if(id==='equipo')      renderEquipo();
 }
 
 function setPeriodo(p, btn){
@@ -357,6 +358,140 @@ function renderFrasesHistorial(){
   const el=document.getElementById('frasesHistorial'); if(!el) return;
   if(!frasesHoy.length){ el.innerHTML=`<div class="frase-vacia"><div style="font-size:28px;margin-bottom:8px;">💬</div>Aún no publicaste ninguna frase hoy.</div>`; return; }
   el.innerHTML=`<div class="frases-historial">`+frasesHoy.map(f=>`<div class="frase-item"><div class="frase-item-texto">"${f.texto}"</div><div class="frase-item-meta">📍 ${f.sala} · 🕐 ${f.hora}</div></div>`).join('')+`</div>`;
+}
+
+/* ===================== MI EQUIPO ===================== */
+function renderEquipo(){
+  const asesores = getAsesoresSala();
+  const buscar   = (document.getElementById('equipoBuscar')?.value||'').toLowerCase();
+  const filtroEst= document.getElementById('equipoFiltroEstado')?.value||'';
+  const hoy      = fechaHoy();
+  const allV     = getAllVentas();
+
+  // KPIs
+  const activos   = asesores.filter(a=>a.activo).length;
+  const inactivos = asesores.length - activos;
+  const ventasHoy = allV.filter(v=>v._fecha===hoy).length;
+  const kTotal = document.getElementById('equipoTotal');    if(kTotal)  kTotal.textContent  = asesores.length;
+  const kAct   = document.getElementById('equipoActivos');  if(kAct)    kAct.textContent    = activos;
+  const kInact = document.getElementById('equipoInactivos');if(kInact)  kInact.textContent  = inactivos;
+  const kVH    = document.getElementById('equipoVentasHoy');if(kVH)     kVH.textContent     = ventasHoy;
+  const kSala  = document.getElementById('equipoSalaLabel');if(kSala)   kSala.textContent   = salaActual;
+  const sub    = document.getElementById('equipoSubtitle'); if(sub)     sub.textContent     = 'Asesores activos en ' + salaActual;
+
+  // Filtrar
+  let lista = asesores.filter(a=>{
+    const matchBuscar = !buscar || a.nombre.toLowerCase().includes(buscar) || (a.usuario||'').toLowerCase().includes(buscar);
+    const matchEst    = filtroEst==='' || String(a.activo?1:0)===filtroEst;
+    return matchBuscar && matchEst;
+  });
+
+  const cont = document.getElementById('equipoCards');
+  if(!cont) return;
+  if(!lista.length){
+    cont.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;font-size:13px;">No hay asesores con esos filtros.</div>';
+    return;
+  }
+
+  cont.innerHTML = lista.map(a=>{
+    const misV  = allV.filter(v=>v.asesor===a.nombre);
+    const hoyV  = misV.filter(v=>v._fecha===hoy).length;
+    const mesV  = misV.filter(v=>v._fecha&&v._fecha.startsWith(mesActual())).length;
+    const inst  = misV.filter(v=>(v._estado||'otro')==='instalado').length;
+    const conv  = misV.length ? Math.round(inst/misV.length*100) : 0;
+    const actBadge = a.activo
+      ? '<span style="background:#d1fae5;color:#065f46;font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;">ACTIVO</span>'
+      : '<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;">INACTIVO</span>';
+    const nombreEsc = a.nombre.replace(/'/g, "\\'");
+    return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:${colorFor(a.nombre)};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;">${iniciales(a.nombre)}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#111827;">${a.nombre}</div>
+            <div style="font-size:11px;color:#9ca3af;">@${a.usuario||'—'}</div>
+          </div>
+        </div>
+        ${actBadge}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:#f9fafb;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:#111827">${hoyV}</div>
+          <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Hoy</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:#2563eb">${mesV}</div>
+          <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Mes</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:#16a34a">${inst}</div>
+          <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Inst.</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:#7C3AED">${conv}%</div>
+          <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Conv.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid #f3f4f6;">
+        <span style="font-size:11px;color:#9ca3af;">${a.sala||'—'}</span>
+        <button onclick="abrirDetalleAsesor('${nombreEsc}')" style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;">Ver detalle</button>
+      </div>
+    </div>`;
+  }).join('');
+} // ← CIERRE de renderEquipo()
+
+function abrirDetalleAsesor(nombre){
+  const modal = document.getElementById('modalAsesor');
+  const body  = document.getElementById('modalAsesorBody');
+  if(!modal||!body) return;
+
+  const a    = getAsesoresSala().find(x=>x.nombre===nombre);
+  if(!a) return;
+  const allV = getAllVentas();
+  const misV = allV.filter(v=>v.asesor===nombre);
+  const hoy  = fechaHoy();
+  const hoyV = misV.filter(v=>v._fecha===hoy);
+  const mesV = misV.filter(v=>v._fecha&&v._fecha.startsWith(mesActual()));
+  const inst = misV.filter(v=>(v._estado||'otro')==='instalado').length;
+  const conv = misV.length ? Math.round(inst/misV.length*100) : 0;
+
+  const ultimas = [...misV].sort((a,b)=>b._fecha.localeCompare(a._fecha)).slice(0,5);
+
+  body.innerHTML =
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">'+
+      '<div style="width:60px;height:60px;border-radius:50%;background:'+colorFor(nombre)+';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;">'+iniciales(nombre)+'</div>'+
+      '<div>'+
+        '<div style="font-size:16px;font-weight:800;color:#111827;">'+nombre+'</div>'+
+        '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">@'+(a.usuario||'—')+' · '+(a.sala||'—')+'</div>'+
+        '<div style="margin-top:6px;">'+(a.activo
+          ?'<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;">ACTIVO</span>'
+          :'<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;">INACTIVO</span>')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">'+
+      '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#111827">'+hoyV.length+'</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;margin-top:3px;">Hoy</div></div>'+
+      '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#2563eb">'+mesV.length+'</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;margin-top:3px;">Este mes</div></div>'+
+      '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#16a34a">'+inst+'</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;margin-top:3px;">Instaladas</div></div>'+
+      '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#7C3AED">'+conv+'%</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;margin-top:3px;">Conversión</div></div>'+
+    '</div>'+
+    '<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px;">Últimas ventas</div>'+
+    (ultimas.length
+      ? '<div style="display:flex;flex-direction:column;gap:6px;">'+
+          ultimas.map(v=>
+            '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f9fafb;border-radius:8px;">'+
+              '<div><span style="font-family:monospace;font-weight:700;font-size:12px;color:#111827;">'+v.n1+'</span><span style="font-size:11px;color:#9ca3af;margin-left:8px;">'+(v.campana||'—')+'</span></div>'+
+              '<div style="display:flex;align-items:center;gap:8px;">'+badgeEstado(v._estado||'otro')+'<span style="font-size:11px;color:#9ca3af;">'+formatF(v._fecha)+'</span></div>'+
+            '</div>'
+          ).join('')+
+        '</div>'
+      : '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Sin ventas registradas.</div>');
+
+  modal.style.display = 'flex';
+}
+
+function cerrarModalAsesor(){
+  const modal = document.getElementById('modalAsesor');
+  if(modal) modal.style.display = 'none';
 }
 
 function exportarExcel(){ toast('📊 Exportación a Excel — próximamente'); }

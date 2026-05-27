@@ -212,7 +212,7 @@ function tipifVendHtml(tipif, hora){
 }
 
 function actualizarStats(){
-  const todos = Object.values(baseData).flat();
+  const todos = baseData[fechaActiva] || [];
   document.getElementById('statTotal').textContent      = todos.length;
   document.getElementById('statVentas').textContent     = todos.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length;
   document.getElementById('statAsignados').textContent  = todos.filter(r=>r.asesor&&r.asesor!=='').length;
@@ -472,12 +472,14 @@ function hace(h,m=0){ const d=new Date(ahoraNow); d.setHours(d.getHours()-h); d.
 
 function buildRotLeads(){
   const lista=[];
-  fechaPestanas.forEach(fecha=>{
+  const filtroFecha = (document.getElementById('rotFiltroFecha')||{}).value || '';
+  const todasFechasBase = Object.keys(baseData).sort().reverse();
+  const fechasFiltro = filtroFecha ? [filtroFecha] : todasFechasBase;
+  fechasFiltro.forEach(fecha=>{
     (baseData[fecha]||[]).forEach(reg=>{
-      if(!reg.asesor) return;
-      let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'08:00')+':00');
+      let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00');
       if(isNaN(ultimaAsig)) ultimaAsig = hace(24);
-      lista.push({ id:reg.id, nombre:reg.n1, campana:reg.campana, tel:reg.n1, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', asesor:reg.asesor, ultimaAsig, fecha, histAsesores:reg.historial?reg.historial.map(h=>h.asesor):[reg.asesor], _reg:reg });
+      lista.push({ id:reg.id, nombre:reg.n1, campana:reg.campana, tel:reg.n1, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores:reg.historial?reg.historial.map(h=>h.asesor):[], _reg:reg });
     });
   });
   return lista;
@@ -491,6 +493,8 @@ function rotApto(lead,asesor){
   const sinRepetir=!lead.histAsesores.includes(asesor);
   const mins=rotMins(lead.ultimaAsig), tiempo=mins>=120;
   const estadoOk=['Buzón','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado);
+  // Lead sin asignar: solo verificar que no haya tenido ese asesor
+  if(!lead.asesor) return {apto:sinRepetir, sinRepetir, tiempo:true, estadoOk:true};
   return {apto:sinRepetir&&tiempo&&estadoOk, sinRepetir, tiempo, estadoOk};
 }
 
@@ -502,6 +506,26 @@ function rotRenderAsesores(){
     return `<div class="rot-asesor-row"><span>${a.nombre}</span><span class="rot-asesor-badge">${cnt} registros</span></div>`;
   }).join('');
 }
+function rotPoblarFiltroFecha(){
+  const sel = document.getElementById('rotFiltroFecha');
+  if(!sel) return;
+  const val = sel.value;
+  // Usar todas las fechas de baseData (fuente de verdad)
+  const todasFechas = Object.keys(baseData).sort().reverse();
+  sel.innerHTML = '<option value="">Todas las fechas</option>';
+  todasFechas.forEach(f => {
+    const cnt = (baseData[f]||[]).length;
+    if(cnt === 0) return; // Ocultar fechas vacías
+    sel.innerHTML += '<option value="'+f+'" '+(f===val?'selected':'')+'>'+formatFecha(f)+' ('+cnt+')</option>';
+  });
+}
+
+function rotLimpiarFiltroFecha(){
+  const sel = document.getElementById('rotFiltroFecha');
+  if(sel) sel.value = '';
+  rotFiltrarAptos();
+}
+
 function rotFiltrarAptos(){
   rotAsesor=document.getElementById('rotSelAsesor').value;
   rotSel.clear(); document.getElementById('rotChkAll').checked=false;
@@ -588,7 +612,7 @@ function toggleRotacion(){
   const abierto=panel.style.display!=='none';
   panel.style.display=abierto?'none':'';
   btn.classList.toggle('abierto',!abierto);
-  if(!abierto){ rotRenderAsesores(); rotRenderTabla(); }
+  if(!abierto){ rotPoblarFiltroFecha(); rotRenderAsesores(); rotRenderTabla(); }
 }
 
 /* ===================== CARGA MASIVA ===================== */
@@ -628,6 +652,10 @@ function previsualizarMasiva(){
 }
 
 async function ejecutarCargaMasiva(){
+  // Sincronizar fecha desde el selector de carga masiva
+  const cmSel = document.getElementById('cm-fnav-select');
+  if(cmSel && cmSel.value) fechaActiva = cmSel.value;
+
   const raw=document.getElementById('masivaNums').value.trim();
   const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
   const lote=parseInt(document.getElementById('masivaLote').value)||10;
@@ -670,6 +698,7 @@ async function ejecutarCargaMasiva(){
   document.getElementById('btnCargaMasiva').disabled=true;
   document.getElementById('masivaStatus').textContent='';
   renderFechaTabs(); renderBase();
+  renderFechasCargaMasiva();
   mostrarToast(`✅ ${importados} registros cargados${asesor?' → '+asesor:''}`);
 }
 
@@ -810,23 +839,117 @@ function mostrarSeccion(id,btn){
   const sec=document.getElementById('sec-'+id); if(sec) sec.classList.remove('hidden');
   document.querySelectorAll('.bo-nav').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  if(id==='base')        { renderFechaTabs(); renderBase(); }
-  if(id==='asesores')    renderAsesoresCards();
-  if(id==='rendimiento') renderRendimiento();
+  if(id==='base')         { renderFechaTabs(); renderBase(); }
+  if(id==='asesores')     renderAsesoresCards();
+  if(id==='rendimiento')  renderRendimiento();
+  if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); }
 }
 
 function syncLocalStorage(){
   try{ localStorage.setItem('bo_baseData', JSON.stringify(baseData)); }catch(e){}
 }
 
+/* ===================== CARGAR LEADS DESDE BACKEND ===================== */
+async function cargarLeadsBackend() {
+  try {
+    const res  = await fetch(API_BO + '/leads', { headers: ncHeaders() });
+    const data = await res.json();
+    if (!data.ok) return;
+
+    // Reconstruir baseData desde backend (fuente de verdad)
+    const nuevoBaseData = {};
+    const nuevasFechas = [];
+
+    data.data.forEach(l => {
+      const fecha = l.fecha || fechaHoy();
+      if (!nuevoBaseData[fecha]) nuevoBaseData[fecha] = [];
+      if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha);
+
+      // Verificar si ya existe en baseData (por _backendId) para no perder estado local
+      let regExistente = null;
+      for (const f in baseData) {
+        regExistente = baseData[f].find(r => r._backendId === l.id);
+        if (regExistente) break;
+      }
+
+      nuevoBaseData[fecha].push({
+        id:          regExistente ? regExistente.id : baseIdCnt++,
+        _backendId:  l.id,
+        campana:     l.campana || '—',
+        distrito:    l.distrito || '—',
+        n1:          l.n1,
+        n2:          l.n2 || '',
+        tipifBack:   l.tipif_back || '',
+        asesor:      l.asesor_nombre || '',
+        horaAsig:    l.hora_asig || '',
+        sinAsignar:  !!l.sin_asignar,
+        rotaciones:  l.rotaciones || 0,
+        _tipifVend:  l.tipif_vend || '',
+        _tipifHora:  l.tipif_hora || '',
+        historial:   Array.isArray(l.historial) ? l.historial : [],
+      });
+    });
+
+    // Asegurar fecha de hoy siempre presente
+    if (!nuevasFechas.includes(fechaHoy())) nuevasFechas.push(fechaHoy());
+    nuevasFechas.sort().reverse();
+
+    baseData = nuevoBaseData;
+    fechaPestanas = nuevasFechas;
+    if (!fechaPestanas.includes(fechaActiva)) fechaActiva = fechaPestanas[0];
+  } catch(e) { console.error('Error cargando leads:', e); }
+}
+
+/* ===================== FECHAS CARGA MASIVA ===================== */
+function renderFechasCargaMasiva(){
+  const sel = document.getElementById('cm-fnav-select');
+  if(!sel) return;
+  sel.innerHTML = fechaPestanas.map(f=>{
+    const c = (baseData[f]||[]).length;
+    const sel2 = f===fechaActiva ? 'selected' : '';
+    return '<option value="'+f+'" '+sel2+'>'+formatFecha(f)+' ('+c+')</option>';
+  }).join('');
+  const count = document.getElementById('cm-fnav-count');
+  if(count) count.textContent = (fechaPestanas.indexOf(fechaActiva)+1) + ' / ' + fechaPestanas.length;
+}
+
+function cambiarFechaCargaMasiva(f){
+  fechaActiva = f;
+  renderFechaTabs();
+  renderFechasCargaMasiva();
+}
+
+function agregarFechaCargaMasiva(){
+  const picker = document.getElementById('cm-calPicker');
+  const f = picker ? picker.value : '';
+  if(!f){ mostrarToast('⚠️ Selecciona una fecha primero'); return; }
+  if(!fechaPestanas.includes(f)){
+    fechaPestanas.push(f);
+    fechaPestanas.sort().reverse();
+    if(!baseData[f]) baseData[f] = [];
+    mostrarToast('✅ Fecha ' + formatFecha(f) + ' agregada');
+  } else {
+    mostrarToast('Esa fecha ya existe');
+  }
+  picker.value = '';
+  fechaActiva = f;
+  renderFechaTabs();
+  renderFechasCargaMasiva();
+}
+
 /* ===================== INIT ===================== */
 window.onload = async ()=>{
+  // Limpiar localStorage de datos viejos
+  localStorage.removeItem('bo_baseData');
+
   await cargarAsesoresBackend();
+  await cargarLeadsBackend();
   poblarSelectAsesorForm();
   poblarSelectMasiva();
   renderFechaTabs();
   renderBase();
   setInterval(syncTipifVendedor, 30000);
+  setInterval(cargarLeadsBackend, 60000); // Recargar leads cada 60s
   document.getElementById('modal-rotar')?.addEventListener('click',e=>{if(e.target===document.getElementById('modal-rotar'))cerrarModalRotar();});
 
   // Aplicar sesión en topbar

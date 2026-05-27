@@ -31,12 +31,16 @@
 
 <!-- LLAMADAS -->
 <div id="llamadas" class="pantalla">
-    <h2>Base de llamadas</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h2 style="margin-bottom:0;">Base de llamadas</h2>
+        <span id="fechaHoyLabel" style="font-size:12px;color:#9ca3af;font-weight:600;background:#fff;padding:5px 12px;border-radius:20px;border:1px solid #e5e7eb;"></span>
+    </div>
     <table class="tabla-crm">
         <thead>
             <tr>
                 <th>Teléfono</th>
                 <th>Zona</th>
+                <th>Hora asig.</th>
                 <th>Estado</th>
                 <th>Observación</th>
                 <th>Acción</th>
@@ -44,7 +48,7 @@
         </thead>
         <tbody id="tabla">
             <tr>
-                <td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">
+                <td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">
                     ⏳ Esperando asignación del Back Office...
                 </td>
             </tr>
@@ -54,7 +58,17 @@
 
 <!-- RENDIMIENTO -->
 <div id="rendimiento" class="pantalla hidden">
-    <h2>Mi rendimiento</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+        <h2 style="margin-bottom:0;">Mi rendimiento</h2>
+        <div style="display:flex;align-items:center;gap:8px;background:#fff;padding:10px 14px;border-radius:12px;border:1px solid #e5e7eb;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Período:</span>
+            <input type="date" id="filtroDiarioDesde" style="padding:5px 8px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;" onchange="aplicarFiltroGrafico()">
+            <span style="font-size:11px;color:#9ca3af;">hasta</span>
+            <input type="date" id="filtroDiarioHasta" style="padding:5px 8px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;" onchange="aplicarFiltroGrafico()">
+            <button onclick="aplicarFiltroGrafico()" style="padding:5px 12px;border:none;border-radius:7px;background:#111827;color:#fff;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;">Aplicar</button>
+            <button onclick="document.getElementById('filtroDiarioDesde').value=new Date().toISOString().split('T')[0];document.getElementById('filtroDiarioHasta').value=new Date().toISOString().split('T')[0];aplicarFiltroGrafico();" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:7px;background:#fff;color:#6b7280;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;">Hoy</button>
+        </div>
+    </div>
     <div class="rend-kpis">
         <div class="rend-kpi rend-kpi-azul">
             <div class="rend-kpi-icon"></div>
@@ -328,40 +342,37 @@
 <div class="modal hidden" id="modalTipos">
   <div class="tip-modal">
     <div class="tip-modal-header">
-      <div class="tip-modal-title">
-        <div class="tip-modal-icon">📋</div>
-        <span>Tipificar llamada</span>
-      </div>
+      <div class="tip-modal-title">TIPIFICAR LLAMADA</div>
       <button class="tip-modal-close" onclick="cerrarModal()">✕</button>
     </div>
     <div class="tip-search-wrap">
-      <input type="text" class="tip-search" id="tipSearch" placeholder="🔍 Buscar tipificación..." oninput="filtrarTips(this.value)">
+      <input type="text" class="tip-search" id="tipSearch" placeholder="Buscar tipificación..." oninput="filtrarTips(this.value)">
     </div>
     <div class="tip-grid" id="tipGrid">
-      <button class="tip-chip tip-chip-venta"        onclick="tipificar('VENTA CERRADA')"><span class="tip-chip-dot"></span>VENTA CERRADA</button>
-      <button class="tip-chip tip-chip-corta"        onclick="tipificar('CORTA LLAMADA')"><span class="tip-chip-dot"></span>CORTA LLAMADA</button>
-      <button class="tip-chip tip-chip-preventa"     onclick="tipificar('PREVENTA')"><span class="tip-chip-dot"></span>PREVENTA</button>
-      <button class="tip-chip tip-chip-nocontesta"   onclick="tipificar('NO CONTESTA')"><span class="tip-chip-dot"></span>NO CONTESTA</button>
-      <button class="tip-chip tip-chip-agendado"     onclick="tipificar('AGENDADO')"><span class="tip-chip-dot"></span>AGENDADO</button>
-      <button class="tip-chip tip-chip-buzon"        onclick="tipificar('BUZON DE VOZ')"><span class="tip-chip-dot"></span>BUZON DE VOZ</button>
-      <button class="tip-chip tip-chip-ejecucion"    onclick="tipificar('EN EJECUCION')"><span class="tip-chip-dot"></span>EN EJECUCION</button>
-      <button class="tip-chip tip-chip-sincobertura" onclick="tipificar('SIN COBERTURA')"><span class="tip-chip-dot"></span>SIN COBERTURA</button>
-      <button class="tip-chip tip-chip-deseamovil"   onclick="tipificar('DESEA MOVIL')"><span class="tip-chip-dot"></span>DESEA MOVIL</button>
-      <button class="tip-chip tip-chip-servicio"     onclick="tipificar('SERVICIO ACTIVO')"><span class="tip-chip-dot"></span>SERVICIO ACTIVO</button>
-      <button class="tip-chip tip-chip-nocalifica"   onclick="tipificar('NO CALIFICA')"><span class="tip-chip-dot"></span>NO CALIFICA</button>
-      <button class="tip-chip tip-chip-nodesea"      onclick="tipificar('NO DESEA')"><span class="tip-chip-dot"></span>NO DESEA</button>
-      <button class="tip-chip tip-chip-terceros"     onclick="tipificar('CONTACTO CON TERCEROS')"><span class="tip-chip-dot"></span>CONTACTO CON TERCEROS</button>
-      <button class="tip-chip tip-chip-edificio"     onclick="tipificar('EDIFICIO NO LIBERADO')"><span class="tip-chip-dot"></span>EDIFICIO NO LIBERADO</button>
+      <button class="tip-chip tip-venta"       onclick="tipificar('VENTA CERRADA')">VENTA CERRADA</button>
+      <button class="tip-chip tip-preventa"    onclick="tipificar('PREVENTA')">PREVENTA</button>
+      <button class="tip-chip tip-agendado"    onclick="tipificar('AGENDADO')">AGENDADO</button>
+      <button class="tip-chip tip-nocontesta"  onclick="tipificar('NO CONTESTA')">NO CONTESTA</button>
+      <button class="tip-chip tip-buzon"       onclick="tipificar('BUZON DE VOZ')">BUZON DE VOZ</button>
+      <button class="tip-chip tip-corta"       onclick="tipificar('CORTA LLAMADA')">CORTA LLAMADA</button>
+      <button class="tip-chip tip-ejecucion"   onclick="tipificar('EN EJECUCION')">EN EJECUCION</button>
+      <button class="tip-chip tip-sincobert"   onclick="tipificar('SIN COBERTURA')">SIN COBERTURA</button>
+      <button class="tip-chip tip-nocalifica"  onclick="tipificar('NO CALIFICA')">NO CALIFICA</button>
+      <button class="tip-chip tip-nodesea"     onclick="tipificar('NO DESEA')">NO DESEA</button>
+      <button class="tip-chip tip-terceros"    onclick="tipificar('CONTACTO CON TERCEROS')">CONTACTO CON TERCEROS</button>
+      <button class="tip-chip tip-edificio"    onclick="tipificar('EDIFICIO NO LIBERADO')">EDIFICIO NO LIBERADO</button>
+      <button class="tip-chip tip-movil"       onclick="tipificar('DESEA MOVIL')">DESEA MOVIL</button>
+      <button class="tip-chip tip-servicio"    onclick="tipificar('SERVICIO ACTIVO')">SERVICIO ACTIVO</button>
     </div>
-    <button class="tip-cancelar" onclick="cerrarModal()">Cancelar</button>
+    <button class="tip-cancelar" onclick="cerrarModal()">CANCELAR</button>
   </div>
 </div>
 
 <!-- MODAL REGISTRAR VENTA -->
 <div class="modal hidden" id="modalVenta">
     <div class="modal-content" style="min-width:320px;max-width:380px;border-radius:16px;">
-        <h3 style="font-size:16px;font-weight:700;color:#111827;border-bottom:1px solid #f3f4f6;padding-bottom:10px;margin-bottom:4px;">📋 Registrar Venta</h3>
-        <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;">Ingresa el documento del cliente para continuar.</p>
+        <h3 style="font-size:16px;font-weight:700;color:#111827;border-bottom:1px solid #f3f4f6;padding-bottom:10px;margin-bottom:4px;">✅ Venta Cerrada</h3>
+        <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;">Ingresa el documento del cliente para registrar la venta.</p>
         <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
           <label style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Tipo de documento</label>
           <select id="mv_tipoDoc" onchange="actualizarLabelDoc()" style="padding:9px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;color:#111827;">
@@ -375,7 +386,7 @@
             onfocus="this.style.borderColor='#ff2d2d';this.style.background='#fff'"
             onblur="this.style.borderColor='#e5e7eb';this.style.background='#fafafa'">
         </div>
-        <button onclick="irANuevaVenta()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#111827;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:8px;">Continuar a registro completo →</button>
+        <button onclick="irANuevaVenta()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#22c55e;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:8px;">✅ Confirmar Venta Cerrada</button>
         <button class="btn-cancelar" onclick="cerrarModal()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#f3f4f6;color:#6b7280;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Cancelar</button>
     </div>
 </div>
