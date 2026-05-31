@@ -7,30 +7,34 @@ const API = 'http://127.0.0.1:3000/api';
 
 /* ===== RUTAS POR CARGO ===== */
 const RUTAS = {
-  asesor:      'dashboard.html',
-  supervisor:  'supervisor.html',
-  backoffice:  'backoffice.html',
-  validacion:  'validacion.html',
-  grabaciones: 'grabaciones.html',
-  seguimiento: 'seguimiento.html',
-  jefatura:    'jefatura.html',
-  usuarios:    'usuarios.html',
-  instalacion: 'instalacion.html',
-  postventa:   'postventa.html',
+  asesor:        'dashboard.html',
+  supervisor:    'supervisor.html',
+  backoffice:    'backoffice.html',
+  validacion:    'validacion.html',
+  grabaciones:   'grabaciones.html',
+  seguimiento:   'seguimiento.html',
+  jefatura:      'jefatura.html',
+  usuarios:      'usuarios.html',
+  instalacion:   'instalacion.html',
+  postventa:     'postventa.html',
+  programacion:  'programacion.html',
+  supgrabaciones:'supgrabaciones.html',
 };
 
 /* ===== LABELS DE CARGO ===== */
 const CARGO_LABELS = {
-  asesor:      'Asesor',
-  supervisor:  'Supervisor',
-  backoffice:  'Back Office',
-  validacion:  'Validación',
-  grabaciones: 'Grabaciones',
-  seguimiento: 'Seguimiento',
-  jefatura:    'Jefatura',
-  usuarios:    'Usuarios',
-  instalacion: 'Instalación',
-  postventa:   'Post Venta',
+  asesor:        'Asesor',
+  supervisor:    'Supervisor',
+  backoffice:    'Back Office',
+  validacion:    'Validación',
+  grabaciones:   'Grabaciones',
+  seguimiento:   'Seguimiento',
+  jefatura:      'Jefatura',
+  usuarios:      'Usuarios',
+  instalacion:   'Instalación',
+  postventa:     'Post Venta',
+  programacion:  'Programación',
+  supgrabaciones:'Sup. Grabaciones',
 };
 
 /* ===== TOGGLE CONTRASEÑA ===== */
@@ -151,7 +155,6 @@ async function doLogin(e) {
       return;
     }
 
-    // Guardar token y sesión en localStorage (persiste entre pestañas)
     localStorage.setItem('nc_token',   data.token);
     localStorage.setItem('nc_usuario', JSON.stringify(data.usuario));
 

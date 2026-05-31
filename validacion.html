@@ -6,15 +6,10 @@
 <title>Validación — Netcontact</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <link rel="stylesheet" href="css/validacion.css">
 </head>
 <body>
 
-<!-- ===================== TOPBAR ===================== -->
 <div class="topbar">
   <div class="brand">
     <div class="logo-circle">
@@ -32,19 +27,12 @@
   </div>
 </div>
 
-<!-- ===================== MAIN ===================== -->
 <div class="main-content">
 
-  <!-- HEADER -->
   <div class="page-header">
     <div class="page-header-left">
       <h2>Ventas — Validación</h2>
       <p>Gestiona y valida las ventas del sistema · Mes actual por defecto</p>
-    </div>
-    <div class="page-header-right">
-      <button class="btn-export btn-export-csv" onclick="exportarCSV()">📥 CSV</button>
-      <button class="btn-export btn-export-excel" onclick="exportarExcel()">📊 Excel</button>
-      <button class="btn-export btn-export-pdf" onclick="exportarPDF()">📄 PDF</button>
     </div>
   </div>
 
@@ -60,26 +48,35 @@
       <div><div class="kpi-num" id="kpi-novalidados">0</div><div class="kpi-label">No validadas</div></div>
     </div>
   </div>
+
   <!-- FILTROS -->
   <div class="filtros-panel">
     <div class="filtros-titulo">Filtros de búsqueda</div>
     <div class="filtros-grid">
-      <div class="fg"><label>Estado</label>
-        <select id="f_estado" onchange="aplicarFiltros()"></select>
+      <div class="fg">
+        <label>Estado</label>
+        <select id="f_estado" onchange="aplicarFiltros()">
+          <option value="">Todos los estados</option>
+          <option value="validado">VALIDADO</option>
+          <option value="novalidado">NO VALIDADO</option>
+          <option value="venta">VENTA</option>
+          <option value="instalado">INSTALADO</option>
+          <option value="programado">PROGRAMADO</option>
+          <option value="caida">CAÍDA</option>
+          <option value="observado">OBSERVADO</option>
+          <option value="pendiente">PENDIENTE</option>
+        </select>
       </div>
-      <div class="fg"><label>Vendedor / Asesor</label>
+      <div class="fg">
+        <label>Vendedor / Asesor</label>
         <input id="f_asesor" placeholder="Buscar vendedor..." oninput="aplicarFiltros()">
       </div>
-      <div class="fg"><label>Supervisor</label>
-        <input id="f_supervisor" placeholder="Buscar supervisor..." oninput="aplicarFiltros()">
-      </div>
-      <div class="fg"><label>Canal</label>
-        <select id="f_canal" onchange="aplicarFiltros()"></select>
-      </div>
-      <div class="fg"><label>Desde</label>
+      <div class="fg">
+        <label>Desde</label>
         <input type="date" id="f_desde" onchange="aplicarFiltros()">
       </div>
-      <div class="fg"><label>Hasta</label>
+      <div class="fg">
+        <label>Hasta</label>
         <input type="date" id="f_hasta" onchange="aplicarFiltros()">
       </div>
       <div class="filtros-acciones">
@@ -111,154 +108,123 @@
       </div>
     </div>
 
-    <!-- TABLA PRINCIPAL — scroll horizontal + vertical -->
     <div class="tabla-scroll">
       <table class="tabla">
         <thead>
           <tr>
             <th class="th-accion">ACCIÓN</th>
             <th class="th-estado">ESTADO VENTA</th>
-            <th class="th-obs-bo">OBS. BACK OFFICE</th>
-            <th class="th-tipoventa">TIPO VENTA</th>
+            <th class="th-obs-seg">OBS. SEGUIMIENTO</th>
             <th class="th-fecha">FECHA INGRESO</th>
             <th class="th-nombre">NOMBRE Y APELLIDOS</th>
             <th class="th-dni">DNI / DOC.</th>
-            <th class="th-repr">REPR. LEGAL</th>
             <th class="th-tel">TEL. CONTACTO</th>
             <th class="th-tel">TEL. REFERENCIA</th>
-            <th class="th-email">EMAIL</th>
             <th class="th-dpto">DEPARTAMENTO</th>
             <th class="th-prov">PROVINCIA</th>
             <th class="th-dist">DISTRITO</th>
             <th class="th-dir">DIRECCIÓN</th>
-            <th class="th-coord">COORDENADAS</th>
-            <th class="th-tipodom">TIPO DOMICILIO</th>
-            <th class="th-relacion">RELACIÓN PREDIO</th>
-            <th class="th-cuota">CUOTA INSTALACIÓN</th>
+            <th class="th-cuota">CUOTA INST.</th>
             <th class="th-claro">CLARO HOGAR</th>
             <th class="th-tec">TECNOLOGÍA</th>
             <th class="th-paquete">PAQUETE</th>
             <th class="th-full">FULL CLARO</th>
             <th class="th-num">DECOS</th>
             <th class="th-num">MESH</th>
-            <th class="th-cuotam">CUOTA MESH</th>
             <th class="th-plano">PLANO</th>
             <th class="th-obs">OBSERVACIÓN</th>
             <th class="th-vendedor">VENDEDOR</th>
-            <th class="th-superv">SUPERVISOR</th>
-            <th class="th-canal">CANAL</th>
-            <th class="th-umod">USER MODIFICA</th>
-            <th class="th-fmod">ÚLTIMA MODIF.</th>
           </tr>
         </thead>
         <tbody id="tablaBody">
-          <tr class="tabla-empty"><td colspan="33">Cargando datos...</td></tr>
+          <tr class="tabla-empty"><td colspan="22">Cargando datos...</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- PAGINACIÓN -->
     <div class="paginacion">
       <span class="pag-info" id="pagInfo2"></span>
       <div class="pag-btns" id="paginacionBtns"></div>
     </div>
   </div>
 
-</div><!-- fin main-content -->
+</div>
 
-<!-- ===================== MODAL: CAMBIAR ESTADO ===================== -->
+<!-- MODAL: TIPIFICACIÓN + HISTORIAL -->
 <div class="modal-bg" id="modalEstado">
-  <div class="modal-box" style="max-width:360px;">
-    <div class="modal-title">Cambiar estado</div>
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-title">Tipificar Venta</div>
     <div class="modal-sub">Estado actual: <strong id="re_estadoActual"></strong></div>
-    <div class="modal-campo modal-grid col1" style="margin-bottom:16px;">
-      <label>Nuevo estado</label>
-      <select id="re_nuevoEstado" style="padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fafafa;"></select>
+
+    <!-- Botones de tipificación -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;">Seleccionar tipificación</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <button class="tip-val-btn" data-id="corta_llamada" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #7dd3fc;background:#f0f9ff;color:#0c4a6e;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          CORTA LLAMADA
+        </button>
+        <button class="tip-val-btn" data-id="fraude" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #fca5a5;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          FRAUDE
+        </button>
+        <button class="tip-val-btn" data-id="no_desea" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #fda4af;background:#ffe4e6;color:#881337;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          NO DESEA
+        </button>
+        <button class="tip-val-btn" data-id="no_contesta" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #fde047;background:#fef9c3;color:#713f12;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          NO CONTESTA
+        </button>
+        <button class="tip-val-btn" data-id="servicio_activo" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #d1d5db;background:#f3f4f6;color:#374151;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          SERVICIO ACTIVO
+        </button>
+        <button class="tip-val-btn" data-id="validado" onclick="seleccionarTip(this)"
+          style="padding:8px 14px;border:2px solid #c4b5fd;background:#ede9fe;color:#4c1d95;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;">
+          VALIDADO
+        </button>
+      </div>
     </div>
+
+    <!-- Línea de tiempo -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;">Historial</div>
+      <div id="lt_container" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;max-height:150px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Observación nueva -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Nueva observación (opcional)</div>
+      <textarea id="re_nueva_obs" placeholder="Escribe una observación sobre esta venta..." rows="3"
+        style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;outline:none;"></textarea>
+    </div>
+
     <div class="modal-btns">
       <button class="btn-cancelar-modal" onclick="cerrarModal('modalEstado')">Cancelar</button>
-      <button class="btn-guardar" onclick="guardarEstado()">Guardar estado</button>
+      <button class="btn-guardar" onclick="guardarTipificacion()">💾 Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- ===================== MODAL: OBSERVACIÓN ===================== -->
+<!-- MODAL: HISTORIAL COMPLETO -->
 <div class="modal-bg" id="modalObs">
-  <div class="modal-box" style="max-width:460px;">
-    <div class="modal-title">💬 Agregar observación</div>
+  <div class="modal-box" style="max-width:500px;">
+    <div class="modal-title">Historial de tipificaciones</div>
     <div class="modal-sub" id="obs_nombre"></div>
-    <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:14px;font-size:11px;color:#6b7280;line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;" id="obs_historial"></div>
-    <div class="modal-campo" style="margin-bottom:14px;">
-      <label>Nueva observación</label>
-      <textarea id="obs_nueva" placeholder="Escribe tu observación aquí..." rows="4"></textarea>
-    </div>
+    <div id="obs_historial" style="padding:8px 0;max-height:400px;overflow-y:auto;"></div>
     <div class="modal-btns">
-      <button class="btn-cancelar-modal" onclick="cerrarModal('modalObs')">Cancelar</button>
-      <button class="btn-guardar" onclick="guardarObservacion()">Guardar</button>
+      <button class="btn-guardar" onclick="cerrarModal('modalObs')">Cerrar</button>
     </div>
   </div>
 </div>
 
-<!-- ===================== MODAL: EDITAR COMPLETO ===================== -->
-<div class="modal-bg" id="modalEditar">
-  <div class="modal-box" style="max-width:620px;">
-    <div class="modal-title" id="modalEditarTitulo">Editar registro</div>
-    <div class="modal-sub">Modifica los datos del registro. Los cambios se guardan con tu usuario.</div>
-
-    <div class="modal-grid">
-      <div class="modal-sep-label">Estado y fechas</div>
-      <div class="modal-campo"><label>Estado</label><select id="e_estado"></select></div>
-      <div class="modal-campo"><label>Tipo Venta</label><select id="e_tipoVenta"></select></div>
-
-      <div class="modal-sep-label">Datos del cliente</div>
-      <div class="modal-campo span2"><label>Nombre y Apellidos</label><input id="e_nombreApellidos" placeholder="Nombre completo"></div>
-      <div class="modal-campo"><label>DNI / Documento</label><input id="e_dni"></div>
-      <div class="modal-campo"><label>Representante Legal</label><input id="e_nombreRepresentante"></div>
-      <div class="modal-campo"><label>Email</label><input type="email" id="e_email"></div>
-      <div class="modal-campo"><label>Tel. Contacto</label><input id="e_telefonoContacto" style="font-family:monospace"></div>
-      <div class="modal-campo"><label>Tel. Referencia</label><input id="e_telefonoReferencia" style="font-family:monospace"></div>
-
-      <div class="modal-sep-label">Domicilio</div>
-      <div class="modal-campo"><label>Departamento</label><input id="e_departamento"></div>
-      <div class="modal-campo"><label>Provincia</label><input id="e_provincia"></div>
-      <div class="modal-campo"><label>Distrito</label><input id="e_distrito"></div>
-      <div class="modal-campo"><label>Tipo Domicilio</label><input id="e_tipoDomicilio"></div>
-      <div class="modal-campo span2"><label>Dirección</label><input id="e_direccion"></div>
-      <div class="modal-campo span2"><label>Coordenadas</label><input id="e_coordenadas"></div>
-      <div class="modal-campo"><label>Relación Predio</label><select id="e_relacionPredio"></select></div>
-
-      <div class="modal-sep-label">Servicio</div>
-      <div class="modal-campo"><label>Cuotas Instalación</label><select id="e_cuotasInstalacion"></select></div>
-      <div class="modal-campo"><label>Claro Hogar</label><select id="e_claroHogar"></select></div>
-      <div class="modal-campo"><label>Tecnología</label><select id="e_tecnologia"></select></div>
-      <div class="modal-campo span2"><label>Paquete</label><select id="e_paquete"></select></div>
-      <div class="modal-campo"><label>Full Claro</label><select id="e_fullClaro"></select></div>
-      <div class="modal-campo"><label>Cantidad Decos</label><input type="number" id="e_cantDecos" min="0"></div>
-      <div class="modal-campo"><label>Cantidad Mesh</label><input type="number" id="e_cantMesh" min="0"></div>
-      <div class="modal-campo"><label>Cuota Mesh</label><input id="e_cuotaMesh"></div>
-      <div class="modal-campo"><label>Plano</label><input id="e_plano"></div>
-
-      <div class="modal-sep-label">Comercial</div>
-      <div class="modal-campo"><label>Vendedor</label><input id="e_vendedor"></div>
-      <div class="modal-campo"><label>Supervisor</label><input id="e_supervisor"></div>
-      <div class="modal-campo"><label>Canal</label><select id="e_canal"></select></div>
-
-      <div class="modal-sep-label">Observaciones</div>
-      <div class="modal-campo span2"><label>Obs. Back Office</label><textarea id="e_obsBackOffice" rows="2"></textarea></div>
-      <div class="modal-campo span2"><label>Observación general</label><textarea id="e_observacion" rows="3"></textarea></div>
-    </div>
-
-    <div class="modal-btns">
-      <button class="btn-cancelar-modal" onclick="cerrarModal('modalEditar')">Cancelar</button>
-      <button class="btn-guardar" onclick="guardarEdicion()">💾 Guardar cambios</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
+<style>
+.tip-val-btn.activo { outline: 3px solid #7C3AED !important; box-shadow: 0 0 0 3px rgba(124,58,237,.2); transform: scale(1.04); }
+.tip-val-btn:hover { opacity: .85; transform: translateY(-1px); }
+</style>
 <div class="toast" id="toast"></div>
 
-<script src="js/historial.js"></script>
 <script src="js/session.js"></script>
 <script src="js/validacion.js"></script>
 </body>

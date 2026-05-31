@@ -13,6 +13,8 @@ const CARGOS = [
   { id:'seguimiento', label:'Seguimiento',    cls:'bc-seguimiento', modulo:'seguimiento.html', color:'#0891b2' },
   { id:'jefatura',    label:'Jefatura',       cls:'bc-jefatura',    modulo:'jefatura.html',    color:'#111827' },
   { id:'usuarios',    label:'Usuarios',       cls:'bc-usuarios',    modulo:'usuarios.html',    color:'#db2777' },
+  { id:'programacion', label:'Programación',  cls:'bc-programacion', modulo:'programacion.html', color:'#7C3AED' },
+  { id:'supgrabaciones', label:'Sup. Grabaciones', cls:'bc-supgrabaciones', modulo:'supgrabaciones.html', color:'#16a34a' },
 ];
 
 const SALAS = ['SALA 1','SALA 2','SALA 3','SIN SALA'];
@@ -368,6 +370,7 @@ function renderAccesos(){
     {nombre:'Supervisor',       desc:'Portal de supervisores',       icon:'👔', url:'supervisor.html',  color:'#7C3AED'},
     {nombre:'Dashboard CRM',    desc:'Vista del asesor',             icon:'📊', url:'dashboard.html',   color:'#2563eb'},
     {nombre:'Gestión Usuarios', desc:'Crear y administrar usuarios', icon:'👥', url:'usuarios.html',    color:'#db2777'},
+    {nombre:'Programación',     desc:'Ventas aprobadas por grabaciones', icon:'📅', url:'programacion.html', color:'#7C3AED'},
   ];
   grid.innerHTML=modulos.map(m=>`
     <a class="acceso-card" href="${m.url}">
