@@ -174,15 +174,21 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Departamento</label>
-            <input id="nv_dpto" placeholder="Departamento" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+            <select id="nv_dpto" onchange="actualizarProvincias()" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar departamento</option>
+            </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Provincia</label>
-            <input id="nv_prov" placeholder="Provincia" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+            <select id="nv_prov" onchange="actualizarDistritos()" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar provincia</option>
+            </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Distrito</label>
-            <input id="nv_dist" placeholder="Distrito" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
+            <select id="nv_dist" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar distrito</option>
+            </select>
           </div>
           <div style="grid-column:span 2;display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Dirección</label>
@@ -208,34 +214,35 @@
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Nombres de la Madre</label>
             <input id="nv_madre" placeholder="Nombres de la madre" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;transition:border .2s;" onfocus="this.style.borderColor='#ff2d2d'" onblur="this.style.borderColor='#e5e7eb'">
           </div>
-          <div style="display:flex;flex-direction:column;gap:5px;">
-            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Relación Predio</label>
-            <select id="nv_predio" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
-              <option value="">Seleccionar</option><option>PROPIETARIO</option><option>INQUILINO</option><option>FAMILIAR</option>
-            </select>
-          </div>
+
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Cuota Instalación</label>
             <select id="nv_cuota" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
-              <option value="">Seleccionar</option><option>S/.0 SOLES</option><option>S/.100 SOLES</option><option>S/.200 SOLES</option>
+              <option value="">Seleccionar</option><option>S/. 0 SOLES</option><option>S/. 120 SOLES</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Claro Hogar</label>
-            <select id="nv_hogar" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
-              <option value="">Seleccionar</option><option>1 PLAY</option><option>2 PLAY - INTERNET + TELEVISOR ESTANDAR</option><option>2 PLAY - INTERNET + TELEFONO</option><option>3 PLAY</option>
+            <select id="nv_hogar" onchange="actualizarPaquetes()" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
+              <option value="">Seleccionar</option>
+              <option>1 PLAY</option>
+              <option>2 PLAY INTERNET + TELEFONO</option>
+              <option>2 PLAY INTERNET + CABLE ESTANDAR</option>
+              <option>2 PLAY INTERNET + CABLE SUPERIOR</option>
+              <option>3 PLAY ESTANDAR</option>
+              <option>3 PLAY SUPERIOR</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Tecnología</label>
             <select id="nv_tec" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
-              <option value="">Seleccionar</option><option>HFC</option><option>FTTH</option><option>HFC+FTTH</option>
+              <option value="">Seleccionar</option><option>FTTH</option><option>HFC</option>
             </select>
           </div>
           <div style="grid-column:span 2;display:flex;flex-direction:column;gap:5px;">
             <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Paquete Real</label>
             <select id="nv_paquete" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fafafa;">
-              <option value="">Seleccionar</option><option>150 MBPS S/65.00</option><option>400 MBPS S/94.00</option><option>400 MBPS S/170.00</option><option>1500 MBPS S/200.00</option><option>PROM ENTRADA 200 X 12 M 400 MBPS X 6M 39.5</option>
+              <option value="">Seleccionar</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -392,6 +399,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/ubigeo.js"></script>
 <script src="js/session.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
