@@ -6,9 +6,9 @@ const API_GRAB = 'http://127.0.0.1:3000/api';
 
 const ESTADOS_GRAB = [
   { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
-  { id:'no contesta',   label:'NO CONTESTA',   cls:'bg-no-contesta'   },
-  { id:'no desea', label:'NO DESEA', cls:'bg-no-desea' },
-  { id:'corta llamada',  label:'CORTA LLAMADA',  cls:'bg-corta-llamada'  },
+  { id:'grabado',   label:'GRABADO',   cls:'bg-grabado'   },
+  { id:'observado', label:'OBSERVADO', cls:'bg-observado' },
+  { id:'revisado',  label:'REVISADO',  cls:'bg-revisado'  },
 ];
 
 let ventas            = [];
@@ -21,13 +21,41 @@ let busquedaVal       = '';
 let usuarioActual     = 'Grabaciones';
 let archivoSeleccionado = null;
 
-function fechaHoy(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+/* Fecha Peru UTC-5 */
+function fechaHoy(){
+  const ahora = new Date();
+  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
+  const peru  = new Date(utcMs + (-5 * 60 * 60000));
+  return peru.getFullYear() + '-' +
+    String(peru.getMonth()+1).padStart(2,'0') + '-' +
+    String(peru.getDate()).padStart(2,'0');
+}
+
 function horaAhora(){ return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}); }
 function formatF(f){ if(!f)return'—'; const p=f.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function estadoGrab(id){ return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB[0]; }
-function badgeGrab(id,vid){ const e=estadoGrab(id); return '<span class="badge-grab '+e.cls+'" onclick="abrirModalEstado('+vid+')" title="Cambiar estado">'+e.label+'</span>'; }
+function badgeGrab(id){ const e=estadoGrab(id); return '<span class="badge-grab '+e.cls+'">'+e.label+'</span>'; }
 function toast(msg){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3000); }
 function cerrarModal(id){ document.getElementById(id)?.classList.remove('open'); editandoId=null; archivoSeleccionado=null; }
+
+/* ── DESCARGAR AUDIO ── */
+function descargarAudio(id){
+  const v = ventas.find(x => x.id === id);
+  if (!v || !v._grabAudio) { toast('Esta venta no tiene grabación'); return; }
+
+  // Construir URL absoluta al servidor
+  const url = 'http://127.0.0.1:3000/' + v._grabAudio;
+  const nombreArchivo = v._grabNombre || ('grabacion_' + id + '.mp3');
+
+  const a = document.createElement('a');
+  a.href     = url;
+  a.download = nombreArchivo;
+  a.target   = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('Descargando: ' + nombreArchivo);
+}
 
 async function cargarVentas(){
   try {
@@ -35,20 +63,25 @@ async function cargarVentas(){
     const data = await res.json();
     if (data.ok) {
       ventas = data.data
-        // SOLO ventas con estado exactamente "validado"
-        .filter(v => (v.estado||'').toLowerCase() === 'validado')
-        .map(v => ({
-          ...v,
-          nombreApellidos:  v.nombre        || '',
-          dni:              v.dni           || '',
-          telefonoContacto: v.telefono1     || '',
-          vendedor:         v.asesor_nombre || '',
-          fechaIngreso:     v.created_at ? v.created_at.split(' ')[0] : '',
-          _estadoGrab:      v._estadoGrab || 'pendiente',
-          _grabAudio:       null,
-          _grabNombre:      '',
-          _grabObs:         v.observacion || '',
-        }));
+        .filter(v => {
+          const e = (v.estado||'').toLowerCase();
+          return e === 'validado' || e === 'venta';
+        })
+        .map(v => {
+          const fechaRaw = (v.created_at || '').split(' ')[0].split('T')[0];
+          return {
+            ...v,
+            nombreApellidos:  v.nombre        || '',
+            dni:              v.dni           || '',
+            telefonoContacto: v.telefono1     || '',
+            vendedor:         v.asesor_nombre || '',
+            fechaIngreso:     fechaRaw,
+            _estadoGrab:      v.estado_grab || 'pendiente',
+            _grabAudio:       v.audio_path    || null,
+            _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
+            _grabObs:         v.observacion   || '',
+          };
+        });
       return;
     }
   } catch(e) { console.error('Error cargando grabaciones:', e); }
@@ -63,24 +96,32 @@ async function actualizarVentaBackend(id, cambios){
   } catch(e) { console.error('Error actualizando:', e); }
 }
 
-function getVentasHoy(){ const hoy=fechaHoy(); return ventas.filter(v=>v.fechaIngreso===hoy); }
-function getVentasPendientes(){ const hoy=fechaHoy(); return ventas.filter(v=>v.fechaIngreso<hoy&&v._estadoGrab==='pendiente'); }
+function getVentasHoy(){
+  const hoy = fechaHoy();
+  return ventas.filter(v => v.fechaIngreso === hoy);
+}
+
+function getVentasPendientes(){
+  const hoy = fechaHoy();
+  return ventas.filter(v => v.fechaIngreso < hoy);
+}
+
 function getVentasTab(){ return tabActiva==='hoy' ? getVentasHoy() : getVentasPendientes(); }
 
 function aplicarFiltros(){
   let base = getVentasTab();
-  const fEstado   = document.getElementById('f_estado')?.value   || '';
   const fVendedor = (document.getElementById('f_vendedor')?.value || '').toLowerCase();
   const fDesde    = document.getElementById('f_desde')?.value    || '';
   const fHasta    = document.getElementById('f_hasta')?.value    || '';
   const fDoc      = (document.getElementById('f_doc')?.value     || '').toLowerCase();
+  const fEstado   = document.getElementById('f_estado')?.value   || '';
 
   base = base.filter(v => {
-    if (fEstado   && v._estadoGrab !== fEstado) return false;
     if (fVendedor && !(v.vendedor||'').toLowerCase().includes(fVendedor)) return false;
     if (fDesde    && v.fechaIngreso < fDesde) return false;
     if (fHasta    && v.fechaIngreso > fHasta) return false;
     if (fDoc      && !(v.dni||'').toLowerCase().includes(fDoc)) return false;
+    if (fEstado   && v._estadoGrab !== fEstado) return false;
     if (busquedaVal) {
       const b = busquedaVal.toLowerCase();
       if (![(v.nombreApellidos||''),(v.dni||''),(v.telefonoContacto||''),(v.vendedor||'')].some(c=>c.toLowerCase().includes(b))) return false;
@@ -96,26 +137,31 @@ function aplicarFiltros(){
 }
 
 function limpiarFiltros(){
-  ['f_estado','f_vendedor','f_desde','f_hasta','f_doc'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  ['f_vendedor','f_desde','f_hasta','f_doc'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
   busquedaVal = '';
   const bs = document.getElementById('busquedaInput'); if(bs) bs.value = '';
+  const fe = document.getElementById('f_estado'); if(fe) fe.value = '';
   aplicarFiltros();
 }
 
 function actualizarKpis(){
   const hoy  = getVentasHoy();
   const pend = getVentasPendientes();
-  const grab = ventas.filter(v=>v._estadoGrab==='grabado').length;
-  const obs  = ventas.filter(v=>v._estadoGrab==='observado').length;
-  document.getElementById('kpi-hoy').textContent        = hoy.length;
-  document.getElementById('kpi-pendientes').textContent  = pend.length;
-  document.getElementById('kpi-grabados').textContent    = grab;
-  document.getElementById('kpi-observados').textContent  = obs;
+  const elHoy  = document.getElementById('kpi-hoy');
+  const elPend = document.getElementById('kpi-pendientes');
+  const elGrab = document.getElementById('kpi-grabados');
+  const elObs  = document.getElementById('kpi-observados');
+  if(elHoy)  elHoy.textContent  = hoy.length;
+  if(elPend) elPend.textContent = pend.length;
+  if(elGrab) elGrab.textContent = ventas.filter(v=>v._estadoGrab==='grabado').length;
+  if(elObs)  elObs.textContent  = ventas.filter(v=>v._estadoGrab==='observado').length;
 }
 
 function actualizarTabCounts(){
-  document.getElementById('countHoy').textContent  = getVentasHoy().length;
-  document.getElementById('countPend').textContent = getVentasPendientes().length;
+  const cH = document.getElementById('countHoy');
+  const cP = document.getElementById('countPend');
+  if(cH) cH.textContent = getVentasHoy().length;
+  if(cP) cP.textContent = getVentasPendientes().length;
 }
 
 function cambiarTab(tab, btn){
@@ -136,7 +182,8 @@ function renderTabla(){
   const hoy    = fechaHoy();
 
   document.getElementById('tablaCount').textContent = total + ' registros';
-  document.getElementById('pagInfo').textContent    = total ? 'Mostrando '+(inicio+1)+'–'+fin+' de '+total : '';
+  const piInfo = document.getElementById('pagInfo');
+  if(piInfo) piInfo.textContent = total ? 'Mostrando '+(inicio+1)+'–'+fin+' de '+total : '';
 
   if (!pagina.length) {
     tbody.innerHTML = '<tr><td colspan="10" class="tabla-empty">'+(tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.')+'</td></tr>';
@@ -147,22 +194,28 @@ function renderTabla(){
     const fecha      = v.fechaIngreso || '';
     const esAnterior = fecha < hoy;
     const tieneAudio = !!v._grabAudio;
-    const nombreSafe = (v.nombreApellidos||'').substring(0,30).replace(/'/g,"\'");
-    return '<tr class="'+(v._estadoGrab==='pendiente'&&esAnterior?'fila-pendiente':'')+'">'+
+    return '<tr class="'+(esAnterior?'fila-pendiente':'')+'">'+
       '<td><div class="acciones-cell">'+
-        '<button class="btn-acc btn-acc-audio" onclick="abrirModalAudio('+v.id+')" title="Ver grabación">🎙️ '+(tieneAudio?'Audio':'Sin audio')+'</button>'+
-        '<button class="btn-acc btn-acc-subir" onclick="abrirModalSubir('+v.id+')" title="Subir grabación">📎 Subir</button>'+
-        '<button class="btn-acc btn-acc-obs"   onclick="abrirModalObs('+v.id+')"   title="Observación">💬</button>'+
+        '<button class="btn-acc btn-acc-audio" onclick="abrirModalAudio('+v.id+')" title="Escuchar grabacion">Escuchar</button>'+
+        // ── BOTÓN DESCARGAR: solo activo si tiene audio ──
+        (tieneAudio
+          ? '<button class="btn-acc btn-acc-dl" onclick="descargarAudio('+v.id+')" title="Descargar grabacion">Descargar</button>'
+          : '<button class="btn-acc btn-acc-dl" disabled title="Sin grabacion" style="opacity:.35;cursor:not-allowed;">Descargar</button>')+
+        '<button class="btn-acc btn-acc-obs"   onclick="abrirModalObs('+v.id+')"   title="Observacion">Obs.</button>'+
+        '<button class="btn-acc btn-acc-subir" onclick="abrirModalSubir('+v.id+')" title="Subir grabacion">Subir</button>'+
+        '<button class="btn-acc btn-acc-estado" onclick="abrirModalEstado('+v.id+')" title="Cambiar estado">Estado</button>'+
       '</div></td>'+
-      '<td>'+badgeGrab(v._estadoGrab, v.id)+'</td>'+
+      '<td>'+badgeGrab(v._estadoGrab)+'</td>'+
       '<td><span style="color:#185FA5;font-weight:700;font-size:11px">'+formatF(fecha)+'</span>'+(esAnterior?'<span class="badge-anterior">ANTERIOR</span>':'')+'</td>'+
-      '<td style="font-weight:600">'+( v.nombreApellidos||'—')+'</td>'+
+      '<td style="font-weight:600">'+(v.nombreApellidos||'—')+'</td>'+
       '<td style="font-family:monospace;font-size:11px">'+(v.dni||'—')+'</td>'+
       '<td style="font-family:monospace;color:#185FA5;font-weight:700">'+(v.telefonoContacto||'—')+'</td>'+
       '<td style="font-weight:600;color:#7C3AED">'+(v.vendedor||'—')+'</td>'+
       '<td style="font-size:11px">'+(v.supervisor||'—')+'</td>'+
-      '<td>'+(tieneAudio?'<span style="color:#16a34a;font-weight:600;font-size:11px">✅ '+(v._grabNombre||'Archivo subido')+'</span>':'<span style="color:#9ca3af;font-size:11px;font-style:italic">Sin grabación</span>')+'</td>'+
-      '<td style="font-size:10px;color:#6b7280">'+(v._grabObs?'💬 '+v._grabObs.split('\n').slice(-1)[0].substring(0,50):'—')+'</td>'+
+      '<td>'+(tieneAudio
+        ?'<span style="color:#16a34a;font-weight:600;font-size:11px">'+(v._grabNombre||'Archivo subido')+'</span>'
+        :'<span style="color:#9ca3af;font-size:11px;font-style:italic">Sin grabacion</span>')+'</td>'+
+      '<td style="font-size:10px;color:#6b7280">'+(v._grabObs?v._grabObs.split('\n').slice(-1)[0].substring(0,50):'—')+'</td>'+
     '</tr>';
   }).join('');
 
@@ -172,36 +225,66 @@ function renderTabla(){
 function renderPaginacion(total){
   const totalPags = Math.max(1, Math.ceil(total/porPagina));
   const cont = document.getElementById('paginacionBtns');
+  if(!cont) return;
   let html = '<button class="pag-btn" onclick="irPagina('+(paginaActual-1)+')" '+(paginaActual===1?'disabled':'')+'>‹</button>';
-  let ini=Math.max(1,paginaActual-3), fin=Math.min(totalPags,ini+6);
-  if(fin-ini<6) ini=Math.max(1,fin-6);
+  let ini=Math.max(1,paginaActual-3), fin2=Math.min(totalPags,ini+6);
+  if(fin2-ini<6) ini=Math.max(1,fin2-6);
   if(ini>1) html+='<button class="pag-btn" onclick="irPagina(1)">1</button>'+(ini>2?'<span style="padding:0 4px;color:#9ca3af">…</span>':'');
-  for(let i=ini;i<=fin;i++) html+='<button class="pag-btn '+(i===paginaActual?'active':'')+'" onclick="irPagina('+i+')">'+i+'</button>';
-  if(fin<totalPags) html+=(fin<totalPags-1?'<span style="padding:0 4px;color:#9ca3af">…</span>':'')+'<button class="pag-btn" onclick="irPagina('+totalPags+')">'+totalPags+'</button>';
+  for(let i=ini;i<=fin2;i++) html+='<button class="pag-btn '+(i===paginaActual?'active':'')+'" onclick="irPagina('+i+')">'+i+'</button>';
+  if(fin2<totalPags) html+=(fin2<totalPags-1?'<span style="padding:0 4px;color:#9ca3af">…</span>':'')+'<button class="pag-btn" onclick="irPagina('+totalPags+')">'+totalPags+'</button>';
   html+='<button class="pag-btn" onclick="irPagina('+(paginaActual+1)+')" '+(paginaActual===totalPags?'disabled':'')+'>›</button>';
   cont.innerHTML = html;
+  const pi2 = document.getElementById('pagInfo2');
+  if(pi2) pi2.textContent = total ? paginaActual+' / '+totalPags : '';
 }
 
-function irPagina(p){ paginaActual=Math.max(1,Math.min(p,Math.ceil(ventasFiltradas.length/porPagina)||1)); renderTabla(); document.querySelector('.tabla-scroll')?.scrollTo(0,0); }
+function irPagina(p){
+  paginaActual=Math.max(1,Math.min(p,Math.ceil(ventasFiltradas.length/porPagina)||1));
+  renderTabla();
+  document.querySelector('.tabla-scroll')?.scrollTo(0,0);
+}
 
+/* ── MODAL ESTADO ── */
 function abrirModalEstado(id){
   const v=ventas.find(x=>x.id===id); if(!v) return;
   editandoId=id;
-  document.getElementById('re_estadoActual').textContent = estadoGrab(v._estadoGrab).label;
-  document.getElementById('re_nuevoEstado').value = v._estadoGrab;
+  document.getElementById('re_estadoActual').textContent = v._estadoGrab || 'pendiente';
+  const sel = document.getElementById('re_nuevoEstado');
+  sel.innerHTML = ESTADOS_GRAB.map(e=>'<option value="'+e.id+'">'+e.label+'</option>').join('');
+  sel.value = v._estadoGrab || 'pendiente';
   document.getElementById('modalEstado').classList.add('open');
 }
 
 async function guardarEstado(){
   const v=ventas.find(x=>x.id===editandoId); if(!v) return;
   const nuevo = document.getElementById('re_nuevoEstado').value;
+
+  if(nuevo === 'grabado'){
+    await fetch(API_GRAB + '/ventas/' + v.id, {
+      method: 'PATCH', headers: ncHeaders(),
+      body: JSON.stringify({ estado: 'grabado' }),
+    });
+    ventas = ventas.filter(x => x.id !== editandoId);
+    cerrarModal('modalEstado');
+    aplicarFiltros();
+    toast('Venta marcada como GRABADA — pasa al Supervisor');
+    return;
+  }
+
   v._estadoGrab = nuevo;
-  await actualizarVentaBackend(v.id, { obs_backoffice: v.obsBackOffice||'' });
+  try {
+    await fetch(API_GRAB + '/ventas/' + v.id, {
+      method: 'PATCH', headers: ncHeaders(),
+      body: JSON.stringify({ estado_grab: nuevo }),
+    });
+  } catch(e) { console.error('Error guardando estado:', e); }
+
   cerrarModal('modalEstado');
-  aplicarFiltros();
-  toast('Estado: '+estadoGrab(nuevo).label);
+  renderTabla();
+  toast('Estado actualizado: ' + nuevo.toUpperCase());
 }
 
+/* ── MODAL SUBIR ── */
 function abrirModalSubir(id){
   const v=ventas.find(x=>x.id===id); if(!v) return;
   editandoId=id; archivoSeleccionado=null;
@@ -216,20 +299,42 @@ function handleFileSelect(files){
   const file=files[0];
   if(!file.name.match(/\.(mp3|wav|ogg|m4a|mp4|webm)$/i)){ toast('Solo archivos de audio'); return; }
   archivoSeleccionado=file;
-  document.getElementById('subir_info').innerHTML='<span style="color:#16a34a;font-weight:600;">✅ '+file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)</span>';
+  document.getElementById('subir_info').innerHTML='<span style="color:#16a34a;font-weight:600;">'+file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)</span>';
 }
 
 async function guardarAudio(){
   if(!archivoSeleccionado){ toast('Selecciona un archivo primero'); return; }
   const v=ventas.find(x=>x.id===editandoId); if(!v) return;
-  v._grabAudio  = URL.createObjectURL(archivoSeleccionado);
-  v._grabNombre = archivoSeleccionado.name;
-  if(v._estadoGrab==='pendiente') v._estadoGrab='grabado';
+
+  const formData = new FormData();
+  formData.append('audio', archivoSeleccionado);
+
+  let rutaAudio = null;
+  try {
+    const uploadRes = await fetch(API_GRAB + '/ventas/' + editandoId + '/audio', {
+      method: 'POST',
+      headers: { 'Authorization': ncHeaders()['Authorization'] },
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+    if (uploadData.ok) rutaAudio = uploadData.ruta;
+  } catch(e){ console.error('Error subiendo audio:', e); }
+
+  await fetch(API_GRAB + '/ventas/' + editandoId, {
+    method: 'PATCH', headers: ncHeaders(),
+    body: JSON.stringify({
+      estado: 'grabado',
+      ...(rutaAudio ? { audio_path: rutaAudio } : {}),
+    }),
+  });
+
+  ventas = ventas.filter(x => x.id !== editandoId);
   cerrarModal('modalSubir');
   aplicarFiltros();
-  toast('Grabación subida: '+archivoSeleccionado.name);
+  toast('Grabacion subida — pasa al Supervisor de Grabaciones');
 }
 
+/* ── MODAL AUDIO ── */
 function abrirModalAudio(id){
   const v=ventas.find(x=>x.id===id); if(!v) return;
   editandoId=id;
@@ -238,21 +343,34 @@ function abrirModalAudio(id){
   document.getElementById('audio_fecha').textContent  = formatF(v.fechaIngreso||'');
   const player  = document.getElementById('audioPlayer');
   const noAudio = document.getElementById('audioNoDisp');
+
   if(v._grabAudio){
-    player.src=v._grabAudio; player.style.display=''; noAudio.style.display='none';
-    document.getElementById('audio_archivo').textContent=v._grabNombre||'grabacion.mp3';
+    // URL absoluta para que el player cargue correctamente
+    player.src = 'http://127.0.0.1:3000/' + v._grabAudio;
+    player.style.display='';
+    if(noAudio) noAudio.style.display='none';
+    document.getElementById('audio_archivo').textContent = v._grabNombre||'grabacion.mp3';
+
+    // Botón descargar dentro del modal
+    const btnDl = document.getElementById('audio_btnDescargar');
+    if(btnDl){ btnDl.style.display=''; btnDl.onclick = () => descargarAudio(id); }
   } else {
-    player.style.display='none'; noAudio.style.display='';
+    player.src='';
+    player.style.display='none';
+    if(noAudio) noAudio.style.display='';
     document.getElementById('audio_archivo').textContent='—';
+    const btnDl = document.getElementById('audio_btnDescargar');
+    if(btnDl) btnDl.style.display='none';
   }
   document.getElementById('modalAudio').classList.add('open');
 }
 
+/* ── MODAL OBS ── */
 function abrirModalObs(id){
   const v=ventas.find(x=>x.id===id); if(!v) return;
   editandoId=id;
-  document.getElementById('obs_nombre').textContent   = v.nombreApellidos||'—';
-  document.getElementById('obs_historial').textContent= v._grabObs||'Sin observaciones previas.';
+  document.getElementById('obs_nombre').textContent    = v.nombreApellidos||'—';
+  document.getElementById('obs_historial').textContent = v._grabObs||'Sin observaciones previas.';
   document.getElementById('obs_nueva').value='';
   document.getElementById('modalObs').classList.add('open');
 }
@@ -260,31 +378,34 @@ function abrirModalObs(id){
 async function guardarObservacion(){
   const v=ventas.find(x=>x.id===editandoId); if(!v) return;
   const nueva=document.getElementById('obs_nueva').value.trim();
-  if(!nueva){ toast('Escribe una observación'); return; }
+  if(!nueva){ toast('Escribe una observacion'); return; }
   const prev=v._grabObs?v._grabObs+'\n':'';
   v._grabObs=prev+'['+formatF(fechaHoy())+' '+horaAhora()+' - '+usuarioActual+'] '+nueva;
   await actualizarVentaBackend(v.id, { observacion: v._grabObs });
   cerrarModal('modalObs');
   aplicarFiltros();
-  toast('Observación guardada');
+  toast('Observacion guardada');
 }
 
 function actualizarFecha(){
   const el=document.getElementById('topbarFecha'); if(!el) return;
   const ahora=new Date();
-  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dias=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   el.textContent=dias[ahora.getDay()]+' '+ahora.getDate()+' '+meses[ahora.getMonth()]+' · '+horaAhora();
 }
 
 window.onload = async () => {
-  const sesion=ncGetSesion(); if(sesion) usuarioActual=sesion.nombre||'Grabaciones';
+  const sesion=ncGetSesion();
+  if(sesion) usuarioActual=sesion.nombre||'Grabaciones';
   const el=document.getElementById('topbarUser'); if(el&&sesion) el.textContent=sesion.nombre||'Grabaciones';
 
-  const selE=document.getElementById('f_estado');
-  if(selE) selE.innerHTML='<option value="">Todos</option>'+ESTADOS_GRAB.map(e=>'<option value="'+e.id+'">'+e.label+'</option>').join('');
-  const selRE=document.getElementById('re_nuevoEstado');
-  if(selRE) selRE.innerHTML=ESTADOS_GRAB.map(e=>'<option value="'+e.id+'">'+e.label+'</option>').join('');
+  // Poblar select de estados
+  const fEstado = document.getElementById('f_estado');
+  if(fEstado){
+    fEstado.innerHTML = '<option value="">Todos</option>' +
+      ESTADOS_GRAB.map(e=>'<option value="'+e.id+'">'+e.label+'</option>').join('');
+  }
 
   await cargarVentas();
   aplicarFiltros();
@@ -299,5 +420,6 @@ window.onload = async () => {
     porPagina=parseInt(e.target.value)||18; paginaActual=1; renderTabla();
   });
 
-  setInterval(async()=>{ await cargarVentas(); aplicarFiltros(); }, 60000);
+  // Recargar cada 30s
+  setInterval(async()=>{ await cargarVentas(); aplicarFiltros(); }, 30000);
 };

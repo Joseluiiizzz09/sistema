@@ -108,7 +108,7 @@
       <table class="tabla">
         <thead>
           <tr>
-            <th style="width:240px;">ACCIONES</th>
+            <th style="width:280px;">ACCIONES</th>
             <th style="width:110px;">ESTADO GRAB.</th>
             <th style="width:120px;">FECHA</th>
             <th style="width:160px;">NOMBRE Y APELLIDOS</th>
@@ -174,6 +174,7 @@
 </div>
 
 <!-- MODAL: ESCUCHAR AUDIO -->
+<!-- ── ÚNICO CAMBIO EN EL HTML: se agrega el botón id="audio_btnDescargar" ── -->
 <div class="modal-bg" id="modalAudio">
   <div class="modal-box" style="max-width:460px;">
     <div class="modal-title">🎙️ Grabación</div>
@@ -192,6 +193,8 @@
     </div>
     <div class="modal-btns">
       <button class="btn-cancelar-m" onclick="cerrarModal('modalAudio');document.getElementById('audioPlayer').pause();">Cerrar</button>
+      <!-- BOTÓN NUEVO: Descargar dentro del modal -->
+      <button id="audio_btnDescargar" class="btn-guardar" style="background:#059669;">⬇️ Descargar</button>
       <button class="btn-guardar" style="background:#2563eb;" onclick="cerrarModal('modalAudio');document.getElementById('audioPlayer').pause();abrirModalSubir(editandoId);">📎 Cambiar archivo</button>
     </div>
   </div>

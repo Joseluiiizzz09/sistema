@@ -5,137 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Programación — Netcontact</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:"DM Sans",sans-serif;background:#f4f4f8;min-height:100vh;color:#111827;}
-.topbar{height:64px;padding:0 24px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.95);border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:100;box-shadow:0 1px 6px rgba(0,0,0,.06);}
-.brand{display:flex;align-items:center;gap:10px;}
-.logo-circle{width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;}
-.logo-circle img{width:28px;height:28px;object-fit:contain;}
-.brand-text h1{font-family:"Archivo Black",sans-serif;font-size:15px;color:#111827;text-transform:uppercase;letter-spacing:.4px;}
-.brand-text h1 .dot{width:4px;height:4px;border-radius:50%;background:#ff2d2d;display:inline-block;margin:0 2px 1px;}
-.brand-text h1 .red{color:#ff2d2d;}
-.brand-text span{font-size:10px;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;font-weight:600;}
-.topbar-right{display:flex;align-items:center;gap:10px;}
-.badge-prog{background:#7C3AED;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;}
-.topbar-user{font-size:13px;color:#374151;font-weight:500;background:#f3f4f6;padding:5px 12px;border-radius:20px;}
-.btn-salir{font-size:11px;color:#ef4444;font-weight:600;padding:5px 12px;border:1.5px solid #fca5a5;border-radius:8px;background:none;cursor:pointer;font-family:inherit;}
-.btn-salir:hover{background:#fef2f2;}
-.main{padding:24px 28px;}
-
-/* KPIs */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
-.kpi-card{background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #e5e7eb;box-shadow:0 2px 6px rgba(0,0,0,.04);border-top:4px solid transparent;}
-.kpi-card.k-purple{border-top-color:#7C3AED;}
-.kpi-card.k-green{border-top-color:#16a34a;}
-.kpi-card.k-blue{border-top-color:#2563eb;}
-.kpi-card.k-orange{border-top-color:#f97316;}
-.kpi-card.k-red{border-top-color:#dc2626;}
-.kpi-num{font-size:28px;font-weight:800;color:#111827;line-height:1;}
-.kpi-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:6px;}
-
-/* Filtros */
-.filtros-panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;margin-bottom:16px;}
-.filtros-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-.filtro-group{display:flex;flex-direction:column;gap:4px;min-width:120px;flex:1;}
-.filtro-group label{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;}
-.filtro-input,.filtro-select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;outline:none;background:#fafafa;}
-.filtro-input:focus,.filtro-select:focus{border-color:#7C3AED;background:#fff;}
-.btn-filtrar{padding:8px 16px;background:#111827;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
-.btn-limpiar{padding:8px 12px;background:#fff;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;}
-
-/* Tabla */
-.tabla-wrap{background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow-x:auto;box-shadow:0 1px 6px rgba(0,0,0,.04);}
-.tabla-header{padding:14px 18px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
-.tabla-title{font-size:13px;font-weight:700;color:#374151;}
-.tabla-count{font-size:12px;color:#9ca3af;font-weight:600;}
-.tabla-search{padding:6px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;outline:none;width:220px;}
-.tabla-search:focus{border-color:#7C3AED;}
-.tabla{width:100%;border-collapse:collapse;font-size:12px;}
-.tabla thead th{background:#111827;color:#d1d5db;padding:9px 13px;font-size:9px;font-weight:700;text-align:left;letter-spacing:.3px;white-space:nowrap;}
-.tabla tbody td{padding:10px 13px;border-bottom:1px solid #f3f4f6;color:#374151;vertical-align:middle;}
-.tabla tbody tr:last-child td{border-bottom:none;}
-.tabla tbody tr:hover td{background:#fafafa;}
-.tabla-empty td{text-align:center;color:#9ca3af;padding:36px;font-size:13px;}
-
-/* Badges */
-.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap;}
-.b-programado{background:#dbeafe;color:#1e3a8a;}
-.b-instalado{background:#d1fae5;color:#065f46;}
-.b-caida{background:#fee2e2;color:#991b1b;}
-.b-validado{background:#ede9fe;color:#4c1d95;}
-.b-pendiente{background:#fef3c7;color:#78350f;}
-.b-venta{background:#e0f2fe;color:#075985;}
-
-/* Botones acción */
-.btn-accion{padding:4px 10px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;}
-.btn-ver-det{background:#ede9fe;color:#4c1d95;}
-.btn-cambiar{background:#d1fae5;color:#065f46;}
-
-/* Modal detalle */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center;}
-.modal-bg.open{display:flex;}
-.modal-box{background:#fff;border-radius:16px;width:min(640px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid #f3f4f6;}
-.modal-head-title{font-size:13px;font-weight:800;color:#111827;text-transform:uppercase;letter-spacing:.5px;}
-.modal-close{width:28px;height:28px;border:none;border-radius:7px;background:#f3f4f6;color:#6b7280;font-size:14px;cursor:pointer;font-weight:700;}
-.modal-body{padding:18px 20px;}
-.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.det-campo{background:#f9fafb;border-radius:8px;padding:10px 12px;}
-.det-campo label{font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:3px;}
-.det-campo span{font-size:13px;font-weight:600;color:#111827;}
-.det-full{grid-column:1/-1;}
-.cambiar-estado-wrap{background:#f9fafb;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;}
-.cambiar-estado-wrap label{font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:8px;}
-.estado-btns{display:flex;gap:8px;flex-wrap:wrap;}
-.btn-estado{padding:7px 14px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;}
-.btn-estado:hover{opacity:.85;}
-.be-programado{background:#dbeafe;color:#1e3a8a;}
-.be-instalado{background:#d1fae5;color:#065f46;}
-.be-caida{background:#fee2e2;color:#991b1b;}
-.be-pendiente{background:#fef3c7;color:#78350f;}
-.be-validado{background:#ede9fe;color:#4c1d95;}
-.obs-wrap{margin-top:12px;}
-.obs-wrap label{font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:6px;}
-.obs-wrap textarea{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;outline:none;}
-.obs-wrap textarea:focus{border-color:#7C3AED;}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid #f3f4f6;}
-.btn-guardar-m{padding:9px 18px;background:#111827;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
-.btn-cancelar-m{padding:9px 14px;background:#fff;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;}
-
-.toast{position:fixed;bottom:20px;right:20px;background:#111827;color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.2);}
-.toast.show{display:block;}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/programacion.css">
 </head>
 <body>
 
 <div class="topbar">
   <div class="brand">
-    <div class="logo-circle"><img src="assets/logo3.png" onerror="this.parentNode.textContent='📋'"></div>
+    <div class="logo-circle"><img src="assets/logo3.png" onerror="this.parentNode.textContent=''"></div>
     <div class="brand-text">
       <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
-      <span>Programación</span>
+      <span class="brand-sub">Programación</span>
     </div>
   </div>
   <div class="topbar-right">
-    <span class="badge-prog">PROGRAMACIÓN</span>
+    <span class="topbar-badge" style="background:#7c3aed;">PROGRAMACIÓN</span>
     <span class="topbar-user" id="topbarUser">—</span>
-    <button class="btn-salir" onclick="ncCerrarSesion()">Salir</button>
+    <button class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
   </div>
 </div>
 
-<div class="main">
+<div class="main-content">
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
-    <div>
-      <h2 style="font-size:18px;font-weight:700;color:#111827;">Ventas para Programar</h2>
-      <p style="font-size:12px;color:#9ca3af;margin-top:3px;">Ventas aprobadas por Grabaciones — gestiona el estado de instalación</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Ventas para Programar</h2>
+      <p>Ventas aprobadas por Grabaciones — gestiona el estado de instalación</p>
     </div>
-    <button class="btn-filtrar" onclick="cargarVentas()">↻ Actualizar</button>
+    <button class="btn-filtrar" onclick="cargarVentas()">Actualizar</button>
   </div>
 
-  <!-- KPIs -->
   <div class="kpi-grid">
     <div class="kpi-card k-purple"><div class="kpi-num" id="kpiTotal">0</div><div class="kpi-label">Total</div></div>
     <div class="kpi-card k-green"><div class="kpi-num" id="kpiInstalado">0</div><div class="kpi-label">Instaladas</div></div>
@@ -144,7 +43,6 @@ body{font-family:"DM Sans",sans-serif;background:#f4f4f8;min-height:100vh;color:
     <div class="kpi-card k-red"><div class="kpi-num" id="kpiCaida">0</div><div class="kpi-label">Caídas</div></div>
   </div>
 
-  <!-- Filtros -->
   <div class="filtros-panel">
     <div class="filtros-row">
       <div class="filtro-group">
@@ -171,38 +69,41 @@ body{font-family:"DM Sans",sans-serif;background:#f4f4f8;min-height:100vh;color:
         <input type="date" class="filtro-input" id="filtroHasta" onchange="filtrarVentas()">
       </div>
       <div style="display:flex;gap:6px;align-items:flex-end;">
-        <button class="btn-limpiar" onclick="limpiarFiltros()">✕ Limpiar</button>
+        <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
       </div>
     </div>
   </div>
 
-  <!-- Tabla -->
   <div class="tabla-wrap">
     <div class="tabla-header">
-      <span class="tabla-title">Lista de ventas programadas</span>
-      <span class="tabla-count" id="tablaCount">0 registros</span>
+      <div class="tabla-header-left">
+        <span class="tabla-title">Lista de ventas programadas</span>
+        <span class="tabla-count" id="tablaCount">0 registros</span>
+      </div>
       <input type="text" class="tabla-search" id="tablaBuscar" placeholder="Buscar DNI, nombre, asesor..." oninput="filtrarVentas()">
     </div>
-    <table class="tabla">
-      <thead><tr>
-        <th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th>
-        <th>Asesor</th><th>Sala</th><th>Distrito</th>
-        <th>Paquete</th><th>Estado</th><th>Obs. Programación</th><th>Acción</th>
-      </tr></thead>
-      <tbody id="tablaBody">
-        <tr class="tabla-empty"><td colspan="11">Cargando ventas...</td></tr>
-      </tbody>
-    </table>
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead><tr>
+          <th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th>
+          <th>Asesor</th><th>Sala</th><th>Distrito</th>
+          <th>Paquete</th><th>Estado</th><th>Obs. Programación</th><th>Acción</th>
+        </tr></thead>
+        <tbody id="tablaBody">
+          <tr class="tabla-empty"><td colspan="11">Cargando ventas...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>
 
 <!-- MODAL DETALLE / EDITAR -->
 <div class="modal-bg" id="modalDetalle">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:640px;">
     <div class="modal-head">
       <span class="modal-head-title">Detalle de Venta</span>
-      <button class="modal-close" onclick="cerrarModal()">✕</button>
+      <button class="modal-close" onclick="cerrarModal()">×</button>
     </div>
     <div class="modal-body">
       <div class="det-grid" id="detalleGrid"></div>
@@ -215,7 +116,7 @@ body{font-family:"DM Sans",sans-serif;background:#f4f4f8;min-height:100vh;color:
           <button class="btn-estado be-caida"      onclick="setEstadoModal('CAIDA')">Caída</button>
           <button class="btn-estado be-validado"   onclick="setEstadoModal('VALIDADO')">Validado</button>
         </div>
-        <div id="estadoSelLabel" style="margin-top:8px;font-size:11px;color:#7C3AED;font-weight:600;"></div>
+        <div id="estadoSelLabel" style="margin-top:8px;font-size:11px;color:#7c3aed;font-weight:600;"></div>
       </div>
       <div class="obs-wrap">
         <label>Observación de Programación</label>
@@ -224,13 +125,12 @@ body{font-family:"DM Sans",sans-serif;background:#f4f4f8;min-height:100vh;color:
     </div>
     <div class="modal-footer">
       <button class="btn-cancelar-m" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-guardar-m" onclick="guardarCambios()">💾 Guardar cambios</button>
+      <button class="btn-guardar-m" onclick="guardarCambios()">Guardar cambios</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
-
 <script src="js/session.js"></script>
 <script src="js/programacion.js"></script>
 </body>

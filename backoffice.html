@@ -43,7 +43,7 @@
 
   <main class="bo-main">
 
-    <!-- ========== SECCIÓN: BASE ========== -->
+    <!-- SECCIÓN: BASE -->
     <section id="sec-base" class="bo-seccion">
 
       <div class="bo-seccion-header">
@@ -114,7 +114,7 @@
                   <select id="rotFiltroFecha" onchange="rotFiltrarAptos()" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;outline:none;background:#fff;cursor:pointer;">
                     <option value="">Todas las fechas</option>
                   </select>
-                  <button onclick="rotLimpiarFiltroFecha()" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#6b7280;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;">✕ Limpiar</button>
+                  <button onclick="rotLimpiarFiltroFecha()" style="padding:5px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#6b7280;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;">Limpiar</button>
                 </div>
               </div>
               <div style="overflow-x:auto" class="rot-table">
@@ -123,7 +123,7 @@
                     <th><input type="checkbox" id="rotChkAll" onchange="rotToggleAll()"></th>
                     <th>N1 / Campaña</th><th>Fecha</th><th>Tipif. Back</th>
                     <th>Asesor actual</th><th>Hora asig.</th><th>Tiempo</th>
-                    <th>¿Sin repetir?</th><th>Aptitud</th>
+                    <th>Sin repetir</th><th>Aptitud</th>
                   </tr></thead>
                   <tbody id="rotTablaLeads"></tbody>
                 </table>
@@ -170,18 +170,24 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:10px;">
           <div class="bo-input-group"><label>Campaña</label><input id="f_campana" placeholder="Ej: NKT"></div>
+
+          <!-- UBIGEO EN CASCADA -->
+          <div class="bo-input-group"><label>Departamento</label>
+            <select id="f_dpto" onchange="ubigeoChangeDpto(this.value)">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div class="bo-input-group"><label>Provincia</label>
+            <select id="f_prov" onchange="ubigeoChangeProv(this.value)">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
           <div class="bo-input-group"><label>Distrito</label>
             <select id="f_distrito">
               <option value="">— Seleccionar —</option>
-              <option>LIMA</option><option>SMP</option><option>CALLAO</option>
-              <option>MIRAFLORES</option><option>SAN ISIDRO</option><option>SURCO</option>
-              <option>LA MOLINA</option><option>ATE</option><option>VES</option>
-              <option>SJL</option><option>COMAS</option><option>LOS OLIVOS</option>
-              <option>INDEPENDENCIA</option><option>RIMAC</option><option>BREÑA</option>
-              <option>CHORRILLOS</option><option>BARRANCO</option><option>LA VICTORIA</option>
-              <option>TACNA</option><option>AREQUIPA</option><option>TRUJILLO</option><option>HUANCAYO</option>
             </select>
           </div>
+
           <div class="bo-input-group"><label>N1 *</label><input id="f_n1" placeholder="Número principal" style="font-family:monospace;"></div>
           <div class="bo-input-group"><label>N2 (opcional)</label><input id="f_n2" placeholder="Número secundario" style="font-family:monospace;"></div>
           <div class="bo-input-group"><label>Tipif. Back</label>
@@ -198,7 +204,7 @@
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="bo-btn-limpiar" onclick="limpiarFormBase()">✕ Limpiar</button>
+          <button class="bo-btn-limpiar" onclick="limpiarFormBase()">Limpiar</button>
           <button class="bo-btn-agregar" onclick="agregarRegistroBase()">+ Agregar registro</button>
         </div>
       </div>
@@ -229,7 +235,7 @@
           <label class="toggle-col">
             <input type="checkbox" id="mostrarTipVend" checked onchange="renderBase()"> Ver tipif. vendedor
           </label>
-          <button class="bo-btn-limpiar" style="font-size:11px;padding:5px 11px;" onclick="limpiarFiltrosBase()">✕ Limpiar filtros</button>
+          <button class="bo-btn-limpiar" style="font-size:11px;padding:5px 11px;" onclick="limpiarFiltrosBase()">Limpiar filtros</button>
         </div>
       </div>
 
@@ -253,17 +259,14 @@
 
     </section>
 
-    <!-- ========== SECCIÓN: CARGA MASIVA ========== -->
+    <!-- SECCIÓN: CARGA MASIVA -->
     <section id="sec-carga-masiva" class="bo-seccion hidden">
-
       <div class="bo-seccion-header">
         <div>
           <h2>Carga Masiva de Base</h2>
           <p class="bo-sub">Pega números directamente · importa CSV/TXT · o usa tu sistema antiguo</p>
         </div>
       </div>
-
-      <!-- NAVEGADOR DE FECHA -->
       <div class="fecha-nav-row" style="margin-bottom:16px;">
         <span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Fecha activa:</span>
         <div class="fecha-nav-ctrl">
@@ -293,12 +296,11 @@
           </div>
         </div>
 
-        <!-- TAB: PEGAR NÚMEROS -->
         <div id="panelPegar">
           <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:10px;">
             <div class="bo-input-group" style="margin:0;">
               <label>Pegar lista de N1 (uno por línea, o separados por coma)</label>
-              <textarea id="masivaNums" rows="8" placeholder="987654321&#10;976543210&#10;965432109&#10;...&#10;&#10;También acepta: 987654321, 976543210, 965432109"></textarea>
+              <textarea id="masivaNums" rows="8" placeholder="987654321&#10;976543210&#10;965432109"></textarea>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
               <div class="bo-input-group" style="margin:0;"><label>Campaña</label><input id="masivacamp" placeholder="NKT"></div>
@@ -334,14 +336,12 @@
           </div>
         </div>
 
-        <!-- TAB: SUBIR ARCHIVO -->
         <div id="panelArchivo" style="display:none;">
           <div id="dropzone" onclick="document.getElementById('archivoInput').click()"
             style="border:2px dashed #d1d5db;border-radius:10px;padding:36px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
             ondragover="event.preventDefault();this.style.borderColor='#111827';this.style.background='#f9fafb';"
             ondragleave="this.style.borderColor='#d1d5db';this.style.background='#fff';"
             ondrop="event.preventDefault();this.style.borderColor='#d1d5db';this.style.background='#fff';handleFileDrop(event.dataTransfer.files)">
-            <div style="font-size:32px;margin-bottom:10px;">📂</div>
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:4px;">Arrastra tu archivo aquí o haz clic</div>
             <div style="font-size:12px;color:#9ca3af;">Acepta CSV · TXT — columnas: N1, N2, Campaña, Distrito, Tipif</div>
             <input type="file" id="archivoInput" accept=".csv,.txt" style="display:none" onchange="handleFileSelect(this.files)">
@@ -367,21 +367,19 @@
           </div>
         </div>
 
-        <!-- TAB: SISTEMA ANTIGUO -->
         <div id="panelLegacy" style="display:none;">
           <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;margin-bottom:14px;">
-            <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:4px;">Importación de sistema antiguo — migración única</div>
+            <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:4px;">Importación de sistema antiguo</div>
             <div style="font-size:11px;color:#92400e;line-height:1.6;">
               Formato: <strong>CAMPAÑA · DISTRITO · N2 · N1 · TIPIF.BACK · COMENTARIO · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 180px;gap:12px;margin-bottom:12px;">
             <div id="dropzoneLegacy" onclick="document.getElementById('legacyInput').click()"
-              style="border:2px dashed #fed7aa;border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fff;transition:all .18s;"
+              style="border:2px dashed #fed7aa;border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fff;"
               ondragover="event.preventDefault();this.style.borderColor='#c2410c';this.style.background='#fff7ed';"
               ondragleave="this.style.borderColor='#fed7aa';this.style.background='#fff';"
               ondrop="event.preventDefault();this.style.borderColor='#fed7aa';this.style.background='#fff';handleLegacyDrop(event.dataTransfer.files)">
-              <div style="font-size:28px;margin-bottom:8px;">📋</div>
               <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:3px;">Arrastra tu base o haz clic</div>
               <div style="font-size:11px;color:#9ca3af;">CSV exportado desde tu sistema anterior</div>
               <input type="file" id="legacyInput" accept=".csv,.txt" style="display:none" onchange="handleLegacySelect(this.files)">
@@ -429,10 +427,9 @@
           </div>
         </div>
       </div>
-
     </section>
 
-    <!-- ========== SECCIÓN: RENDIMIENTO ========== -->
+    <!-- SECCIÓN: RENDIMIENTO -->
     <section id="sec-rendimiento" class="bo-seccion hidden">
       <div class="bo-seccion-header"><h2>Rendimiento de Asesores</h2></div>
       <div class="rend-filtros">
@@ -475,11 +472,11 @@
         <table class="bo-tabla">
           <thead><tr>
             <th>#</th><th>Asesor</th>
-            <th onclick="setRendOrden('leads_desc')">Leads ↕</th>
-            <th onclick="setRendOrden('contesta_desc')">Contesta ↕</th>
-            <th onclick="setRendOrden('nc_desc')">NC ↕</th>
-            <th onclick="setRendOrden('ventas_desc')">Ventas ↕</th>
-            <th onclick="setRendOrden('conv_desc')">Conv. ↕</th>
+            <th onclick="setRendOrden('leads_desc')">Leads</th>
+            <th onclick="setRendOrden('contesta_desc')">Contesta</th>
+            <th onclick="setRendOrden('nc_desc')">NC</th>
+            <th onclick="setRendOrden('ventas_desc')">Ventas</th>
+            <th onclick="setRendOrden('conv_desc')">Conv.</th>
             <th>Avance</th>
           </tr></thead>
           <tbody id="tablaRendimiento">
@@ -489,11 +486,9 @@
       </div>
     </section>
 
-    <!-- SECCIÓN ASESORES (oculta) -->
     <section id="sec-asesores" class="bo-seccion hidden">
       <div class="bo-seccion-header">
         <h2>Gestión de Asesores</h2>
-        <button class="bo-btn-nuevo-asesor" onclick="abrirModalAsesor()">+ Nuevo Asesor</button>
       </div>
       <div class="bo-asesores-cards" id="asesoresCards"></div>
     </section>

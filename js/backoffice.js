@@ -9,8 +9,23 @@ const DOT_COLORS = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626'];
 let asesores    = [];
 let baseVendedor = {};
 
-function fechaHoy()  { return new Date().toISOString().split('T')[0]; }
-function horaAhora() { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}); }
+/* ── Zona horaria Peru UTC-5 ── */
+function fechaHoy() {
+  const ahora = new Date();
+  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
+  const peru  = new Date(utcMs + (-5 * 60 * 60000));
+  const y = peru.getFullYear();
+  const m = String(peru.getMonth()+1).padStart(2,'0');
+  const d = String(peru.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function horaAhora() {
+  const ahora = new Date();
+  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
+  const peru  = new Date(utcMs + (-5 * 60 * 60000));
+  return String(peru.getHours()).padStart(2,'0') + ':' + String(peru.getMinutes()).padStart(2,'0');
+}
+
 function formatFecha(f){ if(!f) return f; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
 function colorAv(n)  { let s=0; for(let c of n) s+=c.charCodeAt(0); return COLORES_AV[s%COLORES_AV.length]; }
 function iniciales(n){ return n.trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase(); }
@@ -32,19 +47,6 @@ async function cargarAsesoresBackend() {
       localStorage.setItem('bo_asesores', JSON.stringify(asesores));
     }
   } catch(e) { console.error('Error cargando asesores:', e); }
-}
-
-/* ── Guardar lead en backend ── */
-async function guardarLeadBackend(lead) {
-  try {
-    const res  = await fetch(API_BO + '/leads', {
-      method:  'POST',
-      headers: ncHeaders(),
-      body:    JSON.stringify(lead),
-    });
-    const data = await res.json();
-    return data.ok;
-  } catch(e) { return false; }
 }
 
 /* ── Actualizar asesor de un lead en backend ── */
@@ -84,7 +86,7 @@ function syncTipifVendedor(){
       }
     });
   }
-  if(actualizado > 0){ renderBase(); mostrarToast(`🔄 ${actualizado} tipificaciones actualizadas`); }
+  if(actualizado > 0){ renderBase(); mostrarToast(`${actualizado} tipificaciones actualizadas`); }
 }
 
 /* ===================== NAVEGADOR DE FECHA ===================== */
@@ -122,12 +124,12 @@ function cambiarFecha(f){ fechaActiva=f; renderFechaTabs(); renderBase(); }
 function agregarFechaCalendario(){
   const picker = document.getElementById('calPicker');
   const f = picker ? picker.value : '';
-  if(!f){ mostrarToast('⚠️ Selecciona una fecha primero'); return; }
+  if(!f){ mostrarToast('Selecciona una fecha primero'); return; }
   if(!fechaPestanas.includes(f)){
     fechaPestanas.push(f);
     fechaPestanas.sort().reverse();
     if(!baseData[f]) baseData[f] = [];
-    mostrarToast('✅ Fecha ' + formatFecha(f) + ' agregada');
+    mostrarToast('Fecha ' + formatFecha(f) + ' agregada');
   } else {
     mostrarToast('Esa fecha ya existe');
   }
@@ -150,7 +152,7 @@ function poblarSelectAsesorForm(){
 
 async function agregarRegistroBase(){
   const n1 = document.getElementById('f_n1').value.trim();
-  if(!n1){ document.getElementById('f_n1').classList.add('obligatorio-error'); mostrarToast('⚠️ El campo N1 es obligatorio'); return; }
+  if(!n1){ document.getElementById('f_n1').classList.add('obligatorio-error'); mostrarToast('El campo N1 es obligatorio'); return; }
   document.getElementById('f_n1').classList.remove('obligatorio-error');
   const campana  = document.getElementById('f_campana').value.trim()||'—';
   const distrito = document.getElementById('f_distrito').value||'—';
@@ -166,11 +168,10 @@ async function agregarRegistroBase(){
     sinAsignar:!asesor, rotaciones:0,
     _tipifVend: tipAuto ? tipAuto.tipif : '',
     _tipifHora: tipAuto ? tipAuto.hora  : '',
-    historial: asesor ? [{asesor, hora, fecha:fechaActiva, motivo:'Asignación inicial'}] : []
+    historial: asesor ? [{asesor, hora, fecha:fechaActiva, motivo:'Asignacion inicial'}] : []
   };
   baseData[fechaActiva].unshift(reg);
 
-  // Guardar en backend y guardar el id devuelto
   try {
     const res = await fetch(API_BO + '/leads', {
       method: 'POST', headers: ncHeaders(),
@@ -182,14 +183,20 @@ async function agregarRegistroBase(){
     else if (data.ok && data.id) reg._backendId = data.id;
   } catch(e) {}
 
-  if(asesor) historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana,asesor,n1,n2:n2||'—',tipif:tipifBack||'—',accion:'Asignación inicial'});
+  if(asesor) historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana,asesor,n1,n2:n2||'—',tipif:tipifBack||'—',accion:'Asignacion inicial'});
   limpiarFormBase(); renderFechaTabs(); renderBase();
-  mostrarToast(`✅ N1: ${n1} agregado${asesor?' → '+asesor:''}${tipAuto?' · Tipif.: '+tipAuto.tipif:''}`);
+  mostrarToast(`N1: ${n1} agregado${asesor?' → '+asesor:''}${tipAuto?' · Tipif.: '+tipAuto.tipif:''}`);
 }
 
 function limpiarFormBase(){
   ['f_campana','f_n1','f_n2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('f_distrito').value='';
+  // Reset ubigeo cascada
+  const dpto = document.getElementById('f_dpto');
+  const prov = document.getElementById('f_prov');
+  const dist = document.getElementById('f_distrito');
+  if(dpto) dpto.value='';
+  if(prov){ prov.innerHTML='<option value="">— Seleccionar —</option>'; }
+  if(dist){ dist.innerHTML='<option value="">— Seleccionar —</option>'; }
   document.getElementById('f_tipif_back').value='';
   document.getElementById('f_asesor_form').value='';
 }
@@ -207,8 +214,30 @@ function tipifBadgeClass(t){
 
 function tipifVendHtml(tipif, hora){
   if(!tipif) return '<span class="tipif-empty">— Pendiente —</span>';
-  const cls = {'CONTESTA':'tipif-contesta','NC':'tipif-nc','SIN COBERTURA':'tipif-sincobert','DERIVADO':'tipif-derivado'}[tipif]||'';
-  return `<div style="display:flex;flex-direction:column;gap:2px;"><span class="tipif-auto ${cls}">${tipif}</span>${hora?`<span class="tipif-source">vendedor · ${hora}</span>`:''}</div>`;
+  const styles = {
+    'VENTA CERRADA':         ['#d1fae5','#065f46'],
+    'PREVENTA':              ['#dbeafe','#1e40af'],
+    'AGENDADO':              ['#fef3c7','#78350f'],
+    'NO CONTESTA':           ['#fefce8','#854d0e'],
+    'BUZON DE VOZ':          ['#e0f2fe','#0c4a6e'],
+    'CORTA LLAMADA':         ['#f8fafc','#334155'],
+    'EN EJECUCION':          ['#dcfce7','#14532d'],
+    'SIN COBERTURA':         ['#ffe4e6','#881337'],
+    'NO CALIFICA':           ['#fefce8','#713f12'],
+    'NO DESEA':              ['#ffe4e6','#7f1d1d'],
+    'CONTACTO CON TERCEROS': ['#ccfbf1','#134e4a'],
+    'EDIFICIO NO LIBERADO':  ['#f5f3ff','#4c1d95'],
+    'DESEA MOVIL':           ['#f8fafc','#1e293b'],
+    'SERVICIO ACTIVO':       ['#f1f5f9','#1e293b'],
+    'CONTESTA':              ['#d1fae5','#065f46'],
+    'NC':                    ['#fefce8','#854d0e'],
+    'DERIVADO':              ['#ede9fe','#5b21b6'],
+  };
+  const [bg, color] = styles[tipif] || ['#f3f4f6','#374151'];
+  return `<div style="display:flex;flex-direction:column;gap:2px;">
+    <span style="display:inline-flex;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:${bg};color:${color};white-space:nowrap;">${tipif}</span>
+    ${hora ? `<span style="font-size:9px;color:#9ca3af;">vendedor · ${hora}</span>` : ''}
+  </div>`;
 }
 
 function actualizarStats(){
@@ -257,7 +286,6 @@ function renderBase(){
     const sinAsig   = r.sinAsignar ? '<span class="sin-asig-badge">Sin asig.</span>' : '<span style="color:#d1d5db;font-size:10px">—</span>';
     const rotBadge  = r.rotaciones>0 ? `<span style="background:#EDE9FE;color:#4C1D95;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;display:inline-block">${r.rotaciones}x</span>` : '<span style="color:#d1d5db;font-size:11px">0</span>';
     const tvCell    = mostrarTV ? `<td style="display:table-cell">${tipifVendHtml(r._tipifVend,r._tipifHora)}</td>` : `<td style="display:none"></td>`;
-    const histAbierto = histOpen[r.id] ? 'open' : '';
     return `
     <tr id="fila-${r.id}">
       <td style="color:#9ca3af;font-size:10px">${i+1}</td>
@@ -289,7 +317,7 @@ function renderBase(){
         </div>
       </td>
     </tr>
-    <tr class="historial-row ${histAbierto}" id="hist-${r.id}">
+    <tr class="historial-row ${histOpen[r.id]?'open':''}" id="hist-${r.id}">
       <td colspan="12">
         <div class="historial-inner">
           <div class="hist-label">Historial de asignaciones — N1: ${r.n1}</div>
@@ -315,25 +343,38 @@ async function reasignarBase(id, nuevoAsesor){
     renderBase(); return;
   }
   reg.asesor=nuevoAsesor; reg.horaAsig=hora; reg.sinAsignar=false;
-  reg.historial.push({asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignación directa'});
-  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:'Asignación directa'});
-
-  // Actualizar en backend
+  reg.historial.push({asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignacion directa'});
+  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:'Asignacion directa'});
   if(reg._backendId){
     await actualizarLeadBackend(reg._backendId, {
       asesor_nombre: nuevoAsesor, hora_asig: hora,
       historial: reg.historial,
     });
   }
-
   renderFechaTabs(); renderBase();
-  mostrarToast(`✅ N1 ${reg.n1} → ${nuevoAsesor} · ${hora}`);
+  mostrarToast(`N1 ${reg.n1} → ${nuevoAsesor} · ${hora}`);
 }
 
-function eliminarBase(id){
-  for(const f in baseData) baseData[f]=baseData[f].filter(r=>r.id!==id);
+async function eliminarBase(id){
+  // Buscar el reg para obtener _backendId
+  let reg = null;
+  for(const f in baseData){ reg = baseData[f].find(r=>r.id===id); if(reg) break; }
+
+  // Eliminar del backend
+  if(reg && reg._backendId){
+    try {
+      await fetch(`${API_BO}/leads/${reg._backendId}`, {
+        method: 'DELETE',
+        headers: ncHeaders(),
+      });
+    } catch(e){ console.error('Error eliminando lead:', e); }
+  }
+
+  // Eliminar del estado local
+  for(const f in baseData) baseData[f] = baseData[f].filter(r=>r.id!==id);
   delete histOpen[id];
   renderFechaTabs(); renderBase();
+  mostrarToast('Lead eliminado');
 }
 
 function limpiarFiltrosBase(){
@@ -359,7 +400,7 @@ function cerrarModalRotar(){ document.getElementById('modal-rotar').classList.re
 
 async function confirmarRotacion(){
   const nuevoAsesor = document.getElementById('modal-asesor').value;
-  const motivo = document.getElementById('modal-motivo').value.trim()||'Rotación manual';
+  const motivo = document.getElementById('modal-motivo').value.trim()||'Rotacion manual';
   if(!nuevoAsesor){ document.getElementById('modal-asesor').style.borderColor='#ef4444'; return; }
   document.getElementById('modal-asesor').style.borderColor='#e5e7eb';
   let reg=null;
@@ -369,17 +410,15 @@ async function confirmarRotacion(){
   reg.asesor=nuevoAsesor; reg.horaAsig=hora; reg.sinAsignar=false; reg.rotaciones+=1;
   reg.historial.push({asesor:nuevoAsesor,hora,fecha:fechaHoy(),motivo});
   histOpen[rotandoId]=true;
-  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:`Rotación desde ${anterior}`});
-
+  historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:nuevoAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:`Rotacion desde ${anterior}`});
   if(reg._backendId){
     await actualizarLeadBackend(reg._backendId, {
       asesor_nombre: nuevoAsesor, hora_asig: hora,
       historial: reg.historial, sumarRotacion: true,
     });
   }
-
   cerrarModalRotar(); renderFechaTabs(); renderBase();
-  mostrarToast(`🔄 Rotado: ${anterior} → ${nuevoAsesor} · ${hora}`);
+  mostrarToast(`Rotado: ${anterior} → ${nuevoAsesor} · ${hora}`);
 }
 
 /* ===================== ASESORES ===================== */
@@ -409,12 +448,12 @@ function onRendFiltroTipo(){
 function setRendOrden(o){ document.getElementById('rendOrden').value=o; renderRendimiento(); }
 
 function renderRendimiento(){
-  const tipo    = document.getElementById('rendFiltroTipo')?.value||'mes';
+  const tipo      = document.getElementById('rendFiltroTipo')?.value||'mes';
   const mesActual = new Date().toISOString().slice(0,7);
   const diaFiltro = document.getElementById('rendFiltroFecha')?.value||fechaHoy();
-  const desde   = document.getElementById('rendFiltroDesde')?.value||'';
-  const hasta   = document.getElementById('rendFiltroHasta')?.value||'';
-  const orden   = document.getElementById('rendOrden')?.value||'ventas_desc';
+  const desde     = document.getElementById('rendFiltroDesde')?.value||'';
+  const hasta     = document.getElementById('rendFiltroHasta')?.value||'';
+  const orden     = document.getElementById('rendOrden')?.value||'ventas_desc';
 
   let todosReg=[];
   for(const f in baseData){
@@ -428,9 +467,9 @@ function renderRendimiento(){
   let rendData = asesores.map(a=>{
     const miRegs   = todosReg.filter(r=>r.asesor===a.nombre);
     const leads    = miRegs.length;
-    const contesta = miRegs.filter(r=>r._tipifVend==='CONTESTA').length;
-    const nc       = miRegs.filter(r=>r._tipifVend==='NC').length;
-    const ventas   = miRegs.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length;
+    const contesta = miRegs.filter(r=>(r._tipifVend||'').toUpperCase()==='CONTESTA'||(r._tipifVend||'').toUpperCase()==='VENTA CERRADA'||(r._tipifVend||'').toUpperCase()==='PREVENTA'||(r._tipifVend||'').toUpperCase()==='AGENDADO').length;
+    const nc       = miRegs.filter(r=>(r._tipifVend||'').toUpperCase()==='NC'||(r._tipifVend||'').toUpperCase()==='NO CONTESTA'||(r._tipifVend||'').toUpperCase()==='BUZON DE VOZ').length;
+    const ventas   = miRegs.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length;
     const conv     = leads ? Math.round(ventas/leads*100) : 0;
     return {nombre:a.nombre, usuario:a.usuario||'', leads, contesta, nc, ventas, conv};
   });
@@ -448,7 +487,7 @@ function renderRendimiento(){
   const maxVentas=Math.max(...rendData.map(r=>r.ventas),1);
 
   const kpis=document.getElementById('rendKpis');
-  if(kpis) kpis.innerHTML=[['Total Leads',totLeads],['Total Ventas',totVentas],['Conversión',totConv+'%'],['Asesores',asesores.length]]
+  if(kpis) kpis.innerHTML=[['Total Leads',totLeads],['Total Ventas',totVentas],['Conversion',totConv+'%'],['Asesores',asesores.length]]
     .map(([l,v])=>`<div class="rend-kpi"><div class="rend-kpi-label">${l}</div><div class="rend-kpi-valor">${v}</div></div>`).join('');
 
   const tbody=document.getElementById('tablaRendimiento'); if(!tbody) return;
@@ -466,7 +505,7 @@ function renderRendimiento(){
   </tr>`).join('');
 }
 
-/* ===================== ROTACIÓN MASIVA ===================== */
+/* ===================== ROTACION MASIVA ===================== */
 const ahoraNow = new Date();
 function hace(h,m=0){ const d=new Date(ahoraNow); d.setHours(d.getHours()-h); d.setMinutes(d.getMinutes()-m); return d; }
 
@@ -492,8 +531,7 @@ function rotApto(lead,asesor){
   if(!asesor) return {apto:false};
   const sinRepetir=!lead.histAsesores.includes(asesor);
   const mins=rotMins(lead.ultimaAsig), tiempo=mins>=120;
-  const estadoOk=['Buzón','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado);
-  // Lead sin asignar: solo verificar que no haya tenido ese asesor
+  const estadoOk=['Buzon','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado);
   if(!lead.asesor) return {apto:sinRepetir, sinRepetir, tiempo:true, estadoOk:true};
   return {apto:sinRepetir&&tiempo&&estadoOk, sinRepetir, tiempo, estadoOk};
 }
@@ -506,16 +544,16 @@ function rotRenderAsesores(){
     return `<div class="rot-asesor-row"><span>${a.nombre}</span><span class="rot-asesor-badge">${cnt} registros</span></div>`;
   }).join('');
 }
+
 function rotPoblarFiltroFecha(){
   const sel = document.getElementById('rotFiltroFecha');
   if(!sel) return;
   const val = sel.value;
-  // Usar todas las fechas de baseData (fuente de verdad)
   const todasFechas = Object.keys(baseData).sort().reverse();
   sel.innerHTML = '<option value="">Todas las fechas</option>';
   todasFechas.forEach(f => {
     const cnt = (baseData[f]||[]).length;
-    if(cnt === 0) return; // Ocultar fechas vacías
+    if(cnt === 0) return;
     sel.innerHTML += '<option value="'+f+'" '+(f===val?'selected':'')+'>'+formatFecha(f)+' ('+cnt+')</option>';
   });
 }
@@ -531,6 +569,7 @@ function rotFiltrarAptos(){
   rotSel.clear(); document.getElementById('rotChkAll').checked=false;
   rotRenderTabla(); document.getElementById('rotBtnRotar').disabled=!rotAsesor;
 }
+
 function rotRenderTabla(){
   const tbody=document.getElementById('rotTablaLeads');
   const allLeads=buildRotLeads(); let aptos=0;
@@ -548,8 +587,8 @@ function rotRenderTabla(){
       <td><span class="badge ${l.estado.toUpperCase().includes('VENTA')?'b-venta':l.estado.toUpperCase().includes('NO CONT')||l.estado==='No contesta'?'b-nocontesta':'b-default'}">${l.estado||'Sin tipif.'}</span></td>
       <td style="font-size:12px">${l.asesor}</td>
       <td class="hora-color">${l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
-      <td class="${tiempo?'timer-ok':'timer-fail'}">${rotTxt(l.ultimaAsig)} ${tiempo?'✅':'⏳ falta '+(120-mins)+'min'}</td>
-      <td>${!rotAsesor?'—':sinRepetir?'<span class="check-ok">✓ OK</span>':'<span class="check-fail">✗ Ya tuvo</span>'}</td>
+      <td class="${tiempo?'timer-ok':'timer-fail'}">${rotTxt(l.ultimaAsig)} ${tiempo?'OK':'falta '+(120-mins)+'min'}</td>
+      <td>${!rotAsesor?'—':sinRepetir?'<span class="check-ok">OK</span>':'<span class="check-fail">Ya tuvo</span>'}</td>
       <td>${!rotAsesor?'—':apto?'<span class="badge-apto">Apto</span>':'<span class="badge-noapto">No apto</span>'}</td>
     </tr>`;
   }).join('');
@@ -558,9 +597,10 @@ function rotRenderTabla(){
   document.getElementById('rotStatNoAptos').textContent=allLeads.length-aptos;
   document.getElementById('rotStatTotal').textContent=allLeads.length;
 }
+
 function rotToggleSel(id,checked){
   const cant=parseInt(document.getElementById('rotCant').value)||4;
-  if(checked){ if(rotSel.size>=cant){mostrarToast('⚠️ Máximo '+cant+' leads');rotRenderTabla();return;} rotSel.add(id); } else rotSel.delete(id);
+  if(checked){ if(rotSel.size>=cant){mostrarToast('Maximo '+cant+' leads');rotRenderTabla();return;} rotSel.add(id); } else rotSel.delete(id);
   rotRenderTabla();
 }
 function rotToggleAll(){
@@ -573,7 +613,7 @@ function rotEjecutar(){
   if(!rotAsesor) return;
   const cant=parseInt(document.getElementById('rotCant').value)||4;
   if(rotSel.size===0) buildRotLeads().filter(l=>rotApto(l,rotAsesor).apto).slice(0,cant).forEach(l=>rotSel.add(l.id));
-  if(rotSel.size===0){ mostrarToast('❌ No hay leads aptos para '+rotAsesor); return; }
+  if(rotSel.size===0){ mostrarToast('No hay leads aptos para '+rotAsesor); return; }
   const btn=document.getElementById('rotBtnRotar'); btn.disabled=true; btn.textContent='Rotando...';
   let p=0;
   const iv=setInterval(()=>{
@@ -582,15 +622,15 @@ function rotEjecutar(){
   },200);
 }
 async function rotFinalizar(){
-  const hora=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  const hora=horaAhora();
   const allLeads=buildRotLeads();
   const rotados=allLeads.filter(l=>rotSel.has(l.id));
   for(const l of rotados){
     const reg=l._reg;
     reg.asesor=rotAsesor; reg.horaAsig=hora; reg.sinAsignar=false;
     reg.rotaciones=(reg.rotaciones||0)+1;
-    reg.historial.push({asesor:rotAsesor,hora,fecha:fechaHoy(),motivo:'Rotación masiva'});
-    historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:rotAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:`Rotación masiva`});
+    reg.historial.push({asesor:rotAsesor,hora,fecha:fechaHoy(),motivo:'Rotacion masiva'});
+    historialGlobal.unshift({fecha:new Date().toLocaleString('es-PE'),campana:reg.campana,asesor:rotAsesor,n1:reg.n1,n2:reg.n2||'—',tipif:reg.tipifBack||'—',accion:'Rotacion masiva'});
     if(reg._backendId){
       await actualizarLeadBackend(reg._backendId, {
         asesor_nombre:rotAsesor, hora_asig:hora,
@@ -603,7 +643,7 @@ async function rotFinalizar(){
   const res=document.getElementById('rotResultado'); res.classList.add('show');
   document.getElementById('rotResLista').innerHTML=rotados.map(l=>`<div class="rot-res-item"><div class="rot-res-dot"></div><strong>${l.tel}</strong> → <strong>${rotAsesor}</strong> · ${hora}</div>`).join('');
   rotSel.clear(); rotRenderTabla(); rotRenderAsesores(); renderFechaTabs(); renderBase();
-  mostrarToast(`✅ ${rotados.length} leads rotados a ${rotAsesor}`);
+  mostrarToast(`${rotados.length} leads rotados a ${rotAsesor}`);
 }
 
 function toggleRotacion(){
@@ -636,9 +676,9 @@ function poblarSelectMasiva(){
 
 function previsualizarMasiva(){
   const raw=document.getElementById('masivaNums').value.trim();
-  if(!raw){ mostrarToast('⚠️ Pega números primero'); return; }
+  if(!raw){ mostrarToast('Pega numeros primero'); return; }
   const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
-  if(!nums.length){ mostrarToast('⚠️ No se encontraron números válidos'); return; }
+  if(!nums.length){ mostrarToast('No se encontraron numeros validos'); return; }
   const lote=parseInt(document.getElementById('masivaLote').value)||10;
   const lista=lote>0?nums.slice(0,lote):nums;
   const campana=document.getElementById('masivacamp').value.trim()||'—';
@@ -646,13 +686,12 @@ function previsualizarMasiva(){
   const tbody=document.getElementById('masivaPreviewBody');
   tbody.innerHTML=lista.map((n,i)=>`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;color:#9ca3af">${i+1}</td><td style="padding:5px 10px;font-family:monospace;font-weight:600">${n}</td><td style="padding:5px 10px;color:#374151">${campana}</td><td style="padding:5px 10px;color:#374151">${formatFecha(fechaActiva)}</td><td style="padding:5px 10px;color:#374151">${asesor||'Sin asignar'}</td></tr>`).join('');
   document.getElementById('masivaPreview').style.display='';
-  document.getElementById('masivaStatus').textContent=`${lista.length} de ${nums.length} números listos`;
+  document.getElementById('masivaStatus').textContent=`${lista.length} de ${nums.length} numeros listos`;
   document.getElementById('btnCargaMasiva').disabled=false;
   document.getElementById('btnCargaMasiva').textContent=`Cargar ${lista.length} registros`;
 }
 
 async function ejecutarCargaMasiva(){
-  // Sincronizar fecha desde el selector de carga masiva
   const cmSel = document.getElementById('cm-fnav-select');
   if(cmSel && cmSel.value) fechaActiva = cmSel.value;
 
@@ -665,7 +704,6 @@ async function ejecutarCargaMasiva(){
   const hora=asesor?horaAhora():'';
   if(!baseData[fechaActiva]) baseData[fechaActiva]=[];
 
-  // Preparar lote para backend
   const leadsParaBackend = [];
   let importados=0;
   lista.forEach(n1=>{
@@ -678,7 +716,6 @@ async function ejecutarCargaMasiva(){
     importados++;
   });
 
-  // Enviar al backend en lote y guardar _backendIds
   if(leadsParaBackend.length){
     try {
       const res = await fetch(API_BO + '/leads', {
@@ -699,7 +736,7 @@ async function ejecutarCargaMasiva(){
   document.getElementById('masivaStatus').textContent='';
   renderFechaTabs(); renderBase();
   renderFechasCargaMasiva();
-  mostrarToast(`✅ ${importados} registros cargados${asesor?' → '+asesor:''}`);
+  mostrarToast(`${importados} registros cargados${asesor?' → '+asesor:''}`);
 }
 
 function handleFileDrop(files){ if(files.length) procesarArchivo(files[0]); }
@@ -712,7 +749,7 @@ function procesarArchivo(file){
   reader.onload=e=>{
     const text=e.target.result;
     const lineas=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
-    if(!lineas.length){ st.textContent='Archivo vacío'; return; }
+    if(!lineas.length){ st.textContent='Archivo vacio'; return; }
     const sep=lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':',';
     const primeraCelda=lineas[0].split(sep)[0].trim();
     const tieneCabecera=isNaN(primeraCelda.replace(/\s/g,''))&&primeraCelda.length>0&&!/^\d{7,}$/.test(primeraCelda);
@@ -729,7 +766,7 @@ function procesarArchivo(file){
       if(!n1||n1.length<6) return null;
       return {n1,n2:iN2>=0?(cols[iN2]||''):'',camp:iCamp>=0?(cols[iCamp]||'—'):'—',dist:iDist>=0?(cols[iDist]||'—'):'—',tipif:iTip>=0?(cols[iTip]||''):''};
     }).filter(Boolean);
-    if(!archivoRows.length){ st.textContent='No se encontraron registros válidos'; return; }
+    if(!archivoRows.length){ st.textContent='No se encontraron registros validos'; return; }
     st.textContent='';
     document.getElementById('archivoInfo').textContent=`${archivoRows.length} registros en "${file.name}"`;
     const tbody=document.getElementById('archivoPreviewBody');
@@ -741,7 +778,7 @@ function procesarArchivo(file){
 }
 
 async function ejecutarCargaArchivo(){
-  if(!archivoRows.length){ mostrarToast('⚠️ No hay datos'); return; }
+  if(!archivoRows.length){ mostrarToast('No hay datos'); return; }
   if(!baseData[fechaActiva]) baseData[fechaActiva]=[];
   let importados=0,omitidos=0;
   const leadsBackend=[];
@@ -760,7 +797,7 @@ async function ejecutarCargaArchivo(){
   document.getElementById('archivoStatus').textContent='';
   document.getElementById('archivoInput').value='';
   renderFechaTabs(); renderBase();
-  mostrarToast(`✅ ${importados} importados${omitidos?' · '+omitidos+' omitidos':''}`);
+  mostrarToast(`${importados} importados${omitidos?' · '+omitidos+' omitidos':''}`);
 }
 
 let legacyRows=[];
@@ -778,7 +815,7 @@ function procesarLegacy(file){
   reader.onload=e=>{
     const text=e.target.result;
     const lineas=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
-    if(!lineas.length){ st.textContent='Archivo vacío'; return; }
+    if(!lineas.length){ st.textContent='Archivo vacio'; return; }
     const sep=lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':',';
     const primera=lineas[0].split(sep);
     const tieneCab=isNaN((primera[3]||'').replace(/\s/g,''))||(primera[3]||'').length<6;
@@ -796,7 +833,7 @@ function procesarLegacy(file){
       if(usarFechaFila){ for(let i=0;i<c.length;i++){ const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
       legacyRows.push({campana:c[0]||'—',distrito:c[1]||'—',n2:c[2]||'',n1,tipifBack:c[4]||'',comentario:c[5]||'',tipifVend:c[6]||'',hora:c[7]||'',asesores:asesoresHist,fecha:fechaFila});
     });
-    if(!legacyRows.length){ st.textContent='No se encontraron filas válidas'; return; }
+    if(!legacyRows.length){ st.textContent='No se encontraron filas validas'; return; }
     st.textContent='';
     document.getElementById('legacyInfo').textContent=`${legacyRows.length} registros desde "${file.name}"`;
     const tbody=document.getElementById('legacyPreviewBody');
@@ -808,7 +845,7 @@ function procesarLegacy(file){
 }
 
 async function ejecutarCargaLegacy(){
-  if(!legacyRows.length){ mostrarToast('⚠️ No hay datos'); return; }
+  if(!legacyRows.length){ mostrarToast('No hay datos'); return; }
   let importados=0,omitidos=0,nuevasFechas=0;
   const leadsBackend=[];
   legacyRows.forEach(r=>{
@@ -816,7 +853,7 @@ async function ejecutarCargaLegacy(){
     if(!fechaPestanas.includes(fecha)){ fechaPestanas.push(fecha); fechaPestanas.sort().reverse(); if(!baseData[fecha]) baseData[fecha]=[]; nuevasFechas++; }
     if(!baseData[fecha]) baseData[fecha]=[];
     if(baseData[fecha].find(x=>x.n1===r.n1)){ omitidos++; return; }
-    const hist=r.asesores.map((a,i)=>({asesor:a,hora:r.hora||'—',fecha,motivo:i===0?'Asignación inicial':`Rotación ${i}`}));
+    const hist=r.asesores.map((a,i)=>({asesor:a,hora:r.hora||'—',fecha,motivo:i===0?'Asignacion inicial':`Rotacion ${i}`}));
     const tipAuto=getTipifVendedor(r.n1);
     baseData[fecha].push({id:baseIdCnt++,campana:r.campana,distrito:r.distrito,n1:r.n1,n2:r.n2,tipifBack:r.tipifBack,asesor:r.asesores[r.asesores.length-1]||'',horaAsig:r.hora,sinAsignar:r.asesores.length===0,rotaciones:Math.max(0,r.asesores.length-1),_tipifVend:tipAuto?.tipif||r.tipifVend||'',_tipifHora:tipAuto?.hora||r.hora||'',_comentario:r.comentario,historial:hist});
     leadsBackend.push({campana:r.campana,distrito:r.distrito,n1:r.n1,n2:r.n2,tipif_back:r.tipifBack,asesor_nombre:r.asesores[r.asesores.length-1]||'',fecha,hora_asig:r.hora});
@@ -830,10 +867,10 @@ async function ejecutarCargaLegacy(){
   document.getElementById('legacyStatus').textContent='';
   document.getElementById('legacyInput').value='';
   renderFechaTabs(); renderBase();
-  mostrarToast(`✅ ${importados} importados${nuevasFechas?' · '+nuevasFechas+' fechas nuevas':''}${omitidos?' · '+omitidos+' omitidos':''}`);
+  mostrarToast(`${importados} importados${nuevasFechas?' · '+nuevasFechas+' fechas nuevas':''}${omitidos?' · '+omitidos+' omitidos':''}`);
 }
 
-/* ===================== NAVEGACIÓN ===================== */
+/* ===================== NAVEGACION ===================== */
 function mostrarSeccion(id,btn){
   document.querySelectorAll('.bo-seccion').forEach(s=>s.classList.add('hidden'));
   const sec=document.getElementById('sec-'+id); if(sec) sec.classList.remove('hidden');
@@ -856,7 +893,6 @@ async function cargarLeadsBackend() {
     const data = await res.json();
     if (!data.ok) return;
 
-    // Reconstruir baseData desde backend (fuente de verdad)
     const nuevoBaseData = {};
     const nuevasFechas = [];
 
@@ -865,7 +901,6 @@ async function cargarLeadsBackend() {
       if (!nuevoBaseData[fecha]) nuevoBaseData[fecha] = [];
       if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha);
 
-      // Verificar si ya existe en baseData (por _backendId) para no perder estado local
       let regExistente = null;
       for (const f in baseData) {
         regExistente = baseData[f].find(r => r._backendId === l.id);
@@ -890,13 +925,15 @@ async function cargarLeadsBackend() {
       });
     });
 
-    // Asegurar fecha de hoy siempre presente
     if (!nuevasFechas.includes(fechaHoy())) nuevasFechas.push(fechaHoy());
     nuevasFechas.sort().reverse();
 
     baseData = nuevoBaseData;
     fechaPestanas = nuevasFechas;
     if (!fechaPestanas.includes(fechaActiva)) fechaActiva = fechaPestanas[0];
+
+    renderFechaTabs();
+    renderBase();
   } catch(e) { console.error('Error cargando leads:', e); }
 }
 
@@ -922,12 +959,12 @@ function cambiarFechaCargaMasiva(f){
 function agregarFechaCargaMasiva(){
   const picker = document.getElementById('cm-calPicker');
   const f = picker ? picker.value : '';
-  if(!f){ mostrarToast('⚠️ Selecciona una fecha primero'); return; }
+  if(!f){ mostrarToast('Selecciona una fecha primero'); return; }
   if(!fechaPestanas.includes(f)){
     fechaPestanas.push(f);
     fechaPestanas.sort().reverse();
     if(!baseData[f]) baseData[f] = [];
-    mostrarToast('✅ Fecha ' + formatFecha(f) + ' agregada');
+    mostrarToast('Fecha ' + formatFecha(f) + ' agregada');
   } else {
     mostrarToast('Esa fecha ya existe');
   }
@@ -937,22 +974,72 @@ function agregarFechaCargaMasiva(){
   renderFechasCargaMasiva();
 }
 
+
+
+/* ── UBIGEO Perú — Departamento/Provincia/Distrito ── */
+const UBIGEO_PERU = {"LAMBAYEQUE": {"CHICLAYO": ["CHICLAYO", "ETEN", "JOSE LEONARDO ORTIZ", "LA VICTORIA", "MONSEFU", "PICSI", "PIMENTEL", "POMALCA", "REQUE", "TUMAN"], "FERREÑAFE": ["FERREÑAFE", "PUEBLO NUEVO"], "LAMBAYEQUE": ["LAMBAYEQUE", "MOTUPE", "OLMOS", "TUCUME"]}, "CAJAMARCA": {"CAJAMARCA": ["CAJAMARCA", "LOS BAÑOS DEL INCA"], "CHOTA": ["CHOTA"], "CUTERVO": ["CUTERVO"], "JAEN": ["JAEN"], "HUALGAYOC": ["BAMBAMARCA"], "CELENDIN": ["CELENDIN"], "CAJABAMBA": ["CAJABAMBA"], "SAN IGNACIO": ["SAN IGNACIO"]}, "LIMA": {"LIMA": ["ANCON", "ATE", "BARRANCO", "BREÑA", "CARABAYLLO", "CERCADO DE LIMA", "CHACLACAYO", "CHORRILLOS", "CIENEGUILLA", "COMAS", "EL AGUSTINO", "INDEPENDENCIA", "JESUS MARIA", "LA MOLINA", "LA VICTORIA", "LIMA", "LINCE", "LOS OLIVOS", "LURIGANCHO", "LURIN", "MAGDALENA DEL MAR", "MIRAFLORES", "PACHACAMAC", "PUCUSANA", "PUEBLO LIBRE", "PUENTE PIEDRA", "PUNTA HERMOSA", "RIMAC", "SAN BARTOLO", "SAN BORJA", "SAN ISIDRO", "SAN JUAN DE LURIGANCHO", "SAN JUAN DE MIRAFLORES", "SAN LUIS", "SAN MARTIN DE PORRES", "SAN MIGUEL", "SANTA ANITA", "SANTA MARIA DEL MAR", "SANTA ROSA", "SANTIAGO DE SURCO", "SURQUILLO", "VILLA EL SALVADOR", "VILLA MARIA DEL TRIUNFO"], "HUARAL": ["CHANCAY", "HUARAL"], "CALLAO": ["BELLAVISTA", "CALLAO", "CARMEN DE LA LEGUA REYNOSO", "LA PERLA", "LA PUNTA", "MI PERU", "VENTANILLA"], "HUAURA": ["CALETA DE CARQUIN", "HUACHO", "HUALMAY", "HUAURA", "SANTA MARIA"], "CAÑETE": ["CHILCA", "IMPERIAL", "MALA", "SAN VICENTE DE CAÑETE"], "BARRANCA": ["BARRANCA", "PARAMONGA", "SUPE", "SUPE PUERTO"]}, "AYACUCHO": {"HUAMANGA": ["ANDRES AVELINO CACERES DORREGARAY", "AYACUCHO", "CARMEN ALTO", "JESUS NAZARENO", "SAN JUAN BAUTISTA"], "PARINACOCHAS": ["CORACORA"], "LUCANAS": ["PUQUIO"], "HUANTA": ["HUANTA"], "LA MAR": ["AYNA"]}, "PIURA": {"TALARA": ["LOS ORGANOS", "MANCORA", "PARIÑAS"], "PIURA": ["CASTILLA", "CATACAOS", "LA UNION", "PIURA", "TAMBO GRANDE", "VEINTISEIS DE OCTUBRE"], "SULLANA": ["BELLAVISTA", "SULLANA"], "SECHURA": ["SECHURA"], "PAITA": ["PAITA"], "MORROPON": ["CHULUCANAS"], "HUANCABAMBA": ["HUANCABAMBA"]}, "ICA": {"PISCO": ["PARACAS", "PISCO", "TUPAC AMARU INCA"], "ICA": ["ICA", "LA TINGUIÑA", "PARCONA", "SALAS", "SAN JUAN BAUTISTA", "SUBTANJALLA"], "NAZCA": ["MARCONA", "NAZCA", "VISTA ALEGRE"], "CHINCHA": ["CHINCHA ALTA", "GROCIO PRADO", "PUEBLO NUEVO", "SUNAMPE"]}, "LA LIBERTAD": {"TRUJILLO": ["EL PORVENIR", "FLORENCIA DE MORA", "HUANCHACO", "LA ESPERANZA", "LAREDO", "MOCHE", "SALAVERRY", "TRUJILLO", "VICTOR LARCO HERRERA"], "CHEPEN": ["CHEPEN"], "PACASMAYO": ["PACASMAYO", "SAN PEDRO DE LLOC"], "VIRU": ["CHAO", "VIRU"], "SANCHEZ CARRION": ["HUAMACHUCO"], "ASCOPE": ["CASA GRANDE"], "OTUZCO": ["OTUZCO"]}, "JUNIN": {"HUANCAYO": ["CHILCA", "EL TAMBO", "HUANCAYO", "PILCOMAYO"], "TARMA": ["TARMA"], "YAULI": ["LA OROYA", "SANTA ROSA DE SACCO"], "JAUJA": ["JAUJA", "SAUSA", "YAUYOS"], "CHUPACA": ["CHUPACA"], "CHANCHAMAYO": ["CHANCHAMAYO", "PERENE", "PICHANAQUI", "SAN RAMON"], "SATIPO": ["MAZAMARI", "PANGOA", "SATIPO"]}, "PUNO": {"CHUCUITO": ["DESAGUADERO", "JULI"], "PUNO": ["ACORA", "PUNO"], "MELGAR": ["AYAVIRI"], "SAN ROMAN": ["JULIACA", "SAN MIGUEL"], "YUNGUYO": ["YUNGUYO"], "AZANGARO": ["AZANGARO"], "SANDIA": ["SANDIA"], "EL COLLAO": ["ILAVE"], "CARABAYA": ["MACUSANI"], "HUANCANE": ["HUANCANE"], "SAN ANTONIO DE PUTINA": ["ANANEA"]}, "AREQUIPA": {"AREQUIPA": ["ALTO SELVA ALEGRE", "AREQUIPA", "CAYMA", "CERRO COLORADO", "CHARACATO", "JACOBO HUNTER", "JOSE LUIS BUSTAMANTE Y RIVERO", "LA JOYA", "MARIANO MELGAR", "MIRAFLORES", "PAUCARPATA", "SABANDIA", "SACHACA", "SOCABAYA", "UCHUMAYO", "YANAHUARA", "YURA"], "CARAVELI": ["CHALA"], "CAMANA": ["CAMANA", "MARIANO NICOLAS VALCARCEL", "NICOLAS DE PIEROLA", "SAMUEL PASTOR"], "CAYLLOMA": ["MAJES"], "ISLAY": ["MEJIA", "MOLLENDO"]}, "APURIMAC": {"ABANCAY": ["ABANCAY", "TAMBURCO"], "ANDAHUAYLAS": ["ANDAHUAYLAS"], "COTABAMBAS": ["CHALLHUAHUACHO"], "CHINCHEROS": ["ANCO-HUALLO"]}, "CUSCO": {"CUSCO": ["CUSCO", "SAN JERONIMO", "SAN SEBASTIAN", "SANTIAGO", "WANCHAQ"], "CANCHIS": ["SICUANI"], "ESPINAR": ["ESPINAR"], "CALCA": ["CALCA"], "URUBAMBA": ["URUBAMBA"], "LA CONVENCION": ["KIMBIRI", "PICHARI", "SANTA ANA"], "QUISPICANCHI": ["URCOS"]}, "ANCASH": {"SANTA": ["CHIMBOTE", "COISHCO", "NUEVO CHIMBOTE", "SANTA"], "HUARAZ": ["HUARAZ", "INDEPENDENCIA"], "CASMA": ["CASMA"], "YUNGAY": ["YUNGAY"], "HUAYLAS": ["CARAZ"], "HUARMEY": ["HUARMEY"]}, "TACNA": {"TACNA": ["ALTO DE LA ALIANZA", "CIUDAD NUEVA", "CORONEL GREGORIO ALBARRACIN LANCHIPA", "POCOLLAY", "TACNA"]}, "MOQUEGUA": {"ILO": ["ILO", "PACOCHA"], "MARISCAL NIETO": ["MOQUEGUA", "SAMEGUA"]}, "UCAYALI": {"CORONEL PORTILLO": ["CALLERIA", "MANANTAY", "YARINACOCHA"], "PADRE ABAD": ["PADRE ABAD"]}, "HUANUCO": {"HUANUCO": ["AMARILIS", "HUANUCO", "PILLCO MARCA"], "LEONCIO PRADO": ["CASTILLO GRANDE", "JOSE CRESPO Y CASTILLO", "MARIANO DAMASO BERAUN", "RUPA-RUPA"], "PUERTO INCA": ["PUERTO INCA"], "AMBO": ["AMBO"]}, "SAN MARTIN": {"SAN MARTIN": ["CACATACHI", "LA BANDA DE SHILCAYO", "MORALES", "TARAPOTO"], "RIOJA": ["NUEVA CAJAMARCA", "RIOJA"], "MARISCAL CACERES": ["JUANJUI"], "BELLAVISTA": ["BELLAVISTA"], "MOYOBAMBA": ["MOYOBAMBA"], "TOCACHE": ["TOCACHE"]}, "AMAZONAS": {"CHACHAPOYAS": ["CHACHAPOYAS"], "BAGUA": ["BAGUA"], "UTCUBAMBA": ["BAGUA GRANDE"]}, "PASCO": {"PASCO": ["CHAUPIMARCA", "YANACANCHA"], "OXAPAMPA": ["CHONTABAMBA", "OXAPAMPA", "PUERTO BERMUDEZ", "VILLA RICA"]}, "TUMBES": {"TUMBES": ["CORRALES", "TUMBES"], "ZARUMILLA": ["ZARUMILLA"], "CONTRALMIRANTE VILLAR": ["ZORRITOS"]}, "MADRE DE DIOS": {"TAMBOPATA": ["INAMBARI", "TAMBOPATA"], "MANU": ["HUEPETUHE"]}, "HUANCAVELICA": {"TAYACAJA": ["DANIEL HERNANDEZ", "PAMPAS"], "ANGARAES": ["LIRCAY"], "HUANCAVELICA": ["HUANCAVELICA"]}, "LORETO": {"ALTO AMAZONAS": ["YURIMAGUAS"]}};
+
+function ubigeoInit() {
+  const sel = document.getElementById('f_dpto');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  Object.keys(UBIGEO_PERU).sort().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    sel.appendChild(opt);
+  });
+}
+
+function ubigeoChangeDpto(dpto) {
+  const selProv = document.getElementById('f_prov');
+  const selDist = document.getElementById('f_distrito');
+  selProv.innerHTML = '<option value="">— Seleccionar —</option>';
+  selDist.innerHTML = '<option value="">— Seleccionar —</option>';
+  if (!dpto || !UBIGEO_PERU[dpto]) return;
+  Object.keys(UBIGEO_PERU[dpto]).sort().forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = p;
+    selProv.appendChild(opt);
+  });
+  // Auto-select if only one province
+  if (Object.keys(UBIGEO_PERU[dpto]).length === 1) {
+    selProv.selectedIndex = 1;
+    ubigeoChangeProv(selProv.value);
+  }
+}
+
+function ubigeoChangeProv(prov) {
+  const selDist = document.getElementById('f_distrito');
+  const dpto = document.getElementById('f_dpto').value;
+  selDist.innerHTML = '<option value="">— Seleccionar —</option>';
+  if (!dpto || !prov || !UBIGEO_PERU[dpto]?.[prov]) return;
+  UBIGEO_PERU[dpto][prov].forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    selDist.appendChild(opt);
+  });
+}
+
 /* ===================== INIT ===================== */
 window.onload = async ()=>{
-  // Limpiar localStorage de datos viejos
   localStorage.removeItem('bo_baseData');
 
   await cargarAsesoresBackend();
   await cargarLeadsBackend();
+  ubigeoInit();
   poblarSelectAsesorForm();
   poblarSelectMasiva();
   renderFechaTabs();
   renderBase();
-  setInterval(syncTipifVendedor, 30000);
-  setInterval(cargarLeadsBackend, 60000); // Recargar leads cada 60s
-  document.getElementById('modal-rotar')?.addEventListener('click',e=>{if(e.target===document.getElementById('modal-rotar'))cerrarModalRotar();});
 
-  // Aplicar sesión en topbar
+  // Refrescar leads cada 15s para ver tipificaciones del vendedor
+  setInterval(cargarLeadsBackend, 15000);
+  setInterval(syncTipifVendedor, 15000);
+
+  document.getElementById('modal-rotar')?.addEventListener('click',e=>{
+    if(e.target===document.getElementById('modal-rotar')) cerrarModalRotar();
+  });
+
   const u = ncGetSesion();
   if(u){
     const el = document.querySelector('.bo-usuario');
