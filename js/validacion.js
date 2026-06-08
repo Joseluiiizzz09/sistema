@@ -45,7 +45,6 @@ function estadoObj(id){
 }
 
 function badgeEstado(id, tipifVal, vId){
-  // Mostrar tipificación del validador si existe, si no mostrar estado original
   const mostrar = tipifVal || id;
   const e = estadoObj(mostrar);
   return `<span class="badge-estado ${e.cls}" onclick="abrirModalEstado(${vId})" title="Click para tipificar">${e.label}</span>`;
@@ -71,7 +70,6 @@ function ultimaObs(obs) {
 function renderLineaTiempo(lineas) {
   if (!lineas.length) return '<div style="color:#9ca3af;font-size:12px;padding:8px 0;">Sin historial de tipificaciones.</div>';
 
-  // Agrupar de 2 en 2: tipificación + comentario
   const grupos = [];
   let i = 0;
   while (i < lineas.length) {
@@ -79,7 +77,6 @@ function renderLineaTiempo(lineas) {
     const meta1  = match1 ? match1[1] : '';
     const txt1   = match1 ? match1[2] : lineas[i];
 
-    // Si la siguiente línea existe y no es una tipificación conocida, es el comentario
     const TIPS = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','SERVICIO ACTIVO',
                   'VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE'];
     const esTip = TIPS.includes(txt1.trim().toUpperCase());
@@ -90,7 +87,7 @@ function renderLineaTiempo(lineas) {
       const txt2   = match2 ? match2[2] : lineas[i+1];
       if (!TIPS.includes(txt2.trim().toUpperCase())) {
         comentario = txt2;
-        i++; // saltar la siguiente línea
+        i++;
       }
     }
 
@@ -130,7 +127,6 @@ async function loadFromStorage() {
         vendedor:           v.asesor_nombre  || '',
         obsVal:             v.obs_validacion || '',
         tipifVal: (()=>{
-          // Extraer última tipificación del historial
           const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','servicio_activo','validado'];
           const lineas = (v.obs_validacion||'').split('\n').filter(l=>l.trim());
           for(let i=lineas.length-1;i>=0;i--){
@@ -207,21 +203,22 @@ function renderTabla(){
   }
 
   tbody.innerHTML = pagina.map(v => {
-    // Observación: solo última línea visible en tabla
     const lineas = parsearHistorial(v.obsVal);
-    // Mostrar última observación (preferir comentarios sobre tipificaciones)
     const TIPS_DISPLAY = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','SERVICIO ACTIVO','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE'];
     let obsDisplay = '—';
     for (let li = lineas.length - 1; li >= 0; li--) {
       const txt = (lineas[li].match(/^\[.+?\]\s*(.*)$/) || [])[1] || lineas[li];
       if (!TIPS_DISPLAY.includes(txt.trim().toUpperCase())) { obsDisplay = txt; break; }
-      if (li === 0) obsDisplay = txt; // si solo hay tipificaciones
+      if (li === 0) obsDisplay = txt;
     }
+
+    const nombreSeguro = (v.nombreApellidos||'').replace(/'/g, '');
 
     return `<tr id="fila-${v.id}">
       <td style="text-align:center;vertical-align:middle;">
         <div class="acciones-cell">
           <button class="btn-accion-row btn-obs" onclick="abrirModalObs(${v.id})" title="Ver historial y observar">📋</button>
+          <button class="btn-fotos" onclick="abrirModalFotos(${v.id}, '${nombreSeguro}')" title="Ver fotos">📷</button>
         </div>
       </td>
       <td style="vertical-align:middle">${badgeEstado(v.estado, v.tipifVal||"", v.id)}</td>
@@ -279,16 +276,13 @@ function abrirModalEstado(id){
   const tipActual = v.tipifVal || '';
   document.getElementById('re_estadoActual').textContent = tipActual ? estadoObj(tipActual).label : estadoObj(v.estado).label;
 
-  // Marcar tipificación actual si es del validador
   document.querySelectorAll('.tip-val-btn').forEach(b => {
     b.classList.toggle('activo', b.dataset.id === tipActual);
   });
 
-  // Mostrar línea de tiempo
   const lineas = parsearHistorial(v.obsVal);
   document.getElementById('lt_container').innerHTML = renderLineaTiempo(lineas);
 
-  // Limpiar campo observación
   document.getElementById('re_nueva_obs').value = '';
 
   document.getElementById('modalEstado').classList.add('open');
@@ -297,14 +291,12 @@ function abrirModalEstado(id){
 async function guardarTipificacion(){
   const v = ventas.find(x=>x.id===editandoId); if(!v) return;
 
-  // Ver qué tipificación está seleccionada
   const btnActivo = document.querySelector('.tip-val-btn.activo');
   const nuevoEstado = btnActivo ? btnActivo.dataset.id : v.estado;
   const nuevaObs = document.getElementById('re_nueva_obs').value.trim();
 
   if (!nuevoEstado && !nuevaObs) { toast('Selecciona una tipificación o escribe una observación'); return; }
 
-  // Construir entrada de historial: tipificación primero, comentario después
   let lineas = parsearHistorial(v.obsVal);
   const ts = nowLabel();
   if (nuevoEstado !== v.estado) {
@@ -316,7 +308,6 @@ async function guardarTipificacion(){
   const nuevoHistorial = lineas.join('\n');
 
   try {
-    // NO pisamos el estado real de la venta — solo guardamos la tipificación en obs_validacion
     const res = await fetch(`${API_VAL}/ventas/${editandoId}`, {
       method:'PATCH', headers:ncHeaders(),
       body: JSON.stringify({ obs_validacion: nuevoHistorial }),
@@ -324,7 +315,6 @@ async function guardarTipificacion(){
     const data = await res.json();
     if (!data.ok) { toast('Error: ' + data.mensaje); return; }
 
-    // Guardar tipificacion local para mostrar el badge
     v.tipifVal = nuevoEstado;
     v.obsVal = nuevoHistorial;
 

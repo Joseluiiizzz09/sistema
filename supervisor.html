@@ -12,7 +12,9 @@
 <div id="appScreen" class="active">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="topbar-logo"><img src="assets/logo3.png" alt="NC" onerror="this.parentNode.textContent=''"></div>
+      <div class="logo-circle">
+        <img src="assets/logo3.png" alt="NC" style="width:26px;height:26px;object-fit:contain;" onerror="this.style.display='none'">
+      </div>
       <div class="topbar-brand-text">
         <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
         <span class="brand-sub">Supervisor</span>
@@ -24,6 +26,7 @@
       <button id="btnSalir" class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
     </div>
   </div>
+
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-sep">Mi Sala</div>
@@ -35,6 +38,7 @@
       <div class="sidebar-sep">Comunicación</div>
       <button class="nav-btn" onclick="showSection('frases',this)"><span class="nav-dot"></span> Frases del día</button>
     </aside>
+
     <main class="main">
 
       <!-- DASHBOARD -->
@@ -118,7 +122,7 @@
             <input type="text" class="tabla-search" id="tablaSearch" placeholder="Buscar por N1, asesor..." oninput="tablaSearchVal=this.value;renderVentas()">
           </div>
           <table class="tabla">
-            <thead><tr><th>#</th><th>Fecha</th><th>N1</th><th>N2</th><th>Campaña</th><th>Distrito</th><th>Asesor</th><th>Estado</th><th>Hora</th></tr></thead>
+            <thead><tr><th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Estado</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
             <tbody id="ventasTablaBody"><tr class="tabla-empty"><td colspan="9">Cargando datos...</td></tr></tbody>
           </table>
         </div>
@@ -139,19 +143,13 @@
             </select>
           </div>
         </div>
-
-        <!-- KPIs equipo -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
           <div class="kpi-card k-blue"><div class="kpi-label">Total asesores</div><div class="kpi-value" id="equipoTotal">0</div><div class="kpi-sub" id="equipoSalaLabel">—</div></div>
           <div class="kpi-card k-green"><div class="kpi-label">Activos</div><div class="kpi-value" id="equipoActivos">0</div><div class="kpi-sub">en servicio</div></div>
           <div class="kpi-card k-red"><div class="kpi-label">Inactivos</div><div class="kpi-value" id="equipoInactivos">0</div><div class="kpi-sub">desactivados</div></div>
           <div class="kpi-card k-purple"><div class="kpi-label">Ventas hoy</div><div class="kpi-value" id="equipoVentasHoy">0</div><div class="kpi-sub">de tu sala</div></div>
         </div>
-
-        <!-- Cards asesores -->
         <div id="equipoCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:20px;"></div>
-
-        <!-- Modal detalle asesor -->
         <div id="modalAsesor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center;">
           <div style="background:#fff;border-radius:18px;width:min(500px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:aparecer .2s ease;">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #f3f4f6;">
@@ -227,5 +225,6 @@ function toggleAgregarVenta(){
   if(p.style.display!=='none'){ poblarAgregarVentaSelects(); document.getElementById('nv_fecha').value=fechaHoy(); }
 }
 </script>
+<script src="js/fotos-modal.js"></script>
 </body>
-</html>>>
+</html>

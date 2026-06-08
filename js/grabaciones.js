@@ -43,7 +43,6 @@ function descargarAudio(id){
   const v = ventas.find(x => x.id === id);
   if (!v || !v._grabAudio) { toast('Esta venta no tiene grabación'); return; }
 
-  // Construir URL absoluta al servidor
   const url = 'http://127.0.0.1:3000/' + v._grabAudio;
   const nombreArchivo = v._grabNombre || ('grabacion_' + id + '.mp3');
 
@@ -194,16 +193,17 @@ function renderTabla(){
     const fecha      = v.fechaIngreso || '';
     const esAnterior = fecha < hoy;
     const tieneAudio = !!v._grabAudio;
+    const nombreSeguro = (v.nombreApellidos||'').replace(/'/g, '');
     return '<tr class="'+(esAnterior?'fila-pendiente':'')+'">'+
       '<td><div class="acciones-cell">'+
         '<button class="btn-acc btn-acc-audio" onclick="abrirModalAudio('+v.id+')" title="Escuchar grabacion">Escuchar</button>'+
-        // ── BOTÓN DESCARGAR: solo activo si tiene audio ──
         (tieneAudio
           ? '<button class="btn-acc btn-acc-dl" onclick="descargarAudio('+v.id+')" title="Descargar grabacion">Descargar</button>'
           : '<button class="btn-acc btn-acc-dl" disabled title="Sin grabacion" style="opacity:.35;cursor:not-allowed;">Descargar</button>')+
         '<button class="btn-acc btn-acc-obs"   onclick="abrirModalObs('+v.id+')"   title="Observacion">Obs.</button>'+
         '<button class="btn-acc btn-acc-subir" onclick="abrirModalSubir('+v.id+')" title="Subir grabacion">Subir</button>'+
         '<button class="btn-acc btn-acc-estado" onclick="abrirModalEstado('+v.id+')" title="Cambiar estado">Estado</button>'+
+        '<button class="btn-fotos" onclick="abrirModalFotos('+v.id+', \''+nombreSeguro+'\')" title="Ver fotos">📷 Fotos</button>'+
       '</div></td>'+
       '<td>'+badgeGrab(v._estadoGrab)+'</td>'+
       '<td><span style="color:#185FA5;font-weight:700;font-size:11px">'+formatF(fecha)+'</span>'+(esAnterior?'<span class="badge-anterior">ANTERIOR</span>':'')+'</td>'+
@@ -345,13 +345,11 @@ function abrirModalAudio(id){
   const noAudio = document.getElementById('audioNoDisp');
 
   if(v._grabAudio){
-    // URL absoluta para que el player cargue correctamente
     player.src = 'http://127.0.0.1:3000/' + v._grabAudio;
     player.style.display='';
     if(noAudio) noAudio.style.display='none';
     document.getElementById('audio_archivo').textContent = v._grabNombre||'grabacion.mp3';
 
-    // Botón descargar dentro del modal
     const btnDl = document.getElementById('audio_btnDescargar');
     if(btnDl){ btnDl.style.display=''; btnDl.onclick = () => descargarAudio(id); }
   } else {
@@ -400,7 +398,6 @@ window.onload = async () => {
   if(sesion) usuarioActual=sesion.nombre||'Grabaciones';
   const el=document.getElementById('topbarUser'); if(el&&sesion) el.textContent=sesion.nombre||'Grabaciones';
 
-  // Poblar select de estados
   const fEstado = document.getElementById('f_estado');
   if(fEstado){
     fEstado.innerHTML = '<option value="">Todos</option>' +
@@ -420,6 +417,5 @@ window.onload = async () => {
     porPagina=parseInt(e.target.value)||18; paginaActual=1; renderTabla();
   });
 
-  // Recargar cada 30s
   setInterval(async()=>{ await cargarVentas(); aplicarFiltros(); }, 30000);
 };

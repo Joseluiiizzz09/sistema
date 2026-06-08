@@ -31,7 +31,12 @@ function mostrar(pantalla, btn) {
     document.getElementById(pantalla).classList.remove("hidden");
     document.querySelectorAll(".tabs .tab").forEach(b => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
-    if (pantalla === "rendimiento")   setTimeout(iniciarGraficos, 50);
+    if (pantalla === "rendimiento") {
+        cargarVentasSubidas().then(async () => {
+            await sincronizarKpisRendimiento();
+            setTimeout(iniciarGraficos, 100);
+        });
+    }
     if (pantalla === "frases")        cargarFrasesSuper();
     if (pantalla === "ventassubidas") cargarVentasSubidas();
 }
@@ -185,6 +190,52 @@ function actualizarStats() {
     if (ef) ef.innerText = (ventas ? Math.round((instaladas / ventas) * 100) : 0) + "%";
     if (ni) ni.innerText = Math.max(0, ventas - instaladas);
     actualizarMeta();
+    // Sincronizar KPIs del rendimiento con datos reales del backend
+    sincronizarKpisRendimiento();
+}
+
+async function sincronizarKpisRendimiento() {
+    const hoy = fechaHoy();
+
+    try {
+        // Solo contar llamadas desde leads
+        const resL = await fetch(API + '/leads', { headers: ncHeaders() });
+        const dataL = await resL.json();
+        if (dataL.ok) {
+            const leadsHoy = dataL.data.filter(l => l.fecha === hoy);
+            const tipificados = leadsHoy.filter(l =>
+                l.tipif_vend && l.tipif_vend !== '' && l.tipif_vend !== 'NUEVO'
+            );
+            llamadas = Math.max(llamadas, tipificados.length);
+            const lc = document.getElementById("llamadasCount");
+            if (lc) lc.innerText = llamadas;
+        }
+    } catch(e) {}
+
+    // Ventas = solo las ventas formalmente subidas en /api/ventas
+    const ventasHoy   = ventasSubidas.filter(v => (v.created_at||'').split(' ')[0] === hoy);
+    const instHoy     = ventasHoy.filter(v => (v.estado||'').toLowerCase() === 'instalado');
+
+    ventas     = Math.max(ventas, ventasHoy.length);
+    instaladas = Math.max(instaladas, instHoy.length);
+
+    const pct = Math.min(Math.round(ventas / META_DIARIA * 100), 100);
+
+    const vc = document.getElementById("ventasCount");
+    const ic = document.getElementById("instaladasCount");
+    const ef = document.getElementById("efectividad");
+    const ni = document.getElementById("noInstaladasCount");
+    const mt = document.getElementById("metaTexto");
+    const mb = document.getElementById("metaBarra");
+    const mp = document.getElementById("metaPct");
+
+    if (vc) vc.innerText = ventas;
+    if (ic) ic.innerText = instaladas;
+    if (ef) ef.innerText = (ventas ? Math.round(instaladas/ventas*100) : 0) + "%";
+    if (ni) ni.innerText = Math.max(0, ventas - instaladas);
+    if (mt) mt.innerText = ventas + " / " + META_DIARIA + " ventas";
+    if (mb) mb.style.width = pct + "%";
+    if (mp) mp.innerText  = pct + "%";
 }
 
 async function cargarFrasesSuper() {
@@ -237,7 +288,16 @@ async function cargarVentasSubidas() {
     try {
         const res  = await fetch(API + '/ventas', { headers: ncHeaders() });
         const data = await res.json();
-        if (data.ok) { ventasSubidas = data.data; actualizarTablaVentas(ventasSubidas); }
+        if (data.ok) {
+            ventasSubidas = data.data;
+            actualizarTablaVentas(ventasSubidas);
+            // Actualizar KPIs del rendimiento con datos reales
+            sincronizarKpisRendimiento();
+            // Si estamos en la pestaña rendimiento, actualizar graficos
+            if (!document.getElementById('rendimiento')?.classList.contains('hidden')) {
+                aplicarFiltroGrafico();
+            }
+        }
     } catch(e) { console.error("Error cargando ventas:", e); }
 }
 
@@ -378,77 +438,127 @@ function fotosVenta(i) {
         m = document.createElement('div');
         m.id = 'modalFotos';
         m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
-        m.innerHTML =
-          '<div style="background:#fff;border-radius:20px;width:min(600px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.25);">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #f3f4f6;">' +
-              '<div>' +
-                '<div style="font-size:15px;font-weight:700;color:#111827;">Fotos de la venta</div>' +
-                '<div style="font-size:12px;color:#9ca3af;margin-top:2px;" id="fotosNombre"></div>' +
-              '</div>' +
-              '<button onclick="document.getElementById(\'modalFotos\').style.display=\'none\'" style="width:30px;height:30px;border:none;border-radius:8px;background:#f3f4f6;color:#6b7280;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">x</button>' +
-            '</div>' +
-            '<div style="padding:20px 22px;overflow-y:auto;flex:1;">' +
-              '<div style="margin-bottom:20px;">' +
-                '<label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:8px;">Adjuntar foto</label>' +
-                '<div style="border:2px dashed #e5e7eb;border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById(\'inputFotos\').click()" ondragover="event.preventDefault();this.style.borderColor=\'#111827\'" ondragleave="this.style.borderColor=\'#e5e7eb\'" ondrop="event.preventDefault();this.style.borderColor=\'#e5e7eb\';handleFotosDrop(event)">' +
-                  '<div style="font-size:13px;color:#9ca3af;font-weight:500;">Arrastra fotos aqui o haz clic para seleccionar</div>' +
-                  '<div style="font-size:11px;color:#d1d5db;margin-top:4px;">JPG, PNG, PDF</div>' +
-                '</div>' +
-                '<input type="file" id="inputFotos" accept="image/*,.pdf" multiple style="display:none" onchange="adjuntarFotos(this.files)">' +
-              '</div>' +
-              '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Fotos adjuntas</div>' +
-              '<div id="galeriaFotos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>' +
-            '</div>' +
-          '</div>';
+        // Build modal HTML safely
+        var div = document.createElement('div');
+        div.style.cssText = 'background:#fff;border-radius:20px;width:min(600px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.25);';
+        div.innerHTML = [
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #f3f4f6;">',
+            '<div>',
+              '<div style="font-size:15px;font-weight:700;color:#111827;">Fotos de la venta</div>',
+              '<div style="font-size:12px;color:#9ca3af;margin-top:2px;" id="fotosNombre"></div>',
+            '</div>',
+            '<button id="btnCerrarFotos" style="width:30px;height:30px;border:none;border-radius:8px;background:#f3f4f6;color:#6b7280;font-size:16px;cursor:pointer;">x</button>',
+          '</div>',
+          '<div style="padding:20px 22px;overflow-y:auto;flex:1;">',
+            '<div style="margin-bottom:20px;">',
+              '<label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:8px;">Adjuntar foto</label>',
+              '<div id="fotoDropZone" style="border:2px dashed #e5e7eb;border-radius:12px;padding:24px;text-align:center;cursor:pointer;">',
+                '<div style="font-size:13px;color:#9ca3af;font-weight:500;">Arrastra fotos aqui o haz clic para seleccionar</div>',
+                '<div style="font-size:11px;color:#d1d5db;margin-top:4px;">JPG, PNG, PDF</div>',
+              '</div>',
+              '<input type="file" id="inputFotos" accept="image/*,.pdf" multiple style="display:none">',
+            '</div>',
+            '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Fotos adjuntas</div>',
+            '<div id="galeriaFotos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>',
+          '</div>'
+        ].join('');
+        m.appendChild(div);
+        // Wire up events
+        div.querySelector('#btnCerrarFotos').onclick = function(){ m.style.display='none'; };
+        var dz = div.querySelector('#fotoDropZone');
+        dz.onclick = function(){ div.querySelector('#inputFotos').click(); };
+        dz.ondragover = function(e){ e.preventDefault(); dz.style.borderColor='#111827'; };
+        dz.ondragleave = function(){ dz.style.borderColor='#e5e7eb'; };
+        dz.ondrop = function(e){ e.preventDefault(); dz.style.borderColor='#e5e7eb'; adjuntarFotos(e.dataTransfer.files); };
+        div.querySelector('#inputFotos').onchange = function(){ adjuntarFotos(this.files); };
         document.body.appendChild(m);
         m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
     }
     m._ventaId = v.id;
     document.getElementById('fotosNombre').textContent = v.nombre || '--';
-    renderGaleria(_fotosCache[v.id] || []);
     m.style.display = 'flex';
+    // Cargar fotos desde backend
+    cargarFotosBackend(v.id);
 }
 
-function handleFotosDrop(event) {
-    var files = event.dataTransfer.files;
-    if (files.length) adjuntarFotos(files);
+async function cerrarModalFotos(){ var m=document.getElementById("modalFotos"); if(m) m.style.display="none"; }
+
+async function cargarFotosBackend(ventaId) {
+    try {
+        const res  = await fetch(API + '/ventas/' + ventaId + '/fotos', { headers: ncHeaders() });
+        const data = await res.json();
+        if (data.ok) renderGaleria(data.data, ventaId);
+        else renderGaleria([], ventaId);
+    } catch(e) { renderGaleria([], ventaId); }
 }
 
-function adjuntarFotos(files) {
+
+function adjuntarVenta(i) { fotosVenta(i); }
+
+async function adjuntarFotos(files) {
     var m = document.getElementById('modalFotos');
     var ventaId = m ? m._ventaId : null;
     if (!ventaId || !files.length) return;
-    if (!_fotosCache[ventaId]) _fotosCache[ventaId] = [];
-    Array.from(files).forEach(function(file) {
-        var url = URL.createObjectURL(file);
-        _fotosCache[ventaId].push({ nombre: file.name, url: url, tipo: file.type, fecha: new Date().toLocaleString('es-PE') });
-    });
-    renderGaleria(_fotosCache[ventaId]);
-    mostrarToastDash('Foto adjuntada correctamente');
+    for (const file of Array.from(files)) {
+        var formData = new FormData();
+        formData.append('foto', file);
+        try {
+            var hdr = ncHeaders();
+            delete hdr['Content-Type'];
+            var res = await fetch(API + '/ventas/' + ventaId + '/fotos', {
+                method: 'POST',
+                headers: { 'Authorization': hdr['Authorization'] },
+                body: formData,
+            });
+            var data = await res.json();
+            if (!data.ok) mostrarToastDash('Error subiendo: ' + (data.mensaje||''));
+        } catch(e) { mostrarToastDash('Error de conexion al subir foto'); }
+    }
+    await cargarFotosBackend(ventaId);
+    mostrarToastDash('Foto guardada correctamente');
 }
 
-function renderGaleria(fotos) {
+function handleFotosDrop(event) {
+    var files = event.dataTransfer ? event.dataTransfer.files : event.files;
+    if (files && files.length) adjuntarFotos(files);
+}
+
+function renderGaleria(fotos, ventaId) {
     var gal = document.getElementById('galeriaFotos');
     if (!gal) return;
+    var vid = ventaId || (document.getElementById('modalFotos') ? document.getElementById('modalFotos')._ventaId : 0);
     if (!fotos || !fotos.length) {
         gal.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#d1d5db;font-size:13px;">Sin fotos adjuntas aun.</div>';
         return;
     }
+    var baseUrl = 'http://127.0.0.1:3000/';
     gal.innerHTML = fotos.map(function(f) {
-        var preview = f.tipo && f.tipo.startsWith('image')
-            ? '<img src="' + f.url + '" onclick="window.open(\'' + f.url + '\')" style="width:100%;height:100px;object-fit:cover;display:block;cursor:pointer;">'
-            : '<div onclick="window.open(\'' + f.url + '\')" style="height:100px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#6b7280;cursor:pointer;">PDF</div>';
-        return '<div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#f9fafb;transition:all .2s;" onmouseover="this.style.transform=\'scale(1.03)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">' +
+        var url    = f.ruta ? baseUrl + f.ruta : (f.url || '');
+        var tipo   = f.mimetype || f.tipo || '';
+        var nombre = f.nombre || 'archivo';
+        var fecha  = (f.created_at || f.fecha || '').split(' ')[0];
+        var fId    = f.id || 0;
+        var preview = tipo.startsWith('image')
+            ? '<img src="' + url + '" onclick="window.open(this.src)" style="width:100%;height:100px;object-fit:cover;display:block;cursor:pointer;">'
+            : '<div onclick="window.open(this.dataset.url)" data-url="' + url + '" style="height:100px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;">PDF</div>';
+        var delBtn = fId ? '<button onclick="eliminarFoto(' + fId + ',' + vid + ')" style="width:100%;padding:4px;border:none;background:#fff5f5;color:#dc2626;font-size:10px;font-weight:700;cursor:pointer;">Eliminar</button>' : '';
+        return '<div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#f9fafb;">' +
             preview +
-            '<div style="padding:8px 10px;">' +
-                '<div style="font-size:10px;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + f.nombre + '</div>' +
-                '<div style="font-size:9px;color:#9ca3af;margin-top:2px;">' + f.fecha + '</div>' +
-            '</div>' +
-        '</div>';
+            '<div style="padding:6px 8px;">' +
+                '<div style="font-size:10px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + nombre + '</div>' +
+                '<div style="font-size:9px;color:#9ca3af;">' + fecha + '</div>' +
+            '</div>' + delBtn + '</div>';
     }).join('');
 }
 
-function adjuntarVenta(i) { fotosVenta(i); }
+async function eliminarFoto(fotoId, ventaId) {
+    if (!confirm('Eliminar esta foto?')) return;
+    try {
+        await fetch(API + '/ventas/' + ventaId + '/fotos/' + fotoId, { method: 'DELETE', headers: ncHeaders() });
+        cargarFotosBackend(ventaId);
+        mostrarToastDash('Foto eliminada');
+    } catch(e) { mostrarToastDash('Error eliminando foto'); }
+}
 
 /* ===== NUEVA VENTA ===== */
 function poblarDepartamentos() {
@@ -463,12 +573,35 @@ function poblarDepartamentos() {
 function abrirNuevaVenta() {
     poblarDepartamentos();
     const ov = document.getElementById('panelNuevaVenta');
-    // Resetear titulo por si venia de editar
+    // Resetear titulo
     const titulo = ov.querySelector('.nv-title');
     if (titulo) titulo.textContent = 'Nueva Venta';
     const sub = ov.querySelector('.nv-subtitle');
     if (sub) sub.textContent = 'Completa todos los datos del cliente';
+    // Limpiar _editId
     ov._editId = null;
+    // Limpiar TODOS los campos del formulario
+    ["nv_nombre","nv_dni","nv_tel1","nv_tel2","nv_dir","nv_coord",
+     "nv_lugarNac","nv_padre","nv_madre","nv_plano","nv_obs","nv_fechaNac"].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = "";
+        if(el) el.style.borderColor = "";
+    });
+    ["nv_tipoDoc","nv_cuota","nv_hogar","nv_tec","nv_paquete","nv_full"].forEach(id => {
+        const el = document.getElementById(id); if(el) el.selectedIndex = 0;
+    });
+    ["nv_decos","nv_mesh"].forEach(id => {
+        const el = document.getElementById(id); if(el) el.selectedIndex = 0;
+    });
+    // Reset ubigeo
+    const dpto = document.getElementById('nv_dpto');
+    const prov = document.getElementById('nv_prov');
+    const dist = document.getElementById('nv_dist');
+    if(dpto) dpto.selectedIndex = 0;
+    if(prov) prov.innerHTML = '<option value="">Seleccionar provincia</option>';
+    if(dist) dist.innerHTML = '<option value="">Seleccionar distrito</option>';
+    // Reset estado venta
+    const est = document.getElementById('nv_estado'); if(est) est.value = 'VENTA';
+    actualizarPaquetes();
     ov.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -662,6 +795,7 @@ function iniciarGraficos() {
     if(chartMensual) chartMensual.destroy();
     chartMensual=new Chart(ctxM,{type:"line",data:{labels:mensual.labels,datasets:[{label:"Ventas",data:mensual.ventas,borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,0.08)",tension:0.4,fill:true,pointRadius:4},{label:"Instaladas",data:mensual.instaladas,borderColor:"#8b5cf6",backgroundColor:"rgba(139,92,246,0.08)",tension:0.4,fill:true,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:11},boxWidth:12}}},scales:{y:{beginAtZero:true,grid:{color:"#f3f4f6"}},x:{grid:{display:false}}}}});
     actualizarKPIsRango();
+    sincronizarKpisRendimiento();
 }
 
 function actualizarMeta() {
@@ -676,11 +810,16 @@ window.onload = () => {
     render();
     cargarSaludo();
     cargarFrasesSuper();
-    cargarVentasSubidas();
+    // Cargar ventas y luego sincronizar KPIs al inicio
+    cargarVentasSubidas().then(() => sincronizarKpisRendimiento());
     cargarLeadsAsesor();
     setInterval(cargarFrasesSuper, 30000);
-    setInterval(cargarLeadsAsesor, 15000); // Recargar cada 15s
-    setInterval(cargarVentasSubidas, 60000);
+    setInterval(cargarLeadsAsesor, 15000);
+    // Sincronizar KPIs cada 30s en tiempo real
+    setInterval(async () => {
+        await cargarVentasSubidas();
+        await sincronizarKpisRendimiento();
+    }, 30000);
 };
 
 async function cargarLeadsAsesor() {

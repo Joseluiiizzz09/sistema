@@ -179,12 +179,14 @@ function renderTabla(){
     const est=estadoObj(v._estadoSeg);
     const f=v.fechaIngreso||'';
     const tramo=v._tramo?`<span class="badge-tramo">${v._tramo}</span>`:'--';
+    const nombreSeguro=(v.nombreApellidos||'').replace(/'/g,'').substring(0,30);
     return `<tr class="${est.fila}">
       <td style="text-align:center;vertical-align:middle;">
         <div class="acciones-cell">
           <button class="btn-acc btn-acc-obs"    onclick="abrirModalObs(${v.id})"    title="Registrar llamada">Llamada</button>
           <button class="btn-acc btn-acc-agenda" onclick="abrirModalAgenda(${v.id})" title="Agendar">Agenda</button>
-          <button class="btn-acc btn-acc-hist"   onclick="hAbrir(${v.id},{nombre:'${(v.nombreApellidos||'').replace(/'/g,'').substring(0,30)}',dni:'${v.dni||''}',n1:'${v.telefonoContacto||''}'})" title="Historial">Hist.</button>
+          <button class="btn-acc btn-acc-hist"   onclick="hAbrir(${v.id},{nombre:'${nombreSeguro}',dni:'${v.dni||''}',n1:'${v.telefonoContacto||''}'})" title="Historial">Hist.</button>
+          <button class="btn-fotos" onclick="abrirModalFotos(${v.id}, '${nombreSeguro}')" title="Ver fotos">📷</button>
         </div>
       </td>
       <td class="td-estado">

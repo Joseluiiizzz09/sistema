@@ -115,13 +115,15 @@ function renderTabla(){
   }
 
   tbody.innerHTML = pagina.map(v => {
-    const tieneAudio = !!v.audioUrl;
-    const ultimaObs  = v.obsSup ? (v.obsSup.split('\n').filter(l=>l.trim()).slice(-1)[0]||'').replace(/^\[.+?\]\s*/,'') : '--';
+    const tieneAudio   = !!v.audioUrl;
+    const ultimaObs    = v.obsSup ? (v.obsSup.split('\n').filter(l=>l.trim()).slice(-1)[0]||'').replace(/^\[.+?\]\s*/,'') : '--';
+    const nombreSeguro = (v.nombreApellidos||'').replace(/'/g, '');
     return '<tr>'+
       '<td><div class="acciones-cell">'+
         '<button class="btn-acc btn-acc-audio" onclick="abrirModalRevisar('+v.id+')" title="Escuchar y revisar">Escuchar</button>'+
         (tieneAudio ? '<a class="btn-acc btn-acc-subir" href="'+v.audioUrl+'" download="grabacion_'+v.id+'.mp3">Descargar</a>' : '<span style="font-size:11px;color:#9ca3af;padding:0 6px;">Sin audio</span>')+
         '<button class="btn-acc btn-acc-obs" onclick="verObs('+v.id+')" title="Ver observaciones">Obs</button>'+
+        '<button class="btn-fotos" onclick="abrirModalFotos('+v.id+', \''+nombreSeguro+'\')" title="Ver fotos">📷 Fotos</button>'+
       '</div></td>'+
       '<td>'+getBadgeRevHtml(v.estadoRev, v.id)+'</td>'+
       '<td><span style="color:#185FA5;font-weight:700;font-size:11px;">'+formatF(v.fechaIngreso)+'</span></td>'+
@@ -206,9 +208,6 @@ async function guardarRevision(){
   lineas.push('['+nowLabel()+' - '+usuarioActual+'] '+estadoRevision.toUpperCase()+(obs?' -- '+obs:''));
   const nuevoHistorial = lineas.join('\n');
 
-  // aprobado  → estado='aprobado'  → programacion lo ve
-  // rechazado → estado='validado'  → vuelve a grabaciones
-  // observado → estado='grabado'   → se queda aqui
   const estadoPrincipal =
     estadoRevision === 'aprobado'  ? 'aprobado' :
     estadoRevision === 'rechazado' ? 'validado'  :
@@ -231,7 +230,6 @@ async function guardarRevision(){
     v.obsSup    = nuevoHistorial;
     cerrarModalRevisar();
 
-    // Aprobado o rechazado: quitar de la lista (ya no es 'grabado')
     if (estadoRevision === 'aprobado' || estadoRevision === 'rechazado') {
       ventas = ventas.filter(x => x.id !== editandoId);
     }

@@ -544,3 +544,128 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 #panelNuevaVenta {
   z-index: 400 !important;
 }
+
+
+/* ━━ BADGES ESTADO ASESOR — iOS gradient style ━━ */
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: all .2s cubic-bezier(.34,1.2,.64,1);
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+.badge-estado:hover { transform: scale(1.06) translateY(-1px); }
+
+.badge-estado.estado-venta-cerrada {
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(16,185,129,.4);
+  animation: pulseGreen 2.5s ease-in-out infinite;
+}
+@keyframes pulseGreen {
+  0%,100% { box-shadow: 0 3px 10px rgba(16,185,129,.4); }
+  50%      { box-shadow: 0 3px 18px rgba(16,185,129,.7); }
+}
+
+.badge-estado.estado-preventa {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(59,130,246,.35);
+}
+
+.badge-estado.estado-agendado {
+  background: linear-gradient(135deg,#f97316,#ea580c);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(249,115,22,.35);
+}
+
+.badge-estado.estado-no-contesta {
+  background: linear-gradient(135deg,#f59e0b,#d97706);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(245,158,11,.35);
+}
+
+.badge-estado.estado-buzon-voz {
+  background: linear-gradient(135deg,#06b6d4,#0891b2);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(6,182,212,.35);
+}
+
+.badge-estado.estado-corta-llamada {
+  background: linear-gradient(135deg,#64748b,#475569);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(100,116,139,.3);
+}
+
+.badge-estado.estado-en-ejecucion {
+  background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(139,92,246,.35);
+}
+
+.badge-estado.estado-sin-cobertura {
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(239,68,68,.35);
+}
+
+.badge-estado.estado-no-califica {
+  background: linear-gradient(135deg,#fbbf24,#f59e0b);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(251,191,36,.35);
+}
+
+.badge-estado.estado-no-desea {
+  background: linear-gradient(135deg,#f43f5e,#e11d48);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(244,63,94,.35);
+}
+
+.badge-estado.estado-sh-edificio-no-liberado {
+  background: linear-gradient(135deg,#a78bfa,#8b5cf6);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(167,139,250,.35);
+}
+
+.badge-estado.estado-contacto-con-terceros {
+  background: linear-gradient(135deg,#34d399,#10b981);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(52,211,153,.35);
+}
+
+.badge-estado.estado-desea-movil {
+  background: linear-gradient(135deg,#818cf8,#6366f1);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(129,140,248,.35);
+}
+
+.badge-estado.estado-servicio-activo {
+  background: linear-gradient(135deg,#1f2937,#111827);
+  color: #f9fafb;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+}
+
+.badge-estado.estado-nuevo {
+  background: linear-gradient(135deg,#e2e8f0,#cbd5e1);
+  color: #475569;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+
+/* vs-badges en ventas subidas — también con gradientes */
+.vs-badge { border-radius: 99px !important; font-weight: 800 !important; }
+.vs-badge-venta      { background: linear-gradient(135deg,#3b82f6,#2563eb) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(59,130,246,.3); }
+.vs-badge-validado   { background: linear-gradient(135deg,#8b5cf6,#7c3aed) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(139,92,246,.3); }
+.vs-badge-grabado    { background: linear-gradient(135deg,#f59e0b,#d97706) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(245,158,11,.3); }
+.vs-badge-instalado  { background: linear-gradient(135deg,#10b981,#059669) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(16,185,129,.3); }
+.vs-badge-programado { background: linear-gradient(135deg,#06b6d4,#0891b2) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(6,182,212,.3); }
+.vs-badge-caida      { background: linear-gradient(135deg,#ef4444,#dc2626) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(239,68,68,.3); }
+.vs-badge-observado  { background: linear-gradient(135deg,#f97316,#ea580c) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(249,115,22,.3); }
+.vs-badge-ejecucion  { background: linear-gradient(135deg,#8b5cf6,#7c3aed) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(139,92,246,.3); }
+.vs-badge-tecnico    { background: linear-gradient(135deg,#a78bfa,#8b5cf6) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(167,139,250,.3); }
+.vs-badge-duplicada  { background: linear-gradient(135deg,#f43f5e,#e11d48) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(244,63,94,.3); }

@@ -605,3 +605,252 @@ body{
   .kpi-num,.kpi-value{font-size:22px;}
   .modal-grid,.det-grid{grid-template-columns:1fr;}
 }
+
+/* ━━ BADGES DE ESTADO — VALIDACION y VENTAS SUBIDAS ━━ */
+.badge-seg, .badge-estado, .badge-seg[onclick] {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  transition: all .2s cubic-bezier(.34,1.2,.64,1);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+.badge-seg:hover {
+  transform: scale(1.08) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.badge-seg:active { transform: scale(.95); }
+
+/* Estados seguimiento — colores vibrantes */
+.bs-ejec {
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(16,185,129,.35);
+}
+.bs-ejec:hover { box-shadow: 0 4px 14px rgba(16,185,129,.5); }
+
+.bs-inst {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(59,130,246,.35);
+}
+.bs-inst:hover { box-shadow: 0 4px 14px rgba(59,130,246,.5); }
+
+.bs-caida {
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(239,68,68,.35);
+}
+.bs-caida:hover { box-shadow: 0 4px 14px rgba(239,68,68,.5); }
+
+.bs-noval {
+  background: linear-gradient(135deg,#f59e0b,#d97706);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(245,158,11,.35);
+}
+.bs-noval:hover { box-shadow: 0 4px 14px rgba(245,158,11,.5); }
+
+.bs-rech {
+  background: linear-gradient(135deg,#f97316,#ea580c);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(249,115,22,.35);
+}
+.bs-rech:hover { box-shadow: 0 4px 14px rgba(249,115,22,.5); }
+
+.bs-tecnico {
+  background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(139,92,246,.35);
+}
+.bs-tecnico:hover { box-shadow: 0 4px 14px rgba(139,92,246,.5); }
+
+/* Estados ventas */
+.be-venta, .b-venta, .vs-badge-venta {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(59,130,246,.3);
+}
+.be-validado, .b-validado, .vs-badge-validado {
+  background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(139,92,246,.3);
+}
+.be-instalado, .b-instalado, .vs-badge-instalado {
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(16,185,129,.3);
+}
+.be-programado, .b-programado, .vs-badge-programado {
+  background: linear-gradient(135deg,#06b6d4,#0891b2);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(6,182,212,.3);
+}
+.be-caida, .b-caida, .vs-badge-caida {
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(239,68,68,.3);
+}
+.be-observado, .vs-badge-observado {
+  background: linear-gradient(135deg,#f59e0b,#d97706);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(245,158,11,.3);
+}
+.be-pendiente, .b-pendiente {
+  background: linear-gradient(135deg,#94a3b8,#64748b);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(100,116,139,.2);
+}
+
+/* Grabaciones badges */
+.bg-grabado {
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(16,185,129,.3);
+}
+.bg-pendiente {
+  background: linear-gradient(135deg,#f59e0b,#d97706);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245,158,11,.3);
+}
+.bg-observado {
+  background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(139,92,246,.3);
+}
+.bg-revisado {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59,130,246,.3);
+}
+
+/* Pulse animation para estados urgentes */
+@keyframes pulseRed {
+  0%,100% { box-shadow: 0 3px 10px rgba(239,68,68,.35); }
+  50%      { box-shadow: 0 3px 18px rgba(239,68,68,.65); }
+}
+@keyframes pulseAmber {
+  0%,100% { box-shadow: 0 3px 10px rgba(245,158,11,.35); }
+  50%      { box-shadow: 0 3px 18px rgba(245,158,11,.65); }
+}
+.bs-caida  { animation: pulseRed   2s ease-in-out infinite; }
+.bs-noval  { animation: pulseAmber 2s ease-in-out infinite; }
+.bs-caida:hover, .bs-noval:hover { animation: none; }
+
+/* ━━ MODAL ROTACIÓN MANUAL — fix layout ━━ */
+.modal-bg {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(6px);
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-bg.open { display: flex !important; }
+
+.modal-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  width: min(440px, 96vw);
+  box-shadow: 0 24px 60px rgba(0,0,0,.18);
+  animation: popIn .26s cubic-bezier(.34,1.2,.64,1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-box h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+.modal-box p {
+  font-size: 12px;
+  color: #6b7280;
+  margin: -8px 0 0;
+  line-height: 1.5;
+}
+
+.modal-box select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 11px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  background: #f9fafb;
+  color: #111827;
+  transition: border .18s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%239ca3af' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.modal-box select:focus { border-color: #e53e3e; background: #fff; box-shadow: 0 0 0 3px rgba(229,62,62,.08); }
+
+.modal-box textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 11px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  background: #f9fafb;
+  color: #111827;
+  resize: vertical;
+  min-height: 80px;
+  transition: border .18s;
+  box-sizing: border-box;
+}
+.modal-box textarea:focus { border-color: #e53e3e; background: #fff; box-shadow: 0 0 0 3px rgba(229,62,62,.08); }
+.modal-box textarea::placeholder { color: #d1d5db; }
+
+.modal-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.btn-cancelar-modal {
+  padding: 10px 20px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 11px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s cubic-bezier(.34,1.2,.64,1);
+}
+.btn-cancelar-modal:hover { background: #f9fafb; transform: scale(1.02); }
+
+.btn-confirmar-modal {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 11px;
+  background: linear-gradient(135deg,#e53e3e,#c53030);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(229,62,62,.35);
+  transition: all .18s cubic-bezier(.34,1.2,.64,1);
+}
+.btn-confirmar-modal:hover { transform: scale(1.04) translateY(-1px); box-shadow: 0 6px 18px rgba(229,62,62,.45); }
+.btn-confirmar-modal:active { transform: scale(.97); }
