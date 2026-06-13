@@ -7,6 +7,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/programacion.css">
+
+<style>
+/* Nuevos estados programación */
+.be-bloqueado  { background:#fee2e2; color:#991b1b; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.be-sinagenda  { background:#fef9c3; color:#854d0e; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.be-caracter   { background:#ede9fe; color:#5b21b6; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.be-fraude     { background:#1f2937; color:#fff;    border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.be-zona       { background:#ffedd5; color:#9a3412; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.be-programado { background:#dcfce7; color:#15803d; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.btn-estado:hover { opacity:.85; transform:scale(1.04); }
+/* Badge en tabla */
+.b-bloqueado  { background:#fee2e2; color:#991b1b; }
+.b-sinagenda  { background:#fef9c3; color:#854d0e; }
+.b-caracter   { background:#ede9fe; color:#5b21b6; }
+.b-fraude     { background:#1f2937; color:#fff; }
+.b-zona       { background:#ffedd5; color:#9a3412; }
+</style>
 </head>
 <body>
 
@@ -35,12 +52,11 @@
     <button class="btn-filtrar" onclick="cargarVentas()">Actualizar</button>
   </div>
 
+  <!-- KPIs — sin Instaladas ni Caídas -->
   <div class="kpi-grid">
     <div class="kpi-card k-purple"><div class="kpi-num" id="kpiTotal">0</div><div class="kpi-label">Total</div></div>
-    <div class="kpi-card k-green"><div class="kpi-num" id="kpiInstalado">0</div><div class="kpi-label">Instaladas</div></div>
     <div class="kpi-card k-blue"><div class="kpi-num" id="kpiProgramado">0</div><div class="kpi-label">Programadas</div></div>
     <div class="kpi-card k-orange"><div class="kpi-num" id="kpiPendiente">0</div><div class="kpi-label">Pendientes</div></div>
-    <div class="kpi-card k-red"><div class="kpi-num" id="kpiCaida">0</div><div class="kpi-label">Caídas</div></div>
   </div>
 
   <div class="filtros-panel">
@@ -50,10 +66,11 @@
         <select class="filtro-select" id="filtroEstado" onchange="filtrarVentas()">
           <option value="">Todos</option>
           <option value="PROGRAMADO">Programado</option>
-          <option value="INSTALADO">Instalado</option>
-          <option value="PENDIENTE">Pendiente</option>
-          <option value="CAIDA">Caída</option>
-          <option value="VALIDADO">Validado</option>
+          <option value="BLOQUEADO">Bloqueado</option>
+          <option value="SIN_AGENDA">Sin agenda</option>
+          <option value="CARACTER_ESPECIAL">Carácter especial</option>
+          <option value="FRAUDE">Fraude</option>
+          <option value="ZONA_RESTRINGIDA">Zona restringida</option>
         </select>
       </div>
       <div class="filtro-group">
@@ -103,18 +120,22 @@
   <div class="modal-box" style="max-width:640px;">
     <div class="modal-head">
       <span class="modal-head-title">Detalle de Venta</span>
-      <button class="modal-close" onclick="cerrarModal()">×</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="btnFotosModal" class="btn-fotos" style="font-size:13px;padding:6px 14px;">📷 Ver fotos del asesor</button>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="det-grid" id="detalleGrid"></div>
       <div class="cambiar-estado-wrap">
         <label>Cambiar estado de programación</label>
         <div class="estado-btns">
-          <button class="btn-estado be-programado" onclick="setEstadoModal('PROGRAMADO')">Programado</button>
-          <button class="btn-estado be-instalado"  onclick="setEstadoModal('INSTALADO')">Instalado</button>
-          <button class="btn-estado be-pendiente"  onclick="setEstadoModal('PENDIENTE')">Pendiente</button>
-          <button class="btn-estado be-caida"      onclick="setEstadoModal('CAIDA')">Caída</button>
-          <button class="btn-estado be-validado"   onclick="setEstadoModal('VALIDADO')">Validado</button>
+          <button class="btn-estado be-programado"  onclick="setEstadoModal('PROGRAMADO')">Programado</button>
+          <button class="btn-estado be-bloqueado"   onclick="setEstadoModal('BLOQUEADO')">Bloqueado</button>
+          <button class="btn-estado be-sinagenda"   onclick="setEstadoModal('SIN_AGENDA')">Sin agenda</button>
+          <button class="btn-estado be-caracter"    onclick="setEstadoModal('CARACTER_ESPECIAL')">Carácter especial</button>
+          <button class="btn-estado be-fraude"      onclick="setEstadoModal('FRAUDE')">Fraude</button>
+          <button class="btn-estado be-zona"        onclick="setEstadoModal('ZONA_RESTRINGIDA')">Zona restringida</button>
         </div>
         <div id="estadoSelLabel" style="margin-top:8px;font-size:11px;color:#7c3aed;font-weight:600;"></div>
       </div>
@@ -131,6 +152,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<script src="js/config.js"></script>
 <script src="js/session.js"></script>
 <script src="js/programacion.js"></script>
 <script src="js/fotos-modal.js"></script>

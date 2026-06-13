@@ -25,7 +25,7 @@ const ESTADOS_TODOS = [
   { id:'servicio_activo',label:'SERVICIO ACTIVO', cls:'be-servicio' },
 ];
 
-const API_VAL = 'http://127.0.0.1:3000/api';
+const API_VAL = window.NC_API + '/api';
 
 let ventas          = [];
 let ventasFiltradas = [];
@@ -143,11 +143,22 @@ async function loadFromStorage() {
 
 /* ===== KPIs ===== */
 function actualizarKpis(){
-  const total     = ventas.length;
-  const validados = ventas.filter(v=>['validado','instalado','programado'].includes(v.estado)).length;
+  const total = ventas.length;
+  // Validadas = estado validado/instalado/programado/grabado/aprobado/en_ejecucion
+  //             O tienen tipificación de validador que es 'validado'
+  const ESTADOS_OK = ['validado','instalado','programado','grabado','aprobado','en_ejecucion',
+                      'caida','rechazo_campo','tecnico_casa'];
+  const validados = ventas.filter(v =>
+    ESTADOS_OK.includes(v.estado) || v.tipifVal === 'validado'
+  ).length;
+  // No validadas = tienen tipificación de rechazo del validador
+  const TIPIF_NO_VAL = ['corta_llamada','fraude','no_desea','no_contesta','servicio_activo'];
+  const noValidados = ventas.filter(v =>
+    TIPIF_NO_VAL.includes(v.tipifVal)
+  ).length;
   document.getElementById('kpi-total').textContent       = total;
   document.getElementById('kpi-validados').textContent   = validados;
-  document.getElementById('kpi-novalidados').textContent = total - validados;
+  document.getElementById('kpi-novalidados').textContent = noValidados;
 }
 
 /* ===== FILTROS ===== */

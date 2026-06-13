@@ -1,7 +1,7 @@
 /* ================================================
    BACKOFFICE.JS — Conectado a Node.js backend
    ================================================ */
-const API_BO = 'http://127.0.0.1:3000/api';
+const API_BO = window.NC_API + '/api';
 
 const COLORES_AV = ["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899"];
 const DOT_COLORS = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626'];

@@ -5,7 +5,7 @@
    supgrabaciones, supervisor, programacion, etc.
    ================================================ */
 
-const API_FM = 'http://127.0.0.1:3000/api';
+const API_FM = window.NC_API + '/api';
 
 function inyectarModalFotos() {
   if (document.getElementById('modalFotosVisor')) return;
@@ -62,7 +62,7 @@ function cerrarVisorFotos(e) {
 }
 
 async function fmvCargar() {
-  const token = sessionStorage.getItem('token');
+  const token = localStorage.getItem('nc_token');
   try {
     const res  = await fetch(`${API_FM}/ventas/${_fmvVentaId}/fotos`, {
       headers: { Authorization: 'Bearer ' + token }
@@ -83,7 +83,7 @@ function fmvRender(archivos) {
     return;
   }
 
-  const baseUrl = 'http://127.0.0.1:3000/';
+  const baseUrl = window.NC_API + '/';
   // Guardar solo imágenes para el lightbox
   _fmvFotos = archivos.filter(f => (f.mimetype||f.tipo||'').startsWith('image'));
 
@@ -130,7 +130,7 @@ function fmvShowLightbox() {
   const img  = document.getElementById('fmvLightboxImg');
   const info = document.getElementById('fmvLbInfo');
   const f    = _fmvFotos[_fmvLbIndex];
-  const baseUrl = 'http://127.0.0.1:3000/';
+  const baseUrl = window.NC_API + '/';
   const url  = f.ruta ? baseUrl + f.ruta : (f.url || '');
   img.src    = url;
   info.textContent = `${_fmvLbIndex + 1} / ${_fmvFotos.length} · ${f.nombre || ''}`;

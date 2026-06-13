@@ -1,7 +1,7 @@
 /* ================================================
    PROGRAMACION.JS — Módulo de Programación
    ================================================ */
-const API_PROG = 'http://127.0.0.1:3000/api';
+const API_PROG = window.NC_API + '/api';
 
 let ventasAll  = [];
 let ventasFilt = [];
@@ -23,9 +23,17 @@ function formatF(f) {
 
 function badgeCls(estado) {
   const map = {
-    'PROGRAMADO':'b-programado','INSTALADO':'b-instalado',
-    'CAIDA':'b-caida','VALIDADO':'b-validado',
-    'PENDIENTE':'b-pendiente','VENTA':'b-venta',
+    'PROGRAMADO':       'b-programado',
+    'BLOQUEADO':        'b-bloqueado',
+    'SIN_AGENDA':       'b-sinagenda',
+    'CARACTER_ESPECIAL':'b-caracter',
+    'FRAUDE':           'b-fraude',
+    'ZONA_RESTRINGIDA': 'b-zona',
+    'INSTALADO':        'b-instalado',
+    'PENDIENTE':        'b-pendiente',
+    'CAIDA':            'b-caida',
+    'VALIDADO':         'b-validado',
+    'VENTA':            'b-venta',
   };
   return map[(estado||'').toUpperCase()] || 'b-venta';
 }
@@ -35,7 +43,6 @@ async function cargarVentas() {
     const res  = await fetch(API_PROG + '/ventas?programacion=1', { headers: ncHeaders() });
     const data = await res.json();
     if (!data.ok) { toast('Error cargando ventas'); return; }
-    // Solo ventas que pasaron grabaciones (estado != VENTA ni vacío)
     ventasAll = data.data.filter(v => {
       const e = (v.estado||'').toUpperCase();
       return e !== 'VENTA' && e !== '';
@@ -47,11 +54,9 @@ async function cargarVentas() {
 
 function actualizarKPIs() {
   const e = (v, s) => (v.estado||'').toUpperCase() === s;
-  document.getElementById('kpiTotal').textContent     = ventasAll.length;
-  document.getElementById('kpiInstalado').textContent = ventasAll.filter(v=>e(v,'INSTALADO')).length;
-  document.getElementById('kpiProgramado').textContent= ventasAll.filter(v=>e(v,'PROGRAMADO')).length;
-  document.getElementById('kpiPendiente').textContent = ventasAll.filter(v=>e(v,'PENDIENTE')).length;
-  document.getElementById('kpiCaida').textContent     = ventasAll.filter(v=>e(v,'CAIDA')).length;
+  document.getElementById('kpiTotal').textContent      = ventasAll.length;
+  document.getElementById('kpiProgramado').textContent = ventasAll.filter(v=>e(v,'PROGRAMADO')).length;
+  document.getElementById('kpiPendiente').textContent  = ventasAll.filter(v=>e(v,'PENDIENTE')).length;
 }
 
 function filtrarVentas() {
@@ -64,10 +69,10 @@ function filtrarVentas() {
   ventasFilt = ventasAll.filter(v => {
     const est  = (v.estado||'').toUpperCase();
     const fecha= (v.created_at||'').split('T')[0].split(' ')[0];
-    if (fEst   && est !== fEst)                          return false;
-    if (fAs    && !(v.asesor_nombre||'').toLowerCase().includes(fAs)) return false;
-    if (fDesde && fecha < fDesde)                        return false;
-    if (fHasta && fecha > fHasta)                        return false;
+    if (fEst   && est !== fEst)                                                    return false;
+    if (fAs    && !(v.asesor_nombre||'').toLowerCase().includes(fAs))              return false;
+    if (fDesde && fecha < fDesde)                                                  return false;
+    if (fHasta && fecha > fHasta)                                                  return false;
     if (fBus   && ![(v.dni||''),(v.nombre||''),(v.asesor_nombre||'')].join(' ').toLowerCase().includes(fBus)) return false;
     return true;
   });
@@ -83,8 +88,9 @@ function renderTabla() {
     return;
   }
   tbody.innerHTML = ventasFilt.map((v, i) => {
-    const fecha = formatF((v.created_at||'').split(' ')[0]);
-    const cls   = badgeCls(v.estado);
+    const fecha        = formatF((v.created_at||'').split(' ')[0]);
+    const cls          = badgeCls(v.estado);
+    const nombreSeguro = (v.nombre||'').replace(/'/g,'').substring(0,30);
     return `<tr>
       <td style="color:#9ca3af;font-size:10px">${i+1}</td>
       <td style="font-size:11px;color:#374151;white-space:nowrap">${fecha}</td>
@@ -97,7 +103,10 @@ function renderTabla() {
       <td><span class="badge ${cls}">${v.estado||'—'}</span></td>
       <td style="font-size:11px;color:#6b7280;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.obs_programacion||'—'}</td>
       <td>
-        <button class="btn-accion btn-ver-det" onclick="abrirDetalle(${v.id})">Ver / Editar</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn-accion btn-ver-det" onclick="abrirDetalle(${v.id})">Ver / Editar</button>
+          <button class="btn-fotos" onclick="abrirModalFotos(${v.id}, '${nombreSeguro}')" title="Ver fotos del asesor">📷</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -116,7 +125,7 @@ function abrirDetalle(id) {
   if (!ventaActiva) return;
   estadoModal = ventaActiva.estado || '';
 
-  const grid = document.getElementById('detalleGrid');
+  const grid  = document.getElementById('detalleGrid');
   const campo = (label, val) =>
     `<div class="det-campo"><label>${label}</label><span>${val||'—'}</span></div>`;
 
@@ -141,14 +150,41 @@ function abrirDetalle(id) {
     campo('Coordenadas', ventaActiva.coordenadas) +
     campo('Fecha ingreso', formatF((ventaActiva.created_at||'').split(' ')[0]));
 
-  document.getElementById('obsProg').value = ventaActiva.obs_programacion || '';
+  document.getElementById('obsProg').value         = ventaActiva.obs_programacion || '';
   document.getElementById('estadoSelLabel').textContent = 'Estado actual: ' + estadoModal;
+
+  // Botón fotos dentro del modal
+  const btnFotosModal = document.getElementById('btnFotosModal');
+  if (btnFotosModal) {
+    const nombreSeguro = (ventaActiva.nombre||'').replace(/'/g,'').substring(0,30);
+    btnFotosModal.onclick = () => abrirModalFotos(ventaActiva.id, nombreSeguro);
+  }
+
   document.getElementById('modalDetalle').classList.add('open');
 }
 
+const ESTADO_LABELS_PROG = {
+  'PROGRAMADO':       'Programado',
+  'BLOQUEADO':        'Bloqueado',
+  'SIN_AGENDA':       'Sin agenda',
+  'CARACTER_ESPECIAL':'Carácter especial',
+  'FRAUDE':           'Fraude',
+  'ZONA_RESTRINGIDA': 'Zona restringida',
+  'INSTALADO':        'Instalado',
+  'PENDIENTE':        'Pendiente',
+  'CAIDA':            'Caída',
+  'VALIDADO':         'Validado',
+};
+
 function setEstadoModal(estado) {
   estadoModal = estado;
-  document.getElementById('estadoSelLabel').textContent = 'Nuevo estado: ' + estado;
+  const label = ESTADO_LABELS_PROG[estado] || estado;
+  document.getElementById('estadoSelLabel').textContent = 'Nuevo estado: ' + label;
+  // Resaltar botón activo
+  document.querySelectorAll('.btn-estado').forEach(b => b.style.outline = '');
+  document.querySelectorAll('.btn-estado').forEach(b => {
+    if(b.getAttribute('onclick')?.includes("'"+estado+"'")) b.style.outline = '3px solid #7c3aed';
+  });
 }
 
 async function guardarCambios() {
@@ -161,7 +197,7 @@ async function guardarCambios() {
     });
     const data = await res.json();
     if (!data.ok) { toast('Error actualizando'); return; }
-    ventaActiva.estado = estadoModal;
+    ventaActiva.estado           = estadoModal;
     ventaActiva.obs_programacion = obs;
     cerrarModal();
     actualizarKPIs();

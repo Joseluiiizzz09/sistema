@@ -2,243 +2,242 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Usuarios — Netcontact</title>
-<link rel="stylesheet" href="css/usuarios.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jefatura — Netcontact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/jefatura.css">
 </head>
 <body>
 
 <div class="topbar">
   <div class="brand">
-    <div class="logo-circle"><img src="assets/logo3.png"></div>
+    <div class="logo-circle"><img src="assets/logo3.png" alt="NC" onerror="this.parentNode.textContent='🏢'"></div>
     <div class="brand-text">
-      <h1>Netcontact</h1>
-      <span>Gestión de Usuarios</span>
+      <h1>NET<span class="dot"></span><span class="red">CONTACT</span></h1>
+      <span class="brand-sub">Panel de Jefatura</span>
     </div>
   </div>
   <div class="topbar-right">
-    <button onclick="history.back()" class="btn-volver">← Volver</button>
-    <button id="btnSalir" onclick="ncCerrarSesion()" class="btn-salir">Salir</button>
+    <span class="topbar-badge">JEFATURA</span>
+    <span class="topbar-user" id="topbarUser">Gerencia</span>
+    <button class="topbar-salir" onclick="ncCerrarSesion()">Salir</button>
   </div>
 </div>
 
-<div class="pagina">
+<div class="app-layout">
 
-  <div class="page-header">
-    <div>
-      <h2>👥 Usuarios del sistema</h2>
-      <p>Crea, activa o desactiva usuarios de Netcontact</p>
-    </div>
-    <button class="btn-nuevo" onclick="abrirModal()">+ Nuevo Usuario</button>
-  </div>
+  <aside class="sidebar">
+    <div class="sidebar-sep">General</div>
+    <button class="nav-btn active" onclick="showSection('dashboard',this)"><span class="nav-dot"></span> Dashboard</button>
+    <button class="nav-btn" onclick="showSection('accesos',this)"><span class="nav-dot"></span> Accesos directos</button>
+    <div class="sidebar-sep">Operaciones</div>
+    <button class="nav-btn" onclick="showSection('seguimiento',this)"><span class="nav-dot"></span> Seguimiento en campo</button>
+    <div class="sidebar-sep">Gestión</div>
+    <button class="nav-btn" onclick="showSection('usuarios',this)"><span class="nav-dot"></span> Usuarios</button>
+    <button class="nav-btn" onclick="showSection('reportes',this)"><span class="nav-dot"></span> Reportes</button>
+    <div class="sidebar-sep">Sistema</div>
+    <button class="nav-btn" onclick="showSection('logs',this)"><span class="nav-dot"></span> Logs de actividad</button>
+  </aside>
 
-  <div class="kpi-strip">
-    <div class="kpi kpi-blue">
-      <div class="kpi-num" id="kpiTotal">0</div>
-      <div class="kpi-label">Total</div>
-    </div>
-    <div class="kpi kpi-green">
-      <div class="kpi-num" id="kpiActivos">0</div>
-      <div class="kpi-label">Activos</div>
-    </div>
-    <div class="kpi kpi-red">
-      <div class="kpi-num" id="kpiInactivos">0</div>
-      <div class="kpi-label">Inactivos</div>
-    </div>
-    <div class="kpi kpi-purple">
-      <div class="kpi-num" id="kpiAsesores">0</div>
-      <div class="kpi-label">Asesores</div>
-    </div>
-    <div class="kpi kpi-orange">
-      <div class="kpi-num" id="kpiSupervisores">0</div>
-      <div class="kpi-label">Supervisores</div>
-    </div>
-  </div>
+  <main class="main">
 
-  <div class="filtros-bar">
-    <input type="text" id="buscarInput" class="input-buscar"
-      placeholder="🔍  Buscar por nombre o usuario..."
-      oninput="filtrarUsuarios()">
-    <select id="filtroCargo" class="select-filtro" onchange="filtrarUsuarios()">
-      <option value="">Todos los cargos</option>
-      <option value="asesor">Asesor</option>
-      <option value="supervisor">Supervisor</option>
-      <option value="backoffice">Back Office</option>
-      <option value="validacion">Validación</option>
-      <option value="grabaciones">Grabaciones</option>
-      <option value="seguimiento">Seguimiento</option>
-      <option value="jefatura">Jefatura</option>
-      <option value="usuarios">Usuarios</option>
-      <option value="programacion">Programación</option>
-    </select>
-    <select id="filtroEstado" class="select-filtro" onchange="filtrarUsuarios()">
-      <option value="">Todos los estados</option>
-      <option value="activo">Activos</option>
-      <option value="inactivo">Inactivos</option>
-    </select>
-    <button class="btn-limpiar" onclick="limpiarFiltros()">✕ Limpiar</button>
-  </div>
-
-  <div class="tabla-info">
-    <span id="contadorInfo">0 usuarios</span>
-  </div>
-
-  <div class="tabla-wrap">
-    <table class="tabla-usuarios">
-      <thead>
-        <tr>
-          <th style="width:40px;">#</th>
-          <th>Nombre Completo</th>
-          <th>Usuario</th>
-          <th>Cargo</th>
-          <th>Sala</th>
-          <th>Estado</th>
-          <th>Creado</th>
-          <th style="width:180px;">Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="tablaBody"></tbody>
-    </table>
-  </div>
-
-</div>
-
-<!-- MODAL CREAR / EDITAR USUARIO -->
-<div class="modal-overlay hidden" id="modalUsuario">
-  <div class="modal-card">
-
-    <div class="modal-header">
-      <div class="modal-titulo">
-        <span id="modalIcono">✨</span>
-        <span id="modalTitulo">Nuevo Usuario</span>
-      </div>
-      <button class="modal-close" onclick="cerrarModal()">✕</button>
-    </div>
-
-    <div class="modal-body">
-
-      <div class="campo-row">
-        <div class="campo">
-          <label>Nombre Completo *</label>
-          <input id="u_nombre" type="text" placeholder="Ej: María García López"
-            oninput="limpiarError('nombre')">
-          <span class="campo-error" id="err_nombre"></span>
-        </div>
-        <div class="campo">
-          <label>Usuario (login) *</label>
-          <input id="u_usuario" type="text" placeholder="Ej: mgarcia"
-            oninput="this.value=this.value.toLowerCase().replace(/\s/g,'');limpiarError('usuario')">
-          <span class="campo-error" id="err_usuario"></span>
-        </div>
+    <!-- ===== DASHBOARD ===== -->
+    <section id="sec-dashboard" class="section active">
+      <div class="sec-header">
+        <div><h2>Dashboard General</h2><p>Resumen global del sistema</p></div>
       </div>
 
-      <div class="campo-row">
-        <div class="campo">
-          <label id="passLabel">Contraseña *</label>
-          <div class="pass-wrap">
-            <input id="u_pass" type="password" placeholder="Mínimo 6 caracteres"
-              oninput="limpiarError('pass')">
-            <button type="button" class="btn-ver" onclick="togglePass('u_pass')">👁</button>
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));">
+        <div class="kpi-card k-blue">  <div class="kpi-num" id="kpi-ventas-hoy">0</div>    <div class="kpi-label">Ventas hoy</div>        <div class="kpi-sub">del día</div></div>
+        <div class="kpi-card k-purple"><div class="kpi-num" id="kpi-validadas">0</div>     <div class="kpi-label">Validadas</div>         <div class="kpi-sub">pasaron validación</div></div>
+        <div class="kpi-card k-red">   <div class="kpi-num" id="kpi-novalidadas">0</div>   <div class="kpi-label">No validadas</div>      <div class="kpi-sub">rechazadas val.</div></div>
+        <div class="kpi-card k-orange"><div class="kpi-num" id="kpi-grabadas">0</div>      <div class="kpi-label">Grabadas</div>          <div class="kpi-sub">con audio</div></div>
+        <div class="kpi-card k-yellow"><div class="kpi-num" id="kpi-nograbadas">0</div>    <div class="kpi-label">No grabadas</div>       <div class="kpi-sub">esperando audio</div></div>
+        <div class="kpi-card k-teal">  <div class="kpi-num" id="kpi-ejecucion">0</div>     <div class="kpi-label">En ejecución</div>      <div class="kpi-sub">programadas</div></div>
+        <div class="kpi-card" style="border-top-color:#94a3b8;"><div class="kpi-num" id="kpi-noprogramadas">0</div><div class="kpi-label">No programadas</div><div class="kpi-sub">esperando prog.</div></div>
+        <div class="kpi-card k-green"> <div class="kpi-num" id="kpi-instaladas">0</div>    <div class="kpi-label">Instaladas</div>        <div class="kpi-sub">completadas</div></div>
+        <div class="kpi-card k-red">   <div class="kpi-num" id="kpi-caidas">0</div>        <div class="kpi-label">Caídas + Rechazos</div> <div class="kpi-sub">fallidas</div></div>
+        <div class="kpi-card k-purple"><div class="kpi-num" id="kpi-conv">0%</div>         <div class="kpi-label">Efectividad mes</div>   <div class="kpi-sub">inst / (inst+caídas)</div></div>
+        <div class="kpi-card k-teal">  <div class="kpi-num" id="kpi-usuarios">0</div>      <div class="kpi-label">Usuarios</div>          <div class="kpi-sub">registrados</div></div>
+        <div class="kpi-card k-yellow"><div class="kpi-num" id="kpi-activos">0</div>       <div class="kpi-label">Activos</div>           <div class="kpi-sub">en el sistema</div></div>
+        <div class="kpi-card k-blue">  <div class="kpi-num" id="kpi-asesores">0</div>      <div class="kpi-label">Asesores</div>          <div class="kpi-sub">activos</div></div>
+        <div class="kpi-card k-orange"><div class="kpi-num" id="kpi-supervisores">0</div>  <div class="kpi-label">Supervisores</div>      <div class="kpi-sub">activos</div></div>
+      </div>
+
+      <div class="charts-grid">
+
+        <!-- Chart 1: Estados clave -->
+        <div class="chart-card">
+          <div class="chart-title">🥧 Ventas por estado</div>
+          <div class="chart-wrap"><canvas id="chEstados"></canvas></div>
+        </div>
+
+        <!-- Chart 2: Instaladas y caídas por sala con filtro de mes -->
+        <div class="chart-card">
+          <div class="chart-title-row">
+            <span>🏢 Instaladas y Caídas por sala</span>
+            <select id="filtroMesSalas" onchange="cambiarMesSalas(this.value)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:7px;font-size:11px;font-family:inherit;outline:none;color:#374151;cursor:pointer;">
+              <!-- Poblado por JS -->
+            </select>
           </div>
-          <span class="campo-error" id="err_pass"></span>
+          <div class="chart-wrap"><canvas id="chSalas"></canvas></div>
         </div>
-        <div class="campo">
-          <label>Confirmar Contraseña</label>
-          <div class="pass-wrap">
-            <input id="u_pass2" type="password" placeholder="Repite la contraseña"
-              oninput="limpiarError('pass2')">
-            <button type="button" class="btn-ver" onclick="togglePass('u_pass2')">👁</button>
+
+        <!-- Chart 3: Ventas diarias por sala — tiempo real -->
+        <div class="chart-card full">
+          <div class="chart-title-row">
+            <span>📈 Ventas diarias por sala — últimos 7 días</span>
+            <span style="font-size:11px;color:#9ca3af;">Se actualiza cada 60 seg.</span>
           </div>
-          <span class="campo-error" id="err_pass2"></span>
+          <div class="chart-wrap"><canvas id="chDiario"></canvas></div>
         </div>
+
+      </div>
+    </section>
+
+    <!-- ===== ACCESOS ===== -->
+    <section id="sec-accesos" class="section">
+      <div class="sec-header"><div><h2>Accesos Directos</h2><p>Navega a cualquier módulo del sistema</p></div></div>
+      <div class="accesos-grid" id="accesosGrid"></div>
+    </section>
+
+    <!-- ===== SEGUIMIENTO ===== -->
+    <section id="sec-seguimiento" class="section">
+      <div class="sec-header">
+        <div><h2>Seguimiento en campo</h2><p>Estado actual de todas las ventas — se actualiza automáticamente</p></div>
+        <button class="btn-nuevo" style="background:#0891b2;" onclick="cargarSeguimiento()">↻ Actualizar</button>
       </div>
 
-      <div id="passHint" class="pass-hint hidden">
-        💡 Deja en blanco para mantener la contraseña actual
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px;">
+        <div class="kpi-card k-teal">   <div class="kpi-num" id="seg-ejecucion">0</div> <div class="kpi-label">En ejecución</div></div>
+        <div class="kpi-card k-green">  <div class="kpi-num" id="seg-instalado">0</div>  <div class="kpi-label">Instalados</div></div>
+        <div class="kpi-card k-orange"> <div class="kpi-num" id="seg-rechazo">0</div>    <div class="kpi-label">Rechazo en campo</div></div>
+        <div class="kpi-card k-red">    <div class="kpi-num" id="seg-caida">0</div>      <div class="kpi-label">Caídas</div></div>
+        <div class="kpi-card k-purple"> <div class="kpi-num" id="seg-tecnico">0</div>    <div class="kpi-label">Técnicos en casa</div></div>
       </div>
 
-      <div class="campo-row">
-        <div class="campo">
-          <label>Cargo *</label>
-          <select id="u_cargo" onchange="limpiarError('cargo')">
-            <option value="">— Seleccione cargo —</option>
-            <option value="asesor">Asesor</option>
-            <option value="supervisor">Supervisor</option>
-            <option value="backoffice">Back Office</option>
-            <option value="validacion">Validación</option>
-            <option value="grabaciones">Grabaciones</option>
-            <option value="seguimiento">Seguimiento</option>
-            <option value="jefatura">Jefatura</option>
-            <option value="usuarios">Usuarios</option>
-            <option value="programacion">Programación</option>
-          </select>
-          <span class="campo-error" id="err_cargo"></span>
-        </div>
-        <div class="campo">
-          <label>Sala</label>
-          <select id="u_sala">
-            <option value="">— Sin sala —</option>
-            <option value="SALA 1">Sala 1</option>
-            <option value="SALA 2">Sala 2</option>
-            <option value="SALA 3">Sala 3</option>
-          </select>
-        </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="seg-tab active" onclick="filtrarSeg('',this)">Todos</button>
+        <button class="seg-tab" onclick="filtrarSeg('ejecucion',this)">En ejecución</button>
+        <button class="seg-tab" onclick="filtrarSeg('instalado',this)">Instalado</button>
+        <button class="seg-tab" onclick="filtrarSeg('rechazo',this)">Rechazo en campo</button>
+        <button class="seg-tab" onclick="filtrarSeg('caida',this)">Caída</button>
+        <button class="seg-tab" onclick="filtrarSeg('tecnico',this)">Técnicos en casa</button>
       </div>
 
-      <div class="campo-row">
-        <div class="campo">
-          <label>Género</label>
-          <select id="u_genero">
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
-          </select>
+      <div class="tabla-wrap">
+        <div class="tabla-header">
+          <span class="tabla-title">Ventas en seguimiento</span>
+          <span class="tabla-count" id="segCount">0 registros</span>
         </div>
-        <div class="campo">
-          <label>Estado</label>
-          <div class="toggle-wrap">
-            <label class="toggle-switch">
-              <input type="checkbox" id="u_activo" checked>
-              <span class="toggle-slider"></span>
-            </label>
-            <span id="toggleLabel" class="toggle-label">Activo</span>
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr>
+              <th>Estado</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
+              <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Tramo</th><th>Motivo / Obs.</th>
+            </tr></thead>
+            <tbody id="tablaSegBody">
+              <tr><td colspan="10" class="tabla-empty">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== USUARIOS ===== -->
+    <section id="sec-usuarios" class="section">
+      <div class="sec-header">
+        <div><h2>Gestión de Usuarios</h2><p>Crea, edita y gestiona todos los usuarios</p></div>
+        <button class="btn-nuevo" onclick="abrirModalNuevo()">+ Nuevo usuario</button>
+      </div>
+      <div class="tabla-wrap">
+        <div class="tabla-header">
+          <div class="tabla-header-left">
+            <span class="tabla-title">Usuarios del sistema</span>
+            <span class="tabla-count" id="usuariosCount">0 usuarios</span>
           </div>
+          <input type="text" class="tabla-search" id="busqUsuarios" placeholder="🔍 Buscar usuario...">
+        </div>
+        <table class="tabla">
+          <thead><tr><th>Usuario</th><th>Cargo</th><th>Sala</th><th>Login</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tablaUsuariosBody"><tr><td colspan="7" class="tabla-empty">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== REPORTES ===== -->
+    <section id="sec-reportes" class="section">
+      <div class="sec-header"><div><h2>Reportes Globales</h2><p>Rendimiento por sala y asesor — solo asesores</p></div></div>
+      <div class="sala-tabs">
+        <button class="sala-tab active" onclick="cambiarSalaReporte('todas',this)">Todas las salas</button>
+        <button class="sala-tab" onclick="cambiarSalaReporte('SALA 1',this)">Sala 1</button>
+        <button class="sala-tab" onclick="cambiarSalaReporte('SALA 2',this)">Sala 2</button>
+        <button class="sala-tab" onclick="cambiarSalaReporte('SALA 3',this)">Sala 3</button>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin:16px 0;">
+        <div class="kpi-card k-blue" ><div class="kpi-num" id="rep-total">0</div> <div class="kpi-label">Total ventas</div></div>
+        <div class="kpi-card k-green"><div class="kpi-num" id="rep-valid">0</div> <div class="kpi-label">Instaladas</div></div>
+        <div class="kpi-card k-red"  ><div class="kpi-num" id="rep-caidas">0</div><div class="kpi-label">Caídas</div></div>
+        <div class="kpi-card k-purple"><div class="kpi-num" id="rep-conv">0%</div><div class="kpi-label">Efectividad</div></div>
+      </div>
+      <div class="tabla-wrap">
+        <div class="tabla-header">
+          <span class="tabla-title">🏆 Ranking de Asesores</span>
+          <span class="tabla-count" id="repCount"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr><th style="width:60px;">RANK</th><th>ASESOR</th><th>SALA</th><th>VENTAS INSTALADAS</th><th>TOTAL VENTAS</th><th>CAÍDAS</th><th>EFECTIVIDAD</th></tr></thead>
+            <tbody id="tablaReporteBody"><tr><td colspan="7" class="tabla-empty">Sin datos.</td></tr></tbody>
+          </table>
         </div>
       </div>
+    </section>
 
+    <!-- ===== LOGS ===== -->
+    <section id="sec-logs" class="section">
+      <div class="sec-header">
+        <div><h2>Logs de Actividad</h2><p>Registro de acciones en el sistema</p></div>
+        <button class="btn-nuevo" style="background:#ef4444;" onclick="if(confirm('¿Limpiar logs?')){logs=[];localStorage.removeItem('jef_logs');renderLogs();toast('Logs limpiados');}">🗑️ Limpiar</button>
+      </div>
+      <div class="tabla-wrap" style="padding:16px 20px;">
+        <div id="logsContainer"><div style="text-align:center;color:#9ca3af;padding:32px;">Sin actividad.</div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL USUARIO -->
+<div class="modal-bg" id="modalUsuario">
+  <div class="modal-box">
+    <div class="modal-title" id="mod_titulo">Nuevo usuario</div>
+    <div class="modal-sub" id="mod_sub">Completa todos los campos.</div>
+    <div class="modal-grid">
+      <div class="modal-sep">Datos personales</div>
+      <div class="modal-campo span2"><label>Nombre completo *</label><input id="mod_nombre" placeholder="Nombre y apellidos"></div>
+      <div class="modal-campo"><label>Usuario (login) *</label><input id="mod_usuario" placeholder="nombre.apellido" style="font-family:monospace;"></div>
+      <div class="modal-campo"><label>Cargo *</label><select id="mod_cargo"></select></div>
+      <div class="modal-campo"><label>Sala / Equipo</label><select id="mod_sala"></select></div>
+      <div class="modal-sep">Contraseña</div>
+      <div class="modal-campo"><label>Contraseña *</label><input type="password" id="mod_pass" placeholder="Mínimo 6 caracteres"></div>
+      <div class="modal-campo"><label>Confirmar contraseña *</label><input type="password" id="mod_pass2" placeholder="Repite la contraseña"></div>
     </div>
-
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-guardar" id="btnGuardar" onclick="guardarUsuario()">💾 Crear Usuario</button>
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-size:12px;color:#14532d;margin-bottom:16px;">
+      💡 Al crear un usuario con cargo <strong>Asesor</strong>, estará disponible en el Back Office para asignar leads.
     </div>
-
+    <div class="modal-btns">
+      <button class="btn-cancelar-m" onclick="cerrarModal('modalUsuario')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarUsuario()">💾 Guardar usuario</button>
+    </div>
   </div>
 </div>
 
-<!-- MODAL CONFIRMAR ELIMINAR -->
-<div class="modal-overlay hidden" id="modalEliminar">
-  <div class="modal-card" style="max-width:420px;">
-    <div class="modal-header">
-      <div class="modal-titulo"><span>🗑️</span><span>Eliminar usuario</span></div>
-      <button class="modal-close" onclick="cerrarModalEliminar()">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:14px;color:#374151;text-align:center;padding:10px 0;">
-        ¿Estás seguro que deseas eliminar a<br>
-        <strong id="eliminarNombre" style="color:#dc2626;"></strong>?<br>
-        <span style="font-size:12px;color:#9ca3af;margin-top:6px;display:block;">Esta acción no se puede deshacer.</span>
-      </p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="cerrarModalEliminar()">Cancelar</button>
-      <button class="btn-eliminar-confirm" id="btnEliminarConfirm" onclick="confirmarEliminar()">🗑️ Sí, eliminar</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div id="toast" class="toast hidden"></div>
-
+<div class="toast" id="toast"></div>
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="js/session.js"></script>
-<script src="js/usuarios.js"></script>
+<script src="js/jefatura.js"></script>
 </body>
 </html>

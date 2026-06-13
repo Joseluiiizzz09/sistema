@@ -3,7 +3,7 @@
    Conectado a Node.js backend
    ================================================ */
 
-const API = 'http://127.0.0.1:3000/api';
+const API = window.NC_API + '/api';
 
 /* ===== RUTAS POR CARGO ===== */
 const RUTAS = {

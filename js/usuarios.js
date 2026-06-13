@@ -3,7 +3,7 @@
    Sin emojis, clases CSS correctas
    ================================================ */
 
-const API = 'http://127.0.0.1:3000/api';
+const API = window.NC_API + '/api';
 let usuarios = [];
 let editandoId = null;
 let eliminandoId = null;

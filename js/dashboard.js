@@ -2,7 +2,7 @@
    DASHBOARD.JS — Asesor Netcontact
    ================================================ */
 
-const API = 'http://127.0.0.1:3000/api';
+const API = window.NC_API + '/api';
 
 let clientes = [];
 let seleccionado = null;
@@ -531,7 +531,7 @@ function renderGaleria(fotos, ventaId) {
         gal.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#d1d5db;font-size:13px;">Sin fotos adjuntas aun.</div>';
         return;
     }
-    var baseUrl = 'http://127.0.0.1:3000/';
+    var baseUrl = window.NC_API + '/';
     gal.innerHTML = fotos.map(function(f) {
         var url    = f.ruta ? baseUrl + f.ruta : (f.url || '');
         var tipo   = f.mimetype || f.tipo || '';

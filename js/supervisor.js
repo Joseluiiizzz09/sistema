@@ -1,7 +1,7 @@
 /* ================================================
    SUPERVISOR.JS — Conectado en tiempo real
    ================================================ */
-const API_SUP = 'http://127.0.0.1:3000/api';
+const API_SUP = window.NC_API + '/api';
 
 // Estados reales del flujo completo
 const ESTADOS_VENTA = [

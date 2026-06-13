@@ -2,7 +2,7 @@
    GRABACIONES.JS — Módulo de Grabaciones Netcontact
    ================================================ */
 
-const API_GRAB = 'http://127.0.0.1:3000/api';
+const API_GRAB = window.NC_API + '/api';
 
 const ESTADOS_GRAB = [
   { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
@@ -43,7 +43,7 @@ function descargarAudio(id){
   const v = ventas.find(x => x.id === id);
   if (!v || !v._grabAudio) { toast('Esta venta no tiene grabación'); return; }
 
-  const url = 'http://127.0.0.1:3000/' + v._grabAudio;
+  const url = window.NC_API + '/' + v._grabAudio;
   const nombreArchivo = v._grabNombre || ('grabacion_' + id + '.mp3');
 
   const a = document.createElement('a');
@@ -345,7 +345,7 @@ function abrirModalAudio(id){
   const noAudio = document.getElementById('audioNoDisp');
 
   if(v._grabAudio){
-    player.src = 'http://127.0.0.1:3000/' + v._grabAudio;
+    player.src = window.NC_API + '/' + v._grabAudio;
     player.style.display='';
     if(noAudio) noAudio.style.display='none';
     document.getElementById('audio_archivo').textContent = v._grabNombre||'grabacion.mp3';

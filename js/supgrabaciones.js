@@ -6,7 +6,7 @@
    Observado → se queda aquí (estado='grabado')
    ================================================ */
 
-const API_SUP_GRAB = 'http://127.0.0.1:3000/api';
+const API_SUP_GRAB = window.NC_API + '/api';
 
 let ventas          = [];
 let ventasFiltradas = [];
@@ -49,7 +49,7 @@ async function cargarVentas(){
           fechaIngreso:     (v.created_at||'').split(' ')[0],
           estadoRev:        v.estado_supgrab || 'sin_revisar',
           obsSup:           v.obs_supgrab    || '',
-          audioUrl:         v.audio_path ? 'http://127.0.0.1:3000/' + v.audio_path : null,
+          audioUrl:         v.audio_path ? window.NC_API + '/' + v.audio_path : null,
           audioNombre:      v.audio_path ? v.audio_path.split('/').pop() : '',
         }));
     }

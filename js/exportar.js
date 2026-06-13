@@ -3,7 +3,7 @@
    Conectado a Node.js backend
    ================================================ */
 
-const API_EXP = 'http://127.0.0.1:3000/api';
+const API_EXP = window.NC_API + '/api';
 
 function cargarScript(src, cb){
   if(document.querySelector(`script[src="${src}"]`)){ cb(); return; }

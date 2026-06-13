@@ -1,29 +1,47 @@
 /* ================================================
    SEGUIMIENTO.JS — Netcontact
-   Conectado a Node.js backend
    ================================================ */
 
-const API_SEG = 'http://127.0.0.1:3000/api';
+const API_SEG = window.NC_API + '/api';
 
 const ESTADOS = [
   { id:'ejecucion', label:'EN EJECUCION',      cls:'bs-ejec',    fila:'fila-ejec',    color:'#00cc00' },
   { id:'instalado', label:'INSTALADO',          cls:'bs-inst',    fila:'fila-inst',    color:'#00ccff' },
   { id:'caida',     label:'CAIDA',              cls:'bs-caida',   fila:'fila-caida',   color:'#ff3333' },
-  { id:'novalidado',label:'NO VALIDADO',        cls:'bs-noval',   fila:'fila-noval',   color:'#ffff00' },
   { id:'rechazo',   label:'RECHAZO EN CAMPO',   cls:'bs-rech',    fila:'fila-rech',    color:'#ff9900' },
   { id:'tecnico',   label:'TECNICOS EN CASA',   cls:'bs-tecnico', fila:'fila-tecnico', color:'#ff66cc' },
 ];
 
-const MOTIVOS_CAIDA = ['FRAUDE','INFRAESTRUCTURA','DUPLICIDAD','SERVICIO ACTIVO','ANTIFRAUDE','TELEFONO EN BL','PLANO FRAUDE','EXCESO DE ACOMETIDA','EDIFICIO NO LIBERADO','RIESGO CREDITICIO','OTRO'];
-const MOTIVOS_RECH  = ['MALA OFERTA','NO DESEA','FALTA DE CONTACTO','RECHAZADO POR CLIENTE','OTRO'];
-const TRAMOS        = ['AM 1','AM 2','PM 1','PM 2','PM 3'];
-const RESULTADOS    = ['Contactado -- conforme','Contactado -- con problema','No contesta','Buzon de voz','Numero equivocado','Solicita rellamada','SE LEVANTO','MASIVO ENVIADO','DERIVADO A GRABAR','DERIVADO A AGILIZAR','En Agenda'];
+const MOTIVOS_CAIDA = [
+  'FRAUDE',
+  'EXCESO DE ACOMETIDA',
+  'INFRAESTRUCTURA',
+  'RED SATURADA',
+  'EDIFICIO NO LIBERADO',
+];
+
+const MOTIVOS_RECH = [
+  'MALA OFERTA',
+  'NO DESEA',
+  'FALTA DE CONTACTO',
+  'SOT CON ERRORES DE SISTEMA',
+  'RED SATURADA',
+  'FACILIDADES TECNICAS DEL CLIENTE',
+  'MAL INGRESO DIRECCION',
+];
+
+const TRAMOS   = ['AM 1','AM 2','PM 1','PM 2','PM 3'];
+const RESULTADOS = [
+  'Contactado -- conforme','Contactado -- con problema',
+  'No contesta','Buzon de voz','Numero equivocado',
+  'Solicita rellamada','SE LEVANTO','MASIVO ENVIADO',
+  'DERIVADO A GRABAR','DERIVADO A AGILIZAR','En Agenda',
+];
 
 const ESTADO_BD_MAP = {
   'ejecucion':  'en_ejecucion',
   'instalado':  'instalado',
   'caida':      'caida',
-  'novalidado': 'no_validado',
   'rechazo':    'rechazo_campo',
   'tecnico':    'tecnico_casa',
 };
@@ -44,35 +62,26 @@ function motivoBadge(motivo){
   if(!motivo||motivo=='--') return '<span style="color:#9ca3af">--</span>';
   const m=motivo.toUpperCase();
   let cls='bm-default';
-  if(m.includes('FRAUDE')||m.includes('ANTIFRAUDE')||m.includes('PLANO')) cls='bm-fraude';
-  else if(m.includes('INFRA')||m.includes('EDIFICIO')||m.includes('ACOMETIDA')) cls='bm-infra';
-  else if(m.includes('DUPLI')) cls='bm-dupli';
-  else if(m.includes('NO DESEA')) cls='bm-nodesea';
-  else if(m.includes('OFERTA')) cls='bm-malaoferta';
-  else if(m.includes('CONTACTO')) cls='bm-faltacon';
+  if(m.includes('FRAUDE'))                            cls='bm-fraude';
+  else if(m.includes('INFRA')||m.includes('EDIFICIO')||m.includes('ACOMETIDA')||m.includes('RED')) cls='bm-infra';
+  else if(m.includes('NO DESEA'))                     cls='bm-nodesea';
+  else if(m.includes('OFERTA'))                       cls='bm-malaoferta';
+  else if(m.includes('CONTACTO')||m.includes('SOT')||m.includes('MAL INGRESO')||m.includes('FACIL')) cls='bm-faltacon';
   return `<span class="badge-motivo ${cls}">${motivo}</span>`;
 }
 
 function mapearEstado(e){
   const est = (e||'').toLowerCase();
   const m={
-    'aprobado':      'ejecucion',
-    'programado':    'ejecucion',
-    'en_ejecucion':  'ejecucion',
-    'instalado':     'instalado',
-    'validado':      'ejecucion',
-    'caida':         'caida',
-    'observado':     'novalidado',
-    'venta':         'novalidado',
-    'pendiente':     'novalidado',
-    'no_validado':   'novalidado',
-    'rechazo_campo': 'rechazo',
-    'tecnico_casa':  'tecnico',
+    'aprobado':'ejecucion','programado':'ejecucion','en_ejecucion':'ejecucion',
+    'instalado':'instalado','validado':'ejecucion','caida':'caida',
+    'observado':'ejecucion','venta':'ejecucion','pendiente':'ejecucion',
+    'no_validado':'ejecucion','rechazo_campo':'rechazo','tecnico_casa':'tecnico',
   };
-  if(est.includes('tecnico')) return 'tecnico';
-  if(est.includes('rechazo')) return 'rechazo';
+  if(est.includes('tecnico'))   return 'tecnico';
+  if(est.includes('rechazo'))   return 'rechazo';
   if(est.includes('ejecucion')) return 'ejecucion';
-  return m[est] || 'novalidado';
+  return m[est] || 'ejecucion';
 }
 
 async function cargarVentas(){
@@ -81,10 +90,7 @@ async function cargarVentas(){
     const data = await res.json();
     if (data.ok) {
       ventas = data.data
-        .filter(v => {
-          const e = (v.estado||'').toLowerCase();
-          return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== '';
-        })
+        .filter(v => { const e=(v.estado||'').toLowerCase(); return e!=='venta'&&e!=='validado'&&e!=='grabado'&&e!==''; })
         .map(v => ({
           ...v,
           nombreApellidos:  v.nombre    || '',
@@ -93,13 +99,12 @@ async function cargarVentas(){
           obsBackOffice:    v.obs_backoffice || '',
           fechaIngreso:     v.created_at ? v.created_at.split(' ')[0] : '',
           _estadoSeg:       mapearEstado(v.estado),
-          _tramo:           v._tramo       || '',
-          _comentario:      v._comentario  || '',
-          _motivoRech:      v._motivoRech  || '',
-          _nodecon:         v._nodecon     || '',
-          _efonodec:        v._efonodec    || '',
-          _proxSeg:         v._proxSeg     || '',
-          _historial:       v._historial   || [],
+          _tramo:           v._tramo      || '',
+          _comentario:      v._comentario || '',
+          _motivoRech:      v._motivoRech || '',
+          _proxSeg:         v._proxSeg    || '',
+          _historial:       v._historial  || [],
+          
         }));
       return;
     }
@@ -109,9 +114,7 @@ async function cargarVentas(){
 
 async function guardarVentaBackend(id, cambios){
   try {
-    await fetch(`${API_SEG}/ventas/${id}`, {
-      method: 'PATCH', headers: ncHeaders(), body: JSON.stringify(cambios),
-    });
+    await fetch(`${API_SEG}/ventas/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify(cambios) });
   } catch(e) { console.error('Error guardando:', e); }
 }
 
@@ -120,7 +123,6 @@ function actualizarKpis(){
   document.getElementById('kpi-total').textContent  = ventas.length;
   document.getElementById('kpi-ejec').textContent   = c('ejecucion');
   document.getElementById('kpi-inst').textContent   = c('instalado');
-  document.getElementById('kpi-noval').textContent  = c('novalidado');
   document.getElementById('kpi-rech').textContent   = c('rechazo');
   document.getElementById('kpi-caida').textContent  = c('caida');
   document.getElementById('kpi-tec').textContent    = c('tecnico');
@@ -154,8 +156,8 @@ function aplicarFiltros(){
     if(busquedaVal){ const b=busquedaVal.toLowerCase(); if(![v.nombreApellidos,v.dni,v.telefonoContacto,v.vendedor,v.distrito,v._comentario].some(x=>(x||'').toLowerCase().includes(b))) return false; }
     return true;
   });
-  const ord={caida:0,rechazo:1,novalidado:2,tecnico:3,ejecucion:4,instalado:5};
-  base.sort((a,b)=>{ const oa=ord[a._estadoSeg]??6,ob=ord[b._estadoSeg]??6; return oa!==ob?oa-ob:(b.fechaIngreso||'').localeCompare(a.fechaIngreso||''); });
+  const ord={caida:0,rechazo:1,tecnico:2,ejecucion:3,instalado:4};
+  base.sort((a,b)=>{ const oa=ord[a._estadoSeg]??5,ob=ord[b._estadoSeg]??5; return oa!==ob?oa-ob:(b.fechaIngreso||'').localeCompare(a.fechaIngreso||''); });
   ventasFiltradas=base; paginaActual=1; renderTabla(); actualizarKpis();
 }
 
@@ -174,7 +176,7 @@ function renderTabla(){
   const pag=ventasFiltradas.slice(ini,fin);
   document.getElementById('tablaCount').textContent=`${total} registros`;
   const pit=document.getElementById('pagInfoTop'); if(pit) pit.textContent=total?`Mostrando ${ini+1}-${fin} de ${total}`:'';
-  if(!pag.length){ tbody.innerHTML=`<tr><td colspan="19" style="text-align:center;color:#9ca3af;padding:36px;font-size:13px;">Sin registros con los filtros actuales.</td></tr>`; renderPaginacion(0); return; }
+  if(!pag.length){ tbody.innerHTML=`<tr><td colspan="17" style="text-align:center;color:#9ca3af;padding:36px;font-size:13px;">Sin registros.</td></tr>`; renderPaginacion(0); return; }
   tbody.innerHTML=pag.map(v=>{
     const est=estadoObj(v._estadoSeg);
     const f=v.fechaIngreso||'';
@@ -190,9 +192,7 @@ function renderTabla(){
         </div>
       </td>
       <td class="td-estado">
-        <span class="badge-seg ${est.cls}" onclick="abrirModalEstado(${v.id})" style="cursor:pointer;" title="Click para cambiar estado">
-          ${est.label}
-        </span>
+        <span class="badge-seg ${est.cls}" onclick="abrirModalEstado(${v.id})" style="cursor:pointer;" title="Click para cambiar estado">${est.label}</span>
       </td>
       <td style="font-weight:700;color:#185FA5;font-size:10px">${formatF(f)}</td>
       <td style="font-weight:600">${v.nombreApellidos||'--'}</td>
@@ -209,8 +209,6 @@ function renderTabla(){
       <td style="text-align:center">${tramo}</td>
       <td class="td-wrap" style="font-size:10px;background:rgba(255,255,200,.4)">${v._comentario||'--'}</td>
       <td>${motivoBadge(v._motivoRech)}</td>
-      <td style="font-family:monospace;font-size:10px">${v._nodecon||'--'}</td>
-      <td style="font-family:monospace;font-size:10px">${v._efonodec||'--'}</td>
     </tr>`;
   }).join('');
   renderPaginacion(total);
@@ -237,30 +235,36 @@ function abrirModalEstado(id){
   document.getElementById('est_actual').textContent=estadoObj(v._estadoSeg).label;
   document.getElementById('est_nuevo').value=v._estadoSeg||'';
   document.getElementById('est_tramo').value=v._tramo||'';
-  document.getElementById('est_nodecon').value=v._nodecon||'';
-  document.getElementById('est_efonodec').value=v._efonodec||'';
-  actualizarSelectMotivo(v._estadoSeg,v._motivoRech||'');
+  document.getElementById('est_obs_general').value=v._comentario||'';
+  actualizarCamposEstado(v._estadoSeg, v._motivoRech||'');
   document.getElementById('modalEstado').classList.add('open');
 }
 
-function actualizarSelectMotivo(estado,valActual){
-  const wrap=document.getElementById('motivoWrap'), sel=document.getElementById('est_motivo');
-  const esMotivoEstado=['caida','rechazo'].includes(estado);
-  wrap.style.display=esMotivoEstado?'':'none';
-  if(esMotivoEstado){ const lista=estado==='caida'?MOTIVOS_CAIDA:MOTIVOS_RECH; sel.innerHTML='<option value="">-- Motivo --</option>'+lista.map(m=>`<option value="${m}" ${m===valActual?'selected':''}>${m}</option>`).join(''); }
+function actualizarCamposEstado(estado, valMotivo){
+  const motivoWrap = document.getElementById('motivoWrap');
+  const sel        = document.getElementById('est_motivo');
+  motivoWrap.style.display = 'none';
+  if (estado === 'caida' || estado === 'rechazo') {
+    motivoWrap.style.display = '';
+    const lista = estado === 'caida' ? MOTIVOS_CAIDA : MOTIVOS_RECH;
+    sel.innerHTML = '<option value="">-- Seleccionar motivo --</option>' +
+      lista.map(m=>`<option value="${m}" ${m===valMotivo?'selected':''}>${m}</option>`).join('');
+  }
 }
 
 async function guardarEstado(){
   const v=ventas.find(x=>x.id===editandoId); if(!v) return;
-  v._estadoSeg    = document.getElementById('est_nuevo').value;
-  v._tramo        = document.getElementById('est_tramo').value;
-  v._nodecon      = document.getElementById('est_nodecon').value.trim();
-  v._efonodec     = document.getElementById('est_efonodec').value.trim();
-  v._motivoRech   = document.getElementById('est_motivo').value;
-
+  const nuevoEstado = document.getElementById('est_nuevo').value;
+  v._estadoSeg  = nuevoEstado;
+  v._tramo      = document.getElementById('est_tramo').value;
+  v._comentario = document.getElementById('est_obs_general').value.trim() || v._comentario;
+  if (nuevoEstado === 'caida' || nuevoEstado === 'rechazo') {
+    v._motivoRech = document.getElementById('est_motivo').value;
+  }
   const estadoBD = ESTADO_BD_MAP[v._estadoSeg] || 'aprobado';
-  await guardarVentaBackend(v.id, { estado: estadoBD, obs_backoffice: v.obsBackOffice||'' });
-  cerrarModal('modalEstado'); aplicarFiltros();
+  await guardarVentaBackend(v.id, { estado: estadoBD, observacion: v._comentario||'' });
+  cerrarModal('modalEstado');
+  aplicarFiltros();
   toast(`Estado: ${estadoObj(v._estadoSeg).label}`);
 }
 
@@ -286,7 +290,8 @@ async function guardarObservacion(){
   v._comentario=document.getElementById('obs_comentario').value.trim()||v._comentario;
   hRegistrar(v.id,v,'Llamada registrada',resultado,obs.substring(0,60),'Seguimiento');
   await guardarVentaBackend(v.id, { observacion: v._comentario });
-  cerrarModal('modalObs'); aplicarFiltros();
+  cerrarModal('modalObs');
+  aplicarFiltros();
   toast('Llamada registrada');
 }
 
@@ -306,19 +311,9 @@ async function guardarAgenda(){
   v._proxSeg=f;
   const nota=document.getElementById('ag_nota').value.trim();
   if(nota){ if(!v._historial)v._historial=[]; v._historial.push({fecha:fechaHoy(),hora:horaAhora(),user:usuarioActual,resultado:'Agendado',obs:`Prox: ${formatF(f)}. ${nota}`}); }
-  cerrarModal('modalAgenda'); aplicarFiltros();
+  cerrarModal('modalAgenda');
+  aplicarFiltros();
   toast(`Agendado: ${formatF(f)}`);
-}
-
-function exportarCSV(){
-  if(!ventasFiltradas.length){ toast('Sin datos'); return; }
-  const h=['Estado','Fecha','Nombre','DNI','Distrito','Direccion','Vendedor','Supervisor','Tramo','Comentario','Motivo','NODECON','EFONODEC','Tel. Contacto'];
-  const rows=ventasFiltradas.map(v=>[estadoObj(v._estadoSeg).label,formatF(v.fechaIngreso||''),v.nombreApellidos||'',v.dni||'',v.distrito||'',v.direccion||'',v.asesor_nombre||v.vendedor||'',v.supervisor||'',v._tramo||'',v._comentario||'',v._motivoRech||'',v._nodecon||'',v._efonodec||'',v.telefonoContacto||''].map(c=>`"${(c+'').replace(/"/g,'""')}"`).join(','));
-  const csv=[h.join(','),...rows].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`seguimiento_${fechaHoy()}.csv`; a.click();
-  toast('CSV descargado');
 }
 
 window.onload = async ()=>{
@@ -327,7 +322,7 @@ window.onload = async ()=>{
   ['f_estado','est_nuevo'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">${id==='f_estado'?'Todos los estados':'-- Estado --'}</option>`+ESTADOS.map(e=>`<option value="${e.id}">${e.label}</option>`).join(''); });
   ['f_tramo','est_tramo'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">Todos</option>`+TRAMOS.map(t=>`<option value="${t}">${t}</option>`).join(''); });
   const selR=document.getElementById('obs_resultado'); if(selR) selR.innerHTML='<option value="">-- Resultado --</option>'+RESULTADOS.map(r=>`<option value="${r}">${r}</option>`).join('');
-  document.getElementById('est_nuevo')?.addEventListener('change',e=>{ const v=ventas.find(x=>x.id===editandoId); actualizarSelectMotivo(e.target.value,v?._motivoRech||''); });
+  document.getElementById('est_nuevo')?.addEventListener('change', e=>{ const v=ventas.find(x=>x.id===editandoId); actualizarCamposEstado(e.target.value, v?._motivoRech||''); });
   await cargarVentas(); aplicarFiltros();
   ['modalEstado','modalObs','modalAgenda'].forEach(id=>{ document.getElementById(id)?.addEventListener('click',e=>{ if(e.target===document.getElementById(id)) cerrarModal(id); }); });
   document.getElementById('selectPorPagina')?.addEventListener('change',e=>{ porPagina=parseInt(e.target.value)||18; paginaActual=1; renderTabla(); });
