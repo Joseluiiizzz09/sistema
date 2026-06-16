@@ -39,6 +39,9 @@
     <button class="bo-nav" onclick="mostrarSeccion('rendimiento',this)">
       <span class="nav-dot"></span> Rendimiento
     </button>
+    <button class="bo-nav" onclick="mostrarSeccion('avance',this)">
+      <span class="nav-dot"></span> Avance Asesores
+    </button>
   </aside>
 
   <main class="bo-main">
@@ -491,6 +494,27 @@
         <h2>Gestión de Asesores</h2>
       </div>
       <div class="bo-asesores-cards" id="asesoresCards"></div>
+    </section>
+
+    <!-- SECCIÓN: AVANCE DE ASESORES (general) -->
+    <section id="sec-avance" class="bo-seccion hidden">
+      <div class="bo-seccion-header">
+        <div>
+          <h2>Avance de Asesores</h2>
+          <p class="bo-sub">Cómo van los asesores con sus llamadas — vista general de todas las salas</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;">Fecha:</label>
+          <input type="date" id="avanceFecha" onchange="renderAvanceAsesores()" style="padding:7px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;outline:none;">
+          <button class="bo-btn-limpiar" style="font-size:11px;padding:7px 12px;" onclick="document.getElementById('avanceFecha').value=fechaHoy();renderAvanceAsesores()">Hoy</button>
+        </div>
+      </div>
+
+      <!-- KPIs globales -->
+      <div class="base-stats" id="avanceKpisGlobal" style="margin-bottom:16px;"></div>
+
+      <!-- Tarjetas por asesor -->
+      <div id="avanceCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;"></div>
     </section>
 
   </main>

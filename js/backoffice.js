@@ -948,6 +948,70 @@ function mostrarSeccion(id,btn){
   if(id==='asesores')     renderAsesoresCards();
   if(id==='rendimiento')  renderRendimiento();
   if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); }
+  if(id==='avance'){ if(!document.getElementById('avanceFecha').value) document.getElementById('avanceFecha').value=fechaHoy(); renderAvanceAsesores(); }
+}
+
+/* ===================== AVANCE DE ASESORES (general) ===================== */
+function renderAvanceAsesores(){
+  const fecha = document.getElementById('avanceFecha')?.value || fechaHoy();
+  const regs  = baseData[fecha] || [];
+
+  // KPIs globales
+  const gTotal  = regs.length;
+  const gTipif  = regs.filter(r=>(r._tipifVend||'').trim()!=='').length;
+  const gVentas = regs.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length;
+  const gNC     = regs.filter(r=>['NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length;
+
+  const kpisEl = document.getElementById('avanceKpisGlobal');
+  if(kpisEl){
+    kpisEl.style.cssText='display:flex;gap:12px;flex-wrap:wrap;';
+    kpisEl.innerHTML = [
+      ['Total Leads', gTotal, '#2563eb'],
+      ['Tipificados', gTipif, '#16a34a'],
+      ['Ventas', gVentas, '#7c3aed'],
+      ['NC / Buzón', gNC, '#d97706'],
+    ].map(([l,v,c])=>`<div style="background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 20px;min-width:120px;box-shadow:0 1px 2px rgba(0,0,0,.03);"><div style="font-size:26px;font-weight:800;color:${c};">${v}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;">${l}</div></div>`).join('');
+  }
+
+  // Tarjeta por asesor
+  const cont = document.getElementById('avanceCards');
+  if(!cont) return;
+
+  if(!asesores.length){
+    cont.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No hay asesores registrados.</div>';
+    return;
+  }
+
+  cont.innerHTML = asesores.map(a=>{
+    const mis    = regs.filter(r=>r.asesor===a.nombre);
+    const leads  = mis.length;
+    const tipif  = mis.filter(r=>(r._tipifVend||'').trim()!=='').length;
+    const ventas = mis.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length;
+    const nc     = mis.filter(r=>['NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length;
+    const pend   = leads - tipif;
+    const pct    = leads ? Math.round(tipif/leads*100) : 0;
+
+    return `<div style="background:#fff;border:1px solid #eef0f3;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:${colorAv(a.nombre)};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${iniciales(a.nombre)}</div>
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:13px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nombre}</div>
+          <div style="font-size:10px;color:#9ca3af;">${a.sala||'—'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#eff6ff;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#2563eb;">${leads}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Leads</div></div>
+        <div style="background:#f0fdf4;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#16a34a;">${tipif}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Tipificados</div></div>
+        <div style="background:#faf5ff;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#7c3aed;">${ventas}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Ventas</div></div>
+        <div style="background:#fffbeb;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#d97706;">${nc}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">NC/Buzón</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;height:7px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pct>=60?'#16a34a':pct>=30?'#f59e0b':'#ef4444'};border-radius:99px;"></div></div>
+        <span style="font-size:10px;font-weight:700;color:#6b7280;">${pct}%</span>
+      </div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;text-align:center;">${pend} pendientes de tipificar</div>
+    </div>`;
+  }).join('');
 }
 
 function syncLocalStorage(){
