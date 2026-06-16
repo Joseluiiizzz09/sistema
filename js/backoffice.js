@@ -688,7 +688,7 @@ function previsualizarMasiva(){
   if(!raw){ mostrarToast('Pega numeros primero'); return; }
   const numsRaw=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
   if(!numsRaw.length){ mostrarToast('No se encontraron numeros validos'); return; }
-  const lote=parseInt(document.getElementById('masivaLote').value)||10;
+  const loteRaw=document.getElementById('masivaLote').value; const lote=(loteRaw===''||loteRaw==null)?10:parseInt(loteRaw);
   const numsLote=lote>0?numsRaw.slice(0,lote):numsRaw;
   const campana=document.getElementById('masivacamp').value.trim()||'—';
   const asesor=document.getElementById('masivaasesor').value;
