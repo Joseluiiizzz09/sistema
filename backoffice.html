@@ -308,7 +308,7 @@
                 <select id="masivaasesor"><option value="">— Sin asignar —</option></select>
               </div>
               <div class="bo-input-group" style="margin:0;"><label>Lote máx.</label>
-                <select id="masivaLote">
+                <select id="masivaLote" onchange="if(document.getElementById('masivaPreview').style.display!=='none')previsualizarMasiva()">
                   <option value="10">10 por lote</option>
                   <option value="25">25 por lote</option>
                   <option value="50">50 por lote</option>
