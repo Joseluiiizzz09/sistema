@@ -674,31 +674,98 @@ function poblarSelectMasiva(){
   sel.value=val;
 }
 
+// Devuelve un Set con todos los N1 ya existentes en toda la base (cualquier fecha)
+function obtenerN1Existentes(){
+  const set = new Set();
+  for(const f in baseData){
+    (baseData[f]||[]).forEach(r=>{ if(r.n1) set.add(String(r.n1).replace(/\s+/g,'')); });
+  }
+  return set;
+}
+
 function previsualizarMasiva(){
   const raw=document.getElementById('masivaNums').value.trim();
   if(!raw){ mostrarToast('Pega numeros primero'); return; }
-  const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
-  if(!nums.length){ mostrarToast('No se encontraron numeros validos'); return; }
+  const numsRaw=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
+  if(!numsRaw.length){ mostrarToast('No se encontraron numeros validos'); return; }
   const lote=parseInt(document.getElementById('masivaLote').value)||10;
-  const lista=lote>0?nums.slice(0,lote):nums;
+  const numsLote=lote>0?numsRaw.slice(0,lote):numsRaw;
   const campana=document.getElementById('masivacamp').value.trim()||'—';
   const asesor=document.getElementById('masivaasesor').value;
+
+  // ---- Deteccion de duplicados ----
+  const existentes = obtenerN1Existentes();   // ya cargados en el sistema
+  const vistos = new Set();                    // para detectar repetidos dentro de la lista
+  const filas = [];                            // {n1, dup, motivo}
+  let nDupLista=0, nDupBase=0, nUnicos=0;
+
+  numsLote.forEach(n=>{
+    let dup=false, motivo='';
+    if(vistos.has(n)){ dup=true; motivo='Repetido en la lista'; nDupLista++; }
+    else if(existentes.has(n)){ dup=true; motivo='Ya esta en el sistema'; nDupBase++; }
+    else { nUnicos++; }
+    vistos.add(n);
+    filas.push({n1:n, dup, motivo});
+  });
+
+  // Guardar para usar al cargar
+  window._masivaFilas = filas;
+
+  // ---- Render de la tabla con marca de duplicados ----
   const tbody=document.getElementById('masivaPreviewBody');
-  tbody.innerHTML=lista.map((n,i)=>`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;color:#9ca3af">${i+1}</td><td style="padding:5px 10px;font-family:monospace;font-weight:600">${n}</td><td style="padding:5px 10px;color:#374151">${campana}</td><td style="padding:5px 10px;color:#374151">${formatFecha(fechaActiva)}</td><td style="padding:5px 10px;color:#374151">${asesor||'Sin asignar'}</td></tr>`).join('');
+  tbody.innerHTML=filas.map((f,i)=>{
+    const bg = f.dup ? 'background:#fef2f2;' : '';
+    const badge = f.dup
+      ? `<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;">DUPLICADO</span> <span style="font-size:9px;color:#b91c1c;">${f.motivo}</span>`
+      : `<span style="background:#dcfce7;color:#15803d;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;">NUEVO</span>`;
+    return `<tr style="border-bottom:1px solid #f3f4f6;${bg}">`+
+      `<td style="padding:5px 10px;color:#9ca3af">${i+1}</td>`+
+      `<td style="padding:5px 10px;font-family:monospace;font-weight:600">${f.n1}</td>`+
+      `<td style="padding:5px 10px;color:#374151">${campana}</td>`+
+      `<td style="padding:5px 10px;color:#374151">${formatFecha(fechaActiva)}</td>`+
+      `<td style="padding:5px 10px;">${badge}</td>`+
+    `</tr>`;
+  }).join('');
+
   document.getElementById('masivaPreview').style.display='';
-  document.getElementById('masivaStatus').textContent=`${lista.length} de ${nums.length} numeros listos`;
-  document.getElementById('btnCargaMasiva').disabled=false;
-  document.getElementById('btnCargaMasiva').textContent=`Cargar ${lista.length} registros`;
+
+  // ---- Alerta de duplicados + checkbox para incluirlos ----
+  const totalDup = nDupLista + nDupBase;
+  const st = document.getElementById('masivaStatus');
+  if(totalDup>0){
+    st.innerHTML = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;">`+
+      `Se detectaron <strong>${totalDup} duplicados</strong> `+
+      `(${nDupBase} ya en el sistema, ${nDupLista} repetidos en la lista). `+
+      `<strong>${nUnicos} numeros nuevos</strong>.<br>`+
+      `<label style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;font-size:11px;color:#374151;">`+
+      `<input type="checkbox" id="chkIncluirDup" onchange="actualizarBtnCargaMasiva()"> Cargar tambien los duplicados</label>`+
+      `</div>`;
+  } else {
+    st.innerHTML = `<span style="color:#15803d;font-weight:600;">${nUnicos} numeros nuevos, sin duplicados.</span>`;
+  }
+  actualizarBtnCargaMasiva();
+}
+
+// Actualiza el texto del boton segun si se incluyen duplicados o no
+function actualizarBtnCargaMasiva(){
+  const filas = window._masivaFilas||[];
+  const incluirDup = document.getElementById('chkIncluirDup')?.checked;
+  const aCargar = incluirDup ? filas.length : filas.filter(f=>!f.dup).length;
+  const btn=document.getElementById('btnCargaMasiva');
+  btn.disabled = aCargar===0;
+  btn.textContent = `Cargar ${aCargar} registros`;
 }
 
 async function ejecutarCargaMasiva(){
   const cmSel = document.getElementById('cm-fnav-select');
   if(cmSel && cmSel.value) fechaActiva = cmSel.value;
 
-  const raw=document.getElementById('masivaNums').value.trim();
-  const nums=raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7);
-  const lote=parseInt(document.getElementById('masivaLote').value)||10;
-  const lista=lote>0?nums.slice(0,lote):nums;
+  // Usar las filas calculadas en la vista previa (con info de duplicados)
+  const filas = window._masivaFilas || [];
+  if(!filas.length){ mostrarToast('Primero dale a Vista previa'); return; }
+  const incluirDup = document.getElementById('chkIncluirDup')?.checked;
+  const lista = (incluirDup ? filas : filas.filter(f=>!f.dup)).map(f=>f.n1);
+  if(!lista.length){ mostrarToast('No hay numeros nuevos para cargar'); return; }
   const campana=document.getElementById('masivacamp').value.trim()||'—';
   const asesor=document.getElementById('masivaasesor').value;
   const hora=asesor?horaAhora():'';
@@ -733,7 +800,8 @@ async function ejecutarCargaMasiva(){
   document.getElementById('masivaNums').value='';
   document.getElementById('masivaPreview').style.display='none';
   document.getElementById('btnCargaMasiva').disabled=true;
-  document.getElementById('masivaStatus').textContent='';
+  document.getElementById('masivaStatus').innerHTML='';
+  window._masivaFilas=[];
   renderFechaTabs(); renderBase();
   renderFechasCargaMasiva();
   mostrarToast(`${importados} registros cargados${asesor?' → '+asesor:''}`);
