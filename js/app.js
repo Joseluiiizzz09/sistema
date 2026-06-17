@@ -155,8 +155,14 @@ async function doLogin(e) {
       return;
     }
 
-    localStorage.setItem('nc_token',   data.token);
-    localStorage.setItem('nc_usuario', JSON.stringify(data.usuario));
+    if (typeof ncGuardarSesion === 'function') {
+      ncGuardarSesion(data.token, data.usuario);
+    } else {
+      sessionStorage.setItem('nc_token',   data.token);
+      sessionStorage.setItem('nc_usuario', JSON.stringify(data.usuario));
+      localStorage.removeItem('nc_token');
+      localStorage.removeItem('nc_usuario');
+    }
 
     const ruta = RUTAS[data.usuario.cargo] || 'dashboard.html';
     mostrarBienvenida(data.usuario, () => {
@@ -203,8 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Si ya hay sesión activa → redirigir directamente
   try {
-    const token = localStorage.getItem('nc_token');
-    const raw   = localStorage.getItem('nc_usuario');
+    const token = sessionStorage.getItem('nc_token');
+    const raw   = sessionStorage.getItem('nc_usuario');
     if (token && raw) {
       const u    = JSON.parse(raw);
       const ruta = RUTAS[u.cargo];

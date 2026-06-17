@@ -11,7 +11,7 @@ function hSave(data){
 
 function hRegistrar(ventaId, ventaInfo, campo, anterior, nuevo, modulo){
   const sesion = (() => {
-    try{ return JSON.parse(localStorage.getItem('nc_usuario')||'{}'); }catch(e){ return {}; }
+    try{ return typeof ncGetSesion==='function' ? (ncGetSesion()||{}) : JSON.parse(sessionStorage.getItem('nc_usuario')||'{}'); }catch(e){ return {}; }
   })();
   const ahora = new Date();
   const registro = {

@@ -62,7 +62,7 @@ function cerrarVisorFotos(e) {
 }
 
 async function fmvCargar() {
-  const token = localStorage.getItem('nc_token');
+  const token = typeof ncGetToken === 'function' ? ncGetToken() : (sessionStorage.getItem('nc_token') || '');
   try {
     const res  = await fetch(`${API_FM}/ventas/${_fmvVentaId}/fotos`, {
       headers: { Authorization: 'Bearer ' + token }

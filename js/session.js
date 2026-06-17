@@ -3,10 +3,22 @@
    ================================================ */
 
 function ncGetSesion() {
-  try { const raw=localStorage.getItem('nc_usuario'); return raw?JSON.parse(raw):null; } catch(e){return null;}
+  try { const raw=sessionStorage.getItem('nc_usuario'); return raw?JSON.parse(raw):null; } catch(e){return null;}
 }
-function ncGetToken() { return localStorage.getItem('nc_token')||''; }
-function ncCerrarSesion() { localStorage.removeItem('nc_token'); localStorage.removeItem('nc_usuario'); window.location.href='index.html'; }
+function ncGetToken() { try { return sessionStorage.getItem('nc_token')||''; } catch(e){ return ''; } }
+function ncGuardarSesion(token, usuario) {
+  sessionStorage.setItem('nc_token', token);
+  sessionStorage.setItem('nc_usuario', JSON.stringify(usuario));
+  localStorage.removeItem('nc_token');
+  localStorage.removeItem('nc_usuario');
+}
+function ncCerrarSesion() {
+  sessionStorage.removeItem('nc_token');
+  sessionStorage.removeItem('nc_usuario');
+  localStorage.removeItem('nc_token');
+  localStorage.removeItem('nc_usuario');
+  window.location.href='index.html';
+}
 function ncHeaders() { return {'Content-Type':'application/json','Authorization':'Bearer '+ncGetToken()}; }
 function ncAplicarSesion() { const u=ncGetSesion(); if(!u)return; const el=document.getElementById('topbarUser'); if(el) el.textContent=u.nombre; }
 function ncTieneAcceso(cargo) { const u=ncGetSesion(); if(!u)return false; if(u.cargo===cargo)return true; if(u.permisos&&u.permisos.includes(cargo))return true; return false; }
