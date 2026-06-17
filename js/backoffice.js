@@ -948,71 +948,132 @@ function mostrarSeccion(id,btn){
   if(id==='asesores')     renderAsesoresCards();
   if(id==='rendimiento')  renderRendimiento();
   if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); }
-  if(id==='avance'){ if(!document.getElementById('avanceFecha').value) document.getElementById('avanceFecha').value=fechaHoy(); renderAvanceAsesores(); }
+  if(id==='avance'){ renderAvanceAsesores(); }
 }
 
 /* ===================== AVANCE DE ASESORES (general) ===================== */
+let _blLeadsCache = [];
+const BL_TIPIF_COLORS={'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af','CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2','SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706'};
+
 function renderAvanceAsesores(){
-  const fecha = document.getElementById('avanceFecha')?.value || fechaHoy();
-  const regs  = baseData[fecha] || [];
-
-  // KPIs globales
-  const gTotal  = regs.length;
-  const gTipif  = regs.filter(r=>(r._tipifVend||'').trim()!=='').length;
-  const gVentas = regs.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length;
-  const gNC     = regs.filter(r=>['NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length;
-
-  const kpisEl = document.getElementById('avanceKpisGlobal');
-  if(kpisEl){
-    kpisEl.style.cssText='display:flex;gap:12px;flex-wrap:wrap;';
-    kpisEl.innerHTML = [
-      ['Total Leads', gTotal, '#2563eb'],
-      ['Tipificados', gTipif, '#16a34a'],
-      ['Ventas', gVentas, '#7c3aed'],
-      ['NC / Buzón', gNC, '#d97706'],
-    ].map(([l,v,c])=>`<div style="background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 20px;min-width:120px;box-shadow:0 1px 2px rgba(0,0,0,.03);"><div style="font-size:26px;font-weight:800;color:${c};">${v}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;">${l}</div></div>`).join('');
-  }
-
-  // Tarjeta por asesor
   const cont = document.getElementById('avanceCards');
   if(!cont) return;
+  const buscar = (document.getElementById('avanceBuscar')?.value||'').toLowerCase();
 
-  if(!asesores.length){
+  let lista = asesores.filter(a=>{
+    return !buscar || a.nombre.toLowerCase().includes(buscar) || (a.usuario||'').toLowerCase().includes(buscar);
+  });
+
+  if(!lista.length){
     cont.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No hay asesores registrados.</div>';
     return;
   }
 
-  cont.innerHTML = asesores.map(a=>{
-    const mis    = regs.filter(r=>r.asesor===a.nombre);
-    const leads  = mis.length;
-    const tipif  = mis.filter(r=>(r._tipifVend||'').trim()!=='').length;
-    const ventas = mis.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length;
-    const nc     = mis.filter(r=>['NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length;
-    const pend   = leads - tipif;
-    const pct    = leads ? Math.round(tipif/leads*100) : 0;
-
-    return `<div style="background:#fff;border:1px solid #eef0f3;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03);">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <div style="width:38px;height:38px;border-radius:50%;background:${colorAv(a.nombre)};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${iniciales(a.nombre)}</div>
-        <div style="min-width:0;">
-          <div style="font-weight:700;font-size:13px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nombre}</div>
-          <div style="font-size:10px;color:#9ca3af;">${a.sala||'—'}</div>
-        </div>
+  cont.innerHTML = lista.map(a=>{
+    const nom = a.nombre.replace(/'/g,"\\'");
+    const aid = a.id||0;
+    return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.05);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${colorAv(a.nombre)};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;">${iniciales(a.nombre)}</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nombre}</div><div style="font-size:11px;color:#9ca3af;">@${a.usuario||'—'} · ${a.sala||'—'}</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div style="background:#eff6ff;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#2563eb;">${leads}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Leads</div></div>
-        <div style="background:#f0fdf4;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#16a34a;">${tipif}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Tipificados</div></div>
-        <div style="background:#faf5ff;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#7c3aed;">${ventas}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Ventas</div></div>
-        <div style="background:#fffbeb;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#d97706;">${nc}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;">NC/Buzón</div></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="flex:1;height:7px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pct>=60?'#16a34a':pct>=30?'#f59e0b':'#ef4444'};border-radius:99px;"></div></div>
-        <span style="font-size:10px;font-weight:700;color:#6b7280;">${pct}%</span>
-      </div>
-      <div style="font-size:10px;color:#9ca3af;margin-top:6px;text-align:center;">${pend} pendientes de tipificar</div>
+      <button onclick="blAbrir('${nom}',${aid})" style="width:100%;padding:9px 12px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">Ver base de llamadas</button>
     </div>`;
   }).join('');
 }
+
+/* ── MODAL BASE DE LLAMADAS (Back Office - todos los asesores) ── */
+async function blAbrir(nombre, asesorId){
+  let modal=document.getElementById('blModalBO');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='blModalBO';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:flex-start;justify-content:center;padding:40px 20px;';
+    modal.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:1000px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:15px;font-weight:800;color:#111827;" id="blNombreBO">Base de llamadas</div><div style="font-size:12px;color:#9ca3af;margin-top:2px;">Solo lectura · Back Office</div></div>
+        <button onclick="blCerrar()" style="width:32px;height:32px;border-radius:50%;border:1px solid #e5e7eb;background:#f9fafb;font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="padding:10px 24px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:12px;font-weight:600;">Fecha:</label>
+        <input type="date" id="blFechaBO" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-family:inherit;" onchange="blFiltrar()">
+        <button onclick="blHoy()" style="padding:6px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;">Hoy</button>
+        <span id="blContadorBO" style="font-size:12px;color:#9ca3af;margin-left:auto;"></span>
+      </div>
+      <div id="blKpisBO" style="padding:10px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid #f3f4f6;"></div>
+      <div style="flex:1;overflow:auto;padding:0 24px 20px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="position:sticky;top:0;background:#f9fafb;z-index:1;">
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">#</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Teléfono N1</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">N2</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Zona</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Campaña</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Hora asig.</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Tipificación</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Observación</th>
+          </tr></thead>
+          <tbody id="blTablaBodyBO"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{ if(e.target===modal) blCerrar(); });
+  }
+  modal._asesorId=asesorId; modal._asesorNombre=nombre;
+  document.getElementById('blNombreBO').textContent='Base de llamadas — '+nombre;
+  const fi=document.getElementById('blFechaBO'); if(!fi.value) fi.value=fechaHoy();
+  modal.style.display='flex';
+  await blCargar(asesorId);
+}
+
+async function blCargar(asesorId){
+  const tbody=document.getElementById('blTablaBodyBO');
+  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr>';
+  try {
+    const fecha=document.getElementById('blFechaBO')?.value||'';
+    let url=`${API_BO}/leads?asesor_id=${asesorId}`;
+    if(fecha) url+=`&fecha=${fecha}`;
+    const res=await fetch(url,{headers:ncHeaders()});
+    const data=await res.json();
+    if(data.ok){ _blLeadsCache=data.data; blRender(_blLeadsCache); }
+    else tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">Error cargando leads.</td></tr>';
+  } catch(e){ document.getElementById('blTablaBodyBO').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">Error de conexión.</td></tr>'; }
+}
+
+function blRender(leads){
+  const tbody=document.getElementById('blTablaBodyBO');
+  const cont=document.getElementById('blContadorBO');
+  if(cont) cont.textContent=leads.length+' registros';
+  const kpiEl=document.getElementById('blKpisBO');
+  if(kpiEl){
+    const total=leads.length;
+    const tipif=leads.filter(l=>(l.tipif_vend||'').trim()!=='').length;
+    const ventas=leads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length;
+    const nc=leads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length;
+    kpiEl.innerHTML=[{label:'Leads',val:total,color:'#2563eb'},{label:'Tipificados',val:tipif,color:'#16a34a'},{label:'VENTA CERRADA',val:ventas,color:'#7c3aed'},{label:'NC/Buzón',val:nc,color:'#d97706'}]
+      .map(k=>`<div style="background:#f9fafb;border-radius:10px;padding:8px 14px;display:flex;flex-direction:column;gap:2px;min-width:100px;"><div style="font-size:18px;font-weight:800;color:${k.color}">${k.val}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;">${k.label}</div></div>`).join('');
+  }
+  if(!leads.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">Sin leads para esta fecha.</td></tr>'; return; }
+  tbody.innerHTML=leads.map((l,i)=>{
+    const t=(l.tipif_vend||'').trim(), color=BL_TIPIF_COLORS[t.toUpperCase()]||'#9ca3af';
+    const badge=t?`<span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;">${t}</span>`:'<span style="color:#d1d5db;font-style:italic;font-size:11px;">Sin tipif.</span>';
+    return `<tr style="border-bottom:1px solid #f3f4f6;${t.toUpperCase()==='VENTA CERRADA'?'background:#f0fdf4;':''}">
+      <td style="padding:8px;color:#9ca3af;font-size:10px;">${i+1}</td>
+      <td style="padding:8px;font-family:monospace;font-weight:700;color:#111827;">${l.n1||'—'}</td>
+      <td style="padding:8px;font-family:monospace;color:#6b7280;">${l.n2||'—'}</td>
+      <td style="padding:8px;font-size:11px;">${l.distrito||l.campana||'—'}</td>
+      <td style="padding:8px;font-size:11px;">${l.campana||'—'}</td>
+      <td style="padding:8px;font-size:11px;font-family:monospace;">${l.hora_asig||'—'}</td>
+      <td style="padding:8px;">${badge}</td>
+      <td style="padding:8px;font-size:11px;color:#6b7280;">${l.obs_asesor||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function blFiltrar(){ const m=document.getElementById('blModalBO'); if(m) await blCargar(m._asesorId); }
+function blHoy(){ const i=document.getElementById('blFechaBO'); if(i){ i.value=fechaHoy(); blFiltrar(); } }
+function blCerrar(){ const m=document.getElementById('blModalBO'); if(m) m.style.display='none'; _blLeadsCache=[]; }
 
 function syncLocalStorage(){
   try{ localStorage.setItem('bo_baseData', JSON.stringify(baseData)); }catch(e){}
