@@ -28,13 +28,12 @@ function fechaHoyFormateada() {
 }
 
 function mostrar(pantalla, btn) {
-    try { sessionStorage.setItem(DASHBOARD_APARTADO_KEY, pantalla); } catch(e) {}
-    document.querySelectorAll(".pantalla").forEach(p => p.classList.add("hidden"));
     const panel = document.getElementById(pantalla);
     if (!panel) return;
-    panel.classList.remove("hidden");
-    document.querySelectorAll(".tabs .tab").forEach(b => b.classList.remove("active"));
-    if (btn) btn.classList.add("active");
+    try { sessionStorage.setItem(DASHBOARD_APARTADO_KEY, pantalla); } catch(e) {}
+    document.querySelectorAll(".pantalla").forEach(p => p.classList.toggle("hidden", p.id !== pantalla));
+    const activeBtn = btn || buscarTabDashboard(pantalla);
+    document.querySelectorAll(".tabs .tab").forEach(b => b.classList.toggle("active", b === activeBtn));
     if (pantalla === "rendimiento") {
         cargarVentasSubidas().then(async () => {
             await sincronizarKpisRendimiento();
@@ -45,12 +44,18 @@ function mostrar(pantalla, btn) {
     if (pantalla === "ventassubidas") cargarVentasSubidas();
 }
 
+function buscarTabDashboard(pantalla) {
+    return Array.from(document.querySelectorAll(".tabs .tab")).find(b => {
+        const on = b.getAttribute("onclick") || "";
+        return on.includes("mostrar('" + pantalla + "'") || on.includes('mostrar("' + pantalla + '"');
+    }) || null;
+}
+
 function restaurarApartadoDashboard() {
     let pantalla = '';
     try { pantalla = sessionStorage.getItem(DASHBOARD_APARTADO_KEY) || ''; } catch(e) {}
     if (!pantalla || !document.getElementById(pantalla)) return;
-    const btn = document.querySelector('.tabs .tab[onclick*="' + pantalla + '"]');
-    mostrar(pantalla, btn);
+    mostrar(pantalla, buscarTabDashboard(pantalla));
 }
 
 function render() {

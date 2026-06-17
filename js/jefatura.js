@@ -74,11 +74,12 @@ async function cargarVentasCache(){
    NAVEGACIÓN
 ══════════════════════════════════════════ */
 function showSection(id,btn){
+  const sec=document.getElementById('sec-'+id);
+  if(!sec) return;
   try{ sessionStorage.setItem(JEF_APARTADO_KEY,id); }catch(e){}
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-'+id)?.classList.add('active');
-  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active', s === sec));
+  const activeBtn=btn || buscarNavJefatura(id);
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b === activeBtn));
   if(id==='dashboard')   renderDashboard();
   if(id==='usuarios')    renderUsuarios();
   if(id==='reportes')    renderReportes();
@@ -87,12 +88,18 @@ function showSection(id,btn){
   if(id==='seguimiento') cargarSeguimiento();
 }
 
+function buscarNavJefatura(id){
+  return Array.from(document.querySelectorAll('.nav-btn')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("showSection('" + id + "'") || on.includes('showSection("' + id + '"');
+  }) || null;
+}
+
 function restaurarSeccionJefatura(){
   let id='';
   try{ id=sessionStorage.getItem(JEF_APARTADO_KEY)||''; }catch(e){}
   if(!id || !document.getElementById('sec-'+id)) return false;
-  const btn=document.querySelector('.nav-btn[onclick*="' + id + '"]');
-  showSection(id,btn);
+  showSection(id,buscarNavJefatura(id));
   return true;
 }
 

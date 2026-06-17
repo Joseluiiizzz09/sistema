@@ -941,11 +941,12 @@ async function ejecutarCargaLegacy(){
 
 /* ===================== NAVEGACION ===================== */
 function mostrarSeccion(id,btn){
+  const sec=document.getElementById('sec-'+id);
+  if(!sec) return;
   try{ sessionStorage.setItem(BO_APARTADO_KEY,id); }catch(e){}
-  document.querySelectorAll('.bo-seccion').forEach(s=>s.classList.add('hidden'));
-  const sec=document.getElementById('sec-'+id); if(sec) sec.classList.remove('hidden');
-  document.querySelectorAll('.bo-nav').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.bo-seccion').forEach(s=>s.classList.toggle('hidden', s !== sec));
+  const activeBtn=btn || buscarNavBackoffice(id);
+  document.querySelectorAll('.bo-nav').forEach(b=>b.classList.toggle('active', b === activeBtn));
   if(id==='base')         { renderFechaTabs(); renderBase(); }
   if(id==='asesores')     renderAsesoresCards();
   if(id==='rendimiento')  renderRendimiento();
@@ -953,12 +954,18 @@ function mostrarSeccion(id,btn){
   if(id==='avance'){ renderAvanceAsesores(); }
 }
 
+function buscarNavBackoffice(id){
+  return Array.from(document.querySelectorAll('.bo-nav')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("mostrarSeccion('" + id + "'") || on.includes('mostrarSeccion("' + id + '"');
+  }) || null;
+}
+
 function restaurarSeccionBackoffice(){
   let id='';
   try{ id=sessionStorage.getItem(BO_APARTADO_KEY)||''; }catch(e){}
   if(!id || !document.getElementById('sec-'+id)) return false;
-  const btn=document.querySelector('.bo-nav[onclick*="' + id + '"]');
-  mostrarSeccion(id,btn);
+  mostrarSeccion(id,buscarNavBackoffice(id));
   return true;
 }
 

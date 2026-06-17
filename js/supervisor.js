@@ -119,11 +119,12 @@ function iniciarApp(){
 }
 
 function showSection(id,btn){
+  const sec=document.getElementById('sec-'+id);
+  if(!sec) return;
   try{ sessionStorage.setItem(SUP_APARTADO_KEY,id); }catch(e){}
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active', s === sec));
+  const activeBtn=btn || buscarNavSupervisor(id);
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b === activeBtn));
   renderSeccion(id);
 }
 function renderSeccion(id){
@@ -133,12 +134,17 @@ function renderSeccion(id){
   if(id==='frases')      renderFrases();
   if(id==='equipo')      renderEquipo();
 }
+function buscarNavSupervisor(id){
+  return Array.from(document.querySelectorAll('.nav-btn')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("showSection('" + id + "'") || on.includes('showSection("' + id + '"');
+  }) || null;
+}
 function restaurarSeccionSupervisor(){
   let id='';
   try{ id=sessionStorage.getItem(SUP_APARTADO_KEY)||''; }catch(e){}
   if(!id || !document.getElementById('sec-'+id)) return false;
-  const btn=document.querySelector('.nav-btn[onclick*="' + id + '"]');
-  showSection(id,btn);
+  showSection(id,buscarNavSupervisor(id));
   return true;
 }
 function setPeriodo(p,btn){
