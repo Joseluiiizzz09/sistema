@@ -2,6 +2,7 @@
    BACKOFFICE.JS — Conectado a Node.js backend
    ================================================ */
 const API_BO = window.NC_API + '/api';
+const BO_APARTADO_KEY = 'nc_backoffice_apartado';
 
 const COLORES_AV = ["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899"];
 const DOT_COLORS = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626'];
@@ -940,6 +941,7 @@ async function ejecutarCargaLegacy(){
 
 /* ===================== NAVEGACION ===================== */
 function mostrarSeccion(id,btn){
+  try{ sessionStorage.setItem(BO_APARTADO_KEY,id); }catch(e){}
   document.querySelectorAll('.bo-seccion').forEach(s=>s.classList.add('hidden'));
   const sec=document.getElementById('sec-'+id); if(sec) sec.classList.remove('hidden');
   document.querySelectorAll('.bo-nav').forEach(b=>b.classList.remove('active'));
@@ -949,6 +951,15 @@ function mostrarSeccion(id,btn){
   if(id==='rendimiento')  renderRendimiento();
   if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); }
   if(id==='avance'){ renderAvanceAsesores(); }
+}
+
+function restaurarSeccionBackoffice(){
+  let id='';
+  try{ id=sessionStorage.getItem(BO_APARTADO_KEY)||''; }catch(e){}
+  if(!id || !document.getElementById('sec-'+id)) return false;
+  const btn=document.querySelector('.bo-nav[onclick*="' + id + '"]');
+  mostrarSeccion(id,btn);
+  return true;
 }
 
 /* ===================== AVANCE DE ASESORES (general) ===================== */
@@ -1223,7 +1234,7 @@ window.onload = async ()=>{
   poblarSelectAsesorForm();
   poblarSelectMasiva();
   renderFechaTabs();
-  renderBase();
+  if(!restaurarSeccionBackoffice()) renderBase();
 
   // Refrescar leads cada 15s para ver tipificaciones del vendedor
   setInterval(cargarLeadsBackend, 15000);

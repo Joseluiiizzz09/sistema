@@ -3,6 +3,7 @@
    ================================================ */
 
 const API = window.NC_API + '/api';
+const DASHBOARD_APARTADO_KEY = 'nc_dashboard_apartado';
 
 let clientes = [];
 let seleccionado = null;
@@ -27,8 +28,11 @@ function fechaHoyFormateada() {
 }
 
 function mostrar(pantalla, btn) {
+    try { sessionStorage.setItem(DASHBOARD_APARTADO_KEY, pantalla); } catch(e) {}
     document.querySelectorAll(".pantalla").forEach(p => p.classList.add("hidden"));
-    document.getElementById(pantalla).classList.remove("hidden");
+    const panel = document.getElementById(pantalla);
+    if (!panel) return;
+    panel.classList.remove("hidden");
     document.querySelectorAll(".tabs .tab").forEach(b => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
     if (pantalla === "rendimiento") {
@@ -39,6 +43,14 @@ function mostrar(pantalla, btn) {
     }
     if (pantalla === "frases")        cargarFrasesSuper();
     if (pantalla === "ventassubidas") cargarVentasSubidas();
+}
+
+function restaurarApartadoDashboard() {
+    let pantalla = '';
+    try { pantalla = sessionStorage.getItem(DASHBOARD_APARTADO_KEY) || ''; } catch(e) {}
+    if (!pantalla || !document.getElementById(pantalla)) return;
+    const btn = document.querySelector('.tabs .tab[onclick*="' + pantalla + '"]');
+    mostrar(pantalla, btn);
 }
 
 function render() {
@@ -56,7 +68,7 @@ function render() {
             '<td>' + c.zona + '</td>' +
             '<td style="font-size:11px;color:#9ca3af;">' + (c.horaAsig || '--') + '</td>' +
             '<td><span class="badge-estado ' + colorEstado(c.estado) + '">' + c.estado + '</span></td>' +
-            '<td><input class="input-obs" placeholder="Nro. documento..." value="' + (c.obs || '') + '" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')" onchange="guardarObs(' + i + ', this.value)" maxlength="15"></td>' +
+            '<td><input class="input-obs" placeholder="Escribe una observacion..." value="' + (c.obs || '') + '" onchange="guardarObs(' + i + ', this.value)" maxlength="200"></td>' +
             '<td><button class="btn-accion" onclick="abrirModal(' + i + ')" title="Tipificar"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2v4h4" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 17l1.5-1.5 3-3-1.5-1.5-3 3L9 17z" fill="#fff"/><path d="M13.5 12.5l1-1a1 1 0 0 0-1.5-1.5l-1 1 1.5 1.5z" fill="#fff"/></svg></button></td>' +
         '</tr>';
     });
@@ -813,6 +825,7 @@ window.onload = () => {
     // Cargar ventas y luego sincronizar KPIs al inicio
     cargarVentasSubidas().then(() => sincronizarKpisRendimiento());
     cargarLeadsAsesor();
+    restaurarApartadoDashboard();
     setInterval(cargarFrasesSuper, 30000);
     setInterval(cargarLeadsAsesor, 15000);
     // Sincronizar KPIs cada 30s en tiempo real

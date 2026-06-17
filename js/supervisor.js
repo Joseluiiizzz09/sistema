@@ -2,6 +2,7 @@
    SUPERVISOR.JS — Conectado en tiempo real
    ================================================ */
 const API_SUP = window.NC_API + '/api';
+const SUP_APARTADO_KEY = 'nc_supervisor_apartado';
 
 // Estados reales del flujo completo
 const ESTADOS_VENTA = [
@@ -118,6 +119,7 @@ function iniciarApp(){
 }
 
 function showSection(id,btn){
+  try{ sessionStorage.setItem(SUP_APARTADO_KEY,id); }catch(e){}
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
@@ -130,6 +132,14 @@ function renderSeccion(id){
   if(id==='rendimiento') renderRendimiento();
   if(id==='frases')      renderFrases();
   if(id==='equipo')      renderEquipo();
+}
+function restaurarSeccionSupervisor(){
+  let id='';
+  try{ id=sessionStorage.getItem(SUP_APARTADO_KEY)||''; }catch(e){}
+  if(!id || !document.getElementById('sec-'+id)) return false;
+  const btn=document.querySelector('.nav-btn[onclick*="' + id + '"]');
+  showSection(id,btn);
+  return true;
 }
 function setPeriodo(p,btn){
   periodoActual=p;
@@ -602,6 +612,7 @@ function getMesLabel(o=0){ const d=new Date(); d.setMonth(d.getMonth()-o); retur
 window.onload=async()=>{
   await cargarDatos();
   iniciarApp();
+  restaurarSeccionSupervisor();
   [0,1,2].forEach(i=>{ const el=document.getElementById('thMes'+i); if(el) el.textContent=getMesLabel(i)+' (instaladas)'; });
   const el=document.getElementById('ventasEstadoStats');
   if(el) el.innerHTML=ESTADOS_VENTA.map(e=>`<div style="background:#fff;border:1px solid ${e.dot}33;border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:${e.dot}"></div><span style="font-size:11px;font-weight:600;">${e.label}</span><span id="vstat_${e.id}" style="font-size:14px;font-weight:800;color:${e.dot}">0</span></div>`).join('');

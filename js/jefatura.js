@@ -3,6 +3,7 @@
    ================================================ */
 
 const API = window.NC_API + '/api';
+const JEF_APARTADO_KEY = 'nc_jefatura_apartado';
 
 const CARGOS = [
   { id:'asesor',         label:'Asesor',           cls:'bc-asesor',         color:'#2563eb' },
@@ -73,6 +74,7 @@ async function cargarVentasCache(){
    NAVEGACIÓN
 ══════════════════════════════════════════ */
 function showSection(id,btn){
+  try{ sessionStorage.setItem(JEF_APARTADO_KEY,id); }catch(e){}
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id)?.classList.add('active');
@@ -83,6 +85,15 @@ function showSection(id,btn){
   if(id==='logs')        renderLogs();
   if(id==='accesos')     renderAccesos();
   if(id==='seguimiento') cargarSeguimiento();
+}
+
+function restaurarSeccionJefatura(){
+  let id='';
+  try{ id=sessionStorage.getItem(JEF_APARTADO_KEY)||''; }catch(e){}
+  if(!id || !document.getElementById('sec-'+id)) return false;
+  const btn=document.querySelector('.nav-btn[onclick*="' + id + '"]');
+  showSection(id,btn);
+  return true;
 }
 
 /* ══════════════════════════════════════════
@@ -577,7 +588,7 @@ window.onload = async () => {
   await cargarUsuarios();
   await cargarVentasCache();
   cargarLogs();
-  renderDashboard();
+  if(!restaurarSeccionJefatura()) renderDashboard();
   agregarLog('Sesión iniciada','Panel de Jefatura');
 
   // Refresh automático cada 60s para ventas diarias
