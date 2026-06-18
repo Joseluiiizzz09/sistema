@@ -234,12 +234,51 @@ function tipifVendHtml(tipif, hora){
     'CONTESTA':              ['#d1fae5','#065f46'],
     'NC':                    ['#fefce8','#854d0e'],
     'DERIVADO':              ['#ede9fe','#5b21b6'],
+    'NO TOCAR':              ['#fef2f2','#dc2626'],
+    'FRAUDE':                ['#fee2e2','#991b1b'],
   };
   const [bg, color] = styles[tipif] || ['#f3f4f6','#374151'];
   return `<div style="display:flex;flex-direction:column;gap:2px;">
     <span style="display:inline-flex;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:${bg};color:${color};white-space:nowrap;">${tipif}</span>
     ${hora ? `<span style="font-size:9px;color:#9ca3af;">vendedor · ${hora}</span>` : ''}
   </div>`;
+}
+
+/* ── Opciones de tipificación del vendedor (NO TOCAR y FRAUDE solo en Back Office) ── */
+const TIPIF_VEND_OPCIONES = [
+  'VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA',
+  'NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA',
+  'SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL',
+  'SERVICIO ACTIVO','DERIVADO','NC',
+  // Exclusivas del Back Office:
+  'NO TOCAR','FRAUDE'
+];
+
+function tipifVendSelect(r){
+  const cur = r._tipifVend || '';
+  const opts = TIPIF_VEND_OPCIONES.map(t=>`<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
+  const esExclusiva = cur==='NO TOCAR' || cur==='FRAUDE';
+  const styleSel = esExclusiva ? 'border-color:#dc2626;color:#dc2626;font-weight:700;background:#fef2f2;' : '';
+  return `<div style="display:flex;flex-direction:column;gap:2px;">
+    <select class="sel-tipif-vend" onchange="guardarTipifVend(${r.id}, this.value)" style="font-size:10px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:6px;font-family:inherit;max-width:155px;cursor:pointer;${styleSel}">
+      <option value="">— Pendiente —</option>
+      ${opts}
+    </select>
+    ${r._tipifHora ? `<span style="font-size:9px;color:#9ca3af;">vendedor · ${r._tipifHora}</span>` : ''}
+  </div>`;
+}
+
+async function guardarTipifVend(id, valor){
+  let reg=null;
+  for(const f in baseData){ reg=baseData[f].find(r=>r.id===id); if(reg) break; }
+  if(!reg) return;
+  reg._tipifVend = valor;
+  reg._tipifHora = horaAhora();
+  if(reg._backendId){
+    await actualizarLeadBackend(reg._backendId, { tipif_vend: valor, tipif_hora: reg._tipifHora });
+  }
+  renderBase();
+  mostrarToast(`Tipif. vendedor: ${valor || '— Pendiente —'} · N1 ${reg.n1}`);
 }
 
 function actualizarStats(){
@@ -287,7 +326,7 @@ function renderBase(){
     const badgeTip  = r.tipifBack ? `<span class="badge ${tipifBadgeClass(r.tipifBack)}">${r.tipifBack}</span>` : '<span style="color:#ccc;font-size:10px">—</span>';
     const sinAsig   = r.sinAsignar ? '<span class="sin-asig-badge">Sin asig.</span>' : '<span style="color:#d1d5db;font-size:10px">—</span>';
     const rotBadge  = r.rotaciones>0 ? `<span style="background:#EDE9FE;color:#4C1D95;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;display:inline-block">${r.rotaciones}x</span>` : '<span style="color:#d1d5db;font-size:11px">0</span>';
-    const tvCell    = mostrarTV ? `<td style="display:table-cell">${tipifVendHtml(r._tipifVend,r._tipifHora)}</td>` : `<td style="display:none"></td>`;
+    const tvCell    = mostrarTV ? `<td style="display:table-cell">${tipifVendSelect(r)}</td>` : `<td style="display:none"></td>`;
     return `
     <tr id="fila-${r.id}">
       <td style="color:#9ca3af;font-size:10px">${i+1}</td>
@@ -982,7 +1021,7 @@ function restaurarSeccionBackoffice(){
 
 /* ===================== AVANCE DE ASESORES (general) ===================== */
 let _blLeadsCache = [];
-const BL_TIPIF_COLORS={'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af','CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2','SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706'};
+const BL_TIPIF_COLORS={'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af','CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2','SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b'};
 
 function renderAvanceAsesores(){
   const cont = document.getElementById('avanceCards');
