@@ -275,7 +275,13 @@ async function guardarTipifVend(id, valor){
   reg._tipifVend = valor;
   reg._tipifHora = horaAhora();
   if(reg._backendId){
-    await actualizarLeadBackend(reg._backendId, { tipif_vend: valor, tipif_hora: reg._tipifHora });
+    try {
+      await fetch(`${API_BO}/leads/${reg._backendId}/tipif`, {
+        method: 'PATCH',
+        headers: ncHeaders(),
+        body: JSON.stringify({ tipif_vend: valor }),
+      });
+    } catch(e){ console.error('Error guardando tipif vendedor:', e); }
   }
   renderBase();
   mostrarToast(`Tipif. vendedor: ${valor || '— Pendiente —'} · N1 ${reg.n1}`);
