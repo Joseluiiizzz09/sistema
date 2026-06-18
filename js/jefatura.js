@@ -4,6 +4,8 @@
 
 const API = window.NC_API + '/api';
 const JEF_APARTADO_KEY = 'nc_jefatura_apartado';
+const JEF_SALA_REPORTE_KEY = 'nc_jefatura_sala_reporte';
+const JEF_SEG_FILTRO_KEY = 'nc_jefatura_seg_filtro';
 
 const CARGOS = [
   { id:'asesor',         label:'Asesor',           cls:'bc-asesor',         color:'#2563eb' },
@@ -385,6 +387,7 @@ async function toggleActivo(id){
    REPORTES — solo asesores
 ══════════════════════════════════════════ */
 function renderReportes(){
+  document.querySelectorAll('.sala-tab').forEach(b=>b.classList.toggle('active', b === buscarSalaReporteBtn(salaReporte)));
   const sel=salaReporte;
   let asesores=usuarios.filter(u=>u.cargo==='asesor');
   if(sel!=='todas') asesores=asesores.filter(u=>u.sala===sel);
@@ -444,9 +447,17 @@ function renderReportes(){
 
 function cambiarSalaReporte(sala,btn){
   salaReporte=sala;
-  document.querySelectorAll('.sala-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  try{ sessionStorage.setItem(JEF_SALA_REPORTE_KEY,sala); }catch(e){}
+  const activeBtn=btn || buscarSalaReporteBtn(sala);
+  document.querySelectorAll('.sala-tab').forEach(b=>b.classList.toggle('active', b === activeBtn));
   renderReportes();
+}
+
+function buscarSalaReporteBtn(sala){
+  return Array.from(document.querySelectorAll('.sala-tab')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("cambiarSalaReporte('" + sala + "'") || on.includes('cambiarSalaReporte("' + sala + '"');
+  }) || null;
 }
 
 /* ══════════════════════════════════════════
@@ -493,12 +504,21 @@ function actualizarKpisSeg(){
 
 function filtrarSeg(estado,btn){
   filtroSeg=estado;
-  document.querySelectorAll('.seg-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  try{ sessionStorage.setItem(JEF_SEG_FILTRO_KEY,estado); }catch(e){}
+  const activeBtn=btn || buscarSegBtn(estado);
+  document.querySelectorAll('.seg-tab').forEach(b=>b.classList.toggle('active', b === activeBtn));
   renderSeg();
 }
 
+function buscarSegBtn(estado){
+  return Array.from(document.querySelectorAll('.seg-tab')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("filtrarSeg('" + estado + "'") || on.includes('filtrarSeg("' + estado + '"');
+  }) || null;
+}
+
 function renderSeg(){
+  document.querySelectorAll('.seg-tab').forEach(b=>b.classList.toggle('active', b === buscarSegBtn(filtroSeg)));
   const tbody=document.getElementById('tablaSegBody');
   const count=document.getElementById('segCount');
   let lista=filtroSeg?ventasSeg.filter(v=>v._seg===filtroSeg):[...ventasSeg];
@@ -570,6 +590,10 @@ function renderAccesos(){
 window.onload = async () => {
   const u=ncGetSesion();
   if(u){ const el=document.getElementById('topbarUser'); if(el) el.textContent=u.nombre||'Jefatura'; }
+  try{
+    salaReporte=sessionStorage.getItem(JEF_SALA_REPORTE_KEY)||salaReporte;
+    filtroSeg=sessionStorage.getItem(JEF_SEG_FILTRO_KEY)||filtroSeg;
+  }catch(e){}
 
   // Poblar selects del modal
   const selCargo=document.getElementById('mod_cargo');

@@ -3,6 +3,7 @@
    ================================================ */
 
 const API_GRAB = window.NC_API + '/api';
+const GRAB_TAB_KEY = 'nc_grabaciones_tab';
 
 const ESTADOS_GRAB = [
   { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
@@ -165,11 +166,27 @@ function actualizarTabCounts(){
 
 function cambiarTab(tab, btn){
   tabActiva = tab;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  try{ sessionStorage.setItem(GRAB_TAB_KEY, tab); }catch(e){}
+  const activeBtn = btn || buscarTabGrabaciones(tab);
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b === activeBtn));
   busquedaVal = '';
   const bs = document.getElementById('busquedaInput'); if(bs) bs.value = '';
   aplicarFiltros();
+}
+
+function buscarTabGrabaciones(tab){
+  return Array.from(document.querySelectorAll('.tab-btn')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("cambiarTab('" + tab + "'") || on.includes('cambiarTab("' + tab + '"');
+  }) || null;
+}
+
+function restaurarTabGrabaciones(){
+  let tab='';
+  try{ tab=sessionStorage.getItem(GRAB_TAB_KEY)||''; }catch(e){}
+  if(!tab) return false;
+  cambiarTab(tab, buscarTabGrabaciones(tab));
+  return true;
 }
 
 function renderTabla(){
@@ -405,7 +422,7 @@ window.onload = async () => {
   }
 
   await cargarVentas();
-  aplicarFiltros();
+  if(!restaurarTabGrabaciones()) aplicarFiltros();
   actualizarFecha();
   setInterval(actualizarFecha, 60000);
 

@@ -3,6 +3,7 @@
    ================================================ */
 
 const API_SEG = window.NC_API + '/api';
+const SEG_FILTRO_KEY = 'nc_seguimiento_filtro';
 
 const ESTADOS = [
   { id:'ejecucion', label:'EN EJECUCION',      cls:'bs-ejec',    fila:'fila-ejec',    color:'#00cc00' },
@@ -132,9 +133,23 @@ function actualizarKpis(){
 
 function filtrarPorEstado(id, btn){
   filtroEstado=filtroEstado===id?'':id;
-  document.querySelectorAll('.leyenda-item').forEach(b=>b.classList.remove('activo'));
-  if(filtroEstado) btn.classList.add('activo');
+  try{ sessionStorage.setItem(SEG_FILTRO_KEY,filtroEstado); }catch(e){}
+  const activeBtn = btn || buscarLeyendaEstado(filtroEstado || '');
+  document.querySelectorAll('.leyenda-item').forEach(b=>b.classList.toggle('activo', b === activeBtn));
   aplicarFiltros();
+}
+
+function buscarLeyendaEstado(id){
+  return Array.from(document.querySelectorAll('.leyenda-item')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("filtrarPorEstado('" + id + "'") || on.includes('filtrarPorEstado("' + id + '"');
+  }) || null;
+}
+
+function restaurarFiltroSeguimiento(){
+  try{ filtroEstado=sessionStorage.getItem(SEG_FILTRO_KEY)||''; }catch(e){}
+  const activeBtn=buscarLeyendaEstado(filtroEstado || '');
+  document.querySelectorAll('.leyenda-item').forEach(b=>b.classList.toggle('activo', b === activeBtn));
 }
 
 function aplicarFiltros(){
@@ -323,7 +338,7 @@ window.onload = async ()=>{
   ['f_tramo','est_tramo'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">Todos</option>`+TRAMOS.map(t=>`<option value="${t}">${t}</option>`).join(''); });
   const selR=document.getElementById('obs_resultado'); if(selR) selR.innerHTML='<option value="">-- Resultado --</option>'+RESULTADOS.map(r=>`<option value="${r}">${r}</option>`).join('');
   document.getElementById('est_nuevo')?.addEventListener('change', e=>{ const v=ventas.find(x=>x.id===editandoId); actualizarCamposEstado(e.target.value, v?._motivoRech||''); });
-  await cargarVentas(); aplicarFiltros();
+  await cargarVentas(); restaurarFiltroSeguimiento(); aplicarFiltros();
   ['modalEstado','modalObs','modalAgenda'].forEach(id=>{ document.getElementById(id)?.addEventListener('click',e=>{ if(e.target===document.getElementById(id)) cerrarModal(id); }); });
   document.getElementById('selectPorPagina')?.addEventListener('change',e=>{ porPagina=parseInt(e.target.value)||18; paginaActual=1; renderTabla(); });
   setInterval(async()=>{ await cargarVentas(); aplicarFiltros(); },60000);

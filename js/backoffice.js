@@ -3,6 +3,7 @@
    ================================================ */
 const API_BO = window.NC_API + '/api';
 const BO_APARTADO_KEY = 'nc_backoffice_apartado';
+const BO_CARGA_TAB_KEY = 'nc_backoffice_carga_tab';
 
 const COLORES_AV = ["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899"];
 const DOT_COLORS = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626'];
@@ -660,11 +661,21 @@ function toggleRotacion(){
 let archivoRows=[];
 
 function switchTabCarga(tab){
+  try{ sessionStorage.setItem(BO_CARGA_TAB_KEY,tab); }catch(e){}
   ['pegar','archivo','legacy'].forEach(t=>{
-    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===tab);
-    document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)).style.display=t===tab?'':'none';
+    const tabEl=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const panel=document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(tabEl) tabEl.classList.toggle('active',t===tab);
+    if(panel) panel.style.display=t===tab?'':'none';
   });
   if(tab==='legacy') poblarLegacyFecha();
+}
+
+function restaurarTabCarga(){
+  let tab='';
+  try{ tab=sessionStorage.getItem(BO_CARGA_TAB_KEY)||''; }catch(e){}
+  if(!tab || !document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1))) return;
+  switchTabCarga(tab);
 }
 
 function poblarSelectMasiva(){
@@ -950,7 +961,7 @@ function mostrarSeccion(id,btn){
   if(id==='base')         { renderFechaTabs(); renderBase(); }
   if(id==='asesores')     renderAsesoresCards();
   if(id==='rendimiento')  renderRendimiento();
-  if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); }
+  if(id==='carga-masiva'){ poblarSelectMasiva(); poblarLegacyFecha(); renderFechasCargaMasiva(); restaurarTabCarga(); }
   if(id==='avance'){ renderAvanceAsesores(); }
 }
 

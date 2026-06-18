@@ -3,6 +3,7 @@
    ================================================ */
 const API_SUP = window.NC_API + '/api';
 const SUP_APARTADO_KEY = 'nc_supervisor_apartado';
+const SUP_PERIODO_KEY = 'nc_supervisor_periodo';
 
 // Estados reales del flujo completo
 const ESTADOS_VENTA = [
@@ -149,9 +150,17 @@ function restaurarSeccionSupervisor(){
 }
 function setPeriodo(p,btn){
   periodoActual=p;
-  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+  try{ sessionStorage.setItem(SUP_PERIODO_KEY,p); }catch(e){}
+  const activeBtn=btn || buscarPeriodoSupervisor(p);
+  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.toggle('active', b === activeBtn));
   renderDashboard();
+}
+
+function buscarPeriodoSupervisor(p){
+  return Array.from(document.querySelectorAll('.periodo-btn')).find(b=>{
+    const on=b.getAttribute('onclick')||'';
+    return on.includes("setPeriodo('" + p + "'") || on.includes('setPeriodo("' + p + '"');
+  }) || null;
 }
 
 /* ══════════════════════════════════════════
@@ -618,6 +627,8 @@ function getMesLabel(o=0){ const d=new Date(); d.setMonth(d.getMonth()-o); retur
 window.onload=async()=>{
   await cargarDatos();
   iniciarApp();
+  try{ periodoActual=sessionStorage.getItem(SUP_PERIODO_KEY)||periodoActual; }catch(e){}
+  setPeriodo(periodoActual, buscarPeriodoSupervisor(periodoActual));
   restaurarSeccionSupervisor();
   [0,1,2].forEach(i=>{ const el=document.getElementById('thMes'+i); if(el) el.textContent=getMesLabel(i)+' (instaladas)'; });
   const el=document.getElementById('ventasEstadoStats');

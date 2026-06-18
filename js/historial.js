@@ -92,8 +92,7 @@ function hRenderFiltros(ventaId){
 
 function hSetFiltro(filtro,btn){
   hFiltroActivo=filtro;
-  document.querySelectorAll('#hFiltros .h-filtro-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  document.querySelectorAll('#hFiltros .h-filtro-btn').forEach(b=>b.classList.toggle('active', b === btn));
   hRenderLista(hVentaActual);
 }
 
