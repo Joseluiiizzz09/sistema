@@ -1130,17 +1130,18 @@ function blRender(leads){
   }
   if(!leads.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">Sin leads para esta fecha.</td></tr>'; return; }
   tbody.innerHTML=leads.map((l,i)=>{
-    const t=(l.tipif_vend||'').trim(), color=BL_TIPIF_COLORS[t.toUpperCase()]||'#9ca3af';
+    const raw=(l.tipif_vend||'').trim(), color=BL_TIPIF_COLORS[raw.toUpperCase()]||'#9ca3af';
+    const t=esc(raw);
     const badge=t?`<span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;">${t}</span>`:'<span style="color:#d1d5db;font-style:italic;font-size:11px;">Sin tipif.</span>';
-    return `<tr style="border-bottom:1px solid #f3f4f6;${t.toUpperCase()==='VENTA CERRADA'?'background:#f0fdf4;':''}">
+    return `<tr style="border-bottom:1px solid #f3f4f6;${raw.toUpperCase()==='VENTA CERRADA'?'background:#f0fdf4;':''}">
       <td style="padding:8px;color:#9ca3af;font-size:10px;">${i+1}</td>
-      <td style="padding:8px;font-family:monospace;font-weight:700;color:#111827;">${l.n1||'—'}</td>
-      <td style="padding:8px;font-family:monospace;color:#6b7280;">${l.n2||'—'}</td>
-      <td style="padding:8px;font-size:11px;">${l.distrito||l.campana||'—'}</td>
-      <td style="padding:8px;font-size:11px;">${l.campana||'—'}</td>
-      <td style="padding:8px;font-size:11px;font-family:monospace;">${l.hora_asig||'—'}</td>
+      <td style="padding:8px;font-family:monospace;font-weight:700;color:#111827;">${esc(l.n1||'—')}</td>
+      <td style="padding:8px;font-family:monospace;color:#6b7280;">${esc(l.n2||'—')}</td>
+      <td style="padding:8px;font-size:11px;">${esc(l.distrito||l.campana||'—')}</td>
+      <td style="padding:8px;font-size:11px;">${esc(l.campana||'—')}</td>
+      <td style="padding:8px;font-size:11px;font-family:monospace;">${esc(l.hora_asig||'—')}</td>
       <td style="padding:8px;">${badge}</td>
-      <td style="padding:8px;font-size:11px;color:#6b7280;">${l.obs_asesor||'—'}</td>
+      <td style="padding:8px;font-size:11px;color:#6b7280;">${esc(l.obs_asesor||'—')}</td>
     </tr>`;
   }).join('');
 }

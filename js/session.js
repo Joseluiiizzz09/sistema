@@ -33,6 +33,15 @@ function ncProteger(cargosPermitidos=[]) {
   return true;
 }
 
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   const pagina=window.location.pathname.split('/').pop();
   if(pagina==='index.html'||pagina===''||pagina==='/') return;

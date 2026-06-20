@@ -73,7 +73,7 @@ function render() {
             '<td>' + c.zona + '</td>' +
             '<td style="font-size:11px;color:#9ca3af;">' + (c.horaAsig || '--') + '</td>' +
             '<td><span class="badge-estado ' + colorEstado(c.estado) + '">' + c.estado + '</span></td>' +
-            '<td><input class="input-obs" placeholder="Escribe una observacion..." value="' + (c.obs || '') + '" onchange="guardarObs(' + i + ', this.value)" maxlength="200"></td>' +
+            '<td><input class="input-obs" placeholder="Escribe una observacion..." value="' + esc(c.obs || '') + '" onchange="guardarObs(' + i + ', this.value)" maxlength="200"></td>' +
             '<td><button class="btn-accion" onclick="abrirModal(' + i + ')" title="Tipificar"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2v4h4" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 17l1.5-1.5 3-3-1.5-1.5-3 3L9 17z" fill="#fff"/><path d="M13.5 12.5l1-1a1 1 0 0 0-1.5-1.5l-1 1 1.5 1.5z" fill="#fff"/></svg></button></td>' +
         '</tr>';
     });
@@ -270,8 +270,8 @@ async function cargarFrasesSuper() {
         const frases = data.data;
         const principal = frases[0];
         const resto = frases.slice(1);
-        cont.innerHTML = '<div class="frase-destacada"><div class="frase-comilla">"</div><p class="frase-texto">' + principal.texto + '</p><div class="frase-autor">— ' + (principal.supervisor_nombre || "Tu supervisor") + '</div></div>' +
-            (resto.length ? '<div class="frases-grid">' + resto.map(function(f, i){ return '<div class="frase-card"><div class="frase-card-num">#' + (i+1) + '</div><div class="frase-card-texto">' + f.texto + '</div></div>'; }).join('') + '</div>' : '');
+        cont.innerHTML = '<div class="frase-destacada"><div class="frase-comilla">"</div><p class="frase-texto">' + esc(principal.texto) + '</p><div class="frase-autor">— ' + esc(principal.supervisor_nombre || "Tu supervisor") + '</div></div>' +
+            (resto.length ? '<div class="frases-grid">' + resto.map(function(f, i){ return '<div class="frase-card"><div class="frase-card-num">#' + (i+1) + '</div><div class="frase-card-texto">' + esc(f.texto) + '</div></div>'; }).join('') + '</div>' : '');
     } catch(e) {
         const cont2 = document.getElementById("frasesSupContainer");
         if (cont2) cont2.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;">Sin mensajes disponibles.</div>';
@@ -371,32 +371,32 @@ function actualizarTablaVentas(data) {
     tbody.innerHTML = data.map(function(v, i) {
         return '<tr>' +
             '<td>' + badgeEstado(v.estado) + '</td>' +
-            '<td style="font-size:11px;color:#185FA5;font-weight:700;">' + (v.created_at||"-").split(" ")[0] + '</td>' +
-            '<td style="font-weight:600;min-width:160px;">' + (v.nombre||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.tipo_doc||"DNI") + '</td>' +
-            '<td style="font-family:monospace;font-size:11px;">' + (v.dni||"-") + '</td>' +
-            '<td style="font-family:monospace;color:#185FA5;font-weight:700;">' + (v.telefono1||"-") + '</td>' +
-            '<td style="font-family:monospace;font-size:11px;">' + (v.telefono2||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.departamento||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.provincia||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.distrito||"-") + '</td>' +
-            '<td style="font-size:11px;min-width:140px;">' + (v.direccion||"-") + '</td>' +
-            '<td style="font-size:10px;color:#9ca3af;">' + (v.coordenadas||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.fecha_nac||v.fechaNac||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.lugar_nac||v.lugarNac||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.padre||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.madre||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.cuota_inst||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.claro_hogar||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.tecnologia||"-") + '</td>' +
-            '<td style="font-size:11px;min-width:180px;">' + (v.paquete||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.full_claro||"-") + '</td>' +
-            '<td style="text-align:center;">' + (v.cant_decos||"0") + '</td>' +
-            '<td style="text-align:center;">' + (v.cant_mesh||"0") + '</td>' +
-            '<td style="font-size:11px;">' + (v.plano||"-") + '</td>' +
-            '<td style="font-weight:600;color:#7C3AED;font-size:11px;">' + (v.asesor_nombre||"-") + '</td>' +
-            '<td style="font-size:11px;">' + (v.supervisor||"-") + '</td>' +
-            '<td style="font-size:11px;color:#6b7280;min-width:140px;">' + (v.observacion||"-") + '</td>' +
+            '<td style="font-size:11px;color:#185FA5;font-weight:700;">' + esc((v.created_at||"-").split(" ")[0]) + '</td>' +
+            '<td style="font-weight:600;min-width:160px;">' + esc(v.nombre||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.tipo_doc||"DNI") + '</td>' +
+            '<td style="font-family:monospace;font-size:11px;">' + esc(v.dni||"-") + '</td>' +
+            '<td style="font-family:monospace;color:#185FA5;font-weight:700;">' + esc(v.telefono1||"-") + '</td>' +
+            '<td style="font-family:monospace;font-size:11px;">' + esc(v.telefono2||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.departamento||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.provincia||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.distrito||"-") + '</td>' +
+            '<td style="font-size:11px;min-width:140px;">' + esc(v.direccion||"-") + '</td>' +
+            '<td style="font-size:10px;color:#9ca3af;">' + esc(v.coordenadas||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.fecha_nac||v.fechaNac||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.lugar_nac||v.lugarNac||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.padre||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.madre||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.cuota_inst||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.claro_hogar||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.tecnologia||"-") + '</td>' +
+            '<td style="font-size:11px;min-width:180px;">' + esc(v.paquete||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.full_claro||"-") + '</td>' +
+            '<td style="text-align:center;">' + esc(v.cant_decos||"0") + '</td>' +
+            '<td style="text-align:center;">' + esc(v.cant_mesh||"0") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.plano||"-") + '</td>' +
+            '<td style="font-weight:600;color:#7C3AED;font-size:11px;">' + esc(v.asesor_nombre||"-") + '</td>' +
+            '<td style="font-size:11px;">' + esc(v.supervisor||"-") + '</td>' +
+            '<td style="font-size:11px;color:#6b7280;min-width:140px;">' + esc(v.observacion||"-") + '</td>' +
             '<td><div class="vs-acciones-cell">' +
                 '<button class="vs-btn-accion vs-btn-editar" onclick="editarVenta(' + i + ')" title="Editar venta">Editar</button>' +
                 '<button class="vs-btn-accion vs-btn-fotos"  onclick="fotosVenta(' + i + ')"  title="Ver fotos">Fotos</button>' +
