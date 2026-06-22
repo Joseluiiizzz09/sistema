@@ -1,0 +1,954 @@
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { API, ncHeaders } from '../services/api'
+import '../styles/supervisor.css'
+
+// ── Constantes ────────────────────────────────────────────────────────────
+const ESTADOS_VENTA = [
+  { id:'venta',         label:'Venta',           cls:'be-venta',      dot:'#2563eb' },
+  { id:'validado',      label:'Validado',         cls:'be-validado',   dot:'#7c3aed' },
+  { id:'no_validado',   label:'No Validado',      cls:'be-caida',      dot:'#dc2626' },
+  { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
+  { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
+  { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
+  { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#16a34a' },
+  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c' },
+  { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-caida',      dot:'#ea580c' },
+  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#7c3aed' },
+  { id:'no_instalado',  label:'No Instalado',     cls:'be-caida',      dot:'#991b1b' },
+]
+const TIPIF_COLORS = {
+  'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed',
+  'NO CONTESTA':'#9ca3af','CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444',
+  'BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2','SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706',
+}
+const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899','#f59e0b']
+const NV_DEFAULT = { n1:'', n2:'', campana:'', asesor:'', estado:'', fecha:'', obs:'' }
+
+// ── Utilidades ────────────────────────────────────────────────────────────
+function colorFor(n) { let s=0; for(const c of (n||'')) s+=c.charCodeAt(0); return COLORES_AV[s%COLORES_AV.length] }
+function iniciales(n) { return (n||'?').trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
+function fechaHoy() {
+  const a=new Date(), u=a.getTime()+a.getTimezoneOffset()*60000, p=new Date(u-5*3600000)
+  return p.getFullYear()+'-'+String(p.getMonth()+1).padStart(2,'0')+'-'+String(p.getDate()).padStart(2,'0')
+}
+function mesActual() { return fechaHoy().slice(0,7) }
+function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
+function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
+function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function mapearEstado(e) {
+  const s=(e||'').toLowerCase().trim()
+  if(s===''||s==='venta') return 'venta'
+  if(s==='validado')      return 'validado'
+  if(s==='no_validado'||s==='observado') return 'no_validado'
+  if(s==='grabado')       return 'grabado'
+  if(s==='pendiente')     return 'no_grabado'
+  if(['aprobado','programado','en_ejecucion','en ejecucion'].includes(s)) return 'en_ejecucion'
+  if(s==='instalado')     return 'instalado'
+  if(s==='caida')         return 'caida'
+  if(s==='rechazo_campo') return 'rechazo_campo'
+  if(s==='tecnico_casa')  return 'tecnico_casa'
+  if(s==='no_instalado')  return 'no_instalado'
+  return 'venta'
+}
+function estadoObj(id) { return ESTADOS_VENTA.find(e=>e.id===id)||ESTADOS_VENTA[0] }
+function getUltimos7Dias() {
+  const dias=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().split('T')[0]) }
+  return dias
+}
+
+function BadgeEstado({ id }) {
+  const e = estadoObj(id)
+  return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:`${e.dot}22`,color:e.dot,border:`1px solid ${e.dot}44`}}>{e.label}</span>
+}
+
+// ── Componente principal ──────────────────────────────────────────────────
+export default function Supervisor() {
+  const navigate   = useNavigate()
+  const { sesion, logout } = useAuth()
+  const toastTimer = useRef(null)
+
+  // Charts
+  const ch1Ref = useRef(null), ch2Ref = useRef(null), ch3Ref = useRef(null), ch4Ref = useRef(null)
+  const chartInst = useRef({})
+
+  // ── Session ──
+  const salaActual    = sesion?.sala || 'SALA 1'
+  const supervisorNom = sesion?.nombre || 'Supervisor'
+
+  // ── Section / period ──
+  const [seccion, setSeccion] = useState(() => sessionStorage.getItem('nc_supervisor_apartado') || 'dashboard')
+  const [periodo, setPeriodoState] = useState(() => sessionStorage.getItem('nc_supervisor_periodo') || 'mes')
+
+  // ── Data ──
+  const [asesores, setAsesores] = useState([])
+  const [ventas,   setVentas]   = useState([])
+  const [frases,   setFrases]   = useState([])
+
+  // ── Filtros ventas ──
+  const [filtroAsesor,  setFiltroAsesor]  = useState('')
+  const [filtroEstado,  setFiltroEstado]  = useState('')
+  const [filtroDesde,   setFiltroDesde]   = useState('')
+  const [filtroHasta,   setFiltroHasta]   = useState('')
+  const [tablaSearch,   setTablaSearch]   = useState('')
+
+  // ── Equipo ──
+  const [equipoBuscar,      setEquipoBuscar]      = useState('')
+  const [equipoFiltroEstado,setEquipoFiltroEstado] = useState('')
+
+  // ── Panel agregar venta ──
+  const [panelNV, setPanelNV] = useState(false)
+  const [nvForm,  setNvForm]  = useState(NV_DEFAULT)
+
+  // ── Modal detalle asesor ──
+  const [modalAsesor, setModalAsesor] = useState({ open:false, nombre:'' })
+
+  // ── Modal base de llamadas ──
+  const [blModal,    setBlModal]    = useState({ open:false, nombre:'', asesorId:null })
+  const [blLeads,    setBlLeads]    = useState([])
+  const [blFecha,    setBlFecha]    = useState(fechaHoy())
+  const [blCargando, setBlCargando] = useState(false)
+
+  // ── Frases ──
+  const [fraseTexto, setFraseTexto] = useState('')
+
+  // ── Toast ──
+  const [toast, setToast] = useState('')
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function mostrarToast(msg) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast(msg)
+    toastTimer.current = setTimeout(() => setToast(''), 3200)
+  }
+
+  function setPeriodo(p) {
+    sessionStorage.setItem('nc_supervisor_periodo', p)
+    setPeriodoState(p)
+  }
+
+  function irSeccion(id) {
+    sessionStorage.setItem('nc_supervisor_apartado', id)
+    setSeccion(id)
+    if (id === 'frases') cargarFrases()
+  }
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+  const asesoresSala = useMemo(() =>
+    asesores.filter(a => !salaActual || a.sala === salaActual),
+  [asesores, salaActual])
+
+  const todasVentas = useMemo(() => {
+    if (!salaActual) return ventas
+    const nombresASala = asesoresSala.map(a => a.nombre)
+    if (!nombresASala.length) return ventas
+    return ventas.filter(v => nombresASala.includes(v.asesor) || (v.sala && v.sala === salaActual))
+  }, [ventas, asesoresSala, salaActual])
+
+  const dashVentas = useMemo(() => {
+    const hoy = fechaHoy(), mes = mesActual()
+    const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
+    return todasVentas.filter(v => {
+      const f = v._fecha || ''
+      if (periodo==='dia')    return f===hoy
+      if (periodo==='semana') return f>=lun && f<=hoy
+      if (periodo==='mes')    return f.startsWith(mes)
+      return true
+    })
+  }, [todasVentas, periodo])
+
+  const ventasTabla = useMemo(() => {
+    let vv = [...todasVentas]
+    if (filtroAsesor) vv = vv.filter(v=>v.asesor===filtroAsesor)
+    if (filtroEstado) vv = vv.filter(v=>v._estado===filtroEstado)
+    if (filtroDesde)  vv = vv.filter(v=>v._fecha>=filtroDesde)
+    if (filtroHasta)  vv = vv.filter(v=>v._fecha<=filtroHasta)
+    if (!filtroDesde&&!filtroHasta&&!filtroAsesor&&!filtroEstado&&!tablaSearch)
+      vv = vv.filter(v=>v._fecha&&v._fecha.startsWith(mesActual()))
+    if (tablaSearch) {
+      const q = tablaSearch.toLowerCase()
+      vv = vv.filter(v=>v.n1?.includes(tablaSearch)||(v.asesor||'').toLowerCase().includes(q)||(v.nombre||'').toLowerCase().includes(q)||(v.dni||'').includes(tablaSearch))
+    }
+    return vv.sort((a,b)=>(b._fecha+b._hora).localeCompare(a._fecha+a._hora))
+  }, [todasVentas, filtroAsesor, filtroEstado, filtroDesde, filtroHasta, tablaSearch])
+
+  const dashRendData = useMemo(() =>
+    asesoresSala.map(a => {
+      const mis = dashVentas.filter(v=>v.asesor===a.nombre)
+      const inst = mis.filter(v=>v._estado==='instalado').length
+      return { nombre:a.nombre, usuario:a.usuario||'', total:mis.length, inst, conv:mis.length?Math.round(inst/mis.length*100):0 }
+    }).sort((a,b)=>b.total-a.total),
+  [dashVentas, asesoresSala])
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  const cargarDatos = useCallback(async () => {
+    try {
+      const [rU, rV] = await Promise.all([
+        fetch(`${API}/usuarios`, { headers: ncHeaders() }),
+        fetch(`${API}/ventas`,   { headers: ncHeaders() }),
+      ])
+      const [dU, dV] = await Promise.all([rU.json(), rV.json()])
+      if (dU.ok) setAsesores(dU.data.filter(u=>u.cargo==='asesor'&&u.activo))
+      if (dV.ok) setVentas(dV.data.map(v => ({
+        ...v,
+        asesor:   v.asesor_nombre || '',
+        n1:       v.telefono1 || '',
+        n2:       v.telefono2 || '',
+        campana:  v.claro_hogar || v.paquete || '',
+        distrito: v.distrito || '',
+        _fecha:   (v.created_at||'').split(' ')[0],
+        _hora:    (v.created_at||'').split(' ')[1] || '',
+        _estado:  mapearEstado(v.estado),
+      })))
+    } catch(e) { console.error(e) }
+  }, [])
+
+  const cargarFrases = useCallback(async () => {
+    try {
+      const url = salaActual ? `${API}/frases?sala=${encodeURIComponent(salaActual)}` : `${API}/frases`
+      const res  = await fetch(url, { headers: ncHeaders() })
+      const data = await res.json()
+      if (data.ok && data.data?.length) {
+        setFrases(data.data.map(f => ({ texto:f.texto, hora:(f.created_at||'').split(' ')[1]||'', sala:f.sala||salaActual })))
+      }
+    } catch(e) {}
+  }, [salaActual])
+
+  async function enviarFrase() {
+    const texto = fraseTexto.trim()
+    if (!texto) { mostrarToast('Escribe una frase primero'); return }
+    try {
+      const res  = await fetch(`${API}/frases`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ texto, sala:salaActual }) })
+      const data = await res.json()
+      if (data.ok) {
+        setFraseTexto('')
+        const hora = new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
+        setFrases(prev => [{ texto, hora, sala:salaActual }, ...prev])
+        mostrarToast('Frase publicada')
+      } else mostrarToast('Error: ' + data.mensaje)
+    } catch(e) { mostrarToast('Error conectando') }
+  }
+
+  async function eliminarVenta(id) {
+    if (!confirm('¿Seguro que deseas eliminar esta venta?')) return
+    try {
+      const res  = await fetch(`${API}/ventas/${id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json()
+      if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)); mostrarToast('Venta eliminada') }
+      else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
+    } catch(e) { mostrarToast('Error de conexión') }
+  }
+
+  async function agregarVentaManual() {
+    if (!nvForm.n1.trim()) { mostrarToast('N1 es obligatorio'); return }
+    if (!nvForm.asesor)    { mostrarToast('Asesor es obligatorio'); return }
+    try {
+      const res  = await fetch(`${API}/ventas`, {
+        method:'POST', headers:ncHeaders(),
+        body: JSON.stringify({ telefono1:nvForm.n1.trim(), telefono2:nvForm.n2.trim(), claro_hogar:nvForm.campana.trim(), asesor_nombre:nvForm.asesor, estado:nvForm.estado||'venta', observacion:nvForm.obs }),
+      })
+      const data = await res.json()
+      if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT); mostrarToast('Venta registrada') }
+      else mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
+    } catch(e) { mostrarToast('Error de conexión') }
+  }
+
+  // ── BL Modal ──────────────────────────────────────────────────────────────
+  function abrirBaseLlamadas(nombre, asesorId) {
+    setBlModal({ open:true, nombre, asesorId })
+    setBlFecha(fechaHoy())
+  }
+
+  useEffect(() => {
+    if (!blModal.open || blModal.asesorId == null) return
+    setBlCargando(true); setBlLeads([])
+    let url = `${API}/leads?asesor_id=${blModal.asesorId}`
+    if (blFecha) url += `&fecha=${blFecha}`
+    fetch(url, { headers: ncHeaders() })
+      .then(r=>r.json())
+      .then(data => { setBlLeads(data.ok ? data.data : null); setBlCargando(false) })
+      .catch(() => { setBlLeads(null); setBlCargando(false) })
+  }, [blFecha, blModal.open, blModal.asesorId])
+
+  // ── Charts ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (seccion !== 'dashboard') return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      if (cancelled) return
+      const { default: Chart } = await import('chart.js/auto')
+      if (cancelled) return
+
+      const destroyChart = (key) => { if(chartInst.current[key]){ chartInst.current[key].destroy(); delete chartInst.current[key] } }
+
+      const nombres  = dashRendData.map(r=>r.nombre.split(' ')[0])
+      const colores  = dashRendData.map(r=>colorFor(r.nombre))
+      const dias7    = getUltimos7Dias()
+
+      // ch1: Ventas por asesor (bar)
+      destroyChart('ch1')
+      if (ch1Ref.current) {
+        chartInst.current.ch1 = new Chart(ch1Ref.current, {
+          type:'bar',
+          data:{ labels:nombres, datasets:[{ label:'Ventas', data:dashRendData.map(r=>r.total), backgroundColor:colores, borderRadius:6 }] },
+          options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}},x:{grid:{display:false}}} }
+        })
+      }
+
+      // ch2: Distribución por estado (doughnut)
+      destroyChart('ch2')
+      if (ch2Ref.current) {
+        const ed = ESTADOS_VENTA.map(e=>({ label:e.label, cnt:dashVentas.filter(v=>v._estado===e.id).length, color:e.dot }))
+        const edConDatos = ed.filter(e=>e.cnt>0)
+        if (edConDatos.length) {
+          chartInst.current.ch2 = new Chart(ch2Ref.current, {
+            type:'doughnut',
+            data:{ labels:edConDatos.map(e=>e.label), datasets:[{ data:edConDatos.map(e=>e.cnt), backgroundColor:edConDatos.map(e=>e.color), borderWidth:2, borderColor:'#fff', hoverOffset:8 }] },
+            options:{
+              responsive:true,maintainAspectRatio:false,cutout:'65%',
+              plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:10, padding:10,
+                generateLabels: function(chart){
+                  return ed.map(e=>({ text:e.label+' ('+e.cnt+')', fillStyle:e.cnt>0?e.color:'#e5e7eb', strokeStyle:'#fff', fontColor:e.cnt>0?'#374151':'#9ca3af', hidden:false, index:edConDatos.findIndex(x=>x.label===e.label) }))
+                }
+              }}}
+            }
+          })
+        } else {
+          const ctx = ch2Ref.current.getContext('2d')
+          ctx.clearRect(0,0,ch2Ref.current.width,ch2Ref.current.height)
+          ctx.fillStyle='#f3f4f6'; ctx.beginPath(); ctx.arc(ctx.canvas.width/2,ctx.canvas.height/2,80,0,Math.PI*2); ctx.fill()
+          ctx.fillStyle='#9ca3af'; ctx.font='12px DM Sans,sans-serif'; ctx.textAlign='center'
+          ctx.fillText('Sin datos',ctx.canvas.width/2,ctx.canvas.height/2+4)
+        }
+      }
+
+      // ch3: Ventas diarias últimos 7 días (line)
+      destroyChart('ch3')
+      if (ch3Ref.current) {
+        const datasets = asesoresSala.map(a=>({
+          label: a.nombre.split(' ')[0],
+          data: dias7.map(d=>todasVentas.filter(v=>v.asesor===a.nombre&&v._fecha===d).length),
+          borderColor: colorFor(a.nombre), backgroundColor: colorFor(a.nombre)+'22',
+          fill:true, tension:0.4, borderWidth:2, pointRadius:4,
+        }))
+        chartInst.current.ch3 = new Chart(ch3Ref.current, {
+          type:'line',
+          data:{ labels:dias7.map(d=>formatF(d)), datasets },
+          options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}},x:{grid:{display:false}}} }
+        })
+      }
+
+      // ch4: Conversión por asesor (horizontal bar)
+      destroyChart('ch4')
+      if (ch4Ref.current && dashRendData.length) {
+        chartInst.current.ch4 = new Chart(ch4Ref.current, {
+          type:'bar',
+          data:{ labels:nombres, datasets:[{ label:'Conversión %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
+          options:{ indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}} }
+        })
+      }
+    }, 80)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [seccion, ventas, asesores, periodo])
+
+  // Cleanup charts on unmount
+  useEffect(() => {
+    return () => { Object.values(chartInst.current).forEach(c=>c.destroy()) }
+  }, [])
+
+  // ── Load & poll ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    cargarDatos()
+    if (seccion === 'frases') cargarFrases()
+    const t = setInterval(cargarDatos, 30000)
+    return () => clearInterval(t)
+  }, [cargarDatos])
+
+  // ── Computed helpers ──────────────────────────────────────────────────────
+  const cntEst = (id) => dashVentas.filter(v=>v._estado===id).length
+  const periodoLabel = () => {
+    if(periodo==='dia')return'hoy'; if(periodo==='semana')return'semana'
+    if(periodo==='mes')return'mes actual'; return'histórico'
+  }
+
+  // ── JSX ───────────────────────────────────────────────────────────────────
+  return (
+    <div id="appScreen" className="active">
+      {/* TOPBAR */}
+      <div className="topbar">
+        <div className="topbar-brand">
+          <div className="logo-circle">
+            <img src="/assets/logo3.png" alt="NC" style={{width:26,height:26,objectFit:'contain'}} />
+          </div>
+          <div className="topbar-brand-text">
+            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
+            <span className="brand-sub">Supervisor</span>
+          </div>
+        </div>
+        <div className="topbar-right">
+          <span className="topbar-sala">{salaActual}</span>
+          <span className="topbar-user">{supervisorNom}</span>
+          <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
+        </div>
+      </div>
+
+      <div className="app-layout">
+        {/* SIDEBAR */}
+        <aside className="sidebar">
+          <div className="sidebar-sep">Mi Sala</div>
+          <button className={`nav-btn${seccion==='dashboard'?' active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot" /> Dashboard</button>
+          <button className={`nav-btn${seccion==='ventas'?' active':''}`} onClick={()=>irSeccion('ventas')}><span className="nav-dot" /> Ventas</button>
+          <button className={`nav-btn${seccion==='equipo'?' active':''}`} onClick={()=>irSeccion('equipo')}><span className="nav-dot" /> Mi Equipo</button>
+          <div className="sidebar-sep">Análisis</div>
+          <button className={`nav-btn${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><span className="nav-dot" /> Rendimiento</button>
+          <div className="sidebar-sep">Comunicación</div>
+          <button className={`nav-btn${seccion==='frases'?' active':''}`} onClick={()=>irSeccion('frases')}><span className="nav-dot" /> Frases del día</button>
+        </aside>
+
+        <main className="main">
+
+          {/* ══ DASHBOARD ══════════════════════════════════════════════════════ */}
+          <section className={`section${seccion==='dashboard'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Dashboard</h2><p>Resumen general de tu sala</p></div>
+              <div className="periodo-tabs">
+                {[['dia','Hoy'],['semana','Semana'],['mes','Mes actual'],['global','Global']].map(([p,l])=>(
+                  <button key={p} className={`periodo-btn${periodo===p?' active':''}`} onClick={()=>setPeriodo(p)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* KPIs */}
+            <div className="kpi-grid">
+              {[
+                { label:'Total ventas',   val:dashVentas.length,       cls:'k-blue',   sub:periodoLabel() },
+                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validación' },
+                { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
+                { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
+                { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
+                { label:'Instaladas',     val:cntEst('instalado'),      cls:'k-green',  sub:'completadas' },
+                { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
+                { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
+              ].map(k=>(
+                <div key={k.label} className={`kpi-card ${k.cls}`}>
+                  <div className="kpi-label">{k.label}</div>
+                  <div className="kpi-value">{k.val}</div>
+                  <div className="kpi-sub">{k.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Estados chips */}
+            <div className="estados-grid">
+              {ESTADOS_VENTA.map(e=>(
+                <div key={e.id} className="estado-chip">
+                  <div className="chip-dot" style={{background:e.dot}} />
+                  <span>{e.label}</span>
+                  <span className="chip-num" style={{color:e.dot}}>{dashVentas.filter(v=>v._estado===e.id).length}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts */}
+            <div className="charts-grid">
+              <div className="chart-card"><div className="chart-title">Ventas por asesor</div><div className="chart-wrap"><canvas ref={ch1Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Distribución por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Ventas diarias — últimos 7 días</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Conversión por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
+            </div>
+
+            {/* Ranking */}
+            <div className="tabla-wrap">
+              <div className="tabla-header"><span className="tabla-title">Ranking de asesores</span></div>
+              <table className="tabla">
+                <thead><tr><th>#</th><th>Asesor</th><th>Total ventas</th><th>Instaladas</th><th>Avance</th></tr></thead>
+                <tbody>
+                  {dashRendData.length === 0
+                    ? <tr className="tabla-empty"><td colSpan={5}>Sin asesores en {salaActual}</td></tr>
+                    : dashRendData.map((r,i)=>(
+                        <tr key={r.nombre}>
+                          <td><div className={`pos-badge${i<3?' '+['p1','p2','p3'][i]:''}`}>{i+1}</div></td>
+                          <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(r.nombre)}}>{iniciales(r.nombre)}</div><div><div style={{fontWeight:700,fontSize:12}}>{r.nombre}</div><div style={{fontSize:10,color:'#9ca3af'}}>{r.usuario}</div></div></div></td>
+                          <td style={{fontWeight:700}}>{r.total}</td>
+                          <td style={{color:'#16a34a',fontWeight:700}}>{r.inst}</td>
+                          <td><div className="bar-mini-wrap"><div className="bar-mini"><div className="bar-mini-fill" style={{width:`${r.conv}%`}} /></div><span style={{fontSize:11,color:'#9ca3af'}}>{r.conv}%</span></div></td>
+                        </tr>
+                      ))
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            {/* Comparativo mensual */}
+            <div style={{marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#374151',marginBottom:12}}>Comparativo mensual</div>
+              <div className="comp-grid">
+                {[0,1,2].map(o=>{
+                  const cl  = getMesClave(o)
+                  const cnt = todasVentas.filter(v=>v._fecha&&v._fecha.startsWith(cl)).length
+                  const prev= todasVentas.filter(v=>v._fecha&&v._fecha.startsWith(getMesClave(o+1))).length
+                  const diff= cnt-prev
+                  const dc  = diff>0?'up':diff<0?'down':'eq'
+                  return (
+                    <div key={o} className="comp-card">
+                      <div className="comp-mes">{getMesLabel(o)}</div>
+                      <div className="comp-val">{cnt}</div>
+                      <div className={`comp-diff ${dc}`}>{diff>0?'↑':diff<0?'↓':'→'} {Math.abs(diff)} vs mes anterior</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* ══ VENTAS ═════════════════════════════════════════════════════════ */}
+          <section className={`section${seccion==='ventas'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto · usa filtros para ver otros periodos</p></div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <button className="btn-export" onClick={()=>mostrarToast('Excel — próximamente')}>Excel</button>
+                <button className="btn-export" onClick={()=>mostrarToast('PDF — próximamente')}>PDF</button>
+                <button className="btn-filtrar" onClick={()=>{ setPanelNV(v=>!v); if(!panelNV) setNvForm({...NV_DEFAULT,fecha:fechaHoy()}) }}>+ Registrar venta</button>
+              </div>
+            </div>
+
+            {/* Panel agregar venta */}
+            {panelNV && (
+              <div style={{background:'#fff',border:'1.5px dashed #e5e7eb',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#ff2d2d',textTransform:'uppercase',letterSpacing:.7,marginBottom:14}}>+ Registrar nueva venta</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:12}}>
+                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+                  <div className="filtro-group"><label>N2</label><input className="filtro-input" value={nvForm.n2} onChange={e=>setNvForm(p=>({...p,n2:e.target.value}))} placeholder="Secundario" style={{fontFamily:'monospace'}} /></div>
+                  <div className="filtro-group"><label>Campaña</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                  <div className="filtro-group"><label>Asesor *</label>
+                    <select className="filtro-select" value={nvForm.asesor} onChange={e=>setNvForm(p=>({...p,asesor:e.target.value}))}>
+                      <option value="">— Asesor —</option>
+                      {asesoresSala.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div className="filtro-group"><label>Estado *</label>
+                    <select className="filtro-select" value={nvForm.estado} onChange={e=>setNvForm(p=>({...p,estado:e.target.value}))}>
+                      <option value="">— Estado —</option>
+                      {ESTADOS_VENTA.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="filtro-group"><label>Fecha</label><input type="date" className="filtro-input" value={nvForm.fecha} onChange={e=>setNvForm(p=>({...p,fecha:e.target.value}))} /></div>
+                </div>
+                <div className="filtro-group" style={{marginBottom:12}}><label>Observación</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
+                <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                  <button className="btn-limpiar" onClick={()=>setPanelNV(false)}>Cancelar</button>
+                  <button className="btn-filtrar" onClick={agregarVentaManual}>Guardar venta</button>
+                </div>
+              </div>
+            )}
+
+            {/* Stats por estado */}
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
+              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
+                <span style={{color:'#9ca3af',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.3}}>TOTAL</span>
+                <span style={{fontSize:20,fontWeight:800,color:'#111827'}}>{ventasTabla.length}</span>
+              </div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {ESTADOS_VENTA.map(e=>(
+                  <div key={e.id} style={{background:'#fff',border:`1px solid ${e.dot}33`,borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:6}}>
+                    <div style={{width:7,height:7,borderRadius:'50%',background:e.dot}} />
+                    <span style={{fontSize:11,fontWeight:600,color:'#374151'}}>{e.label}</span>
+                    <span style={{fontSize:14,fontWeight:800,color:e.dot}}>{ventasTabla.filter(v=>v._estado===e.id).length}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Filtros */}
+            <div className="filtros-panel">
+              <div className="filtros-row">
+                <div className="filtro-group"><label>Asesor</label>
+                  <select className="filtro-select" value={filtroAsesor} onChange={e=>setFiltroAsesor(e.target.value)}>
+                    <option value="">Todos</option>
+                    {asesoresSala.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="filtro-group"><label>Estado de venta</label>
+                  <select className="filtro-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
+                    <option value="">Todos</option>
+                    {ESTADOS_VENTA.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
+                  </select>
+                </div>
+                <div className="filtro-group"><label>Desde</label><input type="date" className="filtro-input" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)} /></div>
+                <div className="filtro-group"><label>Hasta</label><input type="date" className="filtro-input" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)} /></div>
+                <div className="filtros-acciones"><button className="btn-limpiar" onClick={()=>{ setFiltroAsesor(''); setFiltroEstado(''); setFiltroDesde(''); setFiltroHasta(''); setTablaSearch('') }}>Limpiar</button></div>
+              </div>
+            </div>
+
+            {/* Tabla ventas */}
+            <div className="tabla-wrap">
+              <div className="tabla-header">
+                <span className="tabla-title">Lista de ventas</span>
+                <span className="tabla-count">{ventasTabla.length} registros</span>
+                <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
+              </div>
+              <table className="tabla">
+                <thead><tr><th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Estado</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
+                <tbody>
+                  {ventasTabla.length === 0
+                    ? <tr className="tabla-empty"><td colSpan={14}>Sin ventas con esos filtros.</td></tr>
+                    : ventasTabla.map((v,i)=>(
+                        <tr key={v.id}>
+                          <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                          <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
+                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'—'}</td>
+                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'—'}</td>
+                          <td style={{fontSize:11}}>{v.departamento||'—'}</td>
+                          <td style={{fontSize:11}}>{v.distrito||'—'}</td>
+                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'—'}</td>
+                          <td>
+                            <div className="asesor-cell">
+                              <div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:24,height:24,fontSize:9}}>{iniciales(v.asesor||'?')}</div>
+                              <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'—'}</span>
+                            </div>
+                          </td>
+                          <td><BadgeEstado id={v._estado||'venta'} /></td>
+                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
+                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
+                          <td style={{display:'flex',gap:6,alignItems:'center',padding:'6px 4px'}}>
+                            <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>📷</button>
+                            <button onClick={()=>eliminarVenta(v.id)} style={{padding:'4px 10px',border:'1px solid rgba(239,68,68,.3)',borderRadius:7,background:'#fff5f5',color:'#dc2626',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Eliminar</button>
+                          </td>
+                        </tr>
+                      ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ══ MI EQUIPO ══════════════════════════════════════════════════════ */}
+          <section className={`section${seccion==='equipo'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Mi Equipo</h2><p>Asesores activos en {salaActual}</p></div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <input type="text" value={equipoBuscar} onChange={e=>setEquipoBuscar(e.target.value)} placeholder="Buscar asesor..." style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',width:200}} />
+                <select value={equipoFiltroEstado} onChange={e=>setEquipoFiltroEstado(e.target.value)} style={{padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff'}}>
+                  <option value="">Todos</option>
+                  <option value="1">Activos</option>
+                  <option value="0">Inactivos</option>
+                </select>
+              </div>
+            </div>
+
+            {/* KPIs equipo */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginBottom:20}}>
+              <div className="kpi-card k-blue"><div className="kpi-label">Total asesores</div><div className="kpi-value">{asesoresSala.length}</div><div className="kpi-sub">{salaActual}</div></div>
+              <div className="kpi-card k-green"><div className="kpi-label">Activos</div><div className="kpi-value">{asesoresSala.filter(a=>a.activo).length}</div><div className="kpi-sub">en servicio</div></div>
+              <div className="kpi-card k-red"><div className="kpi-label">Inactivos</div><div className="kpi-value">{asesoresSala.filter(a=>!a.activo).length}</div><div className="kpi-sub">desactivados</div></div>
+              <div className="kpi-card k-purple"><div className="kpi-label">Ventas hoy</div><div className="kpi-value">{todasVentas.filter(v=>v._fecha===fechaHoy()).length}</div><div className="kpi-sub">de tu sala</div></div>
+            </div>
+
+            {/* Cards de asesores */}
+            {(() => {
+              const hoy = fechaHoy()
+              const lista = asesoresSala.filter(a => {
+                const mb = !equipoBuscar || a.nombre.toLowerCase().includes(equipoBuscar.toLowerCase()) || (a.usuario||'').toLowerCase().includes(equipoBuscar.toLowerCase())
+                const me = equipoFiltroEstado==='' || String(a.activo?1:0)===equipoFiltroEstado
+                return mb && me
+              })
+              if (!lista.length) return <div style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin asesores.</div>
+              return (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14,marginBottom:20}}>
+                  {lista.map(a => {
+                    const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
+                    const hoyV = mis.filter(v=>v._fecha===hoy).length
+                    const mesV = mis.filter(v=>v._fecha&&v._fecha.startsWith(mesActual())).length
+                    const inst = mis.filter(v=>v._estado==='instalado').length
+                    const conv = mis.length?Math.round(inst/mis.length*100):0
+                    return (
+                      <div key={a.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:16,padding:20,boxShadow:'0 2px 8px rgba(0,0,0,.05)'}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                          <div style={{display:'flex',alignItems:'center',gap:10}}>
+                            <div style={{width:44,height:44,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
+                            <div><div style={{fontSize:13,fontWeight:700}}>{a.nombre}</div><div style={{fontSize:11,color:'#9ca3af'}}>@{a.usuario||'—'}</div></div>
+                          </div>
+                          {a.activo
+                            ? <span style={{background:'#d1fae5',color:'#065f46',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>ACTIVO</span>
+                            : <span style={{background:'#fee2e2',color:'#991b1b',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>INACTIVO</span>}
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
+                          {[['Hoy',hoyV,'#111827'],['Mes',mesV,'#2563eb'],['Inst.',inst,'#16a34a'],[`${conv}%`,'Conv.','#7c3aed']].map(([v,l,c],idx)=>(
+                            <div key={idx} style={{background:'#f9fafb',borderRadius:8,padding:8,textAlign:'center'}}>
+                              <div style={{fontSize:18,fontWeight:800,color:c}}>{v}</div>
+                              <div style={{fontSize:9,color:'#9ca3af',textTransform:'uppercase',marginTop:2}}>{l}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:12,borderTop:'1px solid #f3f4f6'}}>
+                          <span style={{fontSize:11,color:'#9ca3af'}}>{a.sala||'—'}</span>
+                          <div style={{display:'flex',gap:6}}>
+                            <button onClick={()=>abrirBaseLlamadas(a.nombre,a.id)} style={{padding:'6px 12px',border:'1px solid #bfdbfe',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Base llamadas</button>
+                            <button onClick={()=>setModalAsesor({open:true,nombre:a.nombre})} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#374151',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Ver detalle</button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </section>
+
+          {/* ══ RENDIMIENTO ═════════════════════════════════════════════════════ */}
+          <section className={`section${seccion==='rendimiento'?' active':''}`}>
+            <div className="sec-header"><div><h2>Rendimiento de Asesores</h2><p>Productividad individual y comparativo mensual</p></div></div>
+            <div className="asesores-cards">
+              {asesoresSala.length === 0
+                ? <div style={{textAlign:'center',color:'#9ca3af',padding:40,gridColumn:'1/-1'}}>Sin asesores en {salaActual}.</div>
+                : asesoresSala.map(a=>{
+                    const mis    = todasVentas.filter(v=>v.asesor===a.nombre)
+                    const inst   = mis.filter(v=>v._estado==='instalado').length
+                    const noVal  = mis.filter(v=>v._estado==='no_validado').length
+                    const caida  = mis.filter(v=>['caida','rechazo_campo'].includes(v._estado)).length
+                    const conv   = mis.length?Math.round(inst/mis.length*100):0
+                    return (
+                      <div key={a.id} className="asesor-card">
+                        <div className="ac-avatar" style={{background:colorFor(a.nombre)}}>{iniciales(a.nombre)}</div>
+                        <div className="ac-nombre">{a.nombre}</div>
+                        <div className="ac-sala">{a.sala} - {a.usuario||''}</div>
+                        <div className="ac-stats">
+                          <div className="ac-stat"><div className="ac-stat-num">{mis.length}</div><div className="ac-stat-label">Total</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#16a34a'}}>{inst}</div><div className="ac-stat-label">Inst.</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#dc2626'}}>{noVal}</div><div className="ac-stat-label">No Val.</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">Caídas</div></div>
+                        </div>
+                        <div className="ac-conv"><span className="ac-conv-label">Conversión (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
+                      </div>
+                    )
+                  })
+              }
+            </div>
+
+            {/* Comparativo mensual instaladas */}
+            <div className="tabla-wrap">
+              <div className="tabla-header"><span className="tabla-title">Comparativo mensual por asesor</span></div>
+              <table className="tabla">
+                <thead><tr>
+                  <th>#</th><th>Asesor</th>
+                  {[0,1,2].map(o=><th key={o}>{getMesLabel(o)} (instaladas)</th>)}
+                  <th>Total histórico</th>
+                </tr></thead>
+                <tbody>
+                  {asesoresSala.length === 0
+                    ? <tr className="tabla-empty"><td colSpan={6}>Sin datos</td></tr>
+                    : asesoresSala.map((a,i)=>{
+                        const meses = [0,1,2].map(o=>todasVentas.filter(v=>v.asesor===a.nombre&&v._estado==='instalado'&&v._fecha&&v._fecha.startsWith(getMesClave(o))).length)
+                        const total = meses.reduce((s,v)=>s+v,0)
+                        return (
+                          <tr key={a.id}>
+                            <td><div className={`pos-badge${i<3?' '+['p1','p2','p3'][i]:''}`}>{i+1}</div></td>
+                            <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(a.nombre)}}>{iniciales(a.nombre)}</div><div><div style={{fontWeight:700,fontSize:12}}>{a.nombre}</div><div style={{fontSize:10,color:'#9ca3af'}}>{a.usuario}</div></div></div></td>
+                            {meses.map((cnt,mi)=><td key={mi} style={{fontWeight:mi===0?800:400,color:mi===0?'#111827':'#6b7280'}}>{cnt}</td>)}
+                            <td style={{fontWeight:800,color:'#16a34a'}}>{total}</td>
+                          </tr>
+                        )
+                      })
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            {/* Ventas con problemas */}
+            {(() => {
+              const problemas = todasVentas.filter(v=>['no_validado','caida','rechazo_campo'].includes(v._estado))
+              return (
+                <div className="tabla-wrap" style={{marginTop:16}}>
+                  <div className="tabla-header">
+                    <span className="tabla-title">Ventas con problemas — No validadas · Caídas</span>
+                    <span className="tabla-count">{problemas.length} registros</span>
+                  </div>
+                  <table className="tabla">
+                    <thead><tr><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>Asesor</th><th>Estado</th><th>Motivo / Obs.</th></tr></thead>
+                    <tbody>
+                      {problemas.length === 0
+                        ? <tr className="tabla-empty"><td colSpan={7}>Sin ventas con problemas</td></tr>
+                        : problemas.map((v,i)=>(
+                            <tr key={v.id||i}>
+                              <td style={{fontSize:11,color:'#185FA5',fontWeight:700}}>{formatF(v._fecha)}</td>
+                              <td style={{fontWeight:600}}>{v.nombre||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'—'}</td>
+                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'—'}</span></div></td>
+                              <td><BadgeEstado id={v._estado} /></td>
+                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'—'}</td>
+                            </tr>
+                          ))
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+          </section>
+
+          {/* ══ FRASES ═════════════════════════════════════════════════════════ */}
+          <section className={`section${seccion==='frases'?' active':''}`}>
+            <div className="sec-header"><div><h2>Frases del Día</h2><p>Envía mensajes motivacionales a tu equipo</p></div></div>
+            <div className="frases-layout">
+              <div>
+                <div className="frases-panel">
+                  <div className="panel-title">Redactar mensaje</div>
+                  <div className="frase-compose">
+                    <textarea value={fraseTexto} onChange={e=>setFraseTexto(e.target.value)} placeholder="Escribe tu mensaje motivacional..." />
+                    <div className="frase-compose-actions">
+                      <button className="btn-enviar" onClick={enviarFrase}>Publicar</button>
+                      <button className="btn-limpiar-f" onClick={()=>setFraseTexto('')}>Limpiar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="frases-panel">
+                <div className="panel-title">
+                  Publicadas hoy&nbsp;
+                  <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:10,padding:'2px 8px',borderRadius:99,fontWeight:700}}>{frases.length}</span>
+                </div>
+                <div>
+                  {frases.length === 0
+                    ? <div className="frase-vacia">Aún no publicaste ninguna frase.</div>
+                    : frases.map((f,i)=>(
+                        <div key={i} className="frase-item">
+                          <div className="frase-item-texto">"{f.texto}"</div>
+                          <div className="frase-item-meta">{f.sala} · {f.hora}</div>
+                        </div>
+                      ))
+                  }
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </main>
+      </div>
+
+      {/* ══ MODAL DETALLE ASESOR ═══════════════════════════════════════════════ */}
+      {modalAsesor.open && (() => {
+        const a    = asesoresSala.find(x=>x.nombre===modalAsesor.nombre)
+        if (!a) return null
+        const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
+        const hoyV = mis.filter(v=>v._fecha===fechaHoy()).length
+        const mesV = mis.filter(v=>v._fecha&&v._fecha.startsWith(mesActual())).length
+        const inst = mis.filter(v=>v._estado==='instalado').length
+        const conv = mis.length?Math.round(inst/mis.length*100):0
+        const ult5 = [...mis].sort((a,b)=>b._fecha.localeCompare(a._fecha)).slice(0,5)
+        return (
+          <div style={{display:'flex',position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:500,alignItems:'center',justifyContent:'center'}} onClick={e=>{if(e.target===e.currentTarget)setModalAsesor({open:false,nombre:''})}}>
+            <div style={{background:'#fff',borderRadius:18,width:'min(500px,94vw)',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,.2)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px 14px',borderBottom:'1px solid #f3f4f6'}}>
+                <span style={{fontSize:14,fontWeight:800,color:'#111827',textTransform:'uppercase',letterSpacing:.4}}>Detalle del Asesor</span>
+                <button onClick={()=>setModalAsesor({open:false,nombre:''})} style={{width:28,height:28,border:'none',borderRadius:7,background:'#f3f4f6',color:'#6b7280',fontSize:14,cursor:'pointer',fontWeight:700}}>✕</button>
+              </div>
+              <div style={{padding:'20px 22px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
+                  <div style={{width:60,height:60,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
+                  <div><div style={{fontSize:16,fontWeight:800}}>{a.nombre}</div><div style={{fontSize:12,color:'#9ca3af'}}>@{a.usuario||'—'} · {a.sala||'—'}</div></div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+                  {[['Hoy',hoyV,'#111827'],['Este mes',mesV,'#2563eb'],['Instaladas',inst,'#16a34a'],['Conv.',conv+'%','#7c3aed']].map(([l,v,c])=>(
+                    <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:12,textAlign:'center'}}>
+                      <div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div>
+                      <div style={{fontSize:10,color:'#9ca3af',textTransform:'uppercase',marginTop:3}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Últimas 5 ventas</div>
+                {ult5.length === 0
+                  ? <div style={{textAlign:'center',padding:20,color:'#9ca3af'}}>Sin ventas.</div>
+                  : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {ult5.map((v,i)=>(
+                        <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'#f9fafb',borderRadius:8}}>
+                          <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'—'}</span></div>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}><BadgeEstado id={v._estado} /><span style={{fontSize:11,color:'#9ca3af'}}>{formatF(v._fecha)}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ══ MODAL BASE DE LLAMADAS ═════════════════════════════════════════════ */}
+      {blModal.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center',padding:16,backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)setBlModal(p=>({...p,open:false}))}}>
+          <div style={{background:'#fff',borderRadius:18,width:'100%',maxWidth:960,maxHeight:'92vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.25)'}}>
+            <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas — {blModal.nombre}</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura · Supervisor</div>
+              </div>
+              <button onClick={()=>setBlModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>×</button>
+            </div>
+            <div style={{padding:'10px 24px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+              <label style={{fontSize:12,fontWeight:600}}>Fecha:</label>
+              <input type="date" value={blFecha} onChange={e=>setBlFecha(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit'}} />
+              <button onClick={()=>setBlFecha(fechaHoy())} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,background:'#f9fafb',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Hoy</button>
+              <span style={{fontSize:12,color:'#9ca3af',marginLeft:'auto'}}>{blLeads?.length ?? 0} registros</span>
+            </div>
+            {blLeads && blLeads.length > 0 && (
+              <div style={{padding:'10px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
+                {[{l:'Leads',v:blLeads.length,c:'#2563eb'},{l:'Tipificados',v:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,c:'#16a34a'},{l:'VENTA CERRADA',v:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,c:'#7c3aed'},{l:'NC/Buzón',v:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,c:'#d97706'}].map(k=>(
+                  <div key={k.l} style={{background:'#f9fafb',borderRadius:10,padding:'8px 14px',display:'flex',flexDirection:'column',gap:2,minWidth:100}}>
+                    <div style={{fontSize:18,fontWeight:800,color:k.c}}>{k.v}</div>
+                    <div style={{fontSize:10,color:'#9ca3af',textTransform:'uppercase'}}>{k.l}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
+                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Observación'].map(h=>(
+                    <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {blCargando
+                    ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
+                    : !blLeads
+                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
+                      : blLeads.length === 0
+                        ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para esta fecha.</td></tr>
+                        : blLeads.map((l,i) => {
+                            const t = (l.tipif_vend||'').trim()
+                            const color = TIPIF_COLORS[t.toUpperCase()] || '#9ca3af'
+                            return (
+                              <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:t.toUpperCase()==='VENTA CERRADA'?'#f0fdf4':''}}>
+                                <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                                <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'—'}</td>
+                                <td style={{padding:8,fontFamily:'monospace',color:'#6b7280'}}>{l.n2||'—'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'—'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.campana||'—'}</td>
+                                <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'—'}</td>
+                                <td style={{padding:8}}>
+                                  {t
+                                    ? <span style={{background:`${color}22`,color,border:`1px solid ${color}44`,padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:700}}>{t}</span>
+                                    : <span style={{color:'#d1d5db',fontStyle:'italic',fontSize:11}}>Sin tipif.</span>
+                                  }
+                                </td>
+                                <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'—'}</td>
+                              </tr>
+                            )
+                          })
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
+      <div className={`toast${toast?' show':''}`}>{toast}</div>
+    </div>
+  )
+}
