@@ -20,7 +20,8 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/usuarios"      element={<PrivateRoute><Usuarios /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }

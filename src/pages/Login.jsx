@@ -1,121 +1,264 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-import { API } from '../services/api'
-import styles from './Login.module.css'
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import styles from "./Login.module.css";
 
+const logo = "/assets/logo3.png";
+
+const API = "/api";
+
+/* ===== RUTAS POR CARGO ===== */
 const RUTAS = {
-  asesor:         '/dashboard',
-  supervisor:     '/supervisor',
-  backoffice:     '/backoffice',
-  validacion:     '/validacion',
-  grabaciones:    '/grabaciones',
-  seguimiento:    '/seguimiento',
-  jefatura:       '/jefatura',
-  usuarios:       '/usuarios',
-  programacion:   '/programacion',
-  supgrabaciones: '/sup-grabaciones',
-}
+  asesor:         "/dashboard",
+  supervisor:     "/supervisor",
+  backoffice:     "/backoffice",
+  validacion:     "/validacion",
+  grabaciones:    "/grabaciones",
+  seguimiento:    "/seguimiento",
+  jefatura:       "/jefatura",
+  usuarios:       "/usuarios",
+  instalacion:    "/instalacion",
+  postventa:      "/postventa",
+  programacion:   "/programacion",
+  supgrabaciones: "/sup-grabaciones",
+};
+
+const CARGO_LABELS = {
+  asesor: "Asesor",
+  supervisor: "Supervisor",
+  backoffice: "Back Office",
+  validacion: "Validación",
+  grabaciones: "Grabaciones",
+  seguimiento: "Seguimiento",
+  jefatura: "Jefatura",
+  usuarios: "Usuarios",
+  instalacion: "Instalación",
+  postventa: "Post Venta",
+  programacion: "Programación",
+  supgrabaciones: "Sup. Grabaciones",
+};
 
 export default function Login() {
-  const [usuario, setUsuario]     = useState('')
-  const [password, setPassword]   = useState('')
-  const [showPass, setShowPass]   = useState(false)
-  const [error, setError]         = useState('')
-  const [cargando, setCargando]   = useState(false)
-  const [bienvenida, setBienvenida] = useState(null)
-  const { login } = useAuth()
-  const navigate  = useNavigate()
+  const navigate = useNavigate();
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-    if (!usuario.trim()) { setError('Ingresa tu usuario.'); return }
-    if (!password.trim()) { setError('Ingresa tu contraseña.'); return }
+  const [usuario, setUsuario] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState(0);
+  const [cargando, setCargando] = useState(false);
+  const [welcome, setWelcome] = useState(null);
 
-    setCargando(true)
+  const passRef = useRef(null);
+  const userRef = useRef(null);
+
+  /* ===== LIMPIEZA DE ESTILOS GLOBALES DE BODY ===== */
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevBg = document.body.style.background;
+    document.body.style.overflow = "hidden";
+    document.body.style.background = "#f2f2f7";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.background = prevBg;
+    };
+  }, []);
+
+  /* ===== PARTICULAS (14, valores aleatorios fijos por montaje) ===== */
+  const particulas = useMemo(() =>
+    Array.from({ length: 14 }, () => {
+      const size = Math.random() * 5 + 3;
+      return {
+        left: Math.random() * 100 + "vw",
+        width: size + "px",
+        height: size + "px",
+        opacity: Math.random() * 0.5 + 0.2,
+        animationDuration: Math.random() * 10 + 8 + "s",
+        animationDelay: Math.random() * 8 + "s",
+      };
+    }), []);
+
+  /* ===== SALUDO DINÁMICO ===== */
+  const valUpper = usuario.trim().toUpperCase();
+  const femenino = valUpper.endsWith("A");
+  const saludoTxt = femenino ? "Bienvenida a Netcontact" : "Bienvenido a Netcontact";
+  const nombreTxt = usuario.trim().length < 2 ? "..." : valUpper;
+
+  /* ===== Si ya hay sesión activa → redirigir ===== */
+  useEffect(() => {
     try {
-      const res  = await fetch(`${API}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario: usuario.trim().toLowerCase(), password: password.trim() }),
-      })
-      const data = await res.json()
-      if (!data.ok) { setError(data.mensaje || 'Usuario o contraseña incorrectos.'); return }
+      const token = sessionStorage.getItem("nc_token");
+      const raw = sessionStorage.getItem("nc_usuario");
+      if (token && raw) {
+        const u = JSON.parse(raw);
+        const ruta = RUTAS[u.cargo];
+        if (ruta) navigate(ruta, { replace: true });
+      }
+    } catch (e) { /* noop */ }
+    userRef.current?.focus();
+  }, [navigate]);
 
-      login(data.token, data.usuario)
-      setBienvenida(data.usuario)
-      setTimeout(() => navigate(RUTAS[data.usuario.cargo] || '/dashboard'), 1800)
-    } catch {
-      setError('No se pudo conectar al servidor. ¿Está corriendo el backend?')
-    } finally {
-      setCargando(false)
+  const mostrarError = (msg) => {
+    setError(msg);
+    setErrorKey((k) => k + 1);
+  };
+
+  /* ===== ANIMACIÓN DE BIENVENIDA ===== */
+  const mostrarBienvenida = (user) => {
+    const primerNombre = user.nombre.split(" ")[0];
+    const fem = primerNombre.toUpperCase().endsWith("A");
+    setWelcome({ primerNombre, femenino: fem, cargo: CARGO_LABELS[user.cargo] || user.cargo });
+
+    const ruta = RUTAS[user.cargo] || "/dashboard";
+    setTimeout(() => navigate(ruta, { replace: true }), 2200);
+  };
+
+  /* ===== LOGIN ===== */
+  const doLogin = async (e) => {
+    if (e) e.preventDefault();
+    setError("");
+
+    const u = usuario.trim().toLowerCase();
+    const p = password.trim();
+
+    if (!u) { mostrarError("Ingresa tu usuario."); return; }
+    if (!p) { mostrarError("Ingresa tu contraseña."); return; }
+
+    setCargando(true);
+    try {
+      const res = await fetch(`${API}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: u, password: p }),
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        mostrarError(data.mensaje || "Usuario o contraseña incorrectos.");
+        setCargando(false);
+        return;
+      }
+
+      sessionStorage.setItem("nc_token", data.token);
+      sessionStorage.setItem("nc_usuario", JSON.stringify(data.usuario));
+      localStorage.removeItem("nc_token");
+      localStorage.removeItem("nc_usuario");
+
+      mostrarBienvenida(data.usuario);
+    } catch (err) {
+      console.error("Error de conexión:", err);
+      mostrarError("No se pudo conectar al servidor. ¿Está corriendo el backend?");
+      setCargando(false);
     }
-  }
+  };
 
-  if (bienvenida) {
+  /* ===== PANTALLA DE TRANSICIÓN (blanca) ===== */
+  if (welcome) {
     return (
-      <div className={styles.welcome}>
-        <img src="/assets/logo3.png" alt="NC" className={styles.welcomeLogo} />
-        <div className={styles.welcomeSaludo}>Bienvenido de nuevo,</div>
-        <div className={styles.welcomeNombre}>{bienvenida.nombre}</div>
-        <div className={styles.welcomeCargo}>{bienvenida.cargo}</div>
-        <div className={styles.welcomeBarraWrap}>
-          <div className={styles.welcomeBarra} />
+      <div className={styles.transition}>
+        <div className={styles.transLogo}>
+          <img src={logo} alt="NC" />
         </div>
-        <div className={styles.welcomeRedirect}>Redirigiendo a tu panel...</div>
+        <div className={styles.transGreet}>
+          {welcome.femenino ? "¡Bienvenida de nuevo," : "¡Bienvenido de nuevo,"}
+        </div>
+        <div className={styles.transName}>
+          {welcome.primerNombre.split("").map((c, i) =>
+            i === 0 ? <span key={i} className={styles.transAccent}>{c}</span> : <span key={i}>{c}</span>
+          )}
+        </div>
+        <div className={styles.transCargo}>{welcome.cargo}</div>
+        <div className={styles.transLabel}>
+          CARGANDO TU PANEL
+          <span className={styles.dot} />
+          <span className={styles.dot} />
+          <span className={styles.dot} />
+        </div>
       </div>
-    )
+    );
   }
 
+  /* ===== LOGIN NORMAL ===== */
   return (
     <div className={styles.page}>
-      <div className={styles.blob1} aria-hidden="true" />
-      <div className={styles.blob2} aria-hidden="true" />
-      <div className={styles.blob3} aria-hidden="true" />
-      <div className={styles.blob4} aria-hidden="true" />
+      {/* Partículas */}
+      <div className={styles.particles}>
+        {particulas.map((p, i) => <span key={i} style={p} />)}
+      </div>
+
+      {/* Card */}
       <div className={styles.loginBox}>
-        <div className={styles.logoCircle}>
-          <img src="/assets/logo3.png" alt="Netcontact" />
+        <div className={styles.blobClip}>
+          <div className={styles.blob} />
         </div>
-        <h2 className={styles.titulo}>Bienvenido a Netcontact</h2>
-        {usuario.length >= 2 && (
-          <p className={styles.nombreUsuario}>{usuario.toUpperCase()}</p>
-        )}
+        <div className={styles.frost} />
 
-        {error && <div className={styles.errorMsg}>{error}</div>}
+        <div className={styles.logoCircle}>
+          <img src={logo} alt="Netcontact" />
+        </div>
 
-        <form onSubmit={handleSubmit} autoComplete="off" className={styles.form}>
-          <div className={styles.inputGroup}>
-            <input
-              type="text"
-              value={usuario}
-              onChange={e => setUsuario(e.target.value)}
-              placeholder=" "
-              required
-              autoComplete="off"
-            />
-            <label>Usuario</label>
-          </div>
-          <div className={styles.inputGroup}>
-            <input
-              type={showPass ? 'text' : 'password'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder=" "
-              required
-              autoComplete="new-password"
-            />
-            <label>Contraseña</label>
-            <span className={styles.eye} onClick={() => setShowPass(v => !v)}>
-              {showPass ? '🙈' : '👁️'}
-            </span>
-          </div>
-          <button type="submit" disabled={cargando} className={styles.btnLogin}>
-            {cargando ? 'Verificando...' : 'Iniciar sesión'}
-          </button>
-        </form>
+        <div className={styles.content}>
+          <h2 className={styles.saludo}>{saludoTxt}</h2>
+          <p className={styles.nombreUsuario}>{nombreTxt}</p>
+
+          {error && (
+            <div key={errorKey} className={styles.errorMsg}>{error}</div>
+          )}
+
+          <form onSubmit={doLogin} autoComplete="off">
+            <div className={styles.inputGroup}>
+              <input
+                ref={userRef}
+                type="text"
+                placeholder=" "
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); passRef.current?.focus(); } }}
+                className={error ? styles.error : ""}
+                autoComplete="off"
+                required
+              />
+              <label>Usuario</label>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <input
+                ref={passRef}
+                type={showPassword ? "text" : "password"}
+                placeholder=" "
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={error ? styles.error : ""}
+                autoComplete="new-password"
+                required
+              />
+              <label>Contraseña</label>
+              <span
+                className={styles.eye}
+                onClick={() => setShowPassword((v) => !v)}
+                title="Mostrar/ocultar"
+              >
+                {showPassword ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" x2="22" y1="2" y2="22" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </span>
+            </div>
+
+            <button type="submit" className={styles.submitBtn} disabled={cargando}>
+              {cargando ? "Verificando..." : "Iniciar sesión"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
-  )
+  );
 }

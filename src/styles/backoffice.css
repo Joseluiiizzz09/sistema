@@ -304,6 +304,15 @@ body{
 .tabla tbody td.td-obs-seg{background:rgba(5,150,105,.04)!important;border-left:2px solid var(--green);}
 .tabla tbody td.td-audit{background:rgba(37,99,235,.04)!important;border-left:2px solid var(--blue);font-size:10px;color:var(--blue);font-weight:600;}
 
+/* ━━ HISTORIAL ROWS ━━━━━━━━━━━━━━━━━━━━━━ */
+.historial-row{display:none;}
+.historial-row.open{display:table-row;}
+.historial-row td{padding:0!important;border-bottom:1px solid var(--line)!important;background:var(--surf-1)!important;}
+.historial-inner{padding:10px 14px;display:flex;flex-direction:column;gap:4px;}
+.hist-label{font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px;}
+.hist-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-2);}
+.hist-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
 /* ━━ BADGES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .badge-grab,.badge-estado,.badge-seg,.badge-cargo,.badge-motivo,.badge-tramo{
   display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;

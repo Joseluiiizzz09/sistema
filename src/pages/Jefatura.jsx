@@ -69,6 +69,8 @@ export default function Jefatura() {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
   const usuarioNombre = sesion?.nombre || 'Jefatura'
+  const mainRef = useRef(null)
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
 
   /* nav */
   const [seccion, setSeccion] = useState(() => {
@@ -79,6 +81,7 @@ export default function Jefatura() {
   const [usuarios,    setUsuarios]    = useState([])
   const [ventasCache, setVentasCache] = useState([])
   const [ventasSeg,   setVentasSeg]   = useState([])
+
 
   /* filtros persistentes */
   const [filtroSeg, setFiltroSeg] = useState(() => {
@@ -251,6 +254,7 @@ export default function Jefatura() {
   /* ── navegación ── */
   function irSeccion(id) {
     setSeccion(id)
+    setMenuMovilAbierto(false)
     try { sessionStorage.setItem(JEF_APARTADO_KEY, id) } catch {}
   }
 
@@ -405,14 +409,26 @@ export default function Jefatura() {
      RENDER
   ═══════════════════════════════════ */
   return (
-    <div>
+    <div className="jef-root">
       {/* TOPBAR */}
       <div className="topbar">
-        <div className="brand">
+        <div className="topbar-left">
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuMovilAbierto}
+            aria-controls="jefatura-sidebar"
+            onClick={() => setMenuMovilAbierto(abierto => !abierto)}
+          >
+            <span></span><span></span><span></span>
+          </button>
+          <div className="brand">
           <div className="logo-circle"><img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} /></div>
           <div className="brand-text">
             <h1>NET<span className="dot"></span><span className="red">CONTACT</span></h1>
             <span className="brand-sub">Panel de Jefatura</span>
+          </div>
           </div>
         </div>
         <div className="topbar-right">
@@ -424,7 +440,7 @@ export default function Jefatura() {
 
       <div className="app-layout">
         {/* SIDEBAR */}
-        <aside className="sidebar">
+        <aside id="jefatura-sidebar" className={`sidebar${menuMovilAbierto ? ' open' : ''}`}>
           <div className="sidebar-sep">General</div>
           <button className={`nav-btn${seccion==='dashboard'?'   active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot"></span> Dashboard</button>
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
@@ -437,7 +453,16 @@ export default function Jefatura() {
           <button className={`nav-btn${seccion==='logs'?'       active':''}`} onClick={()=>irSeccion('logs')}><span className="nav-dot"></span> Logs de actividad</button>
         </aside>
 
-        <main className="main">
+        {menuMovilAbierto && (
+          <button
+            type="button"
+            className="sidebar-backdrop"
+            aria-label="Cerrar menú"
+            onClick={() => setMenuMovilAbierto(false)}
+          />
+        )}
+
+        <main className="main" ref={mainRef}>
 
           {/* ===== DASHBOARD ===== */}
           <section className={`section${seccion==='dashboard'?' active':''}`}>

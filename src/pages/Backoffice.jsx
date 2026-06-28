@@ -1402,23 +1402,25 @@ export default function Backoffice() {
       </div>
 
       {/* ══ MODAL ROTACIÓN MANUAL ════════════════════════════════════════════ */}
-      <div className={`modal-overlay${modalRotar.open?' open':''}`} onClick={e=>{ if(e.target.classList.contains('modal-overlay')) setModalRotar(p=>({...p,open:false})) }}>
-        <div className="modal-box">
-          <h3>Rotar lead manualmente</h3>
-          <p>{modalRotar.desc}</p>
-          <select value={rotModalAsesor} onChange={e=>setRotModalAsesor(e.target.value)} style={!rotModalAsesor?{borderColor:'#ef4444'}:{}}>
-            <option value="">-- Seleccionar nuevo asesor --</option>
-            {asesores.map(a=>(
-              <option key={a.id} value={a.nombre} disabled={a.nombre===modalRotar.asesorActual}>{a.nombre}</option>
-            ))}
-          </select>
-          <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
-          <div className="modal-btns">
-            <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-            <button className="btn-confirmar-modal" onClick={confirmarRotacion}>Rotar ahora</button>
+      {modalRotar.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget) setModalRotar(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Rotar lead manualmente</h3>
+            <p>{modalRotar.desc}</p>
+            <select value={rotModalAsesor} onChange={e=>setRotModalAsesor(e.target.value)} style={!rotModalAsesor?{borderColor:'#ef4444'}:{}}>
+              <option value="">-- Seleccionar nuevo asesor --</option>
+              {asesores.map(a=>(
+                <option key={a.id} value={a.nombre} disabled={a.nombre===modalRotar.asesorActual}>{a.nombre}</option>
+              ))}
+            </select>
+            <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion}>Rotar ahora</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ══ BL MODAL (base de llamadas asesor) ══════════════════════════════ */}
       {blModal.open && (

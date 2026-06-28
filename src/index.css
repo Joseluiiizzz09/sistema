@@ -1,11 +1,13 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 
+html, body { height: auto; overflow-y: auto; margin: 0; }
+#root { min-height: 100vh; }
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: #f0f0f5;
-  min-height: 100vh;
   color: #111827;
   -webkit-font-smoothing: antialiased;
 }
