@@ -390,15 +390,22 @@ export default function Jefatura() {
 
   async function confirmarEliminarUsuario() {
     if (!modalEliminar || eliminandoUsu) return
+    if (modalEliminar.cargo === 'jefatura') {
+      const jefActivas = usuarios.filter(u => u.cargo === 'jefatura' && u.activo)
+      if (jefActivas.length <= 1) {
+        mostrarToast('⚠️ No puedes eliminar el último usuario de Jefatura')
+        return
+      }
+    }
     setEliminandoUsu(true)
     try {
       const res = await fetch(`${API}/usuarios/${modalEliminar.id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'No se pudo eliminar')); return }
-      setUsuarios(list => list.filter(u => u.id !== modalEliminar.id))
+      if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'No se pudo eliminar')); setEliminandoUsu(false); return }
       agregarLog('Usuario eliminado', modalEliminar.nombre)
       mostrarToast(`✅ Usuario eliminado: ${modalEliminar.nombre}`)
       setModalEliminar(null)
+      await cargarUsuarios()
     } catch {
       mostrarToast('❌ Error conectando con el servidor')
     } finally {
@@ -636,7 +643,7 @@ export default function Jefatura() {
                         const c    = cargoObj(u.cargo)
                         const col  = colorAvatar(u.nombre)
                         const fecha= u.created_at ? u.created_at.split(' ')[0] : ''
-                        const protegido = u.usuario === 'admin' || String(u.id) === String(sesion?.id)
+                        const protegido = String(u.id) === String(sesion?.id)
                         return (
                           <tr key={u.id}>
                             <td>
