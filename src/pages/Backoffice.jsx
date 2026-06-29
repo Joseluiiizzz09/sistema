@@ -8,6 +8,7 @@ import '../styles/backoffice.css'
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
+const BO_SECCIONES = ['base', 'carga-masiva', 'rendimiento', 'avance']
 
 function fechaHoy() {
   const ahora = new Date()
@@ -82,7 +83,10 @@ export default function Backoffice() {
   const legacyInputRef  = useRef(null)
 
   // ── Section ──
-  const [seccion, setSeccion] = useState(() => sessionStorage.getItem('nc_backoffice_apartado') || 'base')
+  const [seccion, setSeccion] = useState(() => {
+    const guardada = sessionStorage.getItem('nc_backoffice_apartado')
+    return BO_SECCIONES.includes(guardada) ? guardada : 'base'
+  })
 
   // ── Data ──
   const [asesores,      setAsesores]      = useState([])
@@ -710,7 +714,7 @@ export default function Backoffice() {
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   return (
-    <>
+    <div className="bo-root">
       {/* TOPBAR */}
       <div className="topbar">
         <div className="brand">
@@ -935,7 +939,7 @@ export default function Backoffice() {
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
                 <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',tipifBack:'',asesor:''})}>Limpiar</button>
-                <button className="bo-btn-agregar btn" onClick={agregarRegistro}>+ Agregar registro</button>
+                <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
               </div>
             </div>
 
@@ -1486,6 +1490,6 @@ export default function Backoffice() {
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
       <div className={`notify-toast${toast?' show':''}`}>{toast}</div>
-    </>
+    </div>
   )
 }

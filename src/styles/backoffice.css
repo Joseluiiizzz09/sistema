@@ -67,7 +67,7 @@ body{
 }
 
 /* ━━ TOPBAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.topbar{
+.bo-root .topbar{
   height:80px;padding:0 28px;
   display:flex;justify-content:space-between;align-items:center;
   background:rgba(255,255,255,.95);
@@ -137,7 +137,7 @@ body{
 }
 
 /* ━━ LAYOUT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.app-layout,.bo-layout{display:flex;min-height:calc(100vh - 80px);}
+.bo-root .bo-layout{display:flex;min-height:calc(100vh - 80px);}
 .sidebar,.bo-sidebar{
   width:188px;min-width:188px;
   background:rgba(255,255,255,.85);
@@ -166,8 +166,10 @@ body{
 
 .main,.bo-main{flex:1;padding:20px 22px;overflow-y:auto;min-width:0;}
 .main-content{padding:16px 22px;}
-.bo-seccion{display:block;}
-.bo-seccion.hidden{display:none!important;}
+/* La app carga los CSS de todos los módulos. El scope evita que reglas globales
+   de Grabaciones, Programación, Seguimiento o Validación oculten Back Office. */
+.bo-root .bo-seccion{display:block;}
+.bo-root .bo-seccion.hidden{display:none!important;}
 .section{display:none;}
 .section.active{display:block;}
 .hidden{display:none!important;}
@@ -267,6 +269,15 @@ body{
 }
 .btn-filtrar:hover,.bo-btn-agregar:hover,.btn-guardar:hover,.btn-nuevo:hover,.btn-guardar-m:hover{
   transform:translateY(-2px) scale(1.02);box-shadow:0 4px 14px rgba(229,62,62,.4);
+}
+.bo-root .bo-btn-agregar{
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+  color:#fff;
+  box-shadow:0 2px 8px rgba(229,62,62,.3);
+}
+.bo-root .bo-btn-agregar:hover{
+  color:#fff;
+  box-shadow:0 4px 14px rgba(229,62,62,.4);
 }
 .btn-filtrar:active,.btn-guardar:active{transform:scale(.97);}
 .btn-export{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--line-2);border-radius:9px;background:var(--surf-0);color:var(--ink-2);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .18s var(--sp);}

@@ -374,7 +374,7 @@ export default function Supervisor() {
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   return (
-    <div id="appScreen" className="active">
+    <div className="sup-root">
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-brand">
