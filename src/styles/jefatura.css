@@ -185,6 +185,9 @@ body {
 .btn-desactivar:hover { background: #fca5a5; transform: scale(1.03); }
 .btn-activar    { background: #dcfce7; color: var(--green); }
 .btn-activar:hover { background: #86efac; transform: scale(1.03); }
+.btn-eliminar-usuario { padding: 5px 11px; border: none; border-radius: 8px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .2s var(--sp); }
+.btn-eliminar-usuario:hover:not(:disabled) { background: #b91c1c; transform: scale(1.03); }
+.btn-eliminar-usuario:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 
 /* ===== ACCESOS ===== */
 .accesos-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 14px; }
@@ -230,6 +233,15 @@ body {
 .btn-guardar:hover { background: var(--mid); transform: scale(1.02); }
 .btn-nuevo { padding: 9px 18px; background: var(--dark); color: #fff; border: none; border-radius: 9px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .2s var(--sp); }
 .btn-nuevo:hover { background: var(--mid); transform: scale(1.02); }
+.modal-eliminar-box { width: min(410px,94vw); text-align: center; }
+.modal-eliminar-icon { width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: #fee2e2; font-size: 23px; }
+.modal-eliminar-texto { margin: 12px 0 4px; color: #374151; font-size: 14px; line-height: 1.55; }
+.modal-eliminar-texto strong { color: #dc2626; }
+.modal-eliminar-texto span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.modal-eliminar-box .modal-btns { justify-content: center; }
+.btn-confirmar-eliminar { padding: 9px 18px; border: none; border-radius: 9px; background: #dc2626; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .2s var(--sp); }
+.btn-confirmar-eliminar:hover:not(:disabled) { background: #b91c1c; transform: scale(1.02); }
+.btn-confirmar-eliminar:disabled { opacity: .65; cursor: wait; }
 
 /* ===== TOAST ===== */
 .toast { position: fixed; bottom: 22px; right: 22px; background: var(--dark); color: #fff; padding: 11px 18px; border-radius: 12px; font-size: 13px; display: none; z-index: 999; max-width: 320px; box-shadow: var(--shadow-lg); font-weight: 500; }

@@ -104,6 +104,8 @@ export default function Jefatura() {
   const [modForm,     setModForm]     = useState(MOD_FORM_VACIO)
   const [modErrores,  setModErrores]  = useState({})
   const [guardandoUsu,setGuardandoUsu]= useState(false)
+  const [modalEliminar, setModalEliminar] = useState(null)
+  const [eliminandoUsu, setEliminandoUsu] = useState(false)
 
   /* charts */
   const canvasEstados = useRef(null)
@@ -386,6 +388,24 @@ export default function Jefatura() {
     } catch { mostrarToast('❌ Error') }
   }
 
+  async function confirmarEliminarUsuario() {
+    if (!modalEliminar || eliminandoUsu) return
+    setEliminandoUsu(true)
+    try {
+      const res = await fetch(`${API}/usuarios/${modalEliminar.id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json()
+      if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'No se pudo eliminar')); return }
+      setUsuarios(list => list.filter(u => u.id !== modalEliminar.id))
+      agregarLog('Usuario eliminado', modalEliminar.nombre)
+      mostrarToast(`✅ Usuario eliminado: ${modalEliminar.nombre}`)
+      setModalEliminar(null)
+    } catch {
+      mostrarToast('❌ Error conectando con el servidor')
+    } finally {
+      setEliminandoUsu(false)
+    }
+  }
+
   function limpiarLogs() {
     if (!window.confirm('¿Limpiar logs?')) return
     setLogs([])
@@ -616,6 +636,7 @@ export default function Jefatura() {
                         const c    = cargoObj(u.cargo)
                         const col  = colorAvatar(u.nombre)
                         const fecha= u.created_at ? u.created_at.split(' ')[0] : ''
+                        const protegido = u.usuario === 'admin' || String(u.id) === String(sesion?.id)
                         return (
                           <tr key={u.id}>
                             <td>
@@ -634,6 +655,10 @@ export default function Jefatura() {
                                 <button className="btn-edit" onClick={()=>abrirModalEditar(u)}>✏️ Editar</button>
                                 <button className={`btn-toggle-activo ${u.activo?'btn-desactivar':'btn-activar'}`} onClick={()=>toggleActivo(u)}>
                                   {u.activo?'Desactivar':'Activar'}
+                                </button>
+                                <button className="btn-eliminar-usuario" onClick={()=>setModalEliminar(u)} disabled={protegido}
+                                  title={protegido?'Esta cuenta está protegida':'Eliminar usuario'}>
+                                  🗑️ Eliminar
                                 </button>
                               </div>
                             </td>
@@ -785,6 +810,26 @@ export default function Jefatura() {
               <button className="btn-cancelar-m" onClick={cerrarModalUsu}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarUsuario} disabled={guardandoUsu}>
                 {guardandoUsu ? 'Guardando...' : '💾 Guardar usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ELIMINAR USUARIO */}
+      {modalEliminar && (
+        <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget&&!eliminandoUsu)setModalEliminar(null)}}>
+          <div className="modal-box modal-eliminar-box" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-usuario">
+            <div className="modal-eliminar-icon">🗑️</div>
+            <div id="titulo-eliminar-usuario" className="modal-title">Eliminar usuario</div>
+            <p className="modal-eliminar-texto">
+              ¿Estás seguro de eliminar a <strong>{modalEliminar.nombre}</strong>?
+              <span>Esta acción no se puede deshacer.</span>
+            </p>
+            <div className="modal-btns">
+              <button className="btn-cancelar-m" onClick={()=>setModalEliminar(null)} disabled={eliminandoUsu}>Cancelar</button>
+              <button className="btn-confirmar-eliminar" onClick={confirmarEliminarUsuario} disabled={eliminandoUsu}>
+                {eliminandoUsu?'Eliminando...':'Sí, eliminar'}
               </button>
             </div>
           </div>
