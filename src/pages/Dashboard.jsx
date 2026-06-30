@@ -617,7 +617,7 @@ export default function Dashboard() {
 
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <>
+    <div className="dash-root">
       {/* ── TOPBAR ─────────────────────────────────────────────────────── */}
       <div className="topbar">
         <div className="brand">
@@ -1219,6 +1219,6 @@ export default function Dashboard() {
           {toast}
         </div>
       )}
-    </>
+    </div>
   )
 }
