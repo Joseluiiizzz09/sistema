@@ -184,6 +184,16 @@ export default function Dashboard() {
     setTab(t)
   }
 
+  // Cada apartado debe comenzar debajo del encabezado, sin conservar el scroll anterior.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [tab])
+
   // ── API: Leads ───────────────────────────────────────────────────────────
   const cargarLeadsAsesor = useCallback(async () => {
     try {
