@@ -13,7 +13,7 @@ body {
 
 /* ===== TOPBAR ===== */
 .topbar {
-    height: 120px; padding: 0 24px;
+    height: 72px; padding: 0 40px;
     display: flex; justify-content: space-between; align-items: center;
     background: rgba(255,255,255,.85);
     border-bottom: 1px solid rgba(229,231,235,.8);
@@ -53,7 +53,7 @@ body {
 }
 .red { color: #ff2d2d; }
 .brand-sub {
-    font-size: 13px; color: #9ca3af;
+    font-size: 11px; color: #9ca3af;
     font-family: 'DM Sans', sans-serif;
 }
 .topbar-right {
@@ -72,7 +72,7 @@ body {
 .tab {
     background: transparent; border: none;
     padding: 7px 18px; border-radius: 9px;
-    font-size: 13px; font-weight: 500; color: #6b7280;
+    font-size: 14px; font-weight: 500; color: #6b7280;
     cursor: pointer; font-family: inherit;
     transition: all .25s cubic-bezier(.34,1.2,.64,1);
     white-space: nowrap; letter-spacing: .1px;
@@ -99,7 +99,18 @@ body {
 /* ===== PANTALLAS ===== */
 .pantalla { padding: 24px 32px; }
 .hidden { display: none; }
-h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; color: #111827; letter-spacing: -.3px; }
+
+/* Aislamiento del Dashboard: otras pantallas también definen .topbar globalmente. */
+.dash-root .topbar {
+    height: 72px !important;
+    position: sticky !important;
+    top: 0 !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+}
+.dash-root .pantalla { padding: 24px 32px; }
 
 /* Aislamiento del Dashboard: otras pantallas también definen .topbar globalmente. */
 .dash-root .topbar {
