@@ -112,17 +112,6 @@ h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; color: #111827; let
 }
 .dash-root .pantalla { padding: 24px 32px; }
 
-/* Aislamiento del Dashboard: otras pantallas también definen .topbar globalmente. */
-.dash-root .topbar {
-    height: 80px !important;
-    position: sticky !important;
-    top: 0 !important;
-    left: auto !important;
-    right: auto !important;
-    width: auto !important;
-}
-.dash-root .pantalla { padding: 24px 32px; }
-
 /* ===== TABLA CRM ===== */
 .tabla-crm {
     width: 100%; border-collapse: collapse;
