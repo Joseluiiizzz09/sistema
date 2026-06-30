@@ -625,8 +625,8 @@ export default function Dashboard() {
             <img src="/assets/logo3.png" alt="Netcontact" />
           </div>
           <div className="brand-text">
-            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
-            <span className="brand-sub">Asesor</span>
+            <h1>Netcontact</h1>
+            <span className="brand-sub">Sistema de llamadas</span>
           </div>
         </div>
         <div className="tabs">
