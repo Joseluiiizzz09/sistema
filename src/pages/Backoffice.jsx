@@ -10,17 +10,33 @@ const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4',
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
 const BO_SECCIONES = ['base', 'carga-masiva', 'rendimiento', 'avance']
 
+const PERU_TIME_ZONE = 'America/Lima'
+const PERU_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: PERU_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+const PERU_TIME_FORMATTER = new Intl.DateTimeFormat('es-PE', {
+  timeZone: PERU_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+function partesFechaHora(formatter) {
+  return Object.fromEntries(
+    formatter.formatToParts(new Date()).map(({ type, value }) => [type, value]),
+  )
+}
+
 function fechaHoy() {
-  const ahora = new Date()
-  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000
-  const peru  = new Date(utcMs - 5 * 3600000)
-  return peru.toISOString().split('T')[0]
+  const { year, month, day } = partesFechaHora(PERU_DATE_FORMATTER)
+  return `${year}-${month}-${day}`
 }
 function horaAhora() {
-  const ahora = new Date()
-  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000
-  const peru  = new Date(utcMs - 5 * 3600000)
-  return String(peru.getHours()).padStart(2,'0') + ':' + String(peru.getMinutes()).padStart(2,'0')
+  const { hour, minute } = partesFechaHora(PERU_TIME_FORMATTER)
+  return `${hour}:${minute}`
 }
 function formatFecha(f) {
   if (!f) return ''
@@ -81,6 +97,7 @@ export default function Backoffice() {
   const toastTimer  = useRef(null)
   const archivoInputRef = useRef(null)
   const legacyInputRef  = useRef(null)
+  const fechaSistemaRef = useRef(fechaHoy())
 
   // ── Section ──
   const [seccion, setSeccion] = useState(() => {
@@ -161,6 +178,29 @@ export default function Backoffice() {
 
   // ── Toast ──
   const [toast, setToast] = useState('')
+
+  // Mantiene el panel alineado con el calendario de Lima aunque quede abierto
+  // durante el cambio de día. Conserva una fecha histórica elegida a mano.
+  useEffect(() => {
+    function sincronizarFechaPeru() {
+      const hoy = fechaHoy()
+      const fechaAnterior = fechaSistemaRef.current
+
+      setFechaPestanas(prev => prev.includes(hoy) ? prev : [...prev, hoy].sort().reverse())
+
+      if (hoy === fechaAnterior) return
+
+      setFechaActiva(prev => prev === fechaAnterior ? hoy : prev)
+      setLegacyFecha(prev => prev === fechaAnterior ? hoy : prev)
+      setRendFiltroFecha(prev => prev === fechaAnterior ? hoy : prev)
+      setBlFecha(prev => prev === fechaAnterior ? hoy : prev)
+      fechaSistemaRef.current = hoy
+    }
+
+    sincronizarFechaPeru()
+    const timer = setInterval(sincronizarFechaPeru, 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function mostrarToast(msg) {
@@ -668,7 +708,7 @@ export default function Backoffice() {
   }
 
   const rendData = useMemo(() => {
-    const mesActual = new Date().toISOString().slice(0,7)
+    const mesActual = fechaHoy().slice(0,7)
     let todosReg = []
     for (const f in baseData) {
       if (rendFiltroTipo==='mes'   && !f.startsWith(mesActual))           continue
