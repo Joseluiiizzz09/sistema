@@ -200,16 +200,28 @@ export default function Dashboard() {
       const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
-      const hoy     = fechaHoy()
-      const soloHoy = data.data.filter(l => l.fecha === hoy)
+      const hoy = fechaHoy()
+      const leadsAsignados = data.data.filter(l => {
+        const historial = Array.isArray(l.historial) ? l.historial : []
+        const asignaciones = historial.filter(h => h?.fecha && h?.asesor)
+        const ultimaAsignacion = asignaciones[asignaciones.length - 1]
+
+        // La fecha del lead identifica la base de origen. Para el asesor
+        // importa cuándo recibió el registro. El fallback mantiene compatibles
+        // los registros antiguos que todavía no tienen historial.
+        return ultimaAsignacion?.fecha
+          ? ultimaAsignacion.fecha === hoy
+          : l.fecha === hoy
+      })
       setClientes(prev => {
         const ea = {}
         prev.forEach(c => { ea[c.id] = { estado: c.estado, obs: c.obs } })
-        return soloHoy.map(l => {
+        return leadsAsignados.map(l => {
           const p = ea[l.id] || {}
           return {
             id:       l.id,
             telefono: l.n1,
+            n2:       l.n2 || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
             estado:   l.tipif_vend && l.tipif_vend !== '' ? l.tipif_vend : (p.estado || 'NUEVO'),
@@ -217,7 +229,7 @@ export default function Dashboard() {
           }
         })
       })
-      const tipificados = soloHoy.filter(l => l.tipif_vend && l.tipif_vend !== '' && l.tipif_vend !== 'NUEVO')
+      const tipificados = leadsAsignados.filter(l => l.tipif_vend && l.tipif_vend !== '' && l.tipif_vend !== 'NUEVO')
       setLlamadas(prev => Math.max(prev, tipificados.length))
     } catch(e) { console.error('Error cargando leads:', e) }
   }, [])
@@ -658,14 +670,14 @@ export default function Dashboard() {
         <table className="tabla-crm">
           <thead>
             <tr>
-              <th>Teléfono</th><th>Zona</th><th>Hora asig.</th>
+              <th>Teléfono</th><th>Referencia</th><th>Zona</th><th>Hora asig.</th>
               <th>Estado</th><th>Observación</th><th>Acción</th>
             </tr>
           </thead>
           <tbody>
             {clientes.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
+                <td colSpan={7} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
                   Esperando asignación del Back Office...<br />
                   <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>El Back Office asignará registros a tu usuario.</span>
                 </td>
@@ -673,6 +685,7 @@ export default function Dashboard() {
             ) : clientes.map((c, i) => (
               <tr key={c.id || i}>
                 <td>{c.telefono}</td>
+                <td>{c.n2 || '--'}</td>
                 <td>{c.zona}</td>
                 <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
                 <td><span className={`badge-estado ${colorEstado(c.estado)}`}>{c.estado}</span></td>
