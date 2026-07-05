@@ -107,6 +107,10 @@ export default function Jefatura() {
   const [modalEliminar, setModalEliminar] = useState(null)
   const [eliminandoUsu, setEliminandoUsu] = useState(false)
 
+  /* dashboard individual por asesor */
+  const [dashBuscarAsesor, setDashBuscarAsesor] = useState('')
+  const [asesorModal, setAsesorModal] = useState({ open:false, nombre:'', usuario:'' })
+
   /* charts */
   const canvasEstados = useRef(null)
   const canvasSalas   = useRef(null)
@@ -286,6 +290,16 @@ export default function Jefatura() {
       supervisores:  usuarios.filter(u=>u.cargo==='supervisor'&&u.activo).length,
     }
   }, [ventasCache, usuarios])
+
+  /* ── asesores para el selector del dashboard ── */
+  const asesoresDashboard = useMemo(() => {
+    const b = dashBuscarAsesor.trim().toLowerCase()
+    return usuarios.filter(u => u.cargo === 'asesor' && (!b || (u.nombre||'').toLowerCase().includes(b) || (u.usuario||'').toLowerCase().includes(b)))
+  }, [usuarios, dashBuscarAsesor])
+
+  function abrirAsesorModal(u) {
+    setAsesorModal({ open:true, nombre:u.nombre, usuario:u.usuario||'' })
+  }
 
   /* ── seguimiento ── */
   const ventasSegFiltradas = useMemo(() => {
@@ -496,6 +510,44 @@ export default function Jefatura() {
             <div className="sec-header">
               <div><h2>Dashboard General</h2><p>Resumen global del sistema</p></div>
             </div>
+
+            {/* SELECTOR DE ASESORES */}
+            <div className="tabla-wrap" style={{padding:'16px 20px', marginBottom:'20px'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800,color:'#111827'}}>👤 Dashboard individual por asesor</div>
+                  <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>Selecciona un asesor para ver su rendimiento y ventas</div>
+                </div>
+                <input
+                  type="text"
+                  value={dashBuscarAsesor}
+                  onChange={e=>setDashBuscarAsesor(e.target.value)}
+                  placeholder="🔍 Buscar asesor..."
+                  style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:9,fontSize:12,fontFamily:'inherit',outline:'none',minWidth:200}}
+                />
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
+                {asesoresDashboard.length === 0
+                  ? <div style={{gridColumn:'1/-1',textAlign:'center',padding:24,color:'#9ca3af',fontSize:12}}>No hay asesores registrados.</div>
+                  : asesoresDashboard.map(a => (
+                      <div key={a.id} style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:12,padding:14,display:'flex',alignItems:'center',gap:10}}>
+                        <div style={{width:38,height:38,borderRadius:'50%',background:colorAvatar(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{iniciales(a.nombre)}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:700,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{a.nombre}</div>
+                          <div style={{fontSize:10,color:'#9ca3af'}}>{a.sala||'—'}</div>
+                        </div>
+                        <button
+                          onClick={()=>abrirAsesorModal(a)}
+                          style={{padding:'6px 12px',border:'none',borderRadius:8,background:'#111827',color:'#fff',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flexShrink:0}}
+                        >
+                          Entrar
+                        </button>
+                      </div>
+                    ))
+                }
+              </div>
+            </div>
+
             <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))'}}>
               <div className="kpi-card k-blue">  <div className="kpi-num">{kpis.ventasHoy}</div>     <div className="kpi-label">Ventas hoy</div>         <div className="kpi-sub">del día</div></div>
               <div className="kpi-card k-purple"><div className="kpi-num">{kpis.validadas}</div>     <div className="kpi-label">Validadas</div>          <div className="kpi-sub">pasaron validación</div></div>
@@ -842,6 +894,65 @@ export default function Jefatura() {
           </div>
         </div>
       )}
+
+      {/* MODAL DASHBOARD INDIVIDUAL DE ASESOR */}
+      {asesorModal.open && (() => {
+        const misVentas = ventasCache.filter(v => (v.asesor_nombre||'') === asesorModal.nombre)
+        const inst = misVentas.filter(v=>(v.estado||'').toLowerCase()==='instalado').length
+        const caid = misVentas.filter(v=>(v.estado||'').toLowerCase()==='caida').length
+        const ef   = misVentas.length ? Math.round(inst/misVentas.length*100) : 0
+        return (
+          <div style={{display:'flex',position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:9999,alignItems:'flex-start',justifyContent:'center',padding:'40px 20px'}}
+            onClick={e=>{ if(e.target===e.currentTarget) setAsesorModal(p=>({...p,open:false})) }}>
+            <div style={{background:'#fff',borderRadius:16,width:'100%',maxWidth:960,maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
+              <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Dashboard — {asesorModal.nombre}</div>
+                  <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Vista individual · @{asesorModal.usuario||'—'}</div>
+                </div>
+                <button onClick={()=>setAsesorModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>×</button>
+              </div>
+              <div style={{padding:'14px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
+                {[
+                  { label:'Total ventas', val:misVentas.length, color:'#2563eb' },
+                  { label:'Instaladas',   val:inst,             color:'#16a34a' },
+                  { label:'Caídas',       val:caid,             color:'#dc2626' },
+                  { label:'Efectividad',  val:ef+'%',           color:'#7c3aed' },
+                ].map(k=>(
+                  <div key={k.label} style={{background:'#f9fafb',borderRadius:10,padding:'8px 14px',display:'flex',flexDirection:'column',gap:2,minWidth:110}}>
+                    <div style={{fontSize:18,fontWeight:800,color:k.color}}>{k.val}</div>
+                    <div style={{fontSize:10,color:'#9ca3af',textTransform:'uppercase'}}>{k.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,marginTop:14}}>
+                  <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
+                    {['#','Cliente','DNI','Distrito','Fecha','Estado'].map(h=>(
+                      <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {misVentas.length === 0
+                      ? <tr><td colSpan={6} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin ventas registradas.</td></tr>
+                      : misVentas.map((v,i)=>(
+                          <tr key={v.id!=null?`av-${v.id}`:`av-i-${i}`} style={{borderBottom:'1px solid #f3f4f6'}}>
+                            <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                            <td style={{padding:8,fontWeight:600}}>{v.nombre||'—'}</td>
+                            <td style={{padding:8,fontFamily:'monospace'}}>{v.dni||'—'}</td>
+                            <td style={{padding:8}}>{v.distrito||'—'}</td>
+                            <td style={{padding:8,color:'#185FA5',fontWeight:600}}>{formatF(v._fecha)}</td>
+                            <td style={{padding:8}}>{v.estado||'—'}</td>
+                          </tr>
+                        ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <div className={`toast${toastMsg?' show':''}`}>{toastMsg}</div>
     </div>
