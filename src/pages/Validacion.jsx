@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
 import { API, ncHeaders } from '../services/api'
 import '../styles/validacion.css'
 
@@ -291,7 +292,7 @@ export default function Validacion() {
   return (
     <div>
       {/* TOPBAR */}
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
             <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} />
@@ -302,8 +303,10 @@ export default function Validacion() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-badge">VALIDACIÓN</span>
-          <span className="topbar-user">{sesion?.nombre || 'Validador'}</span>
+          <JefaturaViewControls>
+            <span className="topbar-badge">VALIDACIÓN</span>
+            <span className="topbar-user">{sesion?.nombre || 'Validador'}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
@@ -366,6 +369,7 @@ export default function Validacion() {
             </div>
             <div className="filtros-acciones">
               <button className="btn-borrar" onClick={limpiarFiltros}>✕ Limpiar</button>
+              <button className="btn-borrar" onClick={cargarVentas}>↻ Refrescar</button>
             </div>
           </div>
         </div>
