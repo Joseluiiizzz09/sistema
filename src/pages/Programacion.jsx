@@ -5,6 +5,7 @@ import { API, ncHeaders } from '../services/api'
 import '../styles/programacion.css'
 
 const BADGE_CLS = {
+  APROBADO:         'b-aprobado',
   PROGRAMADO:       'b-programado',
   BLOQUEADO:        'b-bloqueado',
   SIN_AGENDA:       'b-sinagenda',
@@ -18,6 +19,7 @@ const BADGE_CLS = {
 }
 
 const ESTADO_LABELS = {
+  APROBADO:         'Aprobado',
   PROGRAMADO:       'Programado',
   BLOQUEADO:        'Bloqueado',
   SIN_AGENDA:       'Sin agenda',
@@ -37,6 +39,11 @@ const ESTADO_BTNS = [
   { id: 'CARACTER_ESPECIAL', label: 'Carácter especial', cls: 'be-caracter'   },
   { id: 'FRAUDE',            label: 'Fraude',            cls: 'be-fraude'     },
   { id: 'ZONA_RESTRINGIDA',  label: 'Zona restringida',  cls: 'be-zona'       },
+]
+
+const ESTADOS_PROGRAMACION = [
+  'APROBADO','PROGRAMADO','BLOQUEADO','SIN_AGENDA','CARACTER_ESPECIAL',
+  'FRAUDE','ZONA_RESTRINGIDA','INSTALADO','PENDIENTE','CAIDA'
 ]
 
 function formatF(f) {
@@ -81,12 +88,16 @@ export default function Programacion() {
       if (!data.ok) { mostrarToast('Error cargando ventas'); return }
       setVentas(data.data.filter(v => {
         const e = (v.estado || '').toUpperCase()
-        return e !== 'VENTA' && e !== ''
+        return ESTADOS_PROGRAMACION.includes(e)
       }))
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }, [])
 
-  useEffect(() => { cargarVentas() }, [cargarVentas])
+  useEffect(() => {
+    cargarVentas()
+    const t = setInterval(cargarVentas, 15000)
+    return () => clearInterval(t)
+  }, [cargarVentas])
 
   const ventasFiltradas = useMemo(() => ventas.filter(v => {
     const est   = (v.estado || '').toUpperCase()
@@ -154,11 +165,13 @@ export default function Programacion() {
         .be-zona       { background:#ffedd5;color:#9a3412;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer; }
         .be-programado { background:#dcfce7;color:#15803d;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer; }
         .btn-estado:hover { opacity:.85;transform:scale(1.04); }
+        .b-aprobado   { background:#d1fae5;color:#065f46;border:1px solid #86efac; }
         .b-bloqueado  { background:#fee2e2;color:#991b1b; }
         .b-sinagenda  { background:#fef9c3;color:#854d0e; }
         .b-caracter   { background:#ede9fe;color:#5b21b6; }
         .b-fraude     { background:#1f2937;color:#fff; }
         .b-zona       { background:#ffedd5;color:#9a3412; }
+        .tabla .badge { display:inline-flex;align-items:center;justify-content:center;min-width:86px;padding:5px 10px;border-radius:8px;font-size:10px;font-weight:800;letter-spacing:.2px;text-transform:uppercase;box-shadow:none; }
       `}</style>
 
       <div className="topbar">

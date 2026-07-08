@@ -74,7 +74,20 @@ function colorEstado(e) {
   return map[e] || 'estado-nuevo'
 }
 
-function BadgeVS({ e }) {
+function grabadorDesdeObs(obs) {
+  const lineas = (obs || '').split('\n').filter(Boolean)
+  for (let i = lineas.length - 1; i >= 0; i--) {
+    const m = lineas[i].match(/Grabando\s+(.+)$/i)
+    if (m) return m[1].trim()
+  }
+  return ''
+}
+
+function BadgeVS({ e, venta }) {
+  if ((venta?.estado_grab || '').toLowerCase() === 'grabando') {
+    const nombre = grabadorDesdeObs(venta?.observacion)
+    return <span className="vs-badge vs-badge-grabando">GRABANDO{nombre ? ` ${nombre}` : ''}</span>
+  }
   const estado = (e || '').toLowerCase().trim()
   const map = {
     'venta':         { cls:'vs-badge-venta',      label:'VENTA' },
@@ -91,6 +104,11 @@ function BadgeVS({ e }) {
     'duplicada':     { cls:'vs-badge-duplicada',   label:'DUPLICADA' },
     'rechazado':     { cls:'vs-badge-caida',       label:'RECHAZADO' },
     'observado':     { cls:'vs-badge-observado',   label:'OBSERVADO' },
+    'corta_llamada': { cls:'vs-badge-corta',       label:'CORTA LLAMADA' },
+    'no_desea':      { cls:'vs-badge-nodesea',     label:'NO DESEA' },
+    'no_contesta':   { cls:'vs-badge-nocontesta',  label:'NO CONTESTA' },
+    'servicio_activo': { cls:'vs-badge-servicio',   label:'SERVICIO ACTIVO' },
+    'fraude':        { cls:'vs-badge-caida',       label:'FRAUDE' },
   }
   const found = map[estado]
   if (!found) return <span className="vs-badge vs-badge-venta">{e ? e.toUpperCase() : '-'}</span>
@@ -815,7 +833,7 @@ export default function Dashboard() {
                 <tr className="vs-empty"><td colSpan={28}>Sin registros. Usa los filtros para buscar.</td></tr>
               ) : ventasMostradas.map((v, i) => (
                 <tr key={v.id || i}>
-                  <td><BadgeVS e={v.estado} /></td>
+                  <td><BadgeVS e={v.estado} venta={v} /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{(v.created_at||'-').split(' ')[0]}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>

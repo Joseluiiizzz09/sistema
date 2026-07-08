@@ -620,3 +620,49 @@ body{
 .brand-text .brand-sub, .topbar-brand-text .brand-sub { font-size: 10px !important; letter-spacing: 1px !important; font-weight: 600 !important; margin-top: 2px !important; }
 .brand,.topbar-brand { gap: 14px !important; }
 .app-layout, .bo-layout { min-height: calc(100vh - 80px) !important; }
+
+/* Ajustes flujo profesional de Grabaciones */
+.bg-grabando{background:#e0f2fe;color:#075985;}
+.bg-no-contesta{background:#fef3c7;color:#92400e;}
+.bg-buzon{background:#f0fdfa;color:#134e4a;}
+.bg-suplantacion{background:#fee2e2;color:#991b1b;}
+
+.acciones-cell{gap:6px;flex-wrap:wrap;}
+.btn-acc{
+  min-width:58px;
+  height:28px;
+  border-radius:7px;
+  font-weight:800;
+}
+.audio-inline{
+  width:200px;
+  height:32px;
+  display:block;
+}
+.upload-zone{
+  background:#ffffff;
+  border:1px dashed #cbd5e1;
+  padding:24px;
+}
+.upload-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:54px;
+  height:28px;
+  padding:0 12px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.upload-preview{
+  margin-top:12px;
+  padding:12px;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.tabla tbody td{padding-top:8px;padding-bottom:8px;}
+.tabla thead th{padding-top:9px;padding-bottom:9px;}

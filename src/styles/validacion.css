@@ -620,3 +620,17 @@ body{
 .brand-text .brand-sub, .topbar-brand-text .brand-sub { font-size: 10px !important; letter-spacing: 1px !important; font-weight: 600 !important; margin-top: 2px !important; }
 .brand,.topbar-brand { gap: 14px !important; }
 .app-layout, .bo-layout { min-height: calc(100vh - 80px) !important; }
+
+/* Ajustes compactos de Validacion */
+.tabla-scroll{max-height:calc(100vh - 280px);}
+.tabla thead th{padding:9px 12px;}
+.tabla tbody td{padding:8px 12px;}
+.th-accion{width:120px!important;min-width:120px!important;}
+.th-estado{width:120px!important;min-width:120px!important;}
+.th-obs-seg{width:120px!important;min-width:120px!important;}
+.th-fecha{width:120px!important;min-width:120px!important;}
+.acciones-cell{justify-content:center;gap:6px;}
+.tip-val-btn.activo{
+  box-shadow:0 0 0 3px rgba(124,58,237,.28)!important;
+  transform:translateY(-1px);
+}

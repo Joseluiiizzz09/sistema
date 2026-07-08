@@ -191,7 +191,11 @@ export default function Validacion() {
     } catch(e) { console.error('Error cargando ventas:', e) }
   }, [])
 
-  useEffect(() => { cargarVentas() }, [cargarVentas])
+  useEffect(() => {
+    cargarVentas()
+    const t = setInterval(cargarVentas, 10000)
+    return () => clearInterval(t)
+  }, [cargarVentas])
 
   // ── Reset página al cambiar filtros ──
   useEffect(() => { setPagina(1) }, [fEstado, fAsesor, fDesde, fHasta, busqueda])
@@ -267,15 +271,18 @@ export default function Validacion() {
     const nuevoHistorial = lineas.join('\n')
 
     try {
+      const payload = { obs_validacion: nuevoHistorial }
+      if (tipSel) payload.estado = tipSel.toUpperCase()
+
       const res  = await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify({ obs_validacion: nuevoHistorial }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }
 
       setVentas(prev => prev.map(x => x.id === v.id
-        ? { ...x, tipifVal: tipSel || x.tipifVal, obsVal: nuevoHistorial }
+        ? { ...x, estado: tipSel || x.estado, tipifVal: tipSel || x.tipifVal, obsVal: nuevoHistorial }
         : x
       ))
       setModalEst({ open:false, id:null })
@@ -562,7 +569,7 @@ export default function Validacion() {
 
               <div className="modal-btns">
                 <button className="btn-cancelar-modal" onClick={()=>setModalEst({open:false,id:null})}>Cancelar</button>
-                <button className="btn-guardar" onClick={guardarTipificacion}>💾 Guardar</button>
+                <button className="btn-guardar" onClick={guardarTipificacion}>Guardar</button>
               </div>
             </div>
           </div>

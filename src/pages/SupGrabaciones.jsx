@@ -6,7 +6,6 @@ import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
   aprobado:    { cls: 'bg-grabado',  label: 'APROBADO'    },
-  rechazado:   { cls: 'bg-pendiente',label: 'RECHAZADO'   },
   observado:   { cls: 'bg-observado',label: 'OBSERVADO'   },
   sin_revisar: { cls: 'bg-revisado', label: 'SIN REVISAR' },
 }
@@ -112,7 +111,7 @@ export default function SupGrabaciones() {
     cargarVentas()
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
-    const fc = setInterval(cargarVentas, 60000)
+    const fc = setInterval(cargarVentas, 15000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
 
@@ -132,7 +131,6 @@ export default function SupGrabaciones() {
   const kpis = useMemo(() => ({
     total:     ventas.length,
     aprobado:  ventas.filter(v => v.estadoRev === 'aprobado').length,
-    rechazado: ventas.filter(v => v.estadoRev === 'rechazado').length,
     pendiente: ventas.filter(v => v.estadoRev === 'sin_revisar').length,
     observado: ventas.filter(v => v.estadoRev === 'observado').length,
   }), [ventas])
@@ -170,30 +168,20 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
-    const estadoPrincipal =
-      estadoRevision === 'aprobado'  ? 'aprobado' :
-      estadoRevision === 'rechazado' ? 'validado'  : 'grabado'
+    const payload = estadoRevision === 'aprobado'
+      ? { estado: 'aprobado', obs_supgrab: nuevoHistorial, estado_supgrab: estadoRevision }
+      : { estado: 'validado', estado_grab: 'pendiente', obs_supgrab: nuevoHistorial, estado_supgrab: estadoRevision }
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}`, {
         method: 'PATCH', headers: ncHeaders(),
-        body: JSON.stringify({ estado: estadoPrincipal, obs_supgrab: nuevoHistorial, estado_supgrab: estadoRevision }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error guardando'); return }
-      if (estadoRevision === 'aprobado' || estadoRevision === 'rechazado') {
-        setVentas(list => list.filter(x => x.id !== modalRevisar.id))
-      } else {
-        setVentas(list => list.map(x =>
-          x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
-        ))
-      }
+      setVentas(list => list.filter(x => x.id !== modalRevisar.id))
       cerrarModalRevisar()
       setPagina(1)
-      mostrarToast(
-        estadoRevision === 'aprobado'  ? 'Aprobado — pasó a Programación' :
-        estadoRevision === 'rechazado' ? 'Rechazado — volvió a Grabaciones' :
-        'Observado — pendiente corrección'
-      )
+      mostrarToast(estadoRevision === 'aprobado' ? 'Aprobado - paso a Programacion' : 'Observado - volvio a Grabaciones')
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 
@@ -223,14 +211,13 @@ export default function SupGrabaciones() {
         <div className="page-header">
           <div className="page-header-left">
             <h2>Supervisor de Grabaciones</h2>
-            <p>Solo ventas con estado GRABADO — escucha, aprueba o rechaza</p>
+            <p>Solo ventas con estado GRABADO — revisa y aprueba u observa</p>
           </div>
         </div>
 
         <div className="kpi-strip">
           <div className="kpi-item k-blue">  <div><div className="kpi-num">{kpis.total}</div>    <div className="kpi-label">Total grabadas</div></div></div>
           <div className="kpi-item k-green"> <div><div className="kpi-num">{kpis.aprobado}</div> <div className="kpi-label">Aprobadas</div></div></div>
-          <div className="kpi-item k-red">   <div><div className="kpi-num">{kpis.rechazado}</div><div className="kpi-label">Rechazadas</div></div></div>
           <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendiente}</div><div className="kpi-label">Sin revisar</div></div></div>
           <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.observado}</div><div className="kpi-label">Observadas</div></div></div>
         </div>
@@ -244,7 +231,6 @@ export default function SupGrabaciones() {
                 <option value="">Todos</option>
                 <option value="sin_revisar">Sin revisar</option>
                 <option value="aprobado">Aprobado</option>
-                <option value="rechazado">Rechazado</option>
                 <option value="observado">Observado</option>
               </select>
             </div>
@@ -329,11 +315,7 @@ export default function SupGrabaciones() {
                     <tr key={v.id}>
                       <td>
                         <div className="acciones-cell">
-                          <button className="btn-acc btn-acc-audio" onClick={() => abrirModalRevisar(v)}>Escuchar</button>
-                          {v.audioUrl
-                            ? <a className="btn-acc btn-acc-subir" href={v.audioUrl} download={`grabacion_${v.id}.mp3`}>Descargar</a>
-                            : <span style={{ fontSize: '11px', color: '#9ca3af', padding: '0 6px' }}>Sin audio</span>
-                          }
+                          <button className="btn-acc btn-acc-audio" onClick={() => abrirModalRevisar(v)}>Revisar</button>
                           <button className="btn-acc btn-acc-obs" onClick={() => setModalObs(v)}>Obs</button>
                         </div>
                       </td>
@@ -390,23 +372,14 @@ export default function SupGrabaciones() {
                   : <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', padding: '8px 0' }}>Sin archivo de audio disponible.</div>
                 }
               </div>
-              {audioSrc && (
-                <div style={{ marginTop: '8px' }}>
-                  <a href={audioSrc} download={`grabacion_${modalRevisar.id}.mp3`}
-                    style={{ padding: '7px 14px', background: '#2563eb', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    ⬇️ Descargar audio
-                  </a>
-                </div>
-              )}
             </div>
 
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: '8px' }}>Resultado de revisión</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {[
-                  { id: 'aprobado',  label: '✅ APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
-                  { id: 'rechazado', label: '❌ RECHAZADO', border: '#fca5a5', bg: '#fee2e2', color: '#991b1b' },
-                  { id: 'observado', label: '👁️ OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
+                  { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                  { id: 'observado', label: 'OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
                 ].map(btn => (
                   <button key={btn.id} onClick={() => setEstadoRevision(btn.id)}
                     style={{
@@ -430,12 +403,12 @@ export default function SupGrabaciones() {
             <div className="modal-campo">
               <label>Observación del supervisor (opcional)</label>
               <textarea value={revObs} onChange={e => setRevObs(e.target.value)}
-                placeholder="Motivo de rechazo, observación de calidad..." rows="3" />
+                placeholder="Observacion de calidad para que Grabaciones corrija..." rows="3" />
             </div>
 
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalRevisar}>Cancelar</button>
-              <button className="btn-guardar" onClick={guardarRevision}>💾 Guardar revisión</button>
+              <button className="btn-guardar" onClick={guardarRevision}>Guardar revision</button>
             </div>
           </div>
         </div>

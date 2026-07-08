@@ -816,7 +816,7 @@ export default function Jefatura() {
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalUsu}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarUsuario} disabled={guardandoUsu}>
-                {guardandoUsu ? 'Guardando...' : '💾 Guardar usuario'}
+                {guardandoUsu ? 'Guardando...' : 'Guardar usuario'}
               </button>
             </div>
           </div>

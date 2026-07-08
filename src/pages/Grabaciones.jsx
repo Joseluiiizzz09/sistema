@@ -6,10 +6,12 @@ import '../styles/grabaciones.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
 const ESTADOS_GRAB = [
-  { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
   { id:'grabado',   label:'GRABADO',   cls:'bg-grabado'   },
-  { id:'observado', label:'OBSERVADO', cls:'bg-observado' },
-  { id:'revisado',  label:'REVISADO',  cls:'bg-revisado'  },
+  { id:'grabando',  label:'GRABANDO',  cls:'bg-grabando'  },
+  { id:'no_contesta', label:'NO CONTESTA', cls:'bg-no-contesta' },
+  { id:'buzon',     label:'BUZON',     cls:'bg-buzon'     },
+  { id:'suplantacion', label:'SUPLANTACION', cls:'bg-suplantacion' },
+  { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
 ]
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -21,7 +23,7 @@ function fechaHoy() {
 }
 function horaAhora() { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function formatF(f)  { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
-function estadoGrab(id) { return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB[0] }
+function estadoGrab(id) { return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB.find(e=>e.id==='pendiente') }
 function getDateLabel() {
   const d = new Date()
   const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -36,7 +38,7 @@ function mapVenta(v) {
     telefonoContacto: v.telefono1     || '',
     vendedor:         v.asesor_nombre || '',
     fechaIngreso:     fechaRaw,
-    _estadoGrab:      v.estado_grab   || 'pendiente',
+    _estadoGrab:      (v.estado_grab || 'pendiente').toLowerCase(),
     _grabAudio:       v.audio_path    || null,
     _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
     _grabObs:         v.observacion   || '',
@@ -102,6 +104,7 @@ export default function Grabaciones() {
   const [modalSubir,  setModalSubir]  = useState({ open:false, id:null })
   const [archivoSel,  setArchivoSel]  = useState(null)
   const [subirInfo,   setSubirInfo]   = useState('')
+  const [subirAudioSrc, setSubirAudioSrc] = useState('')
   const [subirDrag,   setSubirDrag]   = useState(false)
   const [subirLoading,setSubirLoading]= useState(false)
 
@@ -137,7 +140,7 @@ export default function Grabaciones() {
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
-          .filter(v => { const e=(v.estado||'').toLowerCase(); return e==='validado'||e==='venta' })
+          .filter(v => (v.estado||'').toLowerCase() === 'validado')
           .map(mapVenta)
         )
       }
@@ -164,7 +167,7 @@ export default function Grabaciones() {
       hoy:        ventas.filter(v => v.fechaIngreso === hoy).length,
       pendientes: ventas.filter(v => v.fechaIngreso < hoy).length,
       grabados:   ventas.filter(v => v._estadoGrab === 'grabado').length,
-      observados: ventas.filter(v => v._estadoGrab === 'observado').length,
+      grabando: ventas.filter(v => v._estadoGrab === 'grabando').length,
     }
   }, [ventas])
 
@@ -206,19 +209,26 @@ export default function Grabaciones() {
     if (nuevoEstadoSel === 'grabado') {
       await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify({ estado:'grabado' }),
+        body: JSON.stringify({ estado:'grabado', estado_grab:'grabado' }),
       }).catch(console.error)
       setVentas(list => list.filter(x=>x.id!==v.id))
       setModalEstado({ open:false, id:null })
       mostrarToast('Venta marcada como GRABADA — pasa al Supervisor')
       return
     }
+    const payload = { estado_grab: nuevoEstadoSel }
+    if (nuevoEstadoSel === 'grabando') {
+      const prevObs = v._grabObs ? v._grabObs + '\n' : ''
+      const nombre = sesion?.nombre || 'Grabaciones'
+      payload.observacion = prevObs + '[' + formatF(fechaHoy()) + ' ' + horaAhora() + ' - ' + nombre + '] Grabando ' + nombre
+    }
+
     try {
       await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify({ estado_grab: nuevoEstadoSel }),
+        body: JSON.stringify(payload),
       })
-      setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel } : x))
+      setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel, _grabObs:payload.observacion || x._grabObs } : x))
     } catch(e) { console.error('Error guardando estado:', e) }
     setModalEstado({ open:false, id:null })
     mostrarToast('Estado actualizado: ' + nuevoEstadoSel.toUpperCase())
@@ -230,6 +240,7 @@ export default function Grabaciones() {
     setModalSubir({ open:true, id })
     setArchivoSel(null)
     setSubirInfo('')
+    setSubirAudioSrc(v._grabAudio ? `${NC_API}/${v._grabAudio}` : '')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -239,6 +250,7 @@ export default function Grabaciones() {
     if (!file.name.match(/\.(mp3|wav|ogg|m4a|mp4|webm)$/i)) { mostrarToast('Solo archivos de audio'); return }
     setArchivoSel(file)
     setSubirInfo(`${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`)
+    setSubirAudioSrc(URL.createObjectURL(file))
   }
 
   async function guardarAudio() {
@@ -258,15 +270,22 @@ export default function Grabaciones() {
       if (uploadData.ok) rutaAudio = uploadData.ruta
     } catch(e) { console.error('Error subiendo audio:', e) }
 
-    await fetch(`${API}/ventas/${v.id}`, {
-      method:'PATCH', headers:ncHeaders(),
-      body: JSON.stringify({ estado:'grabado', ...(rutaAudio ? { audio_path:rutaAudio } : {}) }),
-    }).catch(console.error)
+    if (!rutaAudio) {
+      setSubirLoading(false)
+      mostrarToast('No se pudo subir la grabacion')
+      return
+    }
 
-    setVentas(list => list.filter(x=>x.id!==v.id))
-    setModalSubir({ open:false, id:null })
-    setArchivoSel(null); setSubirInfo(''); setSubirLoading(false)
-    mostrarToast('Grabación subida — pasa al Supervisor de Grabaciones')
+    setVentas(list => list.map(x => x.id===v.id
+      ? { ...x, _grabAudio:rutaAudio, _grabNombre:rutaAudio.split('/').pop() }
+      : x
+    ))
+    setSubirAudioSrc(`${NC_API}/${rutaAudio}`)
+    setArchivoSel(null)
+    setSubirInfo('Archivo subido. Puedes escucharlo antes de marcar GRABADO.')
+    setSubirLoading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    mostrarToast('Grabacion subida. La venta sigue en Grabaciones hasta marcar GRABADO.')
   }
 
   // ── Modal Audio ───────────────────────────────────────────────────────────
@@ -354,7 +373,7 @@ export default function Grabaciones() {
           <div className="kpi-item k-blue"><div><div className="kpi-num">{kpis.hoy}</div><div className="kpi-label">Ventas de hoy</div></div></div>
           <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendientes}</div><div className="kpi-label">Pendientes anteriores</div></div></div>
           <div className="kpi-item k-green"><div><div className="kpi-num">{kpis.grabados}</div><div className="kpi-label">Grabados</div></div></div>
-          <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.observados}</div><div className="kpi-label">Observados</div></div></div>
+          <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.grabando}</div><div className="kpi-label">Grabando</div></div></div>
         </div>
 
         {/* TABS */}
@@ -432,7 +451,7 @@ export default function Grabaciones() {
             <table className="tabla">
               <thead>
                 <tr>
-                  <th style={{width:280}}>ACCIONES</th>
+                  <th style={{width:210}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
                   <th style={{width:120}}>FECHA</th>
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
@@ -440,7 +459,7 @@ export default function Grabaciones() {
                   <th style={{width:110}}>TEL. CONTACTO</th>
                   <th style={{width:130}}>VENDEDOR</th>
                   <th style={{width:120}}>SUPERVISOR</th>
-                  <th style={{width:160}}>ARCHIVO AUDIO</th>
+                  <th style={{width:220}}>AUDIO</th>
                   <th style={{width:180}}>ÚLTIMA OBS.</th>
                 </tr>
               </thead>
@@ -449,25 +468,15 @@ export default function Grabaciones() {
                   ? <tr><td colSpan={10} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
                       const esAnterior = v.fechaIngreso < hoy
-                      const tieneAudio = !!v._grabAudio
                       const eg         = estadoGrab(v._estadoGrab)
                       const ultimaObs  = v._grabObs ? v._grabObs.split('\n').filter(Boolean).slice(-1)[0]?.substring(0,50) || '—' : '—'
                       return (
                         <tr key={v.id} className={esAnterior?'fila-pendiente':''}>
                           <td>
                             <div className="acciones-cell">
-                              <button className="btn-acc btn-acc-audio"  onClick={()=>abrirModalAudio(v.id)}  title="Escuchar grabación">Escuchar</button>
-                              <button
-                                className="btn-acc btn-acc-dl"
-                                onClick={()=>descargarAudio(v.id)}
-                                title={tieneAudio?'Descargar grabación':'Sin grabación'}
-                                disabled={!tieneAudio}
-                                style={!tieneAudio?{opacity:.35,cursor:'not-allowed'}:{}}
-                              >Descargar</button>
                               <button className="btn-acc btn-acc-obs"    onClick={()=>abrirModalObs(v.id)}    title="Observación">Obs.</button>
                               <button className="btn-acc btn-acc-subir"  onClick={()=>abrirModalSubir(v.id)}  title="Subir grabación">Subir</button>
                               <button className="btn-acc btn-acc-estado" onClick={()=>abrirModalEstado(v.id)} title="Cambiar estado">Estado</button>
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')} title="Ver fotos">📷 Fotos</button>
                             </div>
                           </td>
                           <td><span className={`badge-grab ${eg.cls}`}>{eg.label}</span></td>
@@ -481,8 +490,8 @@ export default function Grabaciones() {
                           <td style={{fontWeight:600,color:'#7C3AED'}}>{v.vendedor||'—'}</td>
                           <td style={{fontSize:11}}>{v.supervisor||'—'}</td>
                           <td>
-                            {tieneAudio
-                              ? <span style={{color:'#16a34a',fontWeight:600,fontSize:11}}>{v._grabNombre||'Archivo subido'}</span>
+                            {v._grabAudio
+                              ? <audio src={`${NC_API}/${v._grabAudio}`} controls className="audio-inline" title={v._grabNombre || 'Audio subido'} />
                               : <span style={{color:'#9ca3af',fontSize:11,fontStyle:'italic'}}>Sin grabación</span>}
                           </td>
                           <td style={{fontSize:10,color:'#6b7280'}}>{ultimaObs}</td>
@@ -531,9 +540,9 @@ export default function Grabaciones() {
 
       {/* ══ MODAL SUBIR ══════════════════════════════════════════════════════ */}
       {modalSubir.open && (
-        <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalSubir({open:false,id:null}) }}>
+        <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) { setModalSubir({open:false,id:null}); setSubirAudioSrc('') } }}>
           <div className="modal-box" style={{maxWidth:440}}>
-            <div className="modal-title">📎 Subir grabación</div>
+            <div className="modal-title">Subir grabacion</div>
             <div className="modal-sub">Cliente: <strong>{vSubir?.nombreApellidos||'—'}</strong></div>
             <div
               className="upload-zone"
@@ -543,7 +552,7 @@ export default function Grabaciones() {
               onDragLeave={()=>setSubirDrag(false)}
               onDrop={e=>{ e.preventDefault(); setSubirDrag(false); handleFileSelect(e.dataTransfer.files) }}
             >
-              <div className="upload-icon">🎙️</div>
+              <div className="upload-icon">Audio</div>
               <div style={{fontSize:13,fontWeight:600,color:'#374151',marginTop:6}}>Arrastra tu archivo aquí o haz clic</div>
               <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
               <input
@@ -557,10 +566,15 @@ export default function Grabaciones() {
             {subirInfo && (
               <div style={{marginTop:8,color:'#16a34a',fontWeight:600,fontSize:13}}>{subirInfo}</div>
             )}
+            {subirAudioSrc && (
+              <div className="audio-player upload-preview">
+                <audio src={subirAudioSrc} controls style={{width:'100%',height:40}} />
+              </div>
+            )}
             <div className="modal-btns">
-              <button className="btn-cancelar-m" onClick={()=>{ setModalSubir({open:false,id:null}); setArchivoSel(null); setSubirInfo('') }}>Cancelar</button>
+              <button className="btn-cancelar-m" onClick={()=>{ setModalSubir({open:false,id:null}); setArchivoSel(null); setSubirInfo(''); setSubirAudioSrc('') }}>Cerrar</button>
               <button className="btn-guardar" onClick={guardarAudio} disabled={subirLoading}>
-                {subirLoading ? 'Subiendo...' : '✅ Subir grabación'}
+                {subirLoading ? 'Subiendo...' : 'Subir grabacion'}
               </button>
             </div>
           </div>
@@ -589,9 +603,6 @@ export default function Grabaciones() {
             </div>
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalAudio}>Cerrar</button>
-              {audioSrc && (
-                <button className="btn-guardar" style={{background:'#059669'}} onClick={()=>descargarAudio(modalAudio.id)}>⬇️ Descargar</button>
-              )}
               <button
                 className="btn-guardar"
                 style={{background:'#2563eb'}}

@@ -618,3 +618,30 @@ body{
 .brand-text .brand-sub, .topbar-brand-text .brand-sub { font-size: 10px !important; letter-spacing: 1px !important; font-weight: 600 !important; margin-top: 2px !important; }
 .brand,.topbar-brand { gap: 14px !important; }
 .app-layout, .bo-layout { min-height: calc(100vh - 80px) !important; }
+
+/* Colores mas claros y legibles en Programacion */
+.programacion-page .tabla .badge,
+.tabla .badge.b-aprobado,
+.tabla .badge.b-programado,
+.tabla .badge.b-bloqueado,
+.tabla .badge.b-sinagenda,
+.tabla .badge.b-caracter,
+.tabla .badge.b-fraude,
+.tabla .badge.b-zona{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:86px;
+  padding:5px 10px;
+  border-radius:8px;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.tabla .badge.b-aprobado{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.tabla .badge.b-programado{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;}
+.tabla .badge.b-bloqueado{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.tabla .badge.b-sinagenda{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
+.tabla .badge.b-caracter{background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;}
+.tabla .badge.b-fraude{background:#111827;color:#fff;border:1px solid #111827;}
+.tabla .badge.b-zona{background:#ffedd5;color:#9a3412;border:1px solid #fdba74;}

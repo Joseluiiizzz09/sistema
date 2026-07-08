@@ -686,3 +686,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .vs-badge-ejecucion  { background: linear-gradient(135deg,#8b5cf6,#7c3aed) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(139,92,246,.3); }
 .vs-badge-tecnico    { background: linear-gradient(135deg,#a78bfa,#8b5cf6) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(167,139,250,.3); }
 .vs-badge-duplicada  { background: linear-gradient(135deg,#f43f5e,#e11d48) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(244,63,94,.3); }
+.vs-badge-grabando   { background: linear-gradient(135deg,#0ea5e9,#2563eb) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+.vs-badge-corta      { background: linear-gradient(135deg,#38bdf8,#0284c7) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(2,132,199,.28); }
+.vs-badge-nodesea    { background: linear-gradient(135deg,#fb7185,#e11d48) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(225,29,72,.28); }
+.vs-badge-nocontesta { background: linear-gradient(135deg,#f59e0b,#d97706) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(217,119,6,.28); }
+.vs-badge-servicio   { background: linear-gradient(135deg,#64748b,#334155) !important; color:#fff !important; box-shadow: 0 2px 8px rgba(51,65,85,.28); }
