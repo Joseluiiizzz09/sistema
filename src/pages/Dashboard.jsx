@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
@@ -56,6 +56,15 @@ function fechaHoy() {
 
 function fechaISO(d) { return d.toISOString().split('T')[0] }
 
+function normalizarFecha(f) {
+  const match = String(f || '').match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : ''
+}
+
+function esVentaInstalada(venta) {
+  return String(venta?.estado || '').trim().toUpperCase() === 'INSTALADO'
+}
+
 function fechaHoyFormateada() {
   return new Date().toLocaleDateString('es-PE', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
 }
@@ -70,6 +79,11 @@ function colorEstado(e) {
     'EDIFICIO NO LIBERADO':'estado-sh-edificio-no-liberado',
     'CONTACTO CON TERCEROS':'estado-contacto-con-terceros',
     'NO DESEA':'estado-no-desea','BUZON DE VOZ':'estado-buzon-voz','NUEVO':'estado-nuevo',
+    'INSTALADO':'estado-instalado','CAIDA':'estado-caida','CAÍDA':'estado-caida',
+    'TECNICO EN CASA':'estado-tecnico-casa','TECNICOS EN CASA':'estado-tecnico-casa',
+    'TÉCNICO EN CASA':'estado-tecnico-casa','TÉCNICOS EN CASA':'estado-tecnico-casa',
+    'RECHAZO EN CAMPO':'estado-rechazo-campo','FRAUDE':'estado-fraude',
+    'VALIDADO':'estado-validado','PROGRAMADO':'estado-programado','BLOQUEADO':'estado-bloqueado',
   }
   return map[e] || 'estado-nuevo'
 }
@@ -97,6 +111,15 @@ function BadgeVS({ e }) {
   return <span className={`vs-badge ${found.cls}`}>{found.label}</span>
 }
 
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    </svg>
+  )
+}
+
 function generarRangoFechas(desde, hasta) {
   const fechas = []
   const d = new Date(desde + 'T00:00:00')
@@ -109,6 +132,14 @@ function generarRangoFechas(desde, hasta) {
 export default function Dashboard() {
   const { sesion, logout } = useAuth()
   const navigate = useNavigate()
+  const [asesorObjetivo] = useState(() => {
+    try {
+      const objetivo = JSON.parse(sessionStorage.getItem('nc_dashboard_asesor_objetivo') || 'null')
+      return objetivo?.cargo === 'asesor' ? objetivo : null
+    } catch { return null }
+  })
+  const vistaJefatura = sesion?.cargo === 'jefatura' && Boolean(asesorObjetivo?.id)
+  const filtroAsesor = vistaJefatura ? `?asesor_id=${encodeURIComponent(asesorObjetivo.id)}` : ''
 
   // Tab
   const [tab, setTab] = useState(() => sessionStorage.getItem('nc_dashboard_apartado') || 'llamadas')
@@ -118,11 +149,11 @@ export default function Dashboard() {
   const [ventasSubidas,   setVentasSubidas]    = useState([])
   const [ventasMostradas, setVentasMostradas]  = useState([])
   const [frases,          setFrases]           = useState([])
+  const [ultimaSync,      setUltimaSync]        = useState(null)
 
-  // KPIs locales (se sincronizan con backend)
+  // Las llamadas se calculan desde las tipificaciones de leads.
+  // Ventas e instalaciones se calculan exclusivamente desde /ventas.
   const [llamadas,   setLlamadas]   = useState(0)
-  const [ventas,     setVentas]     = useState(0)
-  const [instaladas, setInstaladas] = useState(0)
 
   // Modal tipificación
   const [seleccionado, setSeleccionado] = useState(null)
@@ -167,6 +198,7 @@ export default function Dashboard() {
 
   // Refs para acceso sin stale closure
   const ventasRef  = useRef([])
+  const cargandoVentasRef = useRef(false)
   const grafRef    = useRef({ desde: fechaHoy(), hasta: fechaHoy() })
   const toastTimer = useRef(null)
   const [toast, setToast] = useState('')
@@ -176,6 +208,28 @@ export default function Dashboard() {
     setToast(msg)
     clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(''), 2700)
+  }
+
+  async function copiarNumero(numero) {
+    const texto = String(numero || '').trim()
+    if (!texto) return
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(texto)
+      } else {
+        const area = document.createElement('textarea')
+        area.value = texto
+        area.style.position = 'fixed'
+        area.style.opacity = '0'
+        document.body.appendChild(area)
+        area.select()
+        document.execCommand('copy')
+        area.remove()
+      }
+      mostrarToast(`Número ${texto} copiado`)
+    } catch(e) {
+      mostrarToast('No se pudo copiar el número')
+    }
   }
 
   // ── Cambiar tab ──────────────────────────────────────────────────────────
@@ -197,7 +251,7 @@ export default function Dashboard() {
   // ── API: Leads ───────────────────────────────────────────────────────────
   const cargarLeadsAsesor = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/leads${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
       const hoy = fechaHoy()
@@ -210,8 +264,8 @@ export default function Dashboard() {
         // importa cuándo recibió el registro. El fallback mantiene compatibles
         // los registros antiguos que todavía no tienen historial.
         return ultimaAsignacion?.fecha
-          ? ultimaAsignacion.fecha === hoy
-          : l.fecha === hoy
+          ? normalizarFecha(ultimaAsignacion.fecha) === hoy
+          : normalizarFecha(l.fecha) === hoy
       })
       setClientes(prev => {
         const ea = {}
@@ -221,7 +275,11 @@ export default function Dashboard() {
           return {
             id:       l.id,
             telefono: l.n1,
-            n2:       l.n2 || '',
+            telefono2: l.n2 || '',
+            tipoContacto: l.tipo_contacto || 'LLAMADA',
+            direccion: l.direccion || '',
+            coordenadas: l.coordenadas || '',
+            obsBack: l.obs_back || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
             estado:   l.tipif_vend && l.tipif_vend !== '' ? l.tipif_vend : (p.estado || 'NUEVO'),
@@ -232,56 +290,68 @@ export default function Dashboard() {
       const tipificados = leadsAsignados.filter(l => l.tipif_vend && l.tipif_vend !== '' && l.tipif_vend !== 'NUEVO')
       setLlamadas(prev => Math.max(prev, tipificados.length))
     } catch(e) { console.error('Error cargando leads:', e) }
-  }, [])
+  }, [filtroAsesor])
 
   // ── API: Ventas ──────────────────────────────────────────────────────────
   const cargarVentasSubidas = useCallback(async () => {
+    if (cargandoVentasRef.current) return ventasRef.current
+    cargandoVentasRef.current = true
     try {
-      const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/ventas${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) {
         ventasRef.current = data.data
         setVentasSubidas(data.data)
         setVentasMostradas(data.data)
-        const hoy     = fechaHoy()
-        const vHoy    = data.data.filter(v => (v.created_at||'').split(' ')[0] === hoy)
-        const instHoy = vHoy.filter(v => (v.estado||'').toLowerCase() === 'instalado')
-        setVentas(prev     => Math.max(prev, vHoy.length))
-        setInstaladas(prev => Math.max(prev, instHoy.length))
+        setUltimaSync(new Date())
         return data.data
       }
       return []
     } catch(e) { console.error('Error cargando ventas:', e); return [] }
-  }, [])
+    finally { cargandoVentasRef.current = false }
+  }, [filtroAsesor])
 
   // ── API: Frases ──────────────────────────────────────────────────────────
   const cargarFrasesSuper = useCallback(async () => {
     try {
       const u   = JSON.parse(sessionStorage.getItem('nc_usuario') || '{}')
-      const url = u?.sala ? `${API}/frases?sala=${encodeURIComponent(u.sala)}` : `${API}/frases`
+      const sala = vistaJefatura ? asesorObjetivo?.sala : u?.sala
+      const url = sala ? `${API}/frases?sala=${encodeURIComponent(sala)}` : `${API}/frases`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       setFrases(data.ok && data.data?.length ? data.data : [])
     } catch(e) { setFrases([]) }
-  }, [])
+  }, [vistaJefatura, asesorObjetivo?.sala])
 
   // ── Polling ──────────────────────────────────────────────────────────────
   useEffect(() => {
     cargarLeadsAsesor()
     cargarVentasSubidas()
     cargarFrasesSuper()
-    const t1 = setInterval(cargarLeadsAsesor,   15000)
+    const t1 = setInterval(cargarLeadsAsesor,    5000)
     const t2 = setInterval(cargarFrasesSuper,   30000)
-    const t3 = setInterval(cargarVentasSubidas, 30000)
-    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3) }
+    const t3 = setInterval(cargarVentasSubidas,  5000)
+    const sincronizarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarLeadsAsesor()
+        cargarVentasSubidas()
+      }
+    }
+    window.addEventListener('focus', sincronizarAlVolver)
+    window.addEventListener('online', sincronizarAlVolver)
+    document.addEventListener('visibilitychange', sincronizarAlVolver)
+    return () => {
+      clearInterval(t1); clearInterval(t2); clearInterval(t3)
+      window.removeEventListener('focus', sincronizarAlVolver)
+      window.removeEventListener('online', sincronizarAlVolver)
+      document.removeEventListener('visibilitychange', sincronizarAlVolver)
+    }
   }, [cargarLeadsAsesor, cargarVentasSubidas, cargarFrasesSuper])
 
   // ── Efectos por tab ──────────────────────────────────────────────────────
   useEffect(() => {
     if (tab === 'rendimiento') {
-      cargarVentasSubidas().then(vs => {
-        setTimeout(() => iniciarGraficos(vs || ventasRef.current), 100)
-      })
+      cargarVentasSubidas()
     }
     if (tab === 'frases')        cargarFrasesSuper()
     if (tab === 'ventassubidas') cargarVentasSubidas()
@@ -294,37 +364,50 @@ export default function Dashboard() {
     const vPF = {}, iPF = {}
     fechas.forEach(f => { vPF[f] = 0; iPF[f] = 0 })
     vs.forEach(v => {
-      const f = (v.created_at||'').split(' ')[0]
+      const f = normalizarFecha(v.created_at)
       if (vPF[f] !== undefined) {
         vPF[f]++
-        if ((v.estado||'').toLowerCase() === 'instalado') iPF[f]++
+        if (esVentaInstalada(v)) iPF[f]++
       }
     })
     const labels = fechas.map(f => { const p = f.split('-'); return p[2]+'/'+p[1] })
     return { labels, ventas: fechas.map(f => vPF[f]), instaladas: fechas.map(f => iPF[f]) }
   }
 
-  function getSemanal(vs) {
-    const hoy = new Date(), mes = hoy.getMonth(), anio = hoy.getFullYear()
-    const s = [0,0,0,0], sI = [0,0,0,0]
+  function getSemanal(vs, referencia = fechaHoy()) {
+    const ref = new Date(`${normalizarFecha(referencia) || fechaHoy()}T00:00:00`)
+    const mes = ref.getMonth(), anio = ref.getFullYear()
+    const ultimoDia = new Date(anio, mes + 1, 0).getDate()
+    const totalSemanas = Math.ceil(ultimoDia / 7)
+    const s = Array(totalSemanas).fill(0), sI = Array(totalSemanas).fill(0)
     vs.forEach(v => {
-      const f = new Date((v.created_at||'').split(' ')[0] + 'T00:00:00')
+      const fecha = normalizarFecha(v.created_at)
+      if (!fecha) return
+      const f = new Date(fecha + 'T00:00:00')
       if (f.getMonth() === mes && f.getFullYear() === anio) {
-        const idx = Math.min(Math.floor((f.getDate()-1)/7), 3)
-        s[idx]++; if ((v.estado||'').toLowerCase() === 'instalado') sI[idx]++
+        const idx = Math.floor((f.getDate()-1)/7)
+        s[idx]++; if (esVentaInstalada(v)) sI[idx]++
       }
     })
-    return { labels: ['Sem 1','Sem 2','Sem 3','Sem 4'], ventas: s, instaladas: sI }
+    const labels = s.map((_, i) => {
+      const inicio = i * 7 + 1
+      const fin = Math.min(inicio + 6, ultimoDia)
+      return `Sem ${i + 1} (${inicio}-${fin})`
+    })
+    return { labels, ventas: s, instaladas: sI }
   }
 
-  function getMensual(vs) {
-    const anio = new Date().getFullYear()
+  function getMensual(vs, referencia = fechaHoy()) {
+    const ref = new Date(`${normalizarFecha(referencia) || fechaHoy()}T00:00:00`)
+    const anio = ref.getFullYear()
     const m = Array(12).fill(0), mI = Array(12).fill(0)
     vs.forEach(v => {
-      const f = new Date((v.created_at||'').split(' ')[0] + 'T00:00:00')
+      const fecha = normalizarFecha(v.created_at)
+      if (!fecha) return
+      const f = new Date(fecha + 'T00:00:00')
       if (f.getFullYear() === anio) {
         m[f.getMonth()]++
-        if ((v.estado||'').toLowerCase() === 'instalado') mI[f.getMonth()]++
+        if (esVentaInstalada(v)) mI[f.getMonth()]++
       }
     })
     return { labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], ventas: m, instaladas: mI }
@@ -341,6 +424,7 @@ export default function Dashboard() {
     })
     const desde = grafRef.current.desde
     const hasta = grafRef.current.hasta
+    const referencia = hasta || fechaHoy()
     const diario  = getVentasPorRango(data, desde, hasta)
     if (instDiario.current)  instDiario.current.destroy()
     instDiario.current = new Chart(canvasDiario.current, {
@@ -351,7 +435,7 @@ export default function Dashboard() {
       ]},
       options: barOpts({ ticks: { stepSize: 1 } }),
     })
-    const semanal = getSemanal(data)
+    const semanal = getSemanal(data, referencia)
     if (instSemanal.current) instSemanal.current.destroy()
     instSemanal.current = new Chart(canvasSemanal.current, {
       type: 'bar',
@@ -359,9 +443,9 @@ export default function Dashboard() {
         { label:'Ventas',    data:semanal.ventas,    backgroundColor:'rgba(34,197,94,0.75)', borderRadius:6 },
         { label:'Instaladas',data:semanal.instaladas,backgroundColor:'rgba(139,92,246,0.75)',borderRadius:6 },
       ]},
-      options: barOpts(),
+      options: barOpts({ ticks: { stepSize: 1 }, suggestedMin: 0 }),
     })
-    const mensual = getMensual(data)
+    const mensual = getMensual(data, referencia)
     if (instMensual.current) instMensual.current.destroy()
     instMensual.current = new Chart(canvasMensual.current, {
       type: 'line',
@@ -369,19 +453,50 @@ export default function Dashboard() {
         { label:'Ventas',    data:mensual.ventas,    borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.08)',  tension:0.4, fill:true, pointRadius:4 },
         { label:'Instaladas',data:mensual.instaladas,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.08)', tension:0.4, fill:true, pointRadius:4 },
       ]},
-      options: barOpts(),
+      options: barOpts({ ticks: { stepSize: 1 }, suggestedMin: 0 }),
     })
+  }
+
+  function actualizarInstanciaGrafico(instancia, datos) {
+    if (!instancia) return
+    instancia.data.labels = datos.labels
+    instancia.data.datasets[0].data = datos.ventas
+    instancia.data.datasets[1].data = datos.instaladas
+    instancia.update('none')
+  }
+
+  async function sincronizarGraficos(vs = ventasRef.current) {
+    if (tab !== 'rendimiento' || !canvasDiario.current) return
+    if (!instDiario.current || !instSemanal.current || !instMensual.current) {
+      await iniciarGraficos(vs)
+      return
+    }
+    const desde = grafRef.current.desde
+    const hasta = grafRef.current.hasta
+    const referencia = hasta || fechaHoy()
+    actualizarInstanciaGrafico(instDiario.current, getVentasPorRango(vs, desde, hasta))
+    actualizarInstanciaGrafico(instSemanal.current, getSemanal(vs, referencia))
+    actualizarInstanciaGrafico(instMensual.current, getMensual(vs, referencia))
   }
 
   function aplicarFiltroGrafico() {
     grafRef.current = { desde: grafDesde, hasta: grafHasta }
-    if (!instDiario.current) return
-    const datos = getVentasPorRango(ventasRef.current, grafDesde, grafHasta)
-    instDiario.current.data.labels           = datos.labels
-    instDiario.current.data.datasets[0].data = datos.ventas
-    instDiario.current.data.datasets[1].data = datos.instaladas
-    instDiario.current.update()
+    sincronizarGraficos(ventasRef.current)
   }
+
+  // Mantiene los tres graficos coordinados con cada respuesta nueva del servidor.
+  useEffect(() => {
+    if (tab !== 'rendimiento') return undefined
+    const timer = setTimeout(() => sincronizarGraficos(ventasSubidas), 0)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ventasSubidas, tab])
+
+  useEffect(() => () => {
+    instDiario.current?.destroy()
+    instSemanal.current?.destroy()
+    instMensual.current?.destroy()
+  }, [])
 
   // ── Tipificación ─────────────────────────────────────────────────────────
   function abrirModalTip(i) { setSeleccionado(i); setTipSearch(''); setModalTip(true) }
@@ -391,7 +506,6 @@ export default function Dashboard() {
   async function tipificar(tipo) {
     setLlamadas(prev => prev + 1)
     if (tipo === 'VENTA CERRADA') {
-      setVentas(prev => prev + 1)
       const sel = seleccionado
       cerrarModales()
       setMvDni(''); setMvTipoDoc('DNI'); setMvDniError(false)
@@ -447,7 +561,6 @@ export default function Dashboard() {
         }).catch(e => console.error('Error guardando obs:', e))
       }
     }
-    setInstaladas(prev => prev + 1)
     cerrarModales()
     mostrarToast(`Venta cerrada: ${obsVal}`)
   }
@@ -594,7 +707,7 @@ export default function Dashboard() {
     const fil = filtroDni.toLowerCase()
     setVentasMostradas(ventasSubidas.filter(v => {
       const ok1 = !fil   || (v.dni||'').toLowerCase().includes(fil)
-      const fv   = (v.created_at||'').split(' ')[0]
+      const fv   = normalizarFecha(v.created_at)
       const ok2 = !filtroDesde || fv >= filtroDesde
       const ok3 = !filtroHasta || fv <= filtroHasta
       return ok1 && ok2 && ok3
@@ -608,19 +721,38 @@ export default function Dashboard() {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   function handleSalir(e) {
-    e.preventDefault(); logout(); navigate('/login')
+    e.preventDefault()
+    sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
+    sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
+    logout()
+    navigate('/login')
+  }
+
+  function volverAJefatura() {
+    sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
+    sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
+    sessionStorage.setItem('nc_jefatura_apartado', 'accesos')
+    navigate('/jefatura')
   }
 
   // ── KPIs computados ───────────────────────────────────────────────────────
   const hoy           = fechaHoy()
-  const vHoy          = ventasSubidas.filter(v => (v.created_at||'').split(' ')[0] === hoy)
-  const iHoy          = vHoy.filter(v => (v.estado||'').toLowerCase() === 'instalado')
+  const vHoy          = ventasSubidas.filter(v => normalizarFecha(v.created_at) === hoy)
+  const iHoy          = vHoy.filter(esVentaInstalada)
+  const noInstHoy     = vHoy.filter(v => !esVentaInstalada(v))
   const kpiLlamadas   = llamadas
-  const kpiVentas     = Math.max(ventas, vHoy.length)
-  const kpiInstaladas = Math.max(instaladas, iHoy.length)
-  const kpiNoInst     = Math.max(0, kpiVentas - kpiInstaladas)
-  const kpiEfect      = kpiVentas ? Math.round(kpiInstaladas / kpiVentas * 100) : 0
+  const kpiVentas     = vHoy.length
+  const kpiInstaladas = iHoy.length
+  const kpiNoInst     = noInstHoy.length
+  const totalResultado = kpiInstaladas + kpiNoInst
+  const kpiEfect      = totalResultado ? Math.round(kpiInstaladas / totalResultado * 100) : 0
   const kpiPct        = Math.min(Math.round(kpiVentas / META_DIARIA * 100), 100)
+  const ultimaSyncTexto = ultimaSync
+    ? ultimaSync.toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+    : '--:--:--'
+  const fechaRefGrafico = new Date(`${normalizarFecha(grafHasta) || hoy}T00:00:00`)
+  const mesGrafico = fechaRefGrafico.toLocaleDateString('es-PE', { month:'long', year:'numeric' })
+  const anioGrafico = fechaRefGrafico.getFullYear()
 
   const saludoHora = new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 18 ? 'Buenas tardes' : 'Buenas noches'
   const tipsFiltrados = tipSearch
@@ -654,7 +786,10 @@ export default function Dashboard() {
           ))}
         </div>
         <div className="topbar-right">
-          <span className="dash-usuario">{saludoHora}, {sesion?.nombre || 'ASESOR'}</span>
+          <span className="dash-usuario">
+            {vistaJefatura ? `Vista de: ${asesorObjetivo.nombre}` : `${saludoHora}, ${sesion?.nombre || 'ASESOR'}`}
+          </span>
+          {vistaJefatura && <button type="button" className="topbar-salir" onClick={volverAJefatura}>Volver a Jefatura</button>}
           <a href="#" className="topbar-salir" onClick={handleSalir}>Salir</a>
         </div>
       </div>
@@ -667,26 +802,31 @@ export default function Dashboard() {
             {fechaHoyFormateada()}
           </span>
         </div>
-        <table className="tabla-crm">
+        <div className="tabla-crm-wrap">
+        <table className="tabla-crm tabla-leads-asesor">
           <thead>
             <tr>
-              <th>Teléfono</th><th>Referencia</th><th>Zona</th><th>Hora asig.</th>
-              <th>Estado</th><th>Observación</th><th>Acción</th>
+              <th>Teléfono</th><th>Teléfono 2</th><th>Contacto</th><th>Zona</th>
+              <th>Dirección / Coord.</th><th>Obs. Back</th><th>Hora asig.</th>
+              <th>Estado</th><th>Observación asesor</th><th>Acción</th>
             </tr>
           </thead>
           <tbody>
             {clientes.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
-                  Esperando asignación del Back Office...<br />
-                  <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>El Back Office asignará registros a tu usuario.</span>
+                <td colSpan={10} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
+                  Esperando asignación de Back Data...<br />
+                  <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>Back Data asignará registros a tu usuario.</span>
                 </td>
               </tr>
             ) : clientes.map((c, i) => (
               <tr key={c.id || i}>
-                <td>{c.telefono}</td>
-                <td>{c.n2 || '--'}</td>
+                <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
+                <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
+                <td><span className={`dash-contacto ${c.tipoContacto==='WHATSAPP'?'wsp':'llamada'}`}>{c.tipoContacto==='WHATSAPP'?'WhatsApp':'Llamada'}</span></td>
                 <td>{c.zona}</td>
+                <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
+                <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
                 <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
                 <td><span className={`badge-estado ${colorEstado(c.estado)}`}>{c.estado}</span></td>
                 <td>
@@ -712,12 +852,19 @@ export default function Dashboard() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* ── RENDIMIENTO ────────────────────────────────────────────────── */}
       <div className={`pantalla${tab !== 'rendimiento' ? ' hidden' : ''}`}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px',flexWrap:'wrap',gap:'12px'}}>
-          <h2 style={{marginBottom:0}}>Mi rendimiento</h2>
+          <div>
+            <h2 style={{marginBottom:'5px'}}>Mi rendimiento</h2>
+            <span style={{display:'inline-flex',alignItems:'center',gap:'6px',fontSize:'11px',fontWeight:700,color:'#16a34a'}}>
+              <span style={{width:'7px',height:'7px',borderRadius:'50%',background:'#22c55e',boxShadow:'0 0 0 4px rgba(34,197,94,.12)'}} />
+              En vivo · actualizado {ultimaSyncTexto}
+            </span>
+          </div>
           <div style={{display:'flex',alignItems:'center',gap:'8px',background:'#fff',padding:'10px 14px',borderRadius:'12px',border:'1px solid #e5e7eb',flexWrap:'wrap'}}>
             <span style={{fontSize:'11px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px'}}>Período:</span>
             <input type="date" value={grafDesde} onChange={e => { setGrafDesde(e.target.value); grafRef.current.desde = e.target.value }}
@@ -732,7 +879,7 @@ export default function Dashboard() {
             <button onClick={() => {
               const h = fechaHoy(); setGrafDesde(h); setGrafHasta(h)
               grafRef.current = { desde:h, hasta:h }
-              setTimeout(aplicarFiltroGrafico, 0)
+              setTimeout(() => sincronizarGraficos(ventasRef.current), 0)
             }}
               style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:'7px',background:'#fff',color:'#6b7280',fontSize:'11px',fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>
               Hoy
@@ -756,15 +903,15 @@ export default function Dashboard() {
 
         <div className="rend-graficos">
           <div className="rend-card">
-            <div className="rend-card-title">Ventas diarias</div>
+            <div className="rend-card-title">Ventas diarias · período seleccionado</div>
             <div className="rend-chart-wrap"><canvas ref={canvasDiario} /></div>
           </div>
           <div className="rend-card">
-            <div className="rend-card-title">Ventas semanales</div>
+            <div className="rend-card-title">Semanas del mes · {mesGrafico}</div>
             <div className="rend-chart-wrap"><canvas ref={canvasSemanal} /></div>
           </div>
           <div className="rend-card rend-card-full">
-            <div className="rend-card-title">Ventas mensuales</div>
+            <div className="rend-card-title">Ventas mensuales · {anioGrafico}</div>
             <div className="rend-chart-wrap"><canvas ref={canvasMensual} /></div>
           </div>
         </div>
@@ -829,7 +976,7 @@ export default function Dashboard() {
               ) : ventasMostradas.map((v, i) => (
                 <tr key={v.id || i}>
                   <td><BadgeVS e={v.estado} /></td>
-                  <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{(v.created_at||'-').split(' ')[0]}</td>
+                  <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>
                   <td style={{fontFamily:'monospace',fontSize:'11px'}}>{v.dni||'-'}</td>
@@ -932,7 +1079,6 @@ export default function Dashboard() {
             <h3 style={{fontSize:'16px',fontWeight:700,color:'#111827',borderBottom:'1px solid #f3f4f6',paddingBottom:'10px',marginBottom:'4px'}}>
               Venta Cerrada
             </h3>
-            <p style={{fontSize:'12px',color:'#9ca3af',marginBottom:'16px'}}>Ingresa el documento del cliente para registrar la venta.</p>
             <div style={{display:'flex',flexDirection:'column',gap:'4px',marginBottom:'12px'}}>
               <label style={{fontSize:'10px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px'}}>Tipo de documento</label>
               <select value={mvTipoDoc} onChange={e => setMvTipoDoc(e.target.value)}
@@ -947,9 +1093,9 @@ export default function Dashboard() {
                 {mvTipoDoc === 'DNI' ? 'Número de DNI' : mvTipoDoc === 'CE' ? 'Número de Carnet de Extranjería' : 'Número de RUC'}
               </label>
               <input
-                placeholder="Ingresa el número de documento" maxLength={15}
+                placeholder="" maxLength={15}
                 value={mvDni} onChange={e => { setMvDni(e.target.value); setMvDniError(false) }}
-                style={{padding:'10px 12px',border:`1.5px solid ${mvDniError ? '#ef4444':'#e5e7eb'}`,borderRadius:'8px',fontSize:'15px',fontFamily:'monospace',outline:'none',background:'#fafafa',color:'#111827',letterSpacing:'2px',transition:'border .2s'}}
+                style={{padding:'10px 12px',border:`1.5px solid ${mvDniError ? '#ef4444':'#e5e7eb'}`,borderRadius:'8px',fontSize:'15px',fontFamily:'monospace',outline:'none',background:'#fff',color:'#111827',letterSpacing:'2px',transition:'border .2s'}}
               />
             </div>
             <button onClick={irANuevaVentaDesdeModal}
@@ -1235,3 +1381,4 @@ export default function Dashboard() {
     </div>
   )
 }
+
