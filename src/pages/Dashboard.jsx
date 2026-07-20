@@ -952,7 +952,7 @@ export default function Dashboard() {
                 {mvTipoDoc === 'DNI' ? 'Número de DNI' : mvTipoDoc === 'CE' ? 'Número de Carnet de Extranjería' : 'Número de RUC'}
               </label>
               <input
-                placeholder="Ingresa el número de documento" maxLength={15}
+                placeholder="" maxLength={15}
                 value={mvDni} onChange={e => { setMvDni(e.target.value); setMvDniError(false) }}
                 style={{padding:'10px 12px',border:`1.5px solid ${mvDniError ? '#ef4444':'#e5e7eb'}`,borderRadius:'8px',fontSize:'15px',fontFamily:'monospace',outline:'none',background:'#fafafa',color:'#111827',letterSpacing:'2px',transition:'border .2s'}}
               />
