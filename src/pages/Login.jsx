@@ -47,6 +47,7 @@ export default function Login() {
   const [errorKey, setErrorKey] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [welcome, setWelcome] = useState(null);
+  const [seleccionCargo, setSeleccionCargo] = useState(null);
 
   const passRef = useRef(null);
   const userRef = useRef(null);
@@ -112,13 +113,21 @@ export default function Login() {
     setTimeout(() => navigate(ruta, { replace: true }), 2200);
   };
 
-  /* ===== LOGIN ===== */
-  const doLogin = async (e) => {
-    if (e) e.preventDefault();
+  const completarLogin = (data) => {
+    sessionStorage.setItem("nc_token", data.token);
+    sessionStorage.setItem("nc_usuario", JSON.stringify(data.usuario));
+    localStorage.removeItem("nc_token");
+    localStorage.removeItem("nc_usuario");
+    setSeleccionCargo(null);
+    mostrarBienvenida(data.usuario);
+  };
+
+  /* ===== LOGIN Y SELECCIÓN DE CARGO ===== */
+  const autenticar = async (cargoActivo = null) => {
     setError("");
 
     const u = usuario.trim().toLowerCase();
-    const p = password.trim();
+    const p = password;
 
     if (!u) { mostrarError("Ingresa tu usuario."); return; }
     if (!p) { mostrarError("Ingresa tu contraseña."); return; }
@@ -128,7 +137,7 @@ export default function Login() {
       const res = await fetch(`${API}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario: u, password: p }),
+        body: JSON.stringify({ usuario: u, password: p, ...(cargoActivo ? { cargoActivo } : {}) }),
       });
       const data = await res.json();
 
@@ -138,17 +147,23 @@ export default function Login() {
         return;
       }
 
-      sessionStorage.setItem("nc_token", data.token);
-      sessionStorage.setItem("nc_usuario", JSON.stringify(data.usuario));
-      localStorage.removeItem("nc_token");
-      localStorage.removeItem("nc_usuario");
+      if (data.requiereSeleccionCargo) {
+        setSeleccionCargo({ cargos: data.cargos || [], nombre: data.usuario?.nombre || u });
+        setCargando(false);
+        return;
+      }
 
-      mostrarBienvenida(data.usuario);
+      completarLogin(data);
     } catch (err) {
       console.error("Error de conexión:", err);
       mostrarError("No se pudo conectar al servidor. ¿Está corriendo el backend?");
       setCargando(false);
     }
+  };
+
+  const doLogin = async (e) => {
+    if (e) e.preventDefault();
+    await autenticar();
   };
 
   /* ===== PANTALLA DE TRANSICIÓN (blanca) ===== */
@@ -197,6 +212,45 @@ export default function Login() {
         </div>
 
         <div className={styles.content}>
+          {seleccionCargo ? (
+            <>
+              <h2 className={styles.saludo}>Elige cómo ingresar</h2>
+              <p className={styles.roleSubtitle}>
+                {seleccionCargo.nombre}, selecciona el cargo que usarás en esta sesión.
+              </p>
+
+              {error && <div key={errorKey} className={styles.errorMsg}>{error}</div>}
+
+              <div className={styles.roleList}>
+                {seleccionCargo.cargos.map((cargo) => (
+                  <button
+                    type="button"
+                    key={cargo}
+                    className={styles.roleButton}
+                    disabled={cargando}
+                    onClick={() => autenticar(cargo)}
+                  >
+                    <span className={styles.roleIcon}>{(CARGO_LABELS[cargo] || cargo).slice(0, 1)}</span>
+                    <span>
+                      <strong>{CARGO_LABELS[cargo] || cargo}</strong>
+                      <small>Abrir este módulo</small>
+                    </span>
+                    <b>→</b>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={() => { setSeleccionCargo(null); setError(""); }}
+                disabled={cargando}
+              >
+                Volver al inicio de sesión
+              </button>
+            </>
+          ) : (
+            <>
           <h2 className={styles.saludo}>{saludoTxt}</h2>
           <p className={styles.nombreUsuario}>{nombreTxt}</p>
 
@@ -257,6 +311,8 @@ export default function Login() {
               {cargando ? "Verificando..." : "Iniciar sesión"}
             </button>
           </form>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import MediaViewer from '../components/MediaViewer'
+import { HistorialVentaModal, ReasignarVentaModal } from '../components/VentaAssignmentModal'
 import { API, ncHeaders } from '../services/api'
+import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
 import Chart from 'chart.js/auto'
 import '../styles/jefatura.css'
 
@@ -13,7 +16,7 @@ const JEF_SEG_FILTRO_KEY   = 'nc_jefatura_seg_filtro'
 const CARGOS = [
   { id:'asesor',         label:'Asesor',           cls:'bc-asesor'         },
   { id:'supervisor',     label:'Supervisor',        cls:'bc-supervisor'     },
-  { id:'backoffice',     label:'Back Office',       cls:'bc-backoffice'     },
+  { id:'backoffice',     label:'Back Data',         cls:'bc-backoffice'     },
   { id:'validacion',     label:'Validación',        cls:'bc-validacion'     },
   { id:'grabaciones',    label:'Grabaciones',       cls:'bc-grabaciones'    },
   { id:'seguimiento',    label:'Seguimiento',       cls:'bc-seguimiento'    },
@@ -22,7 +25,7 @@ const CARGOS = [
   { id:'programacion',   label:'Programación',      cls:'bc-programacion'   },
   { id:'supgrabaciones', label:'Sup. Grabaciones',  cls:'bc-supgrabaciones' },
 ]
-const SALAS = ['SALA 1','SALA 2','SALA 3','SIN SALA']
+const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
 
 const SEG_MAP = {
   aprobado:'ejecucion',programado:'ejecucion',en_ejecucion:'ejecucion',
@@ -39,16 +42,31 @@ const SEG_BADGES = {
 const SEG_ORD = { caida:0, rechazo:1, tecnico:2, ejecucion:3, instalado:4 }
 
 const ACCESOS_MODS = [
-  { nombre:'Back Office',      desc:'Gestión de leads',             icon:'📋', path:'/backoffice',      color:'#111827' },
-  { nombre:'Validación',       desc:'Validar ventas',               icon:'✅', path:'/validacion',      color:'#d97706' },
-  { nombre:'Grabaciones',      desc:'Control de grabaciones',       icon:'🎙️', path:'/grabaciones',    color:'#16a34a' },
-  { nombre:'Seguimiento',      desc:'Post-venta y estados',         icon:'📡', path:'/seguimiento',     color:'#0891b2' },
-  { nombre:'Supervisor',       desc:'Portal supervisores',          icon:'👔', path:'/supervisor',      color:'#7C3AED' },
-  { nombre:'Dashboard CRM',    desc:'Vista del asesor',             icon:'📊', path:'/dashboard',       color:'#2563eb' },
-  { nombre:'Gestión Usuarios', desc:'Administrar usuarios',         icon:'👥', path:'/usuarios',        color:'#db2777' },
-  { nombre:'Programación',     desc:'Ventas aprobadas grabaciones', icon:'📅', path:'/programacion',    color:'#7C3AED' },
-  { nombre:'Sup. Grabaciones', desc:'Supervisor grabaciones',       icon:'🎧', path:'/sup-grabaciones', color:'#16a34a' },
+  { nombre:'Back Data',        desc:'Gestión y asignación de leads', icon:'clipboard', path:'/backoffice',      color:'#dc3545', cargo:'backoffice' },
+  { nombre:'Validación',       desc:'Control y revisión de ventas',  icon:'shield',    path:'/validacion',      color:'#059669', cargo:'validacion' },
+  { nombre:'Grabaciones',      desc:'Auditoría de llamadas',         icon:'mic',       path:'/grabaciones',     color:'#0f766e', cargo:'grabaciones' },
+  { nombre:'Seguimiento',      desc:'Seguimiento postventa',         icon:'activity',  path:'/seguimiento',     color:'#0284c7', cargo:'seguimiento' },
+  { nombre:'Supervisor',       desc:'Gestión de equipos y salas',    icon:'briefcase', path:'/supervisor',      color:'#7c3aed', cargo:'supervisor' },
+  { nombre:'Dashboard CRM',    desc:'Panel individual del asesor',   icon:'chart',     path:'/dashboard',       color:'#2563eb', cargo:'asesor' },
+  { nombre:'Gestión Usuarios', desc:'Administración de accesos',     icon:'users',     path:'/usuarios',        color:'#be185d', cargo:'usuarios' },
+  { nombre:'Programación',     desc:'Agenda de instalaciones',       icon:'calendar',  path:'/programacion',    color:'#c2410c', cargo:'programacion' },
+  { nombre:'Sup. Grabaciones', desc:'Supervisión del equipo de audio',icon:'headphones',path:'/sup-grabaciones',color:'#047857', cargo:'supgrabaciones' },
 ]
+
+function ModuloIcon({ tipo, size = 24 }) {
+  const trazos = {
+    clipboard: <><rect x="7" y="4.5" width="10" height="15" rx="2.3"/><path d="M10 8.5h4M10 12h4M10 15.5h4"/></>,
+    shield: <><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>,
+    mic: <><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/></>,
+    activity: <><path d="M3 12h4l2.2-5 4.1 10 2.2-5H21"/><circle cx="12" cy="12" r="9"/></>,
+    briefcase: <><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></>,
+    chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="m4 7 5-3 6 5 5-4"/></>,
+    users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/></>,
+    headphones: <><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M18 19h-2v-7h4v5a2 2 0 0 1-2 2ZM6 19H4a2 2 0 0 1-2-2v-5h4v7Z"/></>,
+  }
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{display:'block', margin:'auto', flex:'0 0 auto'}}>{trazos[tipo] || trazos.activity}</svg>
+}
 
 /* ── helpers puros ── */
 function fechaHoy()    { return new Date().toISOString().split('T')[0] }
@@ -61,9 +79,60 @@ function iniciales(n)  { return n.trim().split(' ').slice(0,2).map(p=>p[0]).join
 function mapSeg(e)     { const s=(e||'').toLowerCase(); if(s.includes('tecnico'))return'tecnico'; if(s.includes('rechazo'))return'rechazo'; if(s.includes('ejecucion'))return'ejecucion'; return SEG_MAP[s]||null }
 function efColor(v)    { return v>=70?'#16a34a':v>=40?'#d97706':'#dc2626' }
 function efBg(v)       { return v>=70?'#d1fae5':v>=40?'#fef3c7':'#fee2e2' }
+function normEstado(v) {
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda'])
+const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
+const FLUJO_SEGUIMIENTO = new Set(['programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
+function flujoTieneAudio(v) {
+  return Boolean(v?.audio || v?.audio_url || v?.archivo_audio || v?.archivoAudio || v?.grabacion || v?.grabacion_url || v?.audio_path)
+}
+function flujoNoValidada(v) { return FLUJO_NO_VALIDA.has(normEstado(v?.estado || v?.estado_venta)) }
+function flujoValidada(v) {
+  const e = normEstado(v?.estado || v?.estado_venta)
+  return Boolean(e) && e !== 'venta' && !flujoNoValidada(v)
+}
+function flujoGrabada(v) { return FLUJO_GRABADA.has(normEstado(v?.estado || v?.estado_venta)) || flujoTieneAudio(v) }
+function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
+function flujoLabelEstado(estado) {
+  const e = normEstado(estado)
+  return ({
+    venta:'Venta subida',
+    validado:'Validada',
+    validada:'Validada',
+    no_validado:'No validada',
+    grabado:'Grabada',
+    grabada:'Grabada',
+    aprobado:'Grabada',
+    observado:'Observada',
+    en_revision:'En revisión',
+    programado:'Programada',
+    en_ejecucion:'En ejecución',
+    instalado:'Instalada',
+    caida:'Caída',
+    rechazo_campo:'Rechazo campo',
+    tecnico_casa:'Técnico en casa',
+    corta_llamada:'Corta llamada',
+    fraude:'Fraude',
+    no_desea:'No desea',
+    no_contesta:'No contesta',
+    servicio_activo:'Servicio activo',
+    bloqueado:'Bloqueado',
+    zona_restringida:'Zona restringida',
+    caracter_especial:'Carácter especial',
+    sin_agenda:'Sin agenda',
+  })[e] || (estado || 'Venta subida')
+}
 
 const MEDALS = ['🥇','🥈','🥉']
-const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', sala:'', pass:'', pass2:'' }
+const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', pass:'', pass2:'' }
 
 export default function Jefatura() {
   const navigate = useNavigate()
@@ -79,6 +148,7 @@ export default function Jefatura() {
 
   /* data */
   const [usuarios,    setUsuarios]    = useState([])
+  const [usuariosCarga, setUsuariosCarga] = useState({ cargando:true, error:'' })
   const [ventasCache, setVentasCache] = useState([])
   const [ventasSeg,   setVentasSeg]   = useState([])
 
@@ -92,6 +162,8 @@ export default function Jefatura() {
   })
   const [mesReporte, setMesReporte] = useState('')
   const [busqUsuarios, setBusqUsuarios] = useState('')
+  const [filtroFlujoVentas, setFiltroFlujoVentas] = useState('todas')
+  const [busqFlujoVentas, setBusqFlujoVentas] = useState('')
 
   /* logs */
   const [logs, setLogs] = useState(() => {
@@ -106,6 +178,12 @@ export default function Jefatura() {
   const [guardandoUsu,setGuardandoUsu]= useState(false)
   const [modalEliminar, setModalEliminar] = useState(null)
   const [eliminandoUsu, setEliminandoUsu] = useState(false)
+
+  /* selector de usuario por módulo */
+  const [selectorModulo, setSelectorModulo] = useState({ open:false, modulo:null, buscar:'' })
+  const [mediaVenta, setMediaVenta] = useState(null)
+  const [ventaReasignar, setVentaReasignar] = useState(null)
+  const [ventaHistorial, setVentaHistorial] = useState(null)
 
   /* charts */
   const canvasEstados = useRef(null)
@@ -134,11 +212,25 @@ export default function Jefatura() {
 
   /* ── carga de datos ── */
   const cargarUsuarios = useCallback(async () => {
+    setUsuariosCarga({ cargando:true, error:'' })
     try {
       const res  = await fetch(`${API}/usuarios`, { headers: ncHeaders() })
-      const data = await res.json()
-      if (data.ok) setUsuarios(data.data)
-    } catch { mostrarToast('❌ Error conectando al servidor') }
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        sessionStorage.removeItem('nc_token')
+        sessionStorage.removeItem('nc_usuario')
+        window.location.replace('/login')
+        return
+      }
+      if (!res.ok || !data.ok) {
+        setUsuariosCarga({ cargando:false, error:data.mensaje || 'No se pudo cargar la lista de usuarios.' })
+        return
+      }
+      setUsuarios(Array.isArray(data.data) ? data.data : [])
+      setUsuariosCarga({ cargando:false, error:'' })
+    } catch {
+      setUsuariosCarga({ cargando:false, error:'No fue posible conectar con la API. Los usuarios no han sido eliminados.' })
+    }
   }, [])
 
   const cargarVentasCache = useCallback(async () => {
@@ -161,6 +253,30 @@ export default function Jefatura() {
       }
     } catch { console.error('Error seguimiento') }
   }, [])
+
+  async function completarReasignacion(data) {
+    const venta = ventaReasignar
+    setVentaReasignar(null)
+    await Promise.all([cargarSeguimiento(), cargarVentasCache()])
+    agregarLog('Venta reasignada', data?.mensaje || `Venta ${venta?.id || ''}`)
+    mostrarToast(data?.mensaje || 'Venta reasignada correctamente')
+  }
+
+  async function eliminarVenta(venta) {
+    const cliente = venta?.nombre || `venta ${venta?.id}`
+    if (!window.confirm(`¿Eliminar definitivamente la venta de ${cliente}? Esta acción no se puede deshacer.`)) return
+    try {
+      const res = await fetch(`${API}/ventas/${venta.id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar la venta.')
+      setVentasSeg(prev => prev.filter(item => item.id !== venta.id))
+      setVentasCache(prev => prev.filter(item => item.id !== venta.id))
+      agregarLog('Venta eliminada', `${cliente} · DNI ${venta?.dni || '—'}`)
+      mostrarToast('Venta eliminada correctamente')
+    } catch (error) {
+      mostrarToast(error.message || 'Error de conexión')
+    }
+  }
 
   /* mount */
   useEffect(() => {
@@ -213,7 +329,7 @@ export default function Jefatura() {
       destroy('salas')
       const mesUsar   = mesReporte || mesActual()
       const ventasMes = ventasCache.filter(v => v._fecha && v._fecha.startsWith(mesUsar))
-      const salas     = ['SALA 1','SALA 2','SALA 3']
+      const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&(v.estado||'').toLowerCase()==='instalado').length
@@ -237,8 +353,8 @@ export default function Jefatura() {
       destroy('diario')
       const dias = []
       for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().split('T')[0]) }
-      const salas  = ['SALA 1','SALA 2','SALA 3']
-      const colors = ['#3b82f6','#8b5cf6','#22c55e']
+      const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
+      const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e']
       const datasets = salas.map((s,i) => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return { label:s, data:dias.map(d=>ventasCache.filter(v=>v._fecha===d&&nombres.includes(v.asesor_nombre||'')).length), borderColor:colors[i], backgroundColor:colors[i]+'22', fill:true, tension:.4, borderWidth:2, pointRadius:4 }
@@ -282,10 +398,52 @@ export default function Jefatura() {
       conv:          efect+'%',
       totalUs:       usuarios.length,
       activos:       usuarios.filter(u=>u.activo).length,
-      asesores:      usuarios.filter(u=>u.cargo==='asesor'&&u.activo).length,
-      supervisores:  usuarios.filter(u=>u.cargo==='supervisor'&&u.activo).length,
+      asesores:      usuarios.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo).length,
+      supervisores:  usuarios.filter(u=>usuarioTieneCargo(u,'supervisor')&&u.activo).length,
     }
   }, [ventasCache, usuarios])
+
+  /* ── usuarios para el selector de accesos ── */
+  const usuariosModulo = useMemo(() => {
+    const modulo = selectorModulo.modulo
+    if (!modulo) return []
+    const buscar = selectorModulo.buscar.trim().toLowerCase()
+    return usuarios
+      .filter(u => usuarioTieneCargo(u, modulo.cargo))
+      .filter(u => !buscar || [u.nombre, u.usuario, u.sala].some(v => String(v || '').toLowerCase().includes(buscar)))
+      .sort((a, b) => Number(Boolean(b.activo)) - Number(Boolean(a.activo)) || String(a.nombre || '').localeCompare(String(b.nombre || '')))
+  }, [usuarios, selectorModulo])
+
+  function abrirSelectorModulo(modulo) {
+    setSelectorModulo({ open:true, modulo, buscar:'' })
+  }
+
+  function cerrarSelectorModulo() {
+    setSelectorModulo({ open:false, modulo:null, buscar:'' })
+  }
+
+  function entrarModulo(modulo, usuario) {
+    const objetivo = {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      usuario: usuario.usuario,
+      cargo: modulo.cargo,
+      cargoPrincipal: usuario.cargo,
+      cargos: [usuario.cargo, ...permisosDeUsuario(usuario)],
+      permisos: permisosDeUsuario(usuario),
+      sala: usuario.sala || '',
+      path: modulo.path,
+    }
+    sessionStorage.setItem('nc_jefatura_usuario_objetivo', JSON.stringify(objetivo))
+    if (modulo.cargo === 'asesor') {
+      sessionStorage.setItem('nc_dashboard_asesor_objetivo', JSON.stringify(objetivo))
+    } else {
+      sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
+    }
+    agregarLog('Acceso a módulo', `${modulo.nombre}: ${usuario.nombre}`)
+    cerrarSelectorModulo()
+    navigate(modulo.path)
+  }
 
   /* ── seguimiento ── */
   const ventasSegFiltradas = useMemo(() => {
@@ -302,9 +460,44 @@ export default function Jefatura() {
     tecnico:   ventasSeg.filter(v=>v._seg==='tecnico').length,
   }), [ventasSeg])
 
+  /* ── flujo general de ventas ── */
+  const resumenFlujoVentas = useMemo(() => ({
+    todas: ventasCache.length,
+    validadas: ventasCache.filter(flujoValidada).length,
+    noValidadas: ventasCache.filter(flujoNoValidada).length,
+    grabadas: ventasCache.filter(flujoGrabada).length,
+    noGrabadas: ventasCache.filter(flujoNoGrabada).length,
+    seguimiento: ventasCache.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta))).length,
+  }), [ventasCache])
+
+  const ventasFlujoFiltradas = useMemo(() => {
+    let lista = [...ventasCache]
+    if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
+    if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
+    if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
+    if (filtroFlujoVentas === 'noGrabadas') lista = lista.filter(flujoNoGrabada)
+    if (filtroFlujoVentas === 'seguimiento') {
+      lista = lista.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)))
+    }
+
+    const b = busqFlujoVentas.trim().toLowerCase()
+    if (b) {
+      lista = lista.filter(v => [
+        v.nombre, v.nombre_apellidos, v.cliente, v.dni, v.documento, v.telefono, v.n1, v.n2,
+        v.asesor_nombre, v.asesor, v.vendedor, v.sala, v.estado, v.estado_venta, v.distrito
+      ].some(x => String(x || '').toLowerCase().includes(b)))
+    }
+
+    return lista.sort((a, b) => {
+      const fb = String(b._fecha || b.fecha_ingreso || b.fecha || b.created_at || '')
+      const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
+      return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
+    })
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas])
+
   /* ── reportes ── */
   const { reporteData, repKpis } = useMemo(() => {
-    let asesFilt = usuarios.filter(u=>u.cargo==='asesor')
+    let asesFilt = usuarios.filter(u=>usuarioTieneCargo(u,'asesor'))
     if (salaReporte !== 'todas') asesFilt = asesFilt.filter(u=>u.sala===salaReporte)
     let ventasFilt = ventasCache
     if (salaReporte !== 'todas') {
@@ -337,18 +530,20 @@ export default function Jefatura() {
   }
   function abrirModalEditar(u) {
     setEditandoId(u.id)
-    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', sala:u.sala||'', pass:'', pass2:'' })
+    const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo) || ''
+    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, sala:u.sala||'', pass:'', pass2:'' })
     setModErrores({}); setModalUsu(true)
   }
   function cerrarModalUsu() { setModalUsu(false); setEditandoId(null); setModForm(MOD_FORM_VACIO); setModErrores({}) }
   function setField(k, v) { setModForm(f=>({...f,[k]:v})); setModErrores(e=>({...e,[k]:false})) }
 
   async function guardarUsuario() {
-    const { nombre, usuario, cargo, sala, pass, pass2 } = modForm
+    const { nombre, usuario, cargo, cargo2, sala, pass, pass2 } = modForm
     const errs = {}
     if (!nombre.trim())         errs.nombre  = true
     if (!usuario.trim())        errs.usuario = true
     if (!cargo)                 errs.cargo   = true
+    if (cargo2 && cargo2 === cargo) errs.cargo2 = true
     if (!editandoId && !pass)   errs.pass    = true
     if (pass && pass !== pass2) errs.pass2   = true
     if (Object.keys(errs).length) { setModErrores(errs); mostrarToast('⚠️ Completa los campos requeridos'); return }
@@ -356,7 +551,7 @@ export default function Jefatura() {
     try {
       const loginNorm = usuario.toLowerCase().replace(/\s+/g,'.')
       if (editandoId) {
-        const body = { nombre, usuario:loginNorm, cargo, sala }
+        const body = { nombre, usuario:loginNorm, cargo, sala, permisos:cargo2 ? [cargo2] : [] }
         if (pass) body.password = pass
         const res  = await fetch(`${API}/usuarios/${editandoId}`,{method:'PATCH',headers:ncHeaders(),body:JSON.stringify(body)})
         const data = await res.json()
@@ -364,7 +559,7 @@ export default function Jefatura() {
         agregarLog('Usuario editado', nombre)
         mostrarToast(`✅ Usuario actualizado: ${nombre}`)
       } else {
-        const res  = await fetch(`${API}/usuarios`,{method:'POST',headers:ncHeaders(),body:JSON.stringify({nombre,usuario:loginNorm,password:pass,cargo,sala,activo:true})})
+        const res  = await fetch(`${API}/usuarios`,{method:'POST',headers:ncHeaders(),body:JSON.stringify({nombre,usuario:loginNorm,password:pass,cargo,sala,activo:true,permisos:cargo2 ? [cargo2] : []})})
         const data = await res.json()
         if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'Error')); setGuardandoUsu(false); return }
         agregarLog('Usuario creado', `${nombre} — ${cargo}`)
@@ -391,7 +586,7 @@ export default function Jefatura() {
   async function confirmarEliminarUsuario() {
     if (!modalEliminar || eliminandoUsu) return
     if (modalEliminar.cargo === 'jefatura') {
-      const jefActivas = usuarios.filter(u => u.cargo === 'jefatura' && u.activo)
+      const jefActivas = usuarios.filter(u => usuarioTieneCargo(u, 'jefatura') && u.activo)
       if (jefActivas.length <= 1) {
         mostrarToast('⚠️ No puedes eliminar el último usuario de Jefatura')
         return
@@ -472,6 +667,7 @@ export default function Jefatura() {
           <button className={`nav-btn${seccion==='dashboard'?'   active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot"></span> Dashboard</button>
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
           <div className="sidebar-sep">Operaciones</div>
+          <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
           <button className={`nav-btn${seccion==='seguimiento'?' active':''}`} onClick={()=>irSeccion('seguimiento')}><span className="nav-dot"></span> Seguimiento en campo</button>
           <div className="sidebar-sep">Gestión</div>
           <button className={`nav-btn${seccion==='usuarios'?'   active':''}`} onClick={()=>irSeccion('usuarios')}><span className="nav-dot"></span> Usuarios</button>
@@ -496,6 +692,7 @@ export default function Jefatura() {
             <div className="sec-header">
               <div><h2>Dashboard General</h2><p>Resumen global del sistema</p></div>
             </div>
+
             <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))'}}>
               <div className="kpi-card k-blue">  <div className="kpi-num">{kpis.ventasHoy}</div>     <div className="kpi-label">Ventas hoy</div>         <div className="kpi-sub">del día</div></div>
               <div className="kpi-card k-purple"><div className="kpi-num">{kpis.validadas}</div>     <div className="kpi-label">Validadas</div>          <div className="kpi-sub">pasaron validación</div></div>
@@ -541,13 +738,31 @@ export default function Jefatura() {
           <section className={`section${seccion==='accesos'?' active':''}`}>
             <div className="sec-header"><div><h2>Accesos Directos</h2><p>Navega a cualquier módulo del sistema</p></div></div>
             <div className="accesos-grid">
-              {ACCESOS_MODS.map(m => (
-                <Link key={m.path} className="acceso-card" to={m.path}>
-                  <div className="acceso-icon" style={{background:m.color+'22'}}>{m.icon}</div>
-                  <div className="acceso-nombre">{m.nombre}</div>
-                  <div className="acceso-desc">{m.desc}</div>
-                </Link>
-              ))}
+              {ACCESOS_MODS.map(m => {
+                const cantidad = usuarios.filter(u=>usuarioTieneCargo(u,m.cargo)).length
+                return (
+                  <button
+                    key={m.path}
+                    type="button"
+                    className="acceso-card"
+                    style={{'--mod-color':m.color,'--mod-soft':m.color+'12'}}
+                    onClick={()=>abrirSelectorModulo(m)}
+                  >
+                    <div className="acceso-card-head">
+                      <div className="acceso-icon"><ModuloIcon tipo={m.icon} size={24}/></div>
+                      <span className="acceso-conteo">{cantidad} {cantidad===1?'usuario':'usuarios'}</span>
+                    </div>
+                    <div className="acceso-card-body">
+                      <div className="acceso-nombre">{m.nombre}</div>
+                      <div className="acceso-desc">{m.desc}</div>
+                    </div>
+                    <div className="acceso-card-foot">
+                      <span>Seleccionar usuario</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </section>
 
@@ -580,7 +795,7 @@ export default function Jefatura() {
                 </button>
               ))}
             </div>
-            <div className="tabla-wrap">
+            <div className="tabla-wrap usuarios-pro-card">
               <div className="tabla-header">
                 <span className="tabla-title">Ventas en seguimiento</span>
                 <span className="tabla-count">{ventasSegFiltradas.length} registros</span>
@@ -589,11 +804,11 @@ export default function Jefatura() {
                 <table className="tabla">
                   <thead><tr>
                     <th>Estado</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
-                    <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Tramo</th><th>Motivo / Obs.</th>
+                    <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Tramo</th><th>Motivo / Obs.</th><th>Acciones</th>
                   </tr></thead>
                   <tbody>
                     {ventasSegFiltradas.length === 0
-                      ? <tr><td colSpan="10" className="tabla-empty">Sin registros.</td></tr>
+                      ? <tr><td colSpan="11" className="tabla-empty">Sin registros.</td></tr>
                       : ventasSegFiltradas.map((v, i) => {
                           const b = SEG_BADGES[v._seg] || SEG_BADGES.ejecucion
                           const motivo = v.obs_backoffice || v.observacion || '—'
@@ -609,10 +824,122 @@ export default function Jefatura() {
                               <td style={{fontSize:'10px',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.paquete||'—'}</td>
                               <td style={{fontSize:'11px',textAlign:'center'}}>{v._tramo||'—'}</td>
                               <td style={{fontSize:'10px',color:'#6b7280',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={motivo}>{motivo}</td>
+                              <td style={{minWidth:'310px'}}>
+                                <div className="venta-actions">
+                                  <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
+                                  <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
+                                  <button type="button" className="venta-action-btn" onClick={()=>setVentaHistorial(v)}>Historial</button>
+                                  <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v)}>Eliminar</button>
+                                </div>
+                              </td>
                             </tr>
                           )
                         })
                     }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== VENTAS GENERALES ===== */}
+          <section className={`section${seccion==='ventas-flujo'?' active':''}`}>
+            <div className="sec-header">
+              <div>
+                <h2>Ventas generales</h2>
+                <p>Flujo completo desde que el asesor sube la venta. Seguimiento en campo queda en su apartado.</p>
+              </div>
+              <button className="btn-nuevo" onClick={cargarVentasCache}>↻ Actualizar</button>
+            </div>
+
+            <div className="flujo-kpi-grid">
+              {[
+                { id:'todas', label:'Ventas generales', sub:'subidas por asesores', value:resumenFlujoVentas.todas, cls:'k-blue' },
+                { id:'validadas', label:'Validadas', sub:'pasaron validación', value:resumenFlujoVentas.validadas, cls:'k-green' },
+                { id:'noValidadas', label:'No validadas', sub:'rechazadas / no aptas', value:resumenFlujoVentas.noValidadas, cls:'k-red' },
+                { id:'grabadas', label:'Grabadas', sub:'con audio aprobado o subido', value:resumenFlujoVentas.grabadas, cls:'k-orange' },
+                { id:'noGrabadas', label:'No grabadas', sub:'esperando audio', value:resumenFlujoVentas.noGrabadas, cls:'k-purple' },
+                { id:'seguimiento', label:'En seguimiento', sub:'postventa / campo', value:resumenFlujoVentas.seguimiento, cls:'k-teal' },
+              ].map(card => (
+                <button
+                  type="button"
+                  key={card.id}
+                  className={`kpi-card flujo-kpi ${card.cls} ${filtroFlujoVentas===card.id?'active':''}`}
+                  onClick={()=>setFiltroFlujoVentas(card.id)}
+                >
+                  <div className="kpi-num">{card.value}</div>
+                  <div className="kpi-label">{card.label}</div>
+                  <div className="kpi-sub">{card.sub}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flujo-panel">
+              <div>
+                <h3>Vista completa del flujo</h3>
+                <p>Acá se ve cada venta desde carga del asesor, validación, grabación y estado final.</p>
+              </div>
+              <input
+                className="tabla-search flujo-search"
+                value={busqFlujoVentas}
+                onChange={e=>setBusqFlujoVentas(e.target.value)}
+                placeholder="Buscar cliente, DNI, asesor, sala..."
+              />
+            </div>
+
+            <div className="tabla-wrap usuarios-pro-card flujo-tabla">
+              <div className="tabla-header">
+                <div className="tabla-header-left">
+                  <span className="tabla-title">Ventas desde carga del asesor</span>
+                  <span className="tabla-count">{ventasFlujoFiltradas.length} registros</span>
+                </div>
+                <button
+                  type="button"
+                  className="flujo-clear"
+                  onClick={() => { setFiltroFlujoVentas('todas'); setBusqFlujoVentas('') }}
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Fecha subida</th>
+                      <th>Cliente</th>
+                      <th>DNI</th>
+                      <th>Asesor</th>
+                      <th>Sala</th>
+                      <th>Estado actual</th>
+                      <th>Validación</th>
+                      <th>Grabación</th>
+                      <th>Seguimiento</th>
+                      <th>Última obs.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ventasFlujoFiltradas.length === 0 ? (
+                      <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
+                    ) : ventasFlujoFiltradas.map((v, i) => {
+                      const estado = normEstado(v.estado || v.estado_venta)
+                      const enSeg = FLUJO_SEGUIMIENTO.has(estado)
+                      return (
+                        <tr key={v.id || `${v.dni || v.documento || 'venta'}-${i}`}>
+                          <td>{i + 1}</td>
+                          <td>{formatF(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)}</td>
+                          <td className="flujo-cliente">{v.nombre || v.nombre_apellidos || v.cliente || '—'}</td>
+                          <td>{v.dni || v.documento || '—'}</td>
+                          <td>{v.asesor_nombre || v.asesor || v.vendedor || '—'}</td>
+                          <td>{v.sala || '—'}</td>
+                          <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
+                          <td>{flujoValidada(v) ? <span className="flujo-ok">Validada</span> : <span className="flujo-warn">Pendiente / no válida</span>}</td>
+                          <td>{flujoGrabada(v) ? <span className="flujo-ok">Grabada</span> : <span className="flujo-warn">Sin grabación</span>}</td>
+                          <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
+                          <td>{v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '—'}</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -629,18 +956,31 @@ export default function Jefatura() {
               <div className="tabla-header">
                 <div className="tabla-header-left">
                   <span className="tabla-title">Usuarios del sistema</span>
-                  <span className="tabla-count">{usuariosFiltrados.length} usuarios</span>
+                  <span className="tabla-count">
+                    {usuariosCarga.cargando ? 'Cargando...' : usuariosCarga.error ? 'Sin conexión' : `${usuariosFiltrados.length} usuarios`}
+                  </span>
                 </div>
                 <input type="text" className="tabla-search" value={busqUsuarios}
                   onChange={e=>setBusqUsuarios(e.target.value)} placeholder="🔍 Buscar usuario..." />
               </div>
-              <table className="tabla">
+              <table className="tabla tabla-usuarios-pro">
                 <thead><tr><th>Usuario</th><th>Cargo</th><th>Sala</th><th>Login</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody>
-                  {usuariosFiltrados.length === 0
-                    ? <tr><td colSpan="7" className="tabla-empty">No hay usuarios.</td></tr>
+                  {usuariosCarga.cargando
+                    ? <tr><td colSpan="7" className="tabla-empty">Cargando usuarios del sistema...</td></tr>
+                    : usuariosCarga.error
+                    ? <tr><td colSpan="7" className="tabla-empty">
+                        <div style={{display:'grid',justifyItems:'center',gap:9}}>
+                          <strong style={{color:'#dc2626'}}>No se pudo consultar la lista</strong>
+                          <span>{usuariosCarga.error}</span>
+                          <button type="button" className="btn-nuevo" onClick={cargarUsuarios}>Reintentar</button>
+                        </div>
+                      </td></tr>
+                    : usuariosFiltrados.length === 0
+                    ? <tr><td colSpan="7" className="tabla-empty">No hay usuarios que coincidan con la búsqueda.</td></tr>
                     : usuariosFiltrados.map(u => {
                         const c    = cargoObj(u.cargo)
+                        const cargo2 = permisosDeUsuario(u).find(rol => rol !== u.cargo)
                         const col  = colorAvatar(u.nombre)
                         const fecha= u.created_at ? u.created_at.split(' ')[0] : ''
                         const protegido = String(u.id) === String(sesion?.id)
@@ -652,7 +992,12 @@ export default function Jefatura() {
                                 <div><div style={{fontWeight:700,fontSize:'13px'}}>{u.nombre}</div><div style={{fontSize:'11px',color:'#9ca3af'}}>{u.usuario}</div></div>
                               </div>
                             </td>
-                            <td><span className={`badge-cargo ${c.cls}`}>{c.label}</span></td>
+                            <td>
+                              <div className="usuario-cargos">
+                                <span className={`badge-cargo ${c.cls}`}>{c.label}</span>
+                                {cargo2 && <span className={`badge-cargo ${cargoObj(cargo2).cls}`}>{cargoObj(cargo2).label}</span>}
+                              </div>
+                            </td>
                             <td style={{fontSize:'12px'}}>{u.sala||'—'}</td>
                             <td style={{fontFamily:'monospace',fontSize:'12px',color:'#6b7280'}}>{u.usuario}</td>
                             <td style={{fontSize:'11px',color:'#9ca3af'}}>{formatF(fecha)}</td>
@@ -681,12 +1026,15 @@ export default function Jefatura() {
           {/* ===== REPORTES ===== */}
           <section className={`section${seccion==='reportes'?' active':''}`}>
             <div className="sec-header"><div><h2>Reportes Globales</h2><p>Rendimiento por sala y asesor — solo asesores</p></div></div>
-            <div className="sala-tabs">
+            <div className="sala-tabs sala-tabs-pro">
               {[
                 { id:'todas', label:'Todas las salas' },
                 { id:'SALA 1', label:'Sala 1' },
                 { id:'SALA 2', label:'Sala 2' },
                 { id:'SALA 3', label:'Sala 3' },
+                { id:'SALA 4', label:'Sala 4' },
+                { id:'SALA CHANCAY', label:'Sala Chancay' },
+                { id:'SALA 5', label:'Sala 5' },
               ].map(tab => (
                 <button key={tab.id}
                   className={`sala-tab${salaReporte===tab.id?' active':''}`}
@@ -695,19 +1043,19 @@ export default function Jefatura() {
                 </button>
               ))}
             </div>
-            <div className="kpi-grid" style={{gridTemplateColumns:'repeat(4,1fr)',margin:'16px 0'}}>
+            <div className="kpi-grid reportes-kpis" style={{gridTemplateColumns:'repeat(4,1fr)',margin:'16px 0'}}>
               <div className="kpi-card k-blue"> <div className="kpi-num">{repKpis.total}</div>  <div className="kpi-label">Total ventas</div></div>
               <div className="kpi-card k-green"><div className="kpi-num">{repKpis.inst}</div>   <div className="kpi-label">Instaladas</div></div>
               <div className="kpi-card k-red">  <div className="kpi-num">{repKpis.caidas}</div> <div className="kpi-label">Caídas</div></div>
               <div className="kpi-card k-purple"><div className="kpi-num">{repKpis.efect}</div> <div className="kpi-label">Efectividad</div></div>
             </div>
-            <div className="tabla-wrap">
+            <div className="tabla-wrap ranking-pro-card">
               <div className="tabla-header">
                 <span className="tabla-title">🏆 Ranking de Asesores</span>
                 <span className="tabla-count">{reporteData.length} asesores</span>
               </div>
               <div style={{overflowX:'auto'}}>
-                <table className="tabla">
+                <table className="tabla tabla-ranking-pro">
                   <thead><tr><th style={{width:'60px'}}>RANK</th><th>ASESOR</th><th>SALA</th><th>VENTAS INSTALADAS</th><th>TOTAL VENTAS</th><th>CAÍDAS</th><th>EFECTIVIDAD</th></tr></thead>
                   <tbody>
                     {reporteData.length === 0
@@ -787,10 +1135,17 @@ export default function Jefatura() {
                 <input value={modForm.usuario} onChange={e=>setField('usuario',e.target.value)} placeholder="nombre.apellido" style={{fontFamily:'monospace'}} className={modErrores.usuario?'error':''} />
               </div>
               <div className={`modal-campo${modErrores.cargo?' error':''}`}>
-                <label>Cargo *</label>
+                <label>Cargo principal *</label>
                 <select value={modForm.cargo} onChange={e=>setField('cargo',e.target.value)} className={modErrores.cargo?'error':''}>
                   <option value="">— Seleccionar cargo —</option>
                   {CARGOS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className={`modal-campo${modErrores.cargo2?' error':''}`}>
+                <label>Cargo adicional (opcional)</label>
+                <select value={modForm.cargo2} onChange={e=>setField('cargo2',e.target.value)} className={modErrores.cargo2?'error':''}>
+                  <option value="">— Sin cargo adicional —</option>
+                  {CARGOS.filter(c=>c.id!==modForm.cargo && c.id!=='jefatura').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
               </div>
               <div className="modal-campo">
@@ -811,16 +1166,43 @@ export default function Jefatura() {
               </div>
             </div>
             <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'10px 14px',fontSize:'12px',color:'#14532d',marginBottom:'16px'}}>
-              💡 Al crear un usuario con cargo <strong>Asesor</strong>, estará disponible en el Back Office para asignar leads.
+              💡 Al crear un usuario con cargo <strong>Asesor</strong>, estará disponible en Back Data para asignar leads.
             </div>
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalUsu}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarUsuario} disabled={guardandoUsu}>
-                {guardandoUsu ? 'Guardando...' : 'Guardar usuario'}
+                {guardandoUsu ? 'Guardando...' : '💾 Guardar usuario'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      <MediaViewer
+        open={!!mediaVenta}
+        onClose={()=>setMediaVenta(null)}
+        ventaId={mediaVenta?.id}
+        title={`Archivos de ${mediaVenta?.nombre || 'la venta'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || '—'} · Tel: ${mediaVenta?.telefono1 || '—'}`}
+        audioPath={mediaVenta?.audio_path}
+        audioName={mediaVenta?.audio_path ? mediaVenta.audio_path.split('/').pop() : ''}
+      />
+
+      {ventaReasignar && (
+        <ReasignarVentaModal
+          venta={ventaReasignar}
+          asesores={usuarios.filter(usuario => usuarioTieneCargo(usuario, 'asesor') && usuario.activo)}
+          alcance="global"
+          onClose={()=>setVentaReasignar(null)}
+          onSuccess={completarReasignacion}
+        />
+      )}
+
+      {ventaHistorial && (
+        <HistorialVentaModal
+          venta={ventaHistorial}
+          onClose={()=>setVentaHistorial(null)}
+        />
       )}
 
       {/* MODAL ELIMINAR USUARIO */}
@@ -838,6 +1220,61 @@ export default function Jefatura() {
               <button className="btn-confirmar-eliminar" onClick={confirmarEliminarUsuario} disabled={eliminandoUsu}>
                 {eliminandoUsu?'Eliminando...':'Sí, eliminar'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SELECTOR DE USUARIO POR MÓDULO */}
+      {selectorModulo.open && selectorModulo.modulo && (
+        <div className="selector-modulo-overlay" onClick={e=>{ if(e.target===e.currentTarget) cerrarSelectorModulo() }}>
+          <div className="selector-modulo-box">
+            <div className="selector-modulo-head">
+              <div className="selector-modulo-titulo">
+                <span className="selector-modulo-icon" style={{background:selectorModulo.modulo.color+'12',color:selectorModulo.modulo.color}}><ModuloIcon tipo={selectorModulo.modulo.icon} size={24}/></span>
+                <div>
+                  <strong>Entrar a {selectorModulo.modulo.nombre}</strong>
+                  <span>Selecciona un usuario para abrir el módulo con acceso de Jefatura</span>
+                </div>
+              </div>
+              <button type="button" className="selector-modulo-cerrar" onClick={cerrarSelectorModulo} aria-label="Cerrar">×</button>
+            </div>
+            <div className="selector-modulo-busqueda">
+              <div className="selector-busqueda-campo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input
+                  autoFocus
+                  type="search"
+                  value={selectorModulo.buscar}
+                  onChange={e=>setSelectorModulo(prev=>({...prev,buscar:e.target.value}))}
+                  placeholder="Buscar por nombre, usuario o sala..."
+                />
+              </div>
+              <span className="selector-resultados">{usuariosModulo.length} resultado{usuariosModulo.length===1?'':'s'}</span>
+            </div>
+            <div className="selector-modulo-lista">
+              {usuariosModulo.length === 0 ? (
+                <div className="selector-modulo-vacio">
+                  No hay usuarios registrados con el cargo {cargoObj(selectorModulo.modulo.cargo).label}.
+                </div>
+              ) : usuariosModulo.map(u => (
+                <div className={`selector-usuario${u.activo?'':' inactivo'}`} key={u.id}>
+                  <div className="selector-usuario-avatar" style={{background:colorAvatar(u.nombre||u.usuario||'U')}}>{iniciales(u.nombre||u.usuario||'U')}</div>
+                  <div className="selector-usuario-info">
+                    <strong>{u.nombre || u.usuario}</strong>
+                    <span>@{u.usuario || 'sin usuario'} · {u.sala || 'Sin sala'}</span>
+                  </div>
+                  <span className={`selector-usuario-estado ${u.activo?'activo':'inactivo'}`}>{u.activo?'Activo':'Inactivo'}</span>
+                  <button type="button" onClick={()=>entrarModulo(selectorModulo.modulo,u)} disabled={!u.activo}>
+                    <span>Entrar</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="selector-modulo-nota">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span>La sesión conservará todos los permisos de Jefatura.</span>
             </div>
           </div>
         </div>

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
 import { API, ncHeaders } from '../services/api'
 import '../styles/programacion.css'
 
 const BADGE_CLS = {
-  APROBADO:         'b-aprobado',
   PROGRAMADO:       'b-programado',
   BLOQUEADO:        'b-bloqueado',
   SIN_AGENDA:       'b-sinagenda',
@@ -15,11 +15,19 @@ const BADGE_CLS = {
   INSTALADO:        'b-instalado',
   PENDIENTE:        'b-pendiente',
   CAIDA:            'b-caida',
+  'CAÍDA':           'b-caida',
   VALIDADO:         'b-validado',
+  RECHAZO_CAMPO:    'b-rechazo',
+  'RECHAZO EN CAMPO':'b-rechazo',
+  TECNICO_CASA:     'b-tecnico',
+  'TECNICO EN CASA':'b-tecnico',
+  'TÉCNICO EN CASA':'b-tecnico',
+  EN_EJECUCION:     'b-ejecucion',
+  'EN EJECUCION':   'b-ejecucion',
+  'EN EJECUCIÓN':   'b-ejecucion',
 }
 
 const ESTADO_LABELS = {
-  APROBADO:         'Aprobado',
   PROGRAMADO:       'Programado',
   BLOQUEADO:        'Bloqueado',
   SIN_AGENDA:       'Sin agenda',
@@ -29,7 +37,16 @@ const ESTADO_LABELS = {
   INSTALADO:        'Instalado',
   PENDIENTE:        'Pendiente',
   CAIDA:            'Caída',
+  'CAÍDA':           'Caída',
   VALIDADO:         'Validado',
+  RECHAZO_CAMPO:    'Rechazo en campo',
+  'RECHAZO EN CAMPO':'Rechazo en campo',
+  TECNICO_CASA:     'Técnico en casa',
+  'TECNICO EN CASA':'Técnico en casa',
+  'TÉCNICO EN CASA':'Técnico en casa',
+  EN_EJECUCION:     'En ejecución',
+  'EN EJECUCION':   'En ejecución',
+  'EN EJECUCIÓN':   'En ejecución',
 }
 
 const ESTADO_BTNS = [
@@ -39,11 +56,6 @@ const ESTADO_BTNS = [
   { id: 'CARACTER_ESPECIAL', label: 'Carácter especial', cls: 'be-caracter'   },
   { id: 'FRAUDE',            label: 'Fraude',            cls: 'be-fraude'     },
   { id: 'ZONA_RESTRINGIDA',  label: 'Zona restringida',  cls: 'be-zona'       },
-]
-
-const ESTADOS_PROGRAMACION = [
-  'APROBADO','PROGRAMADO','BLOQUEADO','SIN_AGENDA','CARACTER_ESPECIAL',
-  'FRAUDE','ZONA_RESTRINGIDA','INSTALADO','PENDIENTE','CAIDA'
 ]
 
 function formatF(f) {
@@ -88,16 +100,12 @@ export default function Programacion() {
       if (!data.ok) { mostrarToast('Error cargando ventas'); return }
       setVentas(data.data.filter(v => {
         const e = (v.estado || '').toUpperCase()
-        return ESTADOS_PROGRAMACION.includes(e)
+        return e !== 'VENTA' && e !== ''
       }))
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }, [])
 
-  useEffect(() => {
-    cargarVentas()
-    const t = setInterval(cargarVentas, 15000)
-    return () => clearInterval(t)
-  }, [cargarVentas])
+  useEffect(() => { cargarVentas() }, [cargarVentas])
 
   const ventasFiltradas = useMemo(() => ventas.filter(v => {
     const est   = (v.estado || '').toUpperCase()
@@ -114,9 +122,12 @@ export default function Programacion() {
   }), [ventas, fEstado, fAsesor, fDesde, fHasta, busqueda])
 
   const kpis = useMemo(() => ({
-    total:      ventas.length,
-    programado: ventas.filter(v => (v.estado || '').toUpperCase() === 'PROGRAMADO').length,
-    pendiente:  ventas.filter(v => (v.estado || '').toUpperCase() === 'PENDIENTE').length,
+    total:       ventas.length,
+    programado:  ventas.filter(v => (v.estado || '').toUpperCase() === 'PROGRAMADO').length,
+    pendiente:   ventas.filter(v => (v.estado || '').toUpperCase() === 'PENDIENTE').length,
+    noValidas:   ventas.filter(v => ['FRAUDE', 'ZONA_RESTRINGIDA', 'ZONA RESTRINGIDA'].includes((v.estado || '').toUpperCase())).length,
+    caracter:    ventas.filter(v => ['CARACTER_ESPECIAL', 'CARÁCTER_ESPECIAL', 'CARACTER ESPECIAL', 'CARÁCTER ESPECIAL'].includes((v.estado || '').toUpperCase())).length,
+    sinAgenda:   ventas.filter(v => ['SIN_AGENDA', 'SIN AGENDA'].includes((v.estado || '').toUpperCase())).length,
   }), [ventas])
 
   function limpiarFiltros() {
@@ -148,14 +159,14 @@ export default function Programacion() {
         x.id === modalDet.id ? { ...x, estado: estadoModal, obs_programacion: obsProg } : x
       ))
       cerrarModal()
-      mostrarToast('✅ Venta actualizada')
+      mostrarToast('Venta actualizada')
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 
   function salir() { logout(); navigate('/login') }
 
   return (
-    <div>
+    <div className="programacion-shell">
       {/* Inline styles replicating the original <style> block */}
       <style>{`
         .be-bloqueado  { background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer; }
@@ -165,16 +176,33 @@ export default function Programacion() {
         .be-zona       { background:#ffedd5;color:#9a3412;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer; }
         .be-programado { background:#dcfce7;color:#15803d;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer; }
         .btn-estado:hover { opacity:.85;transform:scale(1.04); }
-        .b-aprobado   { background:#d1fae5;color:#065f46;border:1px solid #86efac; }
         .b-bloqueado  { background:#fee2e2;color:#991b1b; }
         .b-sinagenda  { background:#fef9c3;color:#854d0e; }
         .b-caracter   { background:#ede9fe;color:#5b21b6; }
         .b-fraude     { background:#1f2937;color:#fff; }
         .b-zona       { background:#ffedd5;color:#9a3412; }
-        .tabla .badge { display:inline-flex;align-items:center;justify-content:center;min-width:86px;padding:5px 10px;border-radius:8px;font-size:10px;font-weight:800;letter-spacing:.2px;text-transform:uppercase;box-shadow:none; }
+        .programacion-shell .prog-reference-kpis {
+          grid-template-columns:repeat(6,minmax(0,1fr))!important;
+          gap:8px!important;
+        }
+        .programacion-shell .prog-reference-kpis > .kpi-card {
+          min-width:0!important;
+          min-height:64px!important;
+          padding:9px 13px!important;
+        }
+        @media (max-width:900px) {
+          .programacion-shell .prog-reference-kpis {
+            grid-template-columns:repeat(3,minmax(0,1fr))!important;
+          }
+        }
+        @media (max-width:560px) {
+          .programacion-shell .prog-reference-kpis {
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          }
+        }
       `}</style>
 
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
             <img src="/assets/logo3.png" alt="" onError={e => { e.target.parentNode.textContent = '' }} />
@@ -185,30 +213,35 @@ export default function Programacion() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-badge" style={{ background: '#7c3aed' }}>PROGRAMACIÓN</span>
-          <span className="topbar-user">{sesion?.nombre || '—'}</span>
+          <JefaturaViewControls>
+            <span className="topbar-badge" style={{ background: '#7c3aed' }}>PROGRAMACIÓN</span>
+            <span className="topbar-user">{sesion?.nombre || '—'}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={salir}>Salir</button>
         </div>
       </div>
 
-      <div className="main-content">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h2>Ventas para Programar</h2>
-            <p>Ventas aprobadas por Grabaciones — gestiona el estado de instalación</p>
-          </div>
-          <button className="btn-filtrar" onClick={cargarVentas}>Actualizar</button>
+      <section className="programacion-reference-banner" aria-label="Encabezado de programación">
+        <div className="programacion-reference-copy">
+          <h2>Ventas para Programar</h2>
+          <p>Ventas aprobadas por Grabaciones — gestiona el estado de instalación</p>
         </div>
+        <button className="programacion-reference-refresh" onClick={cargarVentas}>Actualizar</button>
+      </section>
 
-        <div className="kpi-grid">
+      <main className="main-content programacion-page prog-reference-page">
+        <section className="kpi-grid programacion-kpis prog-reference-kpis">
           <div className="kpi-card k-purple"><div className="kpi-num">{kpis.total}</div><div className="kpi-label">Total</div></div>
-          <div className="kpi-card k-blue">  <div className="kpi-num">{kpis.programado}</div><div className="kpi-label">Programadas</div></div>
+          <div className="kpi-card k-blue"><div className="kpi-num">{kpis.programado}</div><div className="kpi-label">Programadas</div></div>
           <div className="kpi-card k-orange"><div className="kpi-num">{kpis.pendiente}</div><div className="kpi-label">Pendientes</div></div>
-        </div>
+          <div className="kpi-card k-novalidas"><div className="kpi-num">{kpis.noValidas}</div><div className="kpi-label">No válidas</div></div>
+          <div className="kpi-card k-caracter"><div className="kpi-num">{kpis.caracter}</div><div className="kpi-label">Carácter especial</div></div>
+          <div className="kpi-card k-sinagenda"><div className="kpi-num">{kpis.sinAgenda}</div><div className="kpi-label">Sin agenda</div></div>
+        </section>
 
-        <div className="filtros-panel">
-          <div className="filtros-row">
-            <div className="filtro-group">
+        <section className="filtros-panel prog-reference-filters">
+          <div className="filtros-row prog-reference-filters-row">
+            <div className="filtro-group prog-reference-filter">
               <label>Estado</label>
               <select className="filtro-select" value={fEstado} onChange={e => setFEstado(e.target.value)}>
                 <option value="">Todos</option>
@@ -218,18 +251,23 @@ export default function Programacion() {
                 <option value="CARACTER_ESPECIAL">Carácter especial</option>
                 <option value="FRAUDE">Fraude</option>
                 <option value="ZONA_RESTRINGIDA">Zona restringida</option>
+                <option value="INSTALADO">Instalado</option>
+                <option value="PENDIENTE">Pendiente</option>
+                <option value="CAIDA">Caída</option>
+                <option value="RECHAZO_CAMPO">Rechazo en campo</option>
+                <option value="TECNICO_CASA">Técnico en casa</option>
               </select>
             </div>
-            <div className="filtro-group">
+            <div className="filtro-group prog-reference-filter">
               <label>Asesor</label>
               <input type="text" className="filtro-input" value={fAsesor}
                 onChange={e => setFAsesor(e.target.value)} placeholder="Nombre asesor..." />
             </div>
-            <div className="filtro-group">
+            <div className="filtro-group prog-reference-filter">
               <label>Desde</label>
               <input type="date" className="filtro-input" value={fDesde} onChange={e => setFDesde(e.target.value)} />
             </div>
-            <div className="filtro-group">
+            <div className="filtro-group prog-reference-filter">
               <label>Hasta</label>
               <input type="date" className="filtro-input" value={fHasta} onChange={e => setFHasta(e.target.value)} />
             </div>
@@ -237,13 +275,13 @@ export default function Programacion() {
               <button className="btn-limpiar" onClick={limpiarFiltros}>Limpiar</button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="tabla-wrap">
-          <div className="tabla-header">
+        <section className="tabla-wrap prog-reference-table">
+          <div className="tabla-header prog-reference-table-header">
             <div className="tabla-header-left">
               <span className="tabla-title">Lista de ventas programadas</span>
-              <span className="tabla-count">{ventasFiltradas.length} registros</span>
+              <span className="tabla-count prog-count">{ventasFiltradas.length} registros</span>
             </div>
             <input type="text" className="tabla-search" value={busqueda}
               onChange={e => setBusqueda(e.target.value)} placeholder="Buscar DNI, nombre, asesor..." />
@@ -262,7 +300,9 @@ export default function Programacion() {
                   <tr className="tabla-empty"><td colSpan="11">Sin registros con esos filtros.</td></tr>
                 ) : ventasFiltradas.map((v, i) => {
                   const fecha = formatF((v.created_at || '').split(' ')[0])
-                  const cls   = BADGE_CLS[(v.estado || '').toUpperCase()] || 'b-venta'
+                  const estadoRaw = (v.estado || '').toUpperCase()
+                  const cls   = BADGE_CLS[estadoRaw] || 'b-venta'
+                  const estadoLabel = ESTADO_LABELS[estadoRaw] || estadoRaw || '—'
                   return (
                     <tr key={v.id}>
                       <td style={{ color: '#9ca3af', fontSize: '10px' }}>{i + 1}</td>
@@ -273,7 +313,7 @@ export default function Programacion() {
                       <td style={{ fontSize: '11px', color: '#9ca3af' }}>{v.sala || '—'}</td>
                       <td style={{ fontSize: '11px' }}>{v.distrito || '—'}</td>
                       <td style={{ fontSize: '11px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.paquete || ''}>{v.paquete || '—'}</td>
-                      <td><span className={`badge ${cls}`}>{v.estado || '—'}</span></td>
+                      <td><span className={`badge ${cls}`}>{estadoLabel}</span></td>
                       <td style={{ fontSize: '11px', color: '#6b7280', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.obs_programacion || '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -286,8 +326,8 @@ export default function Programacion() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
       {/* MODAL DETALLE */}
       {modalDet && (
@@ -358,3 +398,4 @@ export default function Programacion() {
     </div>
   )
 }
+

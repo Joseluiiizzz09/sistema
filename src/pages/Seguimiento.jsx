@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
+import MediaViewer from '../components/MediaViewer'
 import { API, ncHeaders } from '../services/api'
 import '../styles/seguimiento.css'
 
@@ -121,6 +123,7 @@ export default function Seguimiento() {
 
   // Modal historial
   const [modalHist, setModalHist]           = useState(null)
+  const [mediaVenta, setMediaVenta]         = useState(null)
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -153,6 +156,8 @@ export default function Seguimiento() {
             _motivoRech:      v._motivoRech  || '',
             _proxSeg:         v._proxSeg     || '',
             _historial:       v._historial   || [],
+            _audioPath:       v.audio_path   || '',
+            _audioNombre:     v.audio_path ? v.audio_path.split('/').pop() : '',
           }))
         )
       }
@@ -300,10 +305,10 @@ export default function Seguimiento() {
 
   return (
     <div>
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="NC" onError={e => { e.target.parentNode.textContent = '🏢' }} />
+            <img src="/assets/logo3.png" alt="NC" onError={e => { e.target.parentNode.textContent = '' }} />
           </div>
           <div className="brand-text">
             <h1>NET<span className="dot"></span><span className="red">CONTACT</span></h1>
@@ -311,8 +316,10 @@ export default function Seguimiento() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-badge">SEGUIMIENTO</span>
-          <span className="topbar-user">{usuarioActual}</span>
+          <JefaturaViewControls>
+            <span className="topbar-badge">SEGUIMIENTO</span>
+            <span className="topbar-user">{usuarioActual}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={salir}>Salir</button>
         </div>
       </div>
@@ -406,13 +413,13 @@ export default function Seguimiento() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="text" className="tabla-search" value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
-                placeholder="🔍 Buscar nombre, DNI, vendedor..." />
+                placeholder="Buscar nombre, DNI, vendedor..." />
               <div className="pag-size">
                 <select value={porPagina} onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}>
-                  <option value="18">18 / pág</option>
-                  <option value="30">30 / pág</option>
-                  <option value="50">50 / pág</option>
-                  <option value="100">100 / pág</option>
+                  <option value="18">18 / pág.</option>
+                  <option value="30">30 / pág.</option>
+                  <option value="50">50 / pág.</option>
+                  <option value="100">100 / pág.</option>
                 </select>
               </div>
             </div>
@@ -450,10 +457,11 @@ export default function Seguimiento() {
                   return (
                     <tr key={v.id} className={est.fila}>
                       <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                        <div className="acciones-cell">
+                        <div className="acciones-cell seg-acciones">
                           <button className="btn-acc btn-acc-obs"    onClick={() => abrirModalObs(v)}    title="Registrar llamada">Llamada</button>
                           <button className="btn-acc btn-acc-agenda" onClick={() => abrirModalAgenda(v)} title="Agendar">Agenda</button>
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
+                          <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
                         </div>
                       </td>
                       <td className="td-estado">
@@ -544,11 +552,21 @@ export default function Seguimiento() {
         </div>
       )}
 
+      <MediaViewer
+        open={!!mediaVenta}
+        onClose={() => setMediaVenta(null)}
+        ventaId={mediaVenta?.id}
+        title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
+        subtitle={`DNI: ${mediaVenta?.dniDocumento || mediaVenta?.dni || '—'} · Tel: ${mediaVenta?.telefonoContacto || '—'}`}
+        audioPath={mediaVenta?._audioPath}
+        audioName={mediaVenta?._audioNombre}
+      />
+
       {/* MODAL LLAMADA */}
       {modalObs && (
         <div className="modal-bg open" onClick={e => { if (e.target === e.currentTarget) setModalObs(null) }}>
           <div className="modal-box">
-            <div className="modal-title">📞 Registrar llamada</div>
+            <div className="modal-title">Registrar llamada</div>
             <div className="modal-sub">Cliente: <strong>{modalObs.nombreApellidos || '--'}</strong></div>
             <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Historial</div>
             <div className="obs-historial">
@@ -584,7 +602,7 @@ export default function Seguimiento() {
       {modalAgenda && (
         <div className="modal-bg open" onClick={e => { if (e.target === e.currentTarget) setModalAgenda(null) }}>
           <div className="modal-box" style={{ maxWidth: '400px' }}>
-            <div className="modal-title">📅 Agendar seguimiento</div>
+            <div className="modal-title">Agendar seguimiento</div>
             <div className="modal-sub">Cliente: <strong>{modalAgenda.nombreApellidos || '--'}</strong></div>
             <div className="modal-campo">
               <label>Fecha *</label>
@@ -625,3 +643,4 @@ export default function Seguimiento() {
     </div>
   )
 }
+

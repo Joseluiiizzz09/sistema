@@ -284,90 +284,91 @@ body{
 .tabla tbody td.td-obs-seg{background:rgba(5,150,105,.04)!important;border-left:2px solid var(--green);}
 .tabla tbody td.td-audit{background:rgba(37,99,235,.04)!important;border-left:2px solid var(--blue);font-size:10px;color:var(--blue);font-weight:600;}
 
-/* ━━ BADGES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━ BADGES (contraste reforzado) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .badge-grab,.badge-estado,.badge-seg,.badge-cargo,.badge-motivo,.badge-tramo{
-  display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;
-  font-size:10px;font-weight:700;white-space:nowrap;letter-spacing:.2px;transition:all .15s var(--sp);
+  display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;
+  font-size:10.5px;font-weight:800;white-space:nowrap;letter-spacing:.3px;
+  border:1.5px solid transparent;transition:all .15s var(--sp);
 }
-.badge-grab:hover,.badge-estado:hover,.badge-seg:hover{transform:scale(1.06);cursor:pointer;}
-.bg-grabado{background:#ecfdf5;color:#065f46;}
-.bg-pendiente{background:#fffbeb;color:#78350f;}
-.bg-observado{background:#f5f3ff;color:#4c1d95;}
-.bg-revisado{background:#eff6ff;color:#1e3a8a;}
-.be-venta,.b-venta{background:#eff6ff;color:#1e40af;}
-.be-validado,.b-validado{background:#f5f3ff;color:#5b21b6;}
-.be-instalado,.b-instalado{background:#ecfdf5;color:#065f46;}
-.be-programado,.b-programado{background:#e0f2fe;color:#0c4a6e;}
-.be-caida,.b-caida{background:var(--brand-soft);color:var(--brand-deep);}
-.be-observado{background:#fffbeb;color:#78350f;}
-.be-pendiente,.b-pendiente{background:#f8fafc;color:var(--ink-2);}
-.be-fraude{background:var(--brand-soft);color:var(--brand-deep);}
-.be-nodesea{background:#fff1f2;color:#9f1239;}
-.be-nocontesta{background:#fffbeb;color:#78350f;}
-.be-servicio{background:#f8fafc;color:var(--ink-2);}
-.bs-ejec{background:#ecfdf5;color:#065f46;}
-.bs-inst{background:#eff6ff;color:#1e40af;}
-.bs-caida{background:var(--brand-soft);color:var(--brand-deep);}
-.bs-noval{background:#fffbeb;color:#78350f;}
-.bs-rech{background:#fff7ed;color:#c2410c;}
-.bs-tecnico{background:#f5f3ff;color:#5b21b6;}
-.bc-asesor{background:#eff6ff;color:#1e40af;}
-.bc-supervisor{background:#f5f3ff;color:#5b21b6;}
-.bc-backoffice{background:#f8fafc;color:var(--ink-2);}
-.bc-validacion{background:#fffbeb;color:#78350f;}
-.bc-grabaciones{background:#ecfdf5;color:#065f46;}
-.bc-seguimiento{background:#f0fdfa;color:#134e4a;}
-.bc-jefatura{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;}
-.bc-programacion{background:#fff7ed;color:#c2410c;}
-.bc-supgrabaciones{background:#f5f3ff;color:#5b21b6;}
-.bc-usuarios{background:#f8fafc;color:var(--ink-3);}
-.bc-default{background:#f8fafc;color:var(--ink-2);}
-.bu-activo{background:#ecfdf5;color:#065f46;}
-.bu-inactivo{background:var(--brand-soft);color:var(--brand-deep);}
-.badge-anterior{display:inline-flex;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:700;background:#fff7ed;color:#c2410c;border:1px solid rgba(217,119,6,.25);margin-left:4px;}
-.bm-fraude{background:var(--brand-soft);color:var(--brand-deep);}
-.bm-infra{background:#f5f3ff;color:#5b21b6;}
-.bm-dupli{background:#fffbeb;color:#78350f;}
-.bm-nodesea,.bm-default{background:#f8fafc;color:var(--ink-2);}
-.bm-malaoferta{background:#fff7ed;color:#c2410c;}
-.bm-faltacon{background:#e0f2fe;color:#0c4a6e;}
-.badge-tramo{background:#f8fafc;color:var(--ink-2);}
-.tipif-auto{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 7px;border-radius:99px;}
-.tipif-contesta{background:#ecfdf5;color:#065f46;}
-.tipif-nc{background:#fffbeb;color:#78350f;}
-.tipif-sincobert{background:var(--brand-soft);color:var(--brand-deep);}
-.tipif-derivado{background:#f5f3ff;color:#5b21b6;}
+.badge-grab:hover,.badge-estado:hover,.badge-seg:hover{transform:scale(1.06);cursor:pointer;filter:brightness(.97);}
+.bg-grabado{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.bg-pendiente{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.bg-observado{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.bg-revisado{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd;}
+.be-venta,.b-venta{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd;}
+.be-validado,.b-validado{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.be-instalado,.b-instalado{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.be-programado,.b-programado{background:#cffafe;color:#155e75;border-color:#67e8f9;}
+.be-caida,.b-caida{background:#fecaca;color:#7f1d1d;border-color:#fca5a5;}
+.be-observado{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.be-pendiente,.b-pendiente{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1;}
+.be-fraude{background:#fecaca;color:#7f1d1d;border-color:#f87171;}
+.be-nodesea{background:#fecdd3;color:#881337;border-color:#fda4af;}
+.be-nocontesta{background:#fef08a;color:#713f12;border-color:#fde047;}
+.be-servicio{background:#e5e7eb;color:#111827;border-color:#9ca3af;}
+.bs-ejec{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.bs-inst{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd;}
+.bs-caida{background:#fecaca;color:#7f1d1d;border-color:#fca5a5;}
+.bs-noval{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.bs-rech{background:#fed7aa;color:#7c2d12;border-color:#fdba74;}
+.bs-tecnico{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.bc-asesor{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd;}
+.bc-supervisor{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.bc-backoffice{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1;}
+.bc-validacion{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.bc-grabaciones{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.bc-seguimiento{background:#ccfbf1;color:#134e4a;border-color:#5eead4;}
+.bc-jefatura{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;border-color:transparent;}
+.bc-programacion{background:#fed7aa;color:#7c2d12;border-color:#fdba74;}
+.bc-supgrabaciones{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.bc-usuarios{background:#e2e8f0;color:#334155;border-color:#cbd5e1;}
+.bc-default{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1;}
+.bu-activo{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.bu-inactivo{background:#fecaca;color:#7f1d1d;border-color:#fca5a5;}
+.badge-anterior{display:inline-flex;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:800;background:#fed7aa;color:#7c2d12;border:1px solid #fdba74;margin-left:4px;}
+.bm-fraude{background:#fecaca;color:#7f1d1d;border-color:#fca5a5;}
+.bm-infra{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
+.bm-dupli{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.bm-nodesea,.bm-default{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1;}
+.bm-malaoferta{background:#fed7aa;color:#7c2d12;border-color:#fdba74;}
+.bm-faltacon{background:#cffafe;color:#155e75;border-color:#67e8f9;}
+.badge-tramo{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1;}
+.tipif-auto{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;border:1.5px solid transparent;}
+.tipif-contesta{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.tipif-nc{background:#fef3c7;color:#78350f;border-color:#fcd34d;}
+.tipif-sincobert{background:#fecaca;color:#7f1d1d;border-color:#fca5a5;}
+.tipif-derivado{background:#ede9fe;color:#4c1d95;border-color:#c4b5fd;}
 .tipif-empty{color:#cbd5e1;font-style:italic;font-size:11px;}
-.sin-asig-badge{display:inline-flex;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;}
+.sin-asig-badge{display:inline-flex;background:#fed7aa;color:#7c2d12;font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;border:1px solid #fdba74;}
 .hora-cell{color:var(--brand);font-weight:700;font-size:11px;font-family:monospace;}
 
 /* ━━ LEYENDA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .leyenda{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-.leyenda-item{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .18s var(--sp);white-space:nowrap;}
+.leyenda-item{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .18s var(--sp);white-space:nowrap;}
 .leyenda-item:hover{transform:translateY(-2px);box-shadow:var(--sh);}
 .leyenda-item.activo{border-color:var(--ink);box-shadow:var(--sh-md);}
-.leyenda-item.l-ejec{background:#ecfdf5;color:#065f46;}
-.leyenda-item.l-inst{background:#eff6ff;color:#1e40af;}
-.leyenda-item.l-caida{background:var(--brand-soft);color:var(--brand-deep);}
-.leyenda-item.l-noval{background:#fffbeb;color:#78350f;}
-.leyenda-item.l-rech{background:#fff7ed;color:#c2410c;}
-.leyenda-item.l-tecnico{background:#f5f3ff;color:#5b21b6;}
-.leyenda-item.l-todos{background:#f8fafc;color:var(--ink-2);}
-.leyenda-count{font-size:10px;background:rgba(0,0,0,.08);padding:1px 6px;border-radius:99px;}
+.leyenda-item.l-ejec{background:#d1fae5;color:#065f46;}
+.leyenda-item.l-inst{background:#dbeafe;color:#1e3a8a;}
+.leyenda-item.l-caida{background:#fecaca;color:#7f1d1d;}
+.leyenda-item.l-noval{background:#fef3c7;color:#78350f;}
+.leyenda-item.l-rech{background:#fed7aa;color:#7c2d12;}
+.leyenda-item.l-tecnico{background:#ede9fe;color:#4c1d95;}
+.leyenda-item.l-todos{background:#e2e8f0;color:#1e293b;}
+.leyenda-count{font-size:10px;font-weight:700;background:rgba(0,0,0,.1);padding:1px 6px;border-radius:99px;}
 
 /* ━━ FILAS SEGUIMIENTO ━━━━━━━━━━━━━━━━━━━━ */
-.fila-ejec td{background:rgba(5,150,105,.06)!important;}
-.fila-inst td{background:rgba(37,99,235,.06)!important;}
-.fila-caida td{background:rgba(229,62,62,.05)!important;}
-.fila-noval td{background:rgba(217,119,6,.06)!important;}
-.fila-rech td{background:rgba(249,115,22,.06)!important;}
-.fila-tecnico td{background:rgba(124,58,237,.06)!important;}
-.fila-ejec:hover td{background:rgba(5,150,105,.12)!important;}
-.fila-inst:hover td{background:rgba(37,99,235,.12)!important;}
-.fila-caida:hover td{background:rgba(229,62,62,.1)!important;}
-.fila-noval:hover td{background:rgba(217,119,6,.12)!important;}
-.fila-rech:hover td{background:rgba(249,115,22,.12)!important;}
-.fila-tecnico:hover td{background:rgba(124,58,237,.12)!important;}
+.fila-ejec td{background:rgba(5,150,105,.08)!important;}
+.fila-inst td{background:rgba(37,99,235,.08)!important;}
+.fila-caida td{background:rgba(229,62,62,.07)!important;}
+.fila-noval td{background:rgba(217,119,6,.08)!important;}
+.fila-rech td{background:rgba(249,115,22,.08)!important;}
+.fila-tecnico td{background:rgba(124,58,237,.08)!important;}
+.fila-ejec:hover td{background:rgba(5,150,105,.14)!important;}
+.fila-inst:hover td{background:rgba(37,99,235,.14)!important;}
+.fila-caida:hover td{background:rgba(229,62,62,.12)!important;}
+.fila-noval:hover td{background:rgba(217,119,6,.14)!important;}
+.fila-rech:hover td{background:rgba(249,115,22,.14)!important;}
+.fila-tecnico:hover td{background:rgba(124,58,237,.14)!important;}
 .fila-pendiente td{border-left:2px solid var(--amber);}
 
 /* ━━ ACCIONES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -417,6 +418,8 @@ body{
 .btn-ver-det:hover{background:#ede9fe;transform:scale(1.05);}
 .btn-cambiar{background:#ecfdf5;color:#065f46;}
 .btn-cambiar:hover{background:#d1fae5;transform:scale(1.05);}
+.btn-fotos{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 10px;border:1px solid rgba(8,145,178,.3);border-radius:7px;background:#f0fdfa;color:#0e7490;font-size:12px;cursor:pointer;transition:all .16s var(--sp);}
+.btn-fotos:hover{background:#ccfbf1;transform:scale(1.05);}
 
 /* ━━ AUDIO / UPLOAD ━━━━━━━━━━━━━━━━━━━━━━ */
 .audio-player{background:var(--surf-1);border:1px solid var(--line-2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:8px;}
@@ -426,6 +429,14 @@ body{
 .upload-zone:hover{border-color:var(--brand);background:rgba(229,62,62,.08);transform:scale(1.005);}
 .upload-icon{font-size:26px;margin-bottom:6px;}
 .obs-historial{background:var(--surf-1);border:1px solid var(--line-2);border-radius:8px;padding:11px;margin-bottom:12px;max-height:130px;overflow-y:auto;font-size:11px;color:var(--ink-3);line-height:1.6;white-space:pre-wrap;}
+
+/* ━━ FOTOS MODAL ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.fotos-grid img{width:100%;height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--line-2);cursor:pointer;transition:all .18s var(--sp);}
+.fotos-grid img:hover{transform:scale(1.03);box-shadow:var(--sh-md);}
+.fotos-empty{color:var(--ink-4);font-size:12px;padding:20px 0;text-align:center;}
+.foto-preview-bg{position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.foto-preview-bg img{max-width:92vw;max-height:88vh;border-radius:8px;box-shadow:var(--sh-lg);}
 
 /* ━━ BASE STATS ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .base-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
@@ -522,11 +533,11 @@ body{
 .estado-btns{display:flex;gap:6px;flex-wrap:wrap;}
 .btn-estado{padding:6px 12px;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .16s var(--sp);}
 .btn-estado:hover{transform:scale(1.06);}
-.be-programado{background:#eff6ff;color:#1e40af;}
-.be-instalado{background:#ecfdf5;color:#065f46;}
-.be-caida{background:var(--brand-soft);color:var(--brand-deep);}
-.be-pendiente{background:#fffbeb;color:#78350f;}
-.be-validado{background:#f5f3ff;color:#5b21b6;}
+.be-programado{background:#cffafe;color:#155e75;}
+.be-instalado{background:#d1fae5;color:#065f46;}
+.be-caida{background:#fecaca;color:#7f1d1d;}
+.be-pendiente{background:#fef3c7;color:#78350f;}
+.be-validado{background:#ede9fe;color:#4c1d95;}
 .obs-wrap{margin-top:12px;}
 .obs-wrap label{font-size:11px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:5px;}
 .obs-wrap textarea{width:100%;padding:8px 11px;border:1px solid var(--line-2);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;outline:none;transition:all .18s;background:var(--surf-0);}
@@ -621,16 +632,115 @@ body{
 .brand,.topbar-brand { gap: 14px !important; }
 .app-layout, .bo-layout { min-height: calc(100vh - 80px) !important; }
 
-/* Ajustes compactos de Validacion */
-.tabla-scroll{max-height:calc(100vh - 280px);}
-.tabla thead th{padding:9px 12px;}
-.tabla tbody td{padding:8px 12px;}
-.th-accion{width:120px!important;min-width:120px!important;}
-.th-estado{width:120px!important;min-width:120px!important;}
-.th-obs-seg{width:120px!important;min-width:120px!important;}
-.th-fecha{width:120px!important;min-width:120px!important;}
-.acciones-cell{justify-content:center;gap:6px;}
-.tip-val-btn.activo{
-  box-shadow:0 0 0 3px rgba(124,58,237,.28)!important;
-  transform:translateY(-1px);
+/* Ajuste de contraste Validación — evita badges pálidos/ilegibles. */
+.tabla thead th,
+.tabla th {
+  color: #f8fafc !important;
+  text-shadow: none !important;
 }
+.tabla tbody td { color: #1f2937 !important; }
+.badge-estado {
+  min-width: 86px !important;
+  justify-content: center !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .08) !important;
+}
+.badge-estado.be-venta {
+  background: #bfdbfe !important;
+  color: #0f3b77 !important;
+  border-color: #60a5fa !important;
+}
+.badge-estado.be-validado {
+  background: #ddd6fe !important;
+  color: #3b0764 !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, .20) !important;
+}
+.badge-estado.be-instalado {
+  background: #bbf7d0 !important;
+  color: #14532d !important;
+  border-color: #22c55e !important;
+}
+.badge-estado.be-programado {
+  background: #fde68a !important;
+  color: #78350f !important;
+  border-color: #f59e0b !important;
+}
+.badge-estado.be-caida,
+.badge-estado.be-fraude {
+  background: #fecaca !important;
+  color: #7f1d1d !important;
+  border-color: #ef4444 !important;
+}
+.badge-estado.be-observado,
+.badge-estado.be-pendiente {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  border-color: #94a3b8 !important;
+}
+.badge-estado.be-nocontesta,
+.badge-estado.be-nodesea,
+.badge-estado.be-servicio {
+  background: #ffedd5 !important;
+  color: #7c2d12 !important;
+  border-color: #fb923c !important;
+}
+.btn-fotos {
+  color: #0f766e !important;
+  background: #ccfbf1 !important;
+  border-color: #14b8a6 !important;
+  font-weight: 900 !important;
+}
+.btn-fotos:hover {
+  color: #064e3b !important;
+  background: #99f6e4 !important;
+  border-color: #0f766e !important;
+}
+
+/* Codex polish: one shared palette for validation chips and badges */
+.be-corta,.b-corta{background:#eff6ff;color:#1d4ed8;border:1px solid rgba(96,165,250,.45);}
+.be-fraude,.b-fraude{background:#fee2e2;color:#b91c1c;border:1px solid rgba(248,113,113,.42);}
+.be-nodesea,.b-nodesea{background:#fff1f2;color:#be123c;border:1px solid rgba(251,113,133,.38);}
+.be-nocontesta,.b-nocontesta{background:#fffbeb;color:#b45309;border:1px solid rgba(251,191,36,.45);}
+.be-servicio,.b-servicio{background:#ecfeff;color:#0e7490;border:1px solid rgba(34,211,238,.42);}
+.be-validado,.b-validado{background:#f5f3ff;color:#6d28d9;border:1px solid rgba(167,139,250,.45);}
+.be-buzon,.b-buzon{background:#fff7ed;color:#c2410c;border:1px solid rgba(251,146,60,.46);}
+.be-grabando,.b-grabando{background:#ecfdf5;color:#047857;border:1px solid rgba(52,211,153,.48);}
+.tip-val-btn{border:1px solid transparent;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.tip-val-btn.activo{outline:2px solid currentColor!important;box-shadow:0 0 0 4px rgba(15,23,42,.06)!important;}
+.tip-val-btn.be-corta{background:#eff6ff!important;color:#1d4ed8!important;border-color:rgba(96,165,250,.45)!important;}
+.tip-val-btn.be-fraude{background:#fee2e2!important;color:#b91c1c!important;border-color:rgba(248,113,113,.42)!important;}
+.tip-val-btn.be-nodesea{background:#fff1f2!important;color:#be123c!important;border-color:rgba(251,113,133,.38)!important;}
+.tip-val-btn.be-nocontesta{background:#fffbeb!important;color:#b45309!important;border-color:rgba(251,191,36,.45)!important;}
+.tip-val-btn.be-servicio{background:#ecfeff!important;color:#0e7490!important;border-color:rgba(34,211,238,.42)!important;}
+.tip-val-btn.be-validado{background:#f5f3ff!important;color:#6d28d9!important;border-color:rgba(167,139,250,.45)!important;}
+.tip-val-btn.be-buzon{background:#fff7ed!important;color:#c2410c!important;border-color:rgba(251,146,60,.46)!important;}
+.tip-val-btn.be-grabando{background:#ecfdf5!important;color:#047857!important;border-color:rgba(52,211,153,.48)!important;}
+
+/* Codex pass 2: validacion estilo clasico y colores por tipificacion */
+.validacion-page{padding:16px 22px;}
+.validacion-page .page-header{margin-bottom:14px;}
+.validacion-page .page-header-left h2{font-size:18px;font-weight:800;color:#0f172a;}
+.validacion-page .page-header-left p{font-size:12px;color:#94a3b8;}
+.validacion-page .kpi-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.validacion-page .kpi-item{min-height:78px;border-radius:10px;border-left-width:3px;padding:14px 18px;}
+.validacion-page .filtros-panel{border-radius:10px;padding:13px 16px;margin-bottom:12px;}
+.validacion-page .filtros-grid{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr auto;gap:10px;align-items:end;}
+.validacion-page .tabla-wrap{border-radius:10px;}
+.validacion-page .tabla-header{padding:11px 14px;}
+.validacion-page .tabla-title{font-size:13px;}
+.validacion-page .tabla-count{background:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.25);}
+.validacion-page .tabla-scroll{max-height:calc(100vh - 315px);}
+.validacion-page .tabla tbody td{padding:8px 10px;font-size:11px;}
+.validacion-page .th-accion{width:92px!important;min-width:92px!important;max-width:92px!important;}
+.validacion-page .tabla tbody td:first-child{width:92px!important;min-width:92px!important;max-width:92px!important;padding:6px 8px!important;}
+.validacion-page .acciones-cell{justify-content:center!important;gap:5px!important;flex-wrap:nowrap!important;}
+.validacion-page .acciones-cell .btn-accion-row,
+.validacion-page .acciones-cell .btn-fotos{width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;border-radius:8px!important;font-size:12px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+.be-tecnico,.b-tecnico{background:#fce7f3!important;color:#be185d!important;border:1px solid rgba(244,114,182,.5)!important;}
+.be-bloqueado,.b-bloqueado{background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.45)!important;}
+.badge-estado.be-tecnico{background:#fce7f3!important;color:#be185d!important;border-color:rgba(244,114,182,.5)!important;}
+.badge-estado.be-bloqueado{background:#eff6ff!important;color:#2563eb!important;border-color:rgba(96,165,250,.45)!important;}
+@media (max-width:1100px){.validacion-page .filtros-grid{grid-template-columns:1fr 1fr;}.validacion-page .kpi-strip{grid-template-columns:1fr;}}

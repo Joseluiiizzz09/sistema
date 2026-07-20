@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { API, NC_API, ncHeaders } from '../services/api'
+import JefaturaViewControls from '../components/JefaturaViewControls'
+import MediaViewer from '../components/MediaViewer'
+import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
-  aprobado:    { cls: 'bg-grabado',  label: 'APROBADO'    },
+  aprobado:    { cls: 'bg-grabado',  label: 'GRABADO'     },
   observado:   { cls: 'bg-observado',label: 'OBSERVADO'   },
-  sin_revisar: { cls: 'bg-revisado', label: 'SIN REVISAR' },
+  sin_revisar: { cls: 'bg-revisado', label: 'EN REVISION' },
 }
 
 function formatF(f) {
@@ -66,6 +68,8 @@ export default function SupGrabaciones() {
   const audioRef = useRef(null)
 
   const [modalObs, setModalObs] = useState(null)
+  const [mediaVenta, setMediaVenta] = useState(null)
+  const [fotosVenta, setFotosVenta] = useState(null)
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -78,7 +82,7 @@ export default function SupGrabaciones() {
 
   function actualizarFecha() {
     const d = new Date()
-    const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+    const dias  = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const hora  = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
     setFechaLabel(`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} - ${hora}`)
@@ -99,6 +103,7 @@ export default function SupGrabaciones() {
             fechaIngreso:     (v.created_at   || '').split(' ')[0],
             estadoRev:        v.estado_supgrab || 'sin_revisar',
             obsSup:           v.obs_supgrab    || '',
+            audioPath:        v.audio_path || '',
             audioUrl:         v.audio_path ? `${NC_API}/${v.audio_path}` : null,
             audioNombre:      v.audio_path ? v.audio_path.split('/').pop() : '',
           }))
@@ -111,7 +116,7 @@ export default function SupGrabaciones() {
     cargarVentas()
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
-    const fc = setInterval(cargarVentas, 15000)
+    const fc = setInterval(cargarVentas, 60000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
 
@@ -145,15 +150,27 @@ export default function SupGrabaciones() {
     setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
   }
 
-  function abrirModalRevisar(v) {
+  async function abrirModalRevisar(v) {
     setModalRevisar(v)
     setEstadoRevision(v.estadoRev || 'sin_revisar')
     setRevObs('')
-    setAudioSrc(v.audioUrl || '')
+    setAudioSrc('')
+    if (v.audioUrl) {
+      try {
+        const res = await fetch(v.audioUrl, { headers: ncHeadersFile() })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const blob = await res.blob()
+        setAudioSrc(URL.createObjectURL(blob))
+      } catch (e) {
+        console.error('No se pudo preparar audio protegido:', e)
+        setAudioSrc(v.audioUrl || '')
+      }
+    }
   }
 
   function cerrarModalRevisar() {
     if (audioRef.current) audioRef.current.pause()
+    if (audioSrc && audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc)
     setAudioSrc('')
     setModalRevisar(null)
     setEstadoRevision('')
@@ -168,20 +185,32 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
-    const payload = estadoRevision === 'aprobado'
-      ? { estado: 'aprobado', obs_supgrab: nuevoHistorial, estado_supgrab: estadoRevision }
-      : { estado: 'validado', estado_grab: 'pendiente', obs_supgrab: nuevoHistorial, estado_supgrab: estadoRevision }
+    const estadoPrincipal = estadoRevision === 'observado' ? 'validado' : 'grabado'
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}`, {
         method: 'PATCH', headers: ncHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          estado: estadoPrincipal,
+          obs_supgrab: nuevoHistorial,
+          estado_supgrab: estadoRevision,
+          estado_grab: estadoRevision === 'observado' ? 'observado' : 'grabado',
+        }),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error guardando'); return }
-      setVentas(list => list.filter(x => x.id !== modalRevisar.id))
+      if (estadoRevision === 'aprobado' || estadoRevision === 'observado') {
+        setVentas(list => list.filter(x => x.id !== modalRevisar.id))
+      } else {
+        setVentas(list => list.map(x =>
+          x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
+        ))
+      }
       cerrarModalRevisar()
       setPagina(1)
-      mostrarToast(estadoRevision === 'aprobado' ? 'Aprobado - paso a Programacion' : 'Observado - volvio a Grabaciones')
+      mostrarToast(
+        estadoRevision === 'aprobado'  ? 'Aprobado — se muestra como GRABADO' :
+        'Observado — vuelve a Grabaciones para corregir'
+      )
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 
@@ -189,10 +218,10 @@ export default function SupGrabaciones() {
 
   return (
     <div>
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="NC" onError={e => { e.target.parentNode.textContent = '🏢' }} />
+            <img src="/assets/logo3.png" alt="NC" onError={e => { e.target.style.display = 'none' }} />
           </div>
           <div className="brand-text">
             <h1>NET<span className="dot"></span><span className="red">CONTACT</span></h1>
@@ -200,9 +229,11 @@ export default function SupGrabaciones() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-fecha">{fechaLabel}</span>
-          <span className="topbar-badge" style={{ background: '#16a34a' }}>SUP. GRABACIONES</span>
-          <span className="topbar-user">{usuarioActual}</span>
+          <JefaturaViewControls>
+            <span className="topbar-fecha">{fechaLabel}</span>
+            <span className="topbar-badge" style={{ background: '#16a34a' }}>SUP. GRABACIONES</span>
+            <span className="topbar-user">{usuarioActual}</span>
+          </JefaturaViewControls>
           <button className="btn-cancelar-m" style={{ borderColor: '#fca5a5', color: '#ef4444' }} onClick={salir}>Salir</button>
         </div>
       </div>
@@ -211,14 +242,14 @@ export default function SupGrabaciones() {
         <div className="page-header">
           <div className="page-header-left">
             <h2>Supervisor de Grabaciones</h2>
-            <p>Solo ventas con estado GRABADO — revisa y aprueba u observa</p>
+            <p>Solo ventas con audio en revisión — escucha, aprueba u observa</p>
           </div>
         </div>
 
         <div className="kpi-strip">
           <div className="kpi-item k-blue">  <div><div className="kpi-num">{kpis.total}</div>    <div className="kpi-label">Total grabadas</div></div></div>
           <div className="kpi-item k-green"> <div><div className="kpi-num">{kpis.aprobado}</div> <div className="kpi-label">Aprobadas</div></div></div>
-          <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendiente}</div><div className="kpi-label">Sin revisar</div></div></div>
+          <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendiente}</div><div className="kpi-label">En revisión</div></div></div>
           <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.observado}</div><div className="kpi-label">Observadas</div></div></div>
         </div>
 
@@ -229,7 +260,7 @@ export default function SupGrabaciones() {
               <label>Estado revisión</label>
               <select value={fEstado} onChange={e => { setFEstado(e.target.value); setPagina(1) }}>
                 <option value="">Todos</option>
-                <option value="sin_revisar">Sin revisar</option>
+                <option value="sin_revisar">En revisión</option>
                 <option value="aprobado">Aprobado</option>
                 <option value="observado">Observado</option>
               </select>
@@ -253,7 +284,7 @@ export default function SupGrabaciones() {
               <input type="date" value={fHasta} onChange={e => { setFHasta(e.target.value); setPagina(1) }} />
             </div>
             <div style={{ alignSelf: 'flex-end' }}>
-              <button className="btn-limpiar" onClick={limpiarFiltros}>✕ Limpiar</button>
+              <button className="btn-limpiar" onClick={limpiarFiltros}>âœ• Limpiar</button>
             </div>
           </div>
         </div>
@@ -265,7 +296,7 @@ export default function SupGrabaciones() {
               <span className="tabla-count">{totalPag} registros</span>
               {totalPag > 0 && (
                 <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 600 }}>
-                  Mostrando {inicio + 1}–{fin} de {totalPag}
+                  Mostrando {inicio + 1}â€“{fin} de {totalPag}
                 </span>
               )}
             </div>
@@ -273,16 +304,16 @@ export default function SupGrabaciones() {
               <input
                 type="text" className="tabla-search" value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
-                placeholder="🔍 Buscar nombre, DNI, vendedor..."
+                placeholder="Buscar nombre, DNI, vendedor..."
               />
               <select
                 value={porPagina}
                 onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}
                 style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', outline: 'none' }}
               >
-                <option value="18">18 / pág</option>
-                <option value="30">30 / pág</option>
-                <option value="50">50 / pág</option>
+                <option value="18">18 / pÃ¡g</option>
+                <option value="30">30 / pÃ¡g</option>
+                <option value="50">50 / pÃ¡g</option>
               </select>
             </div>
           </div>
@@ -313,9 +344,11 @@ export default function SupGrabaciones() {
                     : '--'
                   return (
                     <tr key={v.id}>
-                      <td>
-                        <div className="acciones-cell">
-                          <button className="btn-acc btn-acc-audio" onClick={() => abrirModalRevisar(v)}>Revisar</button>
+                      <td className="supg-actions-td">
+                        <div className="acciones-cell supg-actions">
+                          <button className="btn-acc btn-acc-audio" onClick={() => abrirModalRevisar(v)} disabled={!v.audioUrl}>Escuchar</button>
+                          <button className="btn-acc btn-acc-subir" onClick={() => setMediaVenta(v)}>Archivos</button>
+                          <button className="btn-acc btn-acc-fotos" onClick={() => setFotosVenta(v)}>Fotos</button>
                           <button className="btn-acc btn-acc-obs" onClick={() => setModalObs(v)}>Obs</button>
                         </div>
                       </td>
@@ -333,7 +366,7 @@ export default function SupGrabaciones() {
                       <td>
                         {v.audioUrl
                           ? <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '11px' }}>OK {v.audioNombre}</span>
-                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabación</span>
+                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaciÃ³n</span>
                         }
                       </td>
                       <td style={{ fontSize: '10px', color: '#6b7280', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ultimaObs}>
@@ -347,20 +380,38 @@ export default function SupGrabaciones() {
           </div>
 
           <div className="paginacion">
-            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}–${fin} de ${totalPag}` : ''}</span>
+            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}â€“${fin} de ${totalPag}` : ''}</span>
             <Paginacion total={totalPag} pagina={pagina} porPagina={porPagina} onChange={p => setPagina(p)} />
           </div>
         </div>
       </div>
 
+      <MediaViewer
+        open={!!mediaVenta}
+        onClose={() => setMediaVenta(null)}
+        ventaId={mediaVenta?.id}
+        title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || 'â€”'} Â· Tel: ${mediaVenta?.telefonoContacto || 'â€”'}`}
+        audioPath={mediaVenta?.audioPath || mediaVenta?.audioUrl}
+        audioName={mediaVenta?.audioNombre}
+      />
+
+      <MediaViewer
+        open={!!fotosVenta}
+        onClose={() => setFotosVenta(null)}
+        ventaId={fotosVenta?.id}
+        title={`Fotos de ${fotosVenta?.nombreApellidos || 'la venta'}`}
+        subtitle={`DNI: ${fotosVenta?.dni || '—'} · Tel: ${fotosVenta?.telefonoContacto || '—'}`}
+      />
+
       {/* MODAL REVISAR */}
       {modalRevisar && (
         <div className="modal-bg open" onClick={e => { if (e.target === e.currentTarget) cerrarModalRevisar() }}>
           <div className="modal-box" style={{ maxWidth: '520px' }}>
-            <div className="modal-title">🎙️ Revisar Grabación</div>
+            <div className="modal-title">Revisar Grabación</div>
             <div className="modal-sub">
-              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> ·{' '}
-              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> ·{' '}
+              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> Â·{' '}
+              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> Â·{' '}
               Fecha: <strong>{formatF(modalRevisar.fechaIngreso)}</strong>
             </div>
 
@@ -372,6 +423,14 @@ export default function SupGrabaciones() {
                   : <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', padding: '8px 0' }}>Sin archivo de audio disponible.</div>
                 }
               </div>
+              {audioSrc && (
+                <div style={{ marginTop: '8px' }}>
+                  <a href={audioSrc} download={`grabacion_${modalRevisar.id}.mp3`}
+                    style={{ padding: '7px 14px', background: '#2563eb', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    Descargar audio
+                  </a>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '14px' }}>
@@ -403,12 +462,12 @@ export default function SupGrabaciones() {
             <div className="modal-campo">
               <label>Observación del supervisor (opcional)</label>
               <textarea value={revObs} onChange={e => setRevObs(e.target.value)}
-                placeholder="Observacion de calidad para que Grabaciones corrija..." rows="3" />
+                placeholder="Observación de calidad o corrección requerida..." rows="3" />
             </div>
 
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalRevisar}>Cancelar</button>
-              <button className="btn-guardar" onClick={guardarRevision}>Guardar revision</button>
+              <button className="btn-guardar" onClick={guardarRevision}>Guardar revisión</button>
             </div>
           </div>
         </div>

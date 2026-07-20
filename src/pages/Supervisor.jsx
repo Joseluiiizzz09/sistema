@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
+import { ReasignarVentaModal } from '../components/VentaAssignmentModal'
 import { API, ncHeaders } from '../services/api'
+import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
@@ -9,6 +12,7 @@ const ESTADOS_VENTA = [
   { id:'venta',         label:'Venta',           cls:'be-venta',      dot:'#2563eb' },
   { id:'validado',      label:'Validado',         cls:'be-validado',   dot:'#7c3aed' },
   { id:'no_validado',   label:'No Validado',      cls:'be-caida',      dot:'#dc2626' },
+  { id:'en_revision',   label:'En Revisión',      cls:'be-revision',   dot:'#2563eb' },
   { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
   { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
   { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
@@ -37,8 +41,11 @@ function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
 function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
-function mapearEstado(e) {
+function mapearEstado(e, sup = '') {
   const s=(e||'').toLowerCase().trim()
+  const sr=(sup||'').toLowerCase().trim()
+  if(s==='grabado' && (sr==='sin_revisar' || sr==='en_revision')) return 'en_revision'
+  if(s==='grabado' && sr==='aprobado') return 'grabado'
   if(s===''||s==='venta') return 'venta'
   if(s==='validado')      return 'validado'
   if(s==='no_validado'||s==='observado') return 'no_validado'
@@ -115,6 +122,7 @@ export default function Supervisor() {
 
   // ── Toast ──
   const [toast, setToast] = useState('')
+  const [ventaReasignar, setVentaReasignar] = useState(null)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function mostrarToast(msg) {
@@ -189,7 +197,7 @@ export default function Supervisor() {
         fetch(`${API}/ventas`,   { headers: ncHeaders() }),
       ])
       const [dU, dV] = await Promise.all([rU.json(), rV.json()])
-      if (dU.ok) setAsesores(dU.data.filter(u=>u.cargo==='asesor'&&u.activo))
+      if (dU.ok) setAsesores(dU.data.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo))
       if (dV.ok) setVentas(dV.data.map(v => ({
         ...v,
         asesor:   v.asesor_nombre || '',
@@ -199,7 +207,7 @@ export default function Supervisor() {
         distrito: v.distrito || '',
         _fecha:   (v.created_at||'').split(' ')[0],
         _hora:    (v.created_at||'').split(' ')[1] || '',
-        _estado:  mapearEstado(v.estado),
+        _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab),
       })))
     } catch(e) { console.error(e) }
   }, [])
@@ -238,6 +246,12 @@ export default function Supervisor() {
       if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)); mostrarToast('Venta eliminada') }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
     } catch(e) { mostrarToast('Error de conexión') }
+  }
+
+  async function completarReasignacion(data) {
+    await cargarDatos()
+    setVentaReasignar(null)
+    mostrarToast(data?.mensaje || 'Venta reasignada correctamente')
   }
 
   async function agregarVentaManual() {
@@ -376,7 +390,7 @@ export default function Supervisor() {
   return (
     <div className="sup-root">
       {/* TOPBAR */}
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="topbar-brand">
           <div className="logo-circle">
             <img src="/assets/logo3.png" alt="NC" style={{width:26,height:26,objectFit:'contain'}} />
@@ -387,8 +401,10 @@ export default function Supervisor() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-sala">{salaActual}</span>
-          <span className="topbar-user">{supervisorNom}</span>
+          <JefaturaViewControls>
+            <span className="topbar-sala">{salaActual}</span>
+            <span className="topbar-user">{supervisorNom}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
@@ -507,8 +523,6 @@ export default function Supervisor() {
             <div className="sec-header">
               <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto · usa filtros para ver otros periodos</p></div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="btn-export" onClick={()=>mostrarToast('Excel — próximamente')}>Excel</button>
-                <button className="btn-export" onClick={()=>mostrarToast('PDF — próximamente')}>PDF</button>
                 <button className="btn-filtrar" onClick={()=>{ setPanelNV(v=>!v); if(!panelNV) setNvForm({...NV_DEFAULT,fecha:fechaHoy()}) }}>+ Registrar venta</button>
               </div>
             </div>
@@ -613,9 +627,12 @@ export default function Supervisor() {
                           <td><BadgeEstado id={v._estado||'venta'} /></td>
                           <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
                           <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
-                          <td style={{display:'flex',gap:6,alignItems:'center',padding:'6px 4px'}}>
-                            <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>📷</button>
-                            <button onClick={()=>eliminarVenta(v.id)} style={{padding:'4px 10px',border:'1px solid rgba(239,68,68,.3)',borderRadius:7,background:'#fff5f5',color:'#dc2626',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Eliminar</button>
+                          <td>
+                            <div className="venta-actions">
+                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>📷</button>
+                              <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
+                              <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -945,6 +962,16 @@ export default function Supervisor() {
             </div>
           </div>
         </div>
+      )}
+
+      {ventaReasignar && (
+        <ReasignarVentaModal
+          venta={ventaReasignar}
+          asesores={asesoresSala}
+          alcance="sala"
+          onClose={()=>setVentaReasignar(null)}
+          onSuccess={completarReasignacion}
+        />
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}

@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
+import MediaViewer from '../components/MediaViewer'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import '../styles/grabaciones.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
 const ESTADOS_GRAB = [
-  { id:'grabado',   label:'GRABADO',   cls:'bg-grabado'   },
-  { id:'grabando',  label:'GRABANDO',  cls:'bg-grabando'  },
-  { id:'no_contesta', label:'NO CONTESTA', cls:'bg-no-contesta' },
-  { id:'buzon',     label:'BUZON',     cls:'bg-buzon'     },
-  { id:'suplantacion', label:'SUPLANTACION', cls:'bg-suplantacion' },
   { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
+  { id:'grabado',   label:'GRABADO',   cls:'bg-grabado'   },
+  { id:'observado', label:'OBSERVADO', cls:'bg-observado' },
+  { id:'en_revision', label:'EN REVISION', cls:'bg-revisado' },
 ]
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -23,7 +23,18 @@ function fechaHoy() {
 }
 function horaAhora() { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function formatF(f)  { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
-function estadoGrab(id) { return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB.find(e=>e.id==='pendiente') }
+function fechaPeruDesdeMs(ms) {
+  const d = new Date(ms)
+  if (Number.isNaN(d.getTime())) return ''
+  const utcMs = d.getTime() + d.getTimezoneOffset() * 60000
+  const peru = new Date(utcMs - 5 * 3600000)
+  return `${peru.getFullYear()}-${String(peru.getMonth()+1).padStart(2,'0')}-${String(peru.getDate()).padStart(2,'0')}`
+}
+function fechaDesdeAudioPath(path) {
+  const m = String(path || '').match(/_(\d{11,})\.[a-z0-9]+$/i)
+  return m ? fechaPeruDesdeMs(Number(m[1])) : ''
+}
+function estadoGrab(id) { return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB[0] }
 function getDateLabel() {
   const d = new Date()
   const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -32,13 +43,15 @@ function getDateLabel() {
 }
 function mapVenta(v) {
   const fechaRaw = (v.created_at||'').split(' ')[0].split('T')[0]
+  const fechaAudio = fechaDesdeAudioPath(v.audio_path)
   return {
     ...v,
     nombreApellidos:  v.nombre        || '',
     telefonoContacto: v.telefono1     || '',
     vendedor:         v.asesor_nombre || '',
     fechaIngreso:     fechaRaw,
-    _estadoGrab:      (v.estado_grab || 'pendiente').toLowerCase(),
+    _fechaGrab:       fechaAudio || fechaRaw || fechaHoy(),
+    _estadoGrab:      v.estado_grab   || 'pendiente',
     _grabAudio:       v.audio_path    || null,
     _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
     _grabObs:         v.observacion   || '',
@@ -104,16 +117,17 @@ export default function Grabaciones() {
   const [modalSubir,  setModalSubir]  = useState({ open:false, id:null })
   const [archivoSel,  setArchivoSel]  = useState(null)
   const [subirInfo,   setSubirInfo]   = useState('')
-  const [subirAudioSrc, setSubirAudioSrc] = useState('')
   const [subirDrag,   setSubirDrag]   = useState(false)
   const [subirLoading,setSubirLoading]= useState(false)
 
   // ── Modal audio ──
   const [modalAudio, setModalAudio] = useState({ open:false, id:null })
   const [audioSrc,   setAudioSrc]   = useState('')
+  const [audioLoading, setAudioLoading] = useState(false)
 
   // ── Modal obs ──
   const [modalObs, setModalObs] = useState({ open:false, id:null })
+  const [mediaVenta, setMediaVenta] = useState(null)
   const [nuevaObs, setNuevaObs] = useState('')
 
   // ── Toast ──
@@ -140,7 +154,7 @@ export default function Grabaciones() {
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
-          .filter(v => (v.estado||'').toLowerCase() === 'validado')
+          .filter(v => { const e=(v.estado||'').toLowerCase(); return e==='validado'||e==='venta' })
           .map(mapVenta)
         )
       }
@@ -164,18 +178,18 @@ export default function Grabaciones() {
   const kpis = useMemo(() => {
     const hoy = fechaHoy()
     return {
-      hoy:        ventas.filter(v => v.fechaIngreso === hoy).length,
-      pendientes: ventas.filter(v => v.fechaIngreso < hoy).length,
+      hoy:        ventas.filter(v => v._fechaGrab === hoy).length,
+      pendientes: ventas.filter(v => v._fechaGrab < hoy).length,
       grabados:   ventas.filter(v => v._estadoGrab === 'grabado').length,
-      grabando: ventas.filter(v => v._estadoGrab === 'grabando').length,
+      observados: ventas.filter(v => v._estadoGrab === 'observado').length,
     }
   }, [ventas])
 
   const ventasFiltradas = useMemo(() => {
     const hoy  = fechaHoy()
     const base = tabActiva === 'hoy'
-      ? ventas.filter(v => v.fechaIngreso === hoy)
-      : ventas.filter(v => v.fechaIngreso < hoy)
+      ? ventas.filter(v => v._fechaGrab === hoy)
+      : ventas.filter(v => v._fechaGrab < hoy)
     return base.filter(v => {
       if (fVendedor && !(v.vendedor||'').toLowerCase().includes(fVendedor.toLowerCase())) return false
       if (fDesde    && v.fechaIngreso < fDesde) return false
@@ -209,26 +223,19 @@ export default function Grabaciones() {
     if (nuevoEstadoSel === 'grabado') {
       await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify({ estado:'grabado', estado_grab:'grabado' }),
+      body: JSON.stringify({ estado:'grabado', estado_supgrab:'sin_revisar', estado_grab:'en_revision' }),
       }).catch(console.error)
       setVentas(list => list.filter(x=>x.id!==v.id))
       setModalEstado({ open:false, id:null })
       mostrarToast('Venta marcada como GRABADA — pasa al Supervisor')
       return
     }
-    const payload = { estado_grab: nuevoEstadoSel }
-    if (nuevoEstadoSel === 'grabando') {
-      const prevObs = v._grabObs ? v._grabObs + '\n' : ''
-      const nombre = sesion?.nombre || 'Grabaciones'
-      payload.observacion = prevObs + '[' + formatF(fechaHoy()) + ' ' + horaAhora() + ' - ' + nombre + '] Grabando ' + nombre
-    }
-
     try {
       await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ estado_grab: nuevoEstadoSel }),
       })
-      setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel, _grabObs:payload.observacion || x._grabObs } : x))
+      setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel } : x))
     } catch(e) { console.error('Error guardando estado:', e) }
     setModalEstado({ open:false, id:null })
     mostrarToast('Estado actualizado: ' + nuevoEstadoSel.toUpperCase())
@@ -240,7 +247,6 @@ export default function Grabaciones() {
     setModalSubir({ open:true, id })
     setArchivoSel(null)
     setSubirInfo('')
-    setSubirAudioSrc(v._grabAudio ? `${NC_API}/${v._grabAudio}` : '')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -250,7 +256,6 @@ export default function Grabaciones() {
     if (!file.name.match(/\.(mp3|wav|ogg|m4a|mp4|webm)$/i)) { mostrarToast('Solo archivos de audio'); return }
     setArchivoSel(file)
     setSubirInfo(`${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`)
-    setSubirAudioSrc(URL.createObjectURL(file))
   }
 
   async function guardarAudio() {
@@ -270,45 +275,71 @@ export default function Grabaciones() {
       if (uploadData.ok) rutaAudio = uploadData.ruta
     } catch(e) { console.error('Error subiendo audio:', e) }
 
-    if (!rutaAudio) {
-      setSubirLoading(false)
-      mostrarToast('No se pudo subir la grabacion')
-      return
-    }
+    await fetch(`${API}/ventas/${v.id}`, {
+      method:'PATCH', headers:ncHeaders(),
+      body: JSON.stringify({
+        estado:'grabado',
+        estado_supgrab:'sin_revisar',
+        estado_grab:'en_revision',
+        ...(rutaAudio ? { audio_path:rutaAudio } : {}),
+      }),
+    }).catch(console.error)
 
-    setVentas(list => list.map(x => x.id===v.id
-      ? { ...x, _grabAudio:rutaAudio, _grabNombre:rutaAudio.split('/').pop() }
-      : x
-    ))
-    setSubirAudioSrc(`${NC_API}/${rutaAudio}`)
-    setArchivoSel(null)
-    setSubirInfo('Archivo subido. Puedes escucharlo antes de marcar GRABADO.')
-    setSubirLoading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    mostrarToast('Grabacion subida. La venta sigue en Grabaciones hasta marcar GRABADO.')
+    setVentas(list => list.filter(x=>x.id!==v.id))
+    setModalSubir({ open:false, id:null })
+    setArchivoSel(null); setSubirInfo(''); setSubirLoading(false)
+    mostrarToast('Audio subido — queda EN REVISIÓN')
   }
 
   // ── Modal Audio ───────────────────────────────────────────────────────────
-  function abrirModalAudio(id) {
+  async function prepararAudioUrl(ruta) {
+    const url = `${NC_API}/${ruta}`
+    const resp = await fetch(url, { headers:ncHeadersFile() })
+    if (!resp.ok) throw new Error(`Audio no disponible (${resp.status})`)
+    const blob = await resp.blob()
+    return URL.createObjectURL(blob)
+  }
+
+  async function abrirModalAudio(id) {
     const v = ventas.find(x=>x.id===id); if (!v) return
+    if (!v._grabAudio) { mostrarToast('Esta venta no tiene grabación'); return }
+    if (audioSrc && audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc)
+    setAudioSrc('')
+    setAudioLoading(true)
     setModalAudio({ open:true, id })
-    setAudioSrc(v._grabAudio ? `${NC_API}/${v._grabAudio}` : '')
+    try {
+      const blobUrl = await prepararAudioUrl(v._grabAudio)
+      setAudioSrc(blobUrl)
+    } catch (err) {
+      console.error('No se pudo abrir el audio', err)
+      mostrarToast('No se pudo abrir el audio. Revisa que el archivo exista.')
+    } finally {
+      setAudioLoading(false)
+    }
   }
 
   function cerrarModalAudio() {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src='' }
+    if (audioSrc && audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc)
     setModalAudio({ open:false, id:null }); setAudioSrc('')
+    setAudioLoading(false)
   }
 
-  function descargarAudio(id) {
+  async function descargarAudio(id) {
     const v = ventas.find(x=>x.id===id)
     if (!v || !v._grabAudio) { mostrarToast('Esta venta no tiene grabación'); return }
-    const url    = `${NC_API}/${v._grabAudio}`
     const nombre = v._grabNombre || `grabacion_${id}.mp3`
-    const a = document.createElement('a')
-    a.href=url; a.download=nombre; a.target='_blank'
-    document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    mostrarToast('Descargando: ' + nombre)
+    try {
+      const url = await prepararAudioUrl(v._grabAudio)
+      const a = document.createElement('a')
+      a.href=url; a.download=nombre
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(()=>URL.revokeObjectURL(url), 1500)
+      mostrarToast('Descargando: ' + nombre)
+    } catch (err) {
+      console.error('No se pudo descargar el audio', err)
+      mostrarToast('No se pudo descargar el audio.')
+    }
   }
 
   // ── Modal Obs ─────────────────────────────────────────────────────────────
@@ -340,7 +371,7 @@ export default function Grabaciones() {
   return (
     <div>
       {/* TOPBAR */}
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
             <img src="/assets/logo3.png" alt="NC" onError={e=>{ e.target.parentNode.textContent='🏢' }} />
@@ -351,9 +382,11 @@ export default function Grabaciones() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-fecha">{fechaLabel}</span>
-          <span className="topbar-badge">GRABACIONES</span>
-          <span className="topbar-user">{sesion?.nombre || 'Grabaciones'}</span>
+          <JefaturaViewControls>
+            <span className="topbar-fecha">{fechaLabel}</span>
+            <span className="topbar-badge">GRABACIONES</span>
+            <span className="topbar-user">{sesion?.nombre || 'Grabaciones'}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
@@ -373,7 +406,7 @@ export default function Grabaciones() {
           <div className="kpi-item k-blue"><div><div className="kpi-num">{kpis.hoy}</div><div className="kpi-label">Ventas de hoy</div></div></div>
           <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendientes}</div><div className="kpi-label">Pendientes anteriores</div></div></div>
           <div className="kpi-item k-green"><div><div className="kpi-num">{kpis.grabados}</div><div className="kpi-label">Grabados</div></div></div>
-          <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.grabando}</div><div className="kpi-label">Grabando</div></div></div>
+          <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.observados}</div><div className="kpi-label">Observados</div></div></div>
         </div>
 
         {/* TABS */}
@@ -451,7 +484,7 @@ export default function Grabaciones() {
             <table className="tabla">
               <thead>
                 <tr>
-                  <th style={{width:210}}>ACCIONES</th>
+                  <th style={{width:260,minWidth:260}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
                   <th style={{width:120}}>FECHA</th>
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
@@ -459,7 +492,7 @@ export default function Grabaciones() {
                   <th style={{width:110}}>TEL. CONTACTO</th>
                   <th style={{width:130}}>VENDEDOR</th>
                   <th style={{width:120}}>SUPERVISOR</th>
-                  <th style={{width:220}}>AUDIO</th>
+                  <th style={{width:160}}>ARCHIVO AUDIO</th>
                   <th style={{width:180}}>ÚLTIMA OBS.</th>
                 </tr>
               </thead>
@@ -467,16 +500,19 @@ export default function Grabaciones() {
                 {paginaVentas.length === 0
                   ? <tr><td colSpan={10} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
-                      const esAnterior = v.fechaIngreso < hoy
+                      const esAnterior = v._fechaGrab < hoy
+                      const tieneAudio = !!v._grabAudio
                       const eg         = estadoGrab(v._estadoGrab)
                       const ultimaObs  = v._grabObs ? v._grabObs.split('\n').filter(Boolean).slice(-1)[0]?.substring(0,50) || '—' : '—'
                       return (
                         <tr key={v.id} className={esAnterior?'fila-pendiente':''}>
                           <td>
                             <div className="acciones-cell">
+
                               <button className="btn-acc btn-acc-obs"    onClick={()=>abrirModalObs(v.id)}    title="Observación">Obs.</button>
                               <button className="btn-acc btn-acc-subir"  onClick={()=>abrirModalSubir(v.id)}  title="Subir grabación">Subir</button>
                               <button className="btn-acc btn-acc-estado" onClick={()=>abrirModalEstado(v.id)} title="Cambiar estado">Estado</button>
+                              <button className="btn-fotos btn-archivos" onClick={()=>setMediaVenta(v)} title="Ver fotos y documentos">📎 Archivos</button>
                             </div>
                           </td>
                           <td><span className={`badge-grab ${eg.cls}`}>{eg.label}</span></td>
@@ -490,8 +526,8 @@ export default function Grabaciones() {
                           <td style={{fontWeight:600,color:'#7C3AED'}}>{v.vendedor||'—'}</td>
                           <td style={{fontSize:11}}>{v.supervisor||'—'}</td>
                           <td>
-                            {v._grabAudio
-                              ? <audio src={`${NC_API}/${v._grabAudio}`} controls className="audio-inline" title={v._grabNombre || 'Audio subido'} />
+                            {tieneAudio
+                              ? <span style={{color:'#16a34a',fontWeight:600,fontSize:11}}>{v._grabNombre||'Archivo subido'}</span>
                               : <span style={{color:'#9ca3af',fontSize:11,fontStyle:'italic'}}>Sin grabación</span>}
                           </td>
                           <td style={{fontSize:10,color:'#6b7280'}}>{ultimaObs}</td>
@@ -518,6 +554,16 @@ export default function Grabaciones() {
 
       </div>
 
+      <MediaViewer
+        open={!!mediaVenta}
+        onClose={()=>setMediaVenta(null)}
+        ventaId={mediaVenta?.id}
+        title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || '—'} · Tel: ${mediaVenta?.telefonoContacto || '—'}`}
+        audioPath={mediaVenta?._grabAudio}
+        audioName={mediaVenta?._grabNombre}
+      />
+
       {/* ══ MODAL ESTADO ═════════════════════════════════════════════════════ */}
       {modalEstado.open && (
         <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalEstado({open:false,id:null}) }}>
@@ -540,9 +586,9 @@ export default function Grabaciones() {
 
       {/* ══ MODAL SUBIR ══════════════════════════════════════════════════════ */}
       {modalSubir.open && (
-        <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) { setModalSubir({open:false,id:null}); setSubirAudioSrc('') } }}>
+        <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalSubir({open:false,id:null}) }}>
           <div className="modal-box" style={{maxWidth:440}}>
-            <div className="modal-title">Subir grabacion</div>
+            <div className="modal-title">📎 Subir grabación</div>
             <div className="modal-sub">Cliente: <strong>{vSubir?.nombreApellidos||'—'}</strong></div>
             <div
               className="upload-zone"
@@ -552,7 +598,7 @@ export default function Grabaciones() {
               onDragLeave={()=>setSubirDrag(false)}
               onDrop={e=>{ e.preventDefault(); setSubirDrag(false); handleFileSelect(e.dataTransfer.files) }}
             >
-              <div className="upload-icon">Audio</div>
+              <div className="upload-icon">🎙️</div>
               <div style={{fontSize:13,fontWeight:600,color:'#374151',marginTop:6}}>Arrastra tu archivo aquí o haz clic</div>
               <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
               <input
@@ -566,15 +612,10 @@ export default function Grabaciones() {
             {subirInfo && (
               <div style={{marginTop:8,color:'#16a34a',fontWeight:600,fontSize:13}}>{subirInfo}</div>
             )}
-            {subirAudioSrc && (
-              <div className="audio-player upload-preview">
-                <audio src={subirAudioSrc} controls style={{width:'100%',height:40}} />
-              </div>
-            )}
             <div className="modal-btns">
-              <button className="btn-cancelar-m" onClick={()=>{ setModalSubir({open:false,id:null}); setArchivoSel(null); setSubirInfo(''); setSubirAudioSrc('') }}>Cerrar</button>
+              <button className="btn-cancelar-m" onClick={()=>{ setModalSubir({open:false,id:null}); setArchivoSel(null); setSubirInfo('') }}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarAudio} disabled={subirLoading}>
-                {subirLoading ? 'Subiendo...' : 'Subir grabacion'}
+                {subirLoading ? 'Subiendo...' : '✅ Subir grabación'}
               </button>
             </div>
           </div>
@@ -596,13 +637,18 @@ export default function Grabaciones() {
               <div style={{fontSize:12,color:'#374151',fontWeight:600}}>{vAudio?._grabNombre||'—'}</div>
             </div>
             <div className="audio-player">
-              {audioSrc
-                ? <audio ref={audioRef} src={audioSrc} controls style={{width:'100%',height:40}} />
-                : <div className="audio-no">Sin grabación cargada para esta venta.</div>
+              {audioLoading
+                ? <div className="audio-no">Preparando audio...</div>
+                : audioSrc
+                  ? <audio ref={audioRef} src={audioSrc} controls style={{width:'100%',height:40}} />
+                  : <div className="audio-no">Sin grabación cargada para esta venta.</div>
               }
             </div>
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalAudio}>Cerrar</button>
+              {audioSrc && (
+                <button className="btn-guardar" style={{background:'#059669'}} onClick={()=>descargarAudio(modalAudio.id)}>⬇️ Descargar</button>
+              )}
               <button
                 className="btn-guardar"
                 style={{background:'#2563eb'}}

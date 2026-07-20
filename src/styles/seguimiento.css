@@ -620,3 +620,27 @@ body{
 .brand-text .brand-sub, .topbar-brand-text .brand-sub { font-size: 10px !important; letter-spacing: 1px !important; font-weight: 600 !important; margin-top: 2px !important; }
 .brand,.topbar-brand { gap: 14px !important; }
 .app-layout, .bo-layout { min-height: calc(100vh - 80px) !important; }
+/* Codex polish: softer seguimiento colors, no harsh separators */
+.leyenda-item.l-ejec,.bs-ejec{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.35);}
+.leyenda-item.l-inst,.bs-inst{background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.35);}
+.leyenda-item.l-caida,.bs-caida{background:#fee2e2!important;color:#b91c1c!important;border:1px solid rgba(248,113,113,.35);}
+.leyenda-item.l-rech,.bs-rech{background:#fff7ed!important;color:#c2410c!important;border:1px solid rgba(251,146,60,.38);}
+.leyenda-item.l-tecnico,.bs-tecnico{background:#f5f3ff!important;color:#6d28d9!important;border:1px solid rgba(167,139,250,.38);}
+.leyenda-item.l-todos{background:#f8fafc!important;color:#334155!important;border:1px solid rgba(148,163,184,.35);}
+.fila-ejec td{background:#f0fdf9!important;}
+.fila-inst td{background:#f8fbff!important;}
+.fila-caida td{background:#fff7f7!important;}
+.fila-rech td{background:#fffaf4!important;}
+.fila-tecnico td{background:#fbf9ff!important;}
+.fila-ejec:hover td,.fila-inst:hover td,.fila-caida:hover td,.fila-rech:hover td,.fila-tecnico:hover td{background:#f8fafc!important;}
+
+/* Codex pass 2: acciones en una sola linea y tecnico rosa */
+.tabla th.th-acc{min-width:260px;width:260px;}
+.tabla td:first-child:has(.seg-acciones){min-width:260px;width:260px;overflow:visible;white-space:nowrap;}
+.seg-acciones{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:4px!important;max-width:none!important;min-width:max-content;}
+.seg-acciones .btn-acc{height:26px;padding:0 8px;border-radius:8px;font-size:10.5px;line-height:1;}
+.seg-acciones .btn-fotos{height:26px;min-height:26px;padding:0 8px;border-radius:8px;font-size:10.5px;white-space:nowrap;}
+.leyenda-item.l-tecnico,.bs-tecnico{background:#fce7f3!important;color:#be185d!important;border:1px solid rgba(244,114,182,.45)!important;box-shadow:0 2px 8px rgba(244,114,182,.12)!important;}
+.fila-tecnico td{background:#fff5fb!important;}
+.fila-tecnico:hover td{background:#fdf2f8!important;}
+.kpi-item.k-tec{border-left-color:#ec4899!important;}

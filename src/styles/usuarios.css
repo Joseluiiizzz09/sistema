@@ -417,3 +417,16 @@ body {
   font-family: inherit; cursor: pointer; transition: all .2s var(--sp);
 }
 .btn-eliminar-confirm:hover { background: #c53030; transform: scale(1.02); }
+.cargos-cell { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.cargo-secundario-note { display: block; margin-top: 5px; color: #9ca3af; font-size: 10px; }
+.cargo-secundario-ayuda {
+  align-self: stretch;
+  justify-content: center;
+  padding: 10px 13px;
+  border: 1px solid #fee2e2;
+  border-radius: 10px;
+  background: #fff7f7;
+  color: #6b7280;
+}
+.cargo-secundario-ayuda strong { color: #991b1b; font-size: 11px; }
+.cargo-secundario-ayuda span { font-size: 10px; line-height: 1.45; }

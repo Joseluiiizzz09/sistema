@@ -28,9 +28,8 @@ export function useAuth() {
 
   function tieneAcceso(cargo) {
     if (!sesion) return false
-    if (sesion.cargo === cargo) return true
-    if (sesion.permisos?.includes(cargo)) return true
-    return false
+    // Cada sesion usa un solo cargo activo para no mezclar permisos.
+    return sesion.cargo === cargo
   }
 
   return { sesion, login, logout, getToken, tieneAcceso }

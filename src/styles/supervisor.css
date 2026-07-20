@@ -698,6 +698,11 @@ body{
   color: #fff !important;
   box-shadow: 0 2px 8px rgba(139,92,246,.3);
 }
+.be-revision, .b-revision {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+}
 .be-instalado, .b-instalado, .vs-badge-instalado {
   background: linear-gradient(135deg,#10b981,#059669);
   color: #fff !important;

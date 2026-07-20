@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, ncHeaders } from '../services/api'
+import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
 import '../styles/usuarios.css'
 
 const CARGO_CLASE = {
@@ -30,11 +31,11 @@ const CARGOS = [
   { value: 'supgrabaciones', label: 'Sup. Grabaciones' },
 ]
 
-const FORM_VACIO = { nombre: '', usuario: '', pass: '', pass2: '', cargo: '', sala: '', genero: 'M', activo: true }
+const FORM_VACIO = { nombre: '', usuario: '', pass: '', pass2: '', cargo: '', cargo2: '', sala: '', genero: 'M', activo: true }
 
 export default function Usuarios() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, sesion } = useAuth()
 
   const [usuarios, setUsuarios] = useState([])
   const [buscar, setBuscar]         = useState('')
@@ -75,7 +76,7 @@ export default function Usuarios() {
   const usuariosFiltrados = useMemo(() => usuarios.filter(u => {
     const q = buscar.toLowerCase()
     if (q && !u.nombre.toLowerCase().includes(q) && !u.usuario.toLowerCase().includes(q)) return false
-    if (filtroCargo  && u.cargo !== filtroCargo) return false
+    if (filtroCargo  && !usuarioTieneCargo(u, filtroCargo)) return false
     if (filtroEstado && (filtroEstado === 'activo' ? !u.activo : u.activo)) return false
     return true
   }), [usuarios, buscar, filtroCargo, filtroEstado])
@@ -84,8 +85,8 @@ export default function Usuarios() {
     total:        usuarios.length,
     activos:      usuarios.filter(u => u.activo).length,
     inactivos:    usuarios.filter(u => !u.activo).length,
-    asesores:     usuarios.filter(u => u.cargo === 'asesor').length,
-    supervisores: usuarios.filter(u => u.cargo === 'supervisor').length,
+    asesores:     usuarios.filter(u => usuarioTieneCargo(u, 'asesor')).length,
+    supervisores: usuarios.filter(u => usuarioTieneCargo(u, 'supervisor')).length,
   }), [usuarios])
 
   function limpiarFiltros() { setBuscar(''); setFiltroCargo(''); setFiltroEstado('') }
@@ -101,7 +102,8 @@ export default function Usuarios() {
   // MODAL EDITAR
   function abrirModalEditar(u) {
     setEditandoId(u.id)
-    setForm({ nombre: u.nombre || '', usuario: u.usuario || '', pass: '', pass2: '', cargo: u.cargo || '', sala: u.sala || '', genero: u.genero || 'M', activo: !!u.activo })
+    const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo) || ''
+    setForm({ nombre: u.nombre || '', usuario: u.usuario || '', pass: '', pass2: '', cargo: u.cargo || '', cargo2, sala: u.sala || '', genero: u.genero || 'M', activo: !!u.activo })
     setErrores({})
     setModalOpen(true)
   }
@@ -129,13 +131,14 @@ export default function Usuarios() {
     else if (form.pass && form.pass.length < 6) errs.pass = 'Mínimo 6 caracteres'
     if (form.pass && form.pass !== form.pass2) errs.pass2 = 'Las contraseñas no coinciden'
     if (!form.cargo) errs.cargo = 'Selecciona un cargo'
+    if (form.cargo2 && form.cargo2 === form.cargo) errs.cargo2 = 'El cargo adicional debe ser diferente'
     if (Object.keys(errs).length) { setErrores(errs); return }
 
     setGuardando(true)
     try {
       let res, data
       if (editandoId) {
-        const body = { nombre: form.nombre, usuario: form.usuario, cargo: form.cargo, sala: form.sala, genero: form.genero }
+        const body = { nombre: form.nombre, usuario: form.usuario, cargo: form.cargo, sala: form.sala, genero: form.genero, permisos: form.cargo2 ? [form.cargo2] : [] }
         if (form.pass) body.password = form.pass
         res  = await fetch(`${API}/usuarios/${editandoId}`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify(body) })
         data = await res.json()
@@ -149,7 +152,7 @@ export default function Usuarios() {
       } else {
         res  = await fetch(`${API}/usuarios`, {
           method: 'POST', headers: ncHeaders(),
-          body: JSON.stringify({ nombre: form.nombre, usuario: form.usuario, password: form.pass, cargo: form.cargo, sala: form.sala, genero: form.genero, activo: form.activo }),
+          body: JSON.stringify({ nombre: form.nombre, usuario: form.usuario, password: form.pass, cargo: form.cargo, sala: form.sala, genero: form.genero, activo: form.activo, permisos: form.cargo2 ? [form.cargo2] : [] }),
         })
         data = await res.json()
         if (!data.ok) {
@@ -263,6 +266,7 @@ export default function Usuarios() {
               ) : usuariosFiltrados.map((u, i) => {
                 const fecha    = u.created_at ? new Date(u.created_at).toLocaleDateString('es-PE') : '—'
                 const cargoCls = CARGO_CLASE[u.cargo] || 'bc-default'
+                const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo)
                 return (
                   <tr key={u.id}>
                     <td style={{ color: '#9ca3af', fontSize: '11px' }}>{i + 1}</td>
@@ -271,7 +275,12 @@ export default function Usuarios() {
                       <span className="nombre-sub">Género: {u.genero === 'F' ? 'Femenino' : 'Masculino'}</span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600, color: '#374151' }}>@{u.usuario}</td>
-                    <td><span className={`badge-cargo ${cargoCls}`}>{u.cargo.toUpperCase()}</span></td>
+                    <td>
+                      <div className="cargos-cell">
+                        <span className={`badge-cargo ${cargoCls}`}>{u.cargo.toUpperCase()}</span>
+                        {cargo2 && <span className={`badge-cargo ${CARGO_CLASE[cargo2] || 'bc-default'}`}>{cargo2.toUpperCase()}</span>}
+                      </div>
+                    </td>
                     <td style={{ fontSize: '12px', color: '#374151' }}>{u.sala || '—'}</td>
                     <td>
                       {u.activo
@@ -355,7 +364,7 @@ export default function Usuarios() {
 
               <div className="campo-row">
                 <div className="campo">
-                  <label>Cargo *</label>
+                  <label>Cargo principal *</label>
                   <select value={form.cargo} onChange={e => setField('cargo', e.target.value)}>
                     <option value="">— Seleccione cargo —</option>
                     {CARGOS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -363,17 +372,29 @@ export default function Usuarios() {
                   {errores.cargo && <span className="campo-error">{errores.cargo}</span>}
                 </div>
                 <div className="campo">
+                  <label>Cargo adicional (opcional)</label>
+                  <select value={form.cargo2} onChange={e => setField('cargo2', e.target.value)} disabled={sesion?.cargo !== 'jefatura'}>
+                    <option value="">— Sin cargo adicional —</option>
+                    {CARGOS.filter(c => c.value !== form.cargo && c.value !== 'jefatura').map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                  {errores.cargo2 && <span className="campo-error">{errores.cargo2}</span>}
+                  {sesion?.cargo !== 'jefatura' && <span className="cargo-secundario-note">Solo Jefatura puede asignar un segundo cargo.</span>}
+                </div>
+              </div>
+
+              <div className="campo-row">
+                <div className="campo">
                   <label>Sala</label>
                   <select value={form.sala} onChange={e => setField('sala', e.target.value)}>
                     <option value="">— Sin sala —</option>
                     <option value="SALA 1">Sala 1</option>
                     <option value="SALA 2">Sala 2</option>
                     <option value="SALA 3">Sala 3</option>
+                    <option value="SALA 4">Sala 4</option>
+                    <option value="SALA CHANCAY">Sala Chancay</option>
+                    <option value="SALA 5">Sala 5</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="campo-row">
                 <div className="campo">
                   <label>Género</label>
                   <select value={form.genero} onChange={e => setField('genero', e.target.value)}>
@@ -381,6 +402,9 @@ export default function Usuarios() {
                     <option value="F">Femenino</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="campo-row">
                 <div className="campo">
                   <label>Estado</label>
                   <div className="toggle-wrap">
@@ -390,6 +414,10 @@ export default function Usuarios() {
                     </label>
                     <span className="toggle-label">{form.activo ? 'Activo' : 'Inactivo'}</span>
                   </div>
+                </div>
+                <div className="campo cargo-secundario-ayuda">
+                  <strong>Un usuario, dos funciones</strong>
+                  <span>Al iniciar sesión podrá elegir con qué cargo trabajar.</span>
                 </div>
               </div>
             </div>

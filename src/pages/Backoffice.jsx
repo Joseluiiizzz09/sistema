@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
 import { API, ncHeaders } from '../services/api'
 import { UBIGEO } from '../services/ubigeo'
+import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/backoffice.css'
 
 // ── Utilities ────────────────────────────────────────────────────────────
@@ -38,9 +40,17 @@ function horaAhora() {
   const { hour, minute } = partesFechaHora(PERU_TIME_FORMATTER)
   return `${hour}:${minute}`
 }
-function formatFecha(f) {
+function normalizarFecha(f) {
   if (!f) return ''
-  const [y,m,d] = f.split('-')
+  const texto = String(f)
+  const match = texto.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : texto
+}
+function formatFecha(f) {
+  const fecha = normalizarFecha(f)
+  if (!fecha) return ''
+  const [y,m,d] = fecha.split('-')
+  if (!y || !m || !d) return fecha
   return `${d}/${m}/${y}`
 }
 function colorAv(n)   { let s=0; for (const c of n) s+=c.charCodeAt(0); return COLORES_AV[s % COLORES_AV.length] }
@@ -57,6 +67,11 @@ function tipifBadgeClass(t) {
 
 const TIPIF_BACK_OPTIONS = ['BUZON','NO CONTESTA','DER CHAMO','VENTA CERRADA','NO DESEA','CORTA LLAMADA','PREVENTA','EN EJECUCION','AGENDADO','NO CALIFICA','EDIFICIO NO LIBERADO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','DERIVADO','NC','NO TOCAR','FRAUDE']
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE'])
+function esLeadProhibido(reg) {
+  const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
+  return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
+}
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
   'NO CONTESTA':['#fefce8','#854d0e'],'BUZON DE VOZ':['#e0f2fe','#0c4a6e'],'CORTA LLAMADA':['#f8fafc','#334155'],
@@ -89,6 +104,30 @@ function BlBadge({ tipif }) {
   return <span style={{background:`${color}22`,color,border:`1px solid ${color}44`,padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:700}}>{raw}</span>
 }
 
+function BoNavIcon({ tipo }) {
+  if (tipo === 'base') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5M9 21v-7h6v7"/></svg>
+  )
+  if (tipo === 'carga') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 16V8m0 0-3 3m3-3 3 3"/></svg>
+  )
+  if (tipo === 'rendimiento') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>
+  )
+  return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m0-5a5 5 0 0 1 6 5"/></svg>
+  )
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    </svg>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function Backoffice() {
   const navigate    = useNavigate()
@@ -104,6 +143,7 @@ export default function Backoffice() {
     const guardada = sessionStorage.getItem('nc_backoffice_apartado')
     return BO_SECCIONES.includes(guardada) ? guardada : 'base'
   })
+  const [sidebarAbierto, setSidebarAbierto] = useState(() => sessionStorage.getItem('nc_backoffice_sidebar') !== 'cerrado')
 
   // ── Data ──
   const [asesores,      setAsesores]      = useState([])
@@ -112,7 +152,7 @@ export default function Backoffice() {
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
   // ── Form (agregar registro) ──
-  const [form,     setForm]     = useState({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipifBack:'', asesor:'' })
+  const [form,     setForm]     = useState({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
   const [n1Error,  setN1Error]  = useState(false)
   const [calPicker,   setCalPicker]   = useState('')
   const [cmCalPicker, setCmCalPicker] = useState('')
@@ -209,6 +249,46 @@ export default function Backoffice() {
     toastTimer.current = setTimeout(() => setToast(''), 3200)
   }
 
+  async function copiarNumero(numero) {
+    const texto = String(numero || '').trim()
+    if (!texto) return
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(texto)
+      } else {
+        const area = document.createElement('textarea')
+        area.value = texto
+        area.style.position = 'fixed'
+        area.style.opacity = '0'
+        document.body.appendChild(area)
+        area.select()
+        document.execCommand('copy')
+        area.remove()
+      }
+      mostrarToast(`Número ${texto} copiado`)
+    } catch(e) {
+      mostrarToast('No se pudo copiar el número')
+    }
+  }
+
+  async function guardarDatosBack(id, cambios) {
+    const found = findReg(id)
+    if (!found) return
+    updateReg(id, cambios)
+    if (!found.reg._backendId) return
+    try {
+      const res = await fetch(`${API}/leads/${found.reg._backendId}/datos-back`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify(cambios)
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'Error al guardar')
+      mostrarToast('Datos de Back Data guardados')
+    } catch(e) {
+      mostrarToast(e.message || 'No se pudieron guardar los datos')
+      cargarLeads()
+    }
+  }
+
   function findReg(id) {
     for (const f in baseData) {
       const reg = baseData[f].find(r => r.id === id)
@@ -239,7 +319,7 @@ export default function Backoffice() {
     try {
       const res  = await fetch(`${API}/usuarios`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) setAsesores(data.data.filter(u => u.cargo === 'asesor' && u.activo).map(u => ({ id:u.id, nombre:u.nombre, usuario:u.usuario, sala:u.sala })))
+      if (data.ok) setAsesores(data.data.filter(u => usuarioTieneCargo(u, 'asesor') && u.activo).map(u => ({ id:u.id, nombre:u.nombre, usuario:u.usuario, sala:u.sala })))
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
 
@@ -251,7 +331,7 @@ export default function Backoffice() {
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {
-        const fecha = l.fecha || fechaHoy()
+        const fecha = normalizarFecha(l.fecha) || fechaHoy()
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
         if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha)
         nuevoBase[fecha].push({
@@ -261,6 +341,10 @@ export default function Backoffice() {
           distrito:   l.distrito || '—',
           n1:         l.n1,
           n2:         l.n2 || '',
+          tipo_contacto: l.tipo_contacto || 'LLAMADA',
+          direccion:   l.direccion || '',
+          coordenadas: l.coordenadas || '',
+          obs_back:    l.obs_back || '',
           tipifBack:  l.tipif_back || '',
           asesor:     l.asesor_nombre || '',
           horaAsig:   l.hora_asig || '',
@@ -347,19 +431,23 @@ export default function Backoffice() {
     const campana  = form.campana.trim() || '—'
     const distrito = form.distrito || '—'
     const n2       = form.n2.trim()
+    const tipo_contacto = form.tipoContacto || 'LLAMADA'
+    const direccion = form.direccion.trim()
+    const coordenadas = form.coordenadas.trim()
+    const obs_back = form.obsBack.trim()
     const tipifBack = form.tipifBack
     const asesor   = form.asesor
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipifBack, asesor, horaAsig:hora,
+      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
     setBaseData(prev => ({ ...prev, [fecha]: [reg, ...(prev[fecha] || [])] }))
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
-      const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
+      const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json()
       const bid  = data.ids?.[0] || data.id
       if (bid) {
@@ -372,7 +460,7 @@ export default function Backoffice() {
         })
       }
     } catch(e) {}
-    setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipifBack:'', asesor:'' })
+    setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
     mostrarToast(`N1: ${n1} agregado${asesor ? ' → '+asesor : ''}`)
   }
 
@@ -382,6 +470,10 @@ export default function Backoffice() {
     if (!found) return
     const { reg } = found
     const hora = horaAhora()
+    if (nuevoAsesor && esLeadProhibido(reg)) {
+      mostrarToast(`N1 ${reg.n1} bloqueado: ${reg._tipifVend}`)
+      return
+    }
     if (!nuevoAsesor) {
       updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true })
       if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
@@ -418,6 +510,10 @@ export default function Backoffice() {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
+    if (esLeadProhibido(reg)) {
+      mostrarToast(`N1 ${reg.n1} no se puede rotar: ${reg._tipifVend}`)
+      return
+    }
     setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
     setRotModalAsesor('')
     setRotModalMotivo('')
@@ -428,11 +524,15 @@ export default function Backoffice() {
     const found = findReg(modalRotar.regId)
     if (!found) return
     const { reg } = found
+    if (esLeadProhibido(reg)) {
+      mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
+      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+      return
+    }
     const hora    = horaAhora()
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
     updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
-    setHistOpen(prev => ({ ...prev, [modalRotar.regId]: true }))
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
     mostrarToast(`Rotado: ${reg.asesor||'Sin asignar'} → ${rotModalAsesor} · ${hora}`)
     setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
@@ -447,7 +547,7 @@ export default function Backoffice() {
       (baseData[fecha]||[]).forEach(reg => {
         let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
-        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores:reg.historial.map(h=>h.asesor), _reg:reg })
+        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', tipifVend:reg._tipifVend||'', prohibido:esLeadProhibido(reg), asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores:reg.historial.map(h=>h.asesor), _reg:reg })
       })
     })
     return list
@@ -455,13 +555,15 @@ export default function Backoffice() {
 
   function rotApto(lead, asesor) {
     const ahora = new Date()
-    if (!asesor) return { apto:false }
+    const prohibido = !!lead.prohibido
+    if (prohibido) return { apto:false, prohibido:true, sinRepetir:false, tiempo:false, estadoOk:false }
+    if (!asesor) return { apto:false, prohibido:false }
     const sinRepetir = !lead.histAsesores.includes(asesor)
     const mins = Math.floor((ahora - lead.ultimaAsig)/60000)
     const tiempo = mins >= 120
     const estadoOk = ['Buzon','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado)
-    if (!lead.asesor) return { apto:sinRepetir, sinRepetir, tiempo:true, estadoOk:true }
-    return { apto:sinRepetir&&tiempo&&estadoOk, sinRepetir, tiempo, estadoOk }
+    if (!lead.asesor) return { apto:sinRepetir, prohibido:false, sinRepetir, tiempo:true, estadoOk:true }
+    return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk }
   }
 
   function rotMins(f) { return Math.floor((new Date() - f)/60000) }
@@ -470,7 +572,9 @@ export default function Backoffice() {
   async function rotFinalizarWith(selToUse, asesorActual) {
     const hora     = horaAhora()
     const allLeads = buildRotLeads()
-    const rotados  = allLeads.filter(l => selToUse[l.id])
+    // Se valida otra vez al ejecutar para impedir selecciones antiguas o cambios
+    // de tipificación ocurridos mientras el panel estaba abierto.
+    const rotados  = allLeads.filter(l => selToUse[l.id] && rotApto(l, asesorActual).apto)
     const res = []
     for (const l of rotados) {
       const reg = l._reg
@@ -756,29 +860,44 @@ export default function Backoffice() {
   return (
     <div className="bo-root">
       {/* TOPBAR */}
-      <div className="topbar">
-        <div className="brand">
-          <div className="logo-circle"><img src="/assets/logo3.png" alt="Netcontact" /></div>
-          <div className="brand-text">
-            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
-            <span className="brand-sub">Back Office</span>
+      <div className="topbar module-topbar-standard">
+        <div className="bo-topbar-left">
+          <div className="brand">
+            <div className="logo-circle"><img src="/assets/logo3.png" alt="Netcontact" /></div>
+            <div className="brand-text">
+              <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
+              <span className="brand-sub">Back Data</span>
+            </div>
           </div>
+          <button
+            type="button"
+            className={`bo-sidebar-toggle${sidebarAbierto ? ' abierto' : ''}`}
+            aria-label={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            title={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            onClick={() => setSidebarAbierto(valor => {
+              const nuevo = !valor
+              sessionStorage.setItem('nc_backoffice_sidebar', nuevo ? 'abierto' : 'cerrado')
+              return nuevo
+            })}
+          >
+            <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2.5"/><path d="M7 3v12"/></svg>
+          </button>
         </div>
         <div className="topbar-right">
-          <span className="bo-usuario">{sesion?.nombre || 'Back Office'}</span>
+          <JefaturaViewControls><span className="bo-usuario">{sesion?.nombre || 'Back Data'}</span></JefaturaViewControls>
           <a href="#" className="bo-salir" onClick={e=>{ e.preventDefault(); logout(); navigate('/') }}>Salir</a>
         </div>
       </div>
 
-      <div className="bo-layout">
+      <div className={`bo-layout${sidebarAbierto ? '' : ' sidebar-cerrado'}`}>
         {/* SIDEBAR */}
-        <aside className="bo-sidebar">
+        <aside className={`bo-sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Principal</div>
-          <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><span className="nav-dot" /> Base</button>
-          <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><span className="nav-dot" /> Carga Masiva</button>
+          <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
+          <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
           <div className="sidebar-sep">Reportes</div>
-          <button className={`bo-nav${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><span className="nav-dot" /> Rendimiento</button>
-          <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><span className="nav-dot" /> Avance Asesores</button>
+          <button className={`bo-nav${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><BoNavIcon tipo="rendimiento" /> <span>Rendimiento</span></button>
+          <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><BoNavIcon tipo="avance" /> <span>Avance Asesores</span></button>
         </aside>
 
         <main className="bo-main">
@@ -820,6 +939,7 @@ export default function Backoffice() {
                         <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Sin repetir:</strong> el lead no puede ir a un asesor que ya lo tuvo</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-blue">⏱</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta o Nuevo</div></div>
+                        <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>
                       </div>
                       <div className="bo-panel" style={{padding:'14px 16px'}}>
@@ -872,7 +992,7 @@ export default function Backoffice() {
                             <th>
                               <input type="checkbox" checked={allAptosSelected} onChange={e=>{ if(e.target.checked){const ns={};rotAptos.slice(0,rotCant).forEach(l=>{ns[l.id]=true});setRotSel(ns);}else setRotSel({}) }} />
                             </th>
-                            <th>N1 / Campaña</th><th>Fecha</th><th>Tipif. Back</th>
+                            <th>N1 / Campaña</th><th>Fecha</th><th>Tipificación</th>
                             <th>Asesor actual</th><th>Hora asig.</th><th>Tiempo</th>
                             <th>Sin repetir</th><th>Aptitud</th>
                           </tr></thead>
@@ -880,20 +1000,20 @@ export default function Backoffice() {
                             {allRotLeads.length === 0
                               ? <tr><td colSpan={9} className="bo-empty">Sin leads.</td></tr>
                               : allRotLeads.map(l => {
-                                  const { apto, sinRepetir, tiempo } = rotApto(l, rotAsesor)
+                                  const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
                                   return (
-                                    <tr key={l.id} className={(!rotAsesor||apto)?'':'row-noapto'}>
-                                      <td><input type="checkbox" checked={!!rotSel[l.id]} disabled={!apto&&!!rotAsesor} onChange={e=>rotToggleSel(l.id,e.target.checked)} /></td>
+                                    <tr key={l.id} className={(prohibido||(!apto&&rotAsesor))?'row-noapto':''}>
+                                      <td><input type="checkbox" checked={!!rotSel[l.id]} disabled={prohibido||(!apto&&!!rotAsesor)} onChange={e=>rotToggleSel(l.id,e.target.checked)} /></td>
                                       <td><div style={{fontFamily:'monospace',fontWeight:700,color:'#111827',fontSize:12}}>{l.tel}</div><div style={{fontSize:10,color:'#9ca3af',marginTop:1}}>{l.campana} · {l.n2||'—'}</div></td>
                                       <td>{esFechaHoy ? <span style={{background:'#dcfce7',color:'#166534',fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99}}>HOY</span> : <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:9,padding:'1px 6px',borderRadius:99}}>{formatFecha(l.fecha)}</span>}</td>
-                                      <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'Sin tipif.'}</span></td>
+                                      <td><span className={`tipif-badge ${tipifBadgeClass(prohibido?l.tipifVend:l.estado)}`} style={prohibido?{background:'#fee2e2',color:'#991b1b',fontWeight:800}:{}}>{prohibido?l.tipifVend:(l.estado||'Sin tipif.')}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor}</td>
                                       <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
                                       <td className={tiempo?'timer-ok':'timer-fail'}>{rotTxt(l.ultimaAsig)} {tiempo?'OK':'falta '+(120-mins)+'min'}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
-                                      <td>{!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
+                                      <td>{prohibido?<span className="badge-noapto">Prohibido</span>:!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
                                     </tr>
                                   )
                                 })
@@ -936,6 +1056,36 @@ export default function Backoffice() {
               </div>
             </div>
 
+            {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
+            <div className="base-filtros">
+              <div className="bo-input-group"><label>Tipificación back</label>
+                <select className="form-select" value={filtros.tip} onChange={e=>setFiltros(p=>({...p,tip:e.target.value}))}>
+                  <option value="">Todas</option>
+                  {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="bo-input-group"><label>Tipif. vendedor</label>
+                <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
+                  <option value="">Todas</option>
+                  <option>CONTESTA</option><option>NC</option><option>SIN COBERTURA</option><option>DERIVADO</option>
+                </select>
+              </div>
+              <div className="bo-input-group"><label>Asesor</label>
+                <select className="form-select" value={filtros.asesor} onChange={e=>setFiltros(p=>({...p,asesor:e.target.value}))}>
+                  <option value="">Todos</option>
+                  {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                </select>
+              </div>
+              <div className="bo-input-group base-filtro-numero"><label>Número</label>
+                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
+              </div>
+              <label className="toggle-col base-filtro-toggle">
+                <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
+                <span>Ver tipif. vendedor</span>
+              </label>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
+            </div>
+
             {/* FORMULARIO AGREGAR INDIVIDUAL */}
             <div className="bo-panel" style={{marginBottom:14}}>
               <div className="bo-panel-title">
@@ -964,6 +1114,15 @@ export default function Backoffice() {
                 </div>
                 <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>Tipo de contacto</label>
+                  <select className="form-select" value={form.tipoContacto} onChange={e=>setForm(p=>({...p,tipoContacto:e.target.value}))}>
+                    <option value="LLAMADA">Llamada normal</option>
+                    <option value="WHATSAPP">WhatsApp</option>
+                  </select>
+                </div>
+                <div className="bo-input-group"><label>Dirección</label><input className="form-control" value={form.direccion} onChange={e=>setForm(p=>({...p,direccion:e.target.value}))} placeholder="Dirección del cliente" /></div>
+                <div className="bo-input-group"><label>Coordenadas</label><input className="form-control" value={form.coordenadas} onChange={e=>setForm(p=>({...p,coordenadas:e.target.value}))} placeholder="Latitud, longitud" /></div>
+                <div className="bo-input-group"><label>Observación Back</label><input className="form-control" value={form.obsBack} onChange={e=>setForm(p=>({...p,obsBack:e.target.value}))} placeholder="Información para el asesor" maxLength={2000} /></div>
                 <div className="bo-input-group"><label>Tipif. Back</label>
                   <select className="form-select" value={form.tipifBack} onChange={e=>setForm(p=>({...p,tipifBack:e.target.value}))}>
                     <option value="">— Sin tipificación —</option>
@@ -978,49 +1137,19 @@ export default function Backoffice() {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',tipifBack:'',asesor:''})}>Limpiar</button>
+                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
                 <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
               </div>
             </div>
 
-            {/* FILTROS */}
-            <div className="base-filtros">
-              <div className="bo-input-group"><label>Tipificación back</label>
-                <select className="form-select" value={filtros.tip} onChange={e=>setFiltros(p=>({...p,tip:e.target.value}))}>
-                  <option value="">Todas</option>
-                  {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Tipif. vendedor</label>
-                <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
-                  <option value="">Todas</option>
-                  <option>CONTESTA</option><option>NC</option><option>SIN COBERTURA</option><option>DERIVADO</option>
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Asesor</label>
-                <select className="form-select" value={filtros.asesor} onChange={e=>setFiltros(p=>({...p,asesor:e.target.value}))}>
-                  <option value="">Todos</option>
-                  {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Número</label>
-                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6,justifyContent:'flex-end',paddingBottom:2}}>
-                <label className="toggle-col">
-                  <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /> Ver tipif. vendedor
-                </label>
-                <button className="bo-btn-limpiar btn btn-sm" style={{fontSize:11,padding:'5px 11px'}} onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
-              </div>
-            </div>
-
             {/* TABLA BASE */}
+            <div className="tabla-desliza-aviso">← Desliza horizontalmente para ver todas las columnas →</div>
             <div className="base-tabla-wrap">
               <table className="base-tabla table table-sm table-hover">
                 <thead>
                   <tr>
                     <th>#</th><th>Campaña</th><th>Distrito</th>
-                    <th>N1</th><th>N2</th><th>Tipif. Back</th>
+                    <th>N1</th><th>N2</th><th>Contacto</th><th>Dirección / Coord.</th><th>Obs. Back</th><th>Tipif. Back</th>
                     <th>Asesor asignado</th><th>Hora / Fecha asign.</th>
                     {filtros.verTipVend && <th>Tipif. Vendedor</th>}
                     <th>Sin asig.</th><th>Rotaciones</th><th>Acciones</th>
@@ -1028,7 +1157,7 @@ export default function Backoffice() {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={filtros.verTipVend?12:11} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={filtros.verTipVend?15:14} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
                         const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                         return [
@@ -1036,11 +1165,24 @@ export default function Backoffice() {
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
                             <td><strong>{r.campana}</strong></td>
                             <td style={{fontSize:11}}>{r.distrito}</td>
-                            <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{r.n1}</td>
-                            <td style={{fontFamily:'monospace',color:'#6b7280'}}>{r.n2||'—'}</td>
+                            <td><div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div></td>
+                            <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
+                            <td>
+                              <select className="bo-inline-select" value={r.tipo_contacto||'LLAMADA'} onChange={e=>guardarDatosBack(r.id,{tipo_contacto:e.target.value})}>
+                                <option value="LLAMADA">Llamada</option>
+                                <option value="WHATSAPP">WhatsApp</option>
+                              </select>
+                            </td>
+                            <td>
+                              <div className="bo-datos-ubicacion">
+                                <input defaultValue={r.direccion||''} onBlur={e=>guardarDatosBack(r.id,{direccion:e.target.value.trim()})} placeholder="Dirección" maxLength={1000}/>
+                                <input defaultValue={r.coordenadas||''} onBlur={e=>guardarDatosBack(r.id,{coordenadas:e.target.value.trim()})} placeholder="Coordenadas" maxLength={255}/>
+                              </div>
+                            </td>
+                            <td><input className="bo-obs-back" defaultValue={r.obs_back||''} onBlur={e=>guardarDatosBack(r.id,{obs_back:e.target.value.trim()})} placeholder="Observación para asesor" maxLength={2000}/></td>
                             <td>{r.tipifBack ? <span className={`tipif-badge ${tipifBadgeClass(r.tipifBack)}`}>{r.tipifBack}</span> : <span style={{color:'#ccc',fontSize:10}}>—</span>}</td>
                             <td>
-                              <select className="sel-asesor-tabla" value={r.asesor} onChange={e=>reasignarReg(r.id,e.target.value)}>
+                              <select className="sel-asesor-tabla" value={r.asesor} disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''} onChange={e=>reasignarReg(r.id,e.target.value)}>
                                 <option value="">— Sin asignar —</option>
                                 {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                               </select>
@@ -1065,9 +1207,9 @@ export default function Backoffice() {
                             </td>
                             <td>
                               <div className="acciones-cell">
-                                <button className="btn-rotar" onClick={()=>abrirModalRotar(r.id)}>
+                                <button className="btn-rotar" disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                  Rotar
+                                  {esExclusiva?'Prohibido':'Rotar'}
                                 </button>
                                 <button className="btn-hist" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1080,7 +1222,7 @@ export default function Backoffice() {
                             </td>
                           </tr>,
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
-                            <td colSpan={filtros.verTipVend?12:11}>
+                            <td colSpan={filtros.verTipVend?15:14}>
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {r.historial.length
@@ -1460,7 +1602,7 @@ export default function Backoffice() {
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-              <button className="btn-confirmar-modal" onClick={confirmarRotacion}>Rotar ahora</button>
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor}>Rotar ahora</button>
             </div>
           </div>
         </div>
@@ -1473,7 +1615,7 @@ export default function Backoffice() {
             <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <div>
                 <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas — {blModal.nombre}</div>
-                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura · Back Office</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura · Back Data</div>
               </div>
               <button onClick={()=>setBlModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>×</button>
             </div>

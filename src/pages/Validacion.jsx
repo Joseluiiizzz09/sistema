@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import JefaturaViewControls from '../components/JefaturaViewControls'
+import MediaViewer from '../components/MediaViewer'
 import { API, ncHeaders } from '../services/api'
 import '../styles/validacion.css'
 
@@ -13,25 +15,27 @@ const ESTADOS_TODOS = [
   { id:'caida',          label:'CAÍDA',           cls:'be-caida' },
   { id:'observado',      label:'OBSERVADO',       cls:'be-observado' },
   { id:'pendiente',      label:'PENDIENTE',       cls:'be-pendiente' },
-  { id:'corta_llamada',  label:'CORTA LLAMADA',   cls:'be-caida' },
+  { id:'corta_llamada',  label:'CORTA LLAMADA',   cls:'be-corta' },
   { id:'fraude',         label:'FRAUDE',          cls:'be-fraude' },
   { id:'no_desea',       label:'NO DESEA',        cls:'be-nodesea' },
   { id:'no_contesta',    label:'NO CONTESTA',     cls:'be-nocontesta' },
+  { id:'buzon_voz',      label:'BUZON DE VOZ',    cls:'be-buzon' },
+  { id:'grabando',       label:'GRABANDO',        cls:'be-grabando' },
   { id:'servicio_activo',label:'SERVICIO ACTIVO', cls:'be-servicio' },
 ]
 
 const TIP_BTNS = [
-  { id:'corta_llamada',   label:'CORTA LLAMADA',   style:{border:'2px solid #7dd3fc', background:'#f0f9ff', color:'#0c4a6e'} },
-  { id:'fraude',          label:'FRAUDE',           style:{border:'2px solid #fca5a5', background:'#fee2e2', color:'#991b1b'} },
-  { id:'no_desea',        label:'NO DESEA',         style:{border:'2px solid #fda4af', background:'#ffe4e6', color:'#881337'} },
-  { id:'no_contesta',     label:'NO CONTESTA',      style:{border:'2px solid #fde047', background:'#fef9c3', color:'#713f12'} },
-  { id:'servicio_activo', label:'SERVICIO ACTIVO',  style:{border:'2px solid #d1d5db', background:'#f3f4f6', color:'#374151'} },
-  { id:'validado',        label:'VALIDADO',         style:{border:'2px solid #c4b5fd', background:'#ede9fe', color:'#4c1d95'} },
+  { id:'corta_llamada',   label:'CORTA LLAMADA',    cls:'be-corta' },
+  { id:'fraude',          label:'FRAUDE',           cls:'be-fraude' },
+  { id:'no_desea',        label:'NO DESEA',         cls:'be-nodesea' },
+  { id:'no_contesta',     label:'NO CONTESTA',      cls:'be-nocontesta' },
+  { id:'servicio_activo', label:'SERVICIO ACTIVO',  cls:'be-servicio' },
+  { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
 ]
 
 const ESTADOS_OK    = ['validado','instalado','programado','grabado','aprobado','en_ejecucion','caida','rechazo_campo','tecnico_casa']
-const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','servicio_activo']
-const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','SERVICIO ACTIVO','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
+const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo']
+const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZON DE VOZ','GRABANDO','SERVICIO ACTIVO','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
 const LT_COLORES    = ['#7C3AED','#2563eb','#16a34a','#d97706','#dc2626','#0891b2','#ec4899']
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -77,6 +81,8 @@ function mapVenta(v) {
     obsVal:             v.obs_validacion|| '',
     tipifVal:           derivarTipifVal(v.obs_validacion),
     obsSeg:             v.obs_seguimiento || '',
+    _audioPath:         v.audio_path || '',
+    _audioNombre:       v.audio_path ? v.audio_path.split('/').pop() : '',
   }
 }
 
@@ -171,6 +177,7 @@ export default function Validacion() {
 
   // ── Modal historial ──
   const [modalObs, setModalObs] = useState({ open:false, id:null })
+  const [mediaVenta, setMediaVenta] = useState(null)
 
   // ── Toast ──
   const [toast, setToast] = useState('')
@@ -191,11 +198,7 @@ export default function Validacion() {
     } catch(e) { console.error('Error cargando ventas:', e) }
   }, [])
 
-  useEffect(() => {
-    cargarVentas()
-    const t = setInterval(cargarVentas, 10000)
-    return () => clearInterval(t)
-  }, [cargarVentas])
+  useEffect(() => { cargarVentas() }, [cargarVentas])
 
   // ── Reset página al cambiar filtros ──
   useEffect(() => { setPagina(1) }, [fEstado, fAsesor, fDesde, fHasta, busqueda])
@@ -263,7 +266,8 @@ export default function Validacion() {
     const nombre = sesion?.nombre || 'Validador'
 
     if (tipSel && tipSel !== v.estado) {
-      lineas.push(`[${ts} - ${nombre}] ${estadoObj(tipSel).label}`)
+      const etiquetaTip = estadoObj(tipSel).label
+      lineas.push(`[${ts} - ${nombre}] ${etiquetaTip}`)
     }
     if (nuevaObsModal.trim()) {
       lineas.push(`[${ts} - ${nombre}] ${nuevaObsModal.trim()}`)
@@ -271,18 +275,15 @@ export default function Validacion() {
     const nuevoHistorial = lineas.join('\n')
 
     try {
-      const payload = { obs_validacion: nuevoHistorial }
-      if (tipSel) payload.estado = tipSel.toUpperCase()
-
       const res  = await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ obs_validacion: nuevoHistorial }),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }
 
       setVentas(prev => prev.map(x => x.id === v.id
-        ? { ...x, estado: tipSel || x.estado, tipifVal: tipSel || x.tipifVal, obsVal: nuevoHistorial }
+        ? { ...x, tipifVal: tipSel || x.tipifVal, obsVal: nuevoHistorial }
         : x
       ))
       setModalEst({ open:false, id:null })
@@ -298,7 +299,7 @@ export default function Validacion() {
   return (
     <div>
       {/* TOPBAR */}
-      <div className="topbar">
+      <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
             <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} />
@@ -309,13 +310,15 @@ export default function Validacion() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className="topbar-badge">VALIDACIÓN</span>
-          <span className="topbar-user">{sesion?.nombre || 'Validador'}</span>
+          <JefaturaViewControls>
+            <span className="topbar-badge">VALIDACIÓN</span>
+            <span className="topbar-user">{sesion?.nombre || 'Validador'}</span>
+          </JefaturaViewControls>
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
 
-      <div className="main-content">
+      <div className="main-content validacion-page">
 
         {/* PAGE HEADER */}
         <div className="page-header">
@@ -357,6 +360,8 @@ export default function Validacion() {
                 <option value="caida">CAÍDA</option>
                 <option value="observado">OBSERVADO</option>
                 <option value="pendiente">PENDIENTE</option>
+                <option value="tecnico_casa">TECNICO EN CASA</option>
+                <option value="bloqueado">BLOQUEADO</option>
               </select>
             </div>
             <div className="fg">
@@ -450,7 +455,7 @@ export default function Validacion() {
                           <td style={{textAlign:'center',verticalAlign:'middle'}}>
                             <div className="acciones-cell">
                               <button className="btn-accion-row btn-obs" onClick={()=>abrirModalObs(v.id)} title="Ver historial y observar">📋</button>
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de grabaciones')} title="Ver fotos">📷</button>
+                              <button className="btn-fotos" onClick={()=>setMediaVenta(v)} title="Ver fotos y audio">📷</button>
                             </div>
                           </td>
                           <td style={{verticalAlign:'middle'}}>
@@ -514,6 +519,16 @@ export default function Validacion() {
 
       </div>
 
+      <MediaViewer
+        open={!!mediaVenta}
+        onClose={()=>setMediaVenta(null)}
+        ventaId={mediaVenta?.id}
+        title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || '—'} · Tel: ${mediaVenta?.telefonoContacto || '—'}`}
+        audioPath={mediaVenta?._audioPath}
+        audioName={mediaVenta?._audioNombre}
+      />
+
       {/* ══ MODAL TIPIFICACIÓN ═══════════════════════════════════════════════ */}
       {modalEst.open && (() => {
         const v = ventas.find(x=>x.id===modalEst.id)
@@ -537,9 +552,9 @@ export default function Validacion() {
                   {TIP_BTNS.map(btn => (
                     <button
                       key={btn.id}
-                      className={`tip-val-btn${tipSel===btn.id?' activo':''}`}
+                      className={`tip-val-btn ${btn.cls}${tipSel===btn.id?' activo':''}`}
                       onClick={()=>setTipSel(prev=>prev===btn.id?'':btn.id)}
-                      style={{padding:'8px 14px',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'inherit',cursor:'pointer',transition:'all .15s',...btn.style}}
+                      style={{padding:'8px 14px',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'inherit',cursor:'pointer',transition:'all .15s'}}
                     >
                       {btn.label}
                     </button>
@@ -569,7 +584,7 @@ export default function Validacion() {
 
               <div className="modal-btns">
                 <button className="btn-cancelar-modal" onClick={()=>setModalEst({open:false,id:null})}>Cancelar</button>
-                <button className="btn-guardar" onClick={guardarTipificacion}>Guardar</button>
+                <button className="btn-guardar" onClick={guardarTipificacion}>💾 Guardar</button>
               </div>
             </div>
           </div>
