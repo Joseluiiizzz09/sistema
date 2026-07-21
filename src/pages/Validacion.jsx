@@ -277,7 +277,13 @@ export default function Validacion() {
     try {
       const res  = await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
-        body: JSON.stringify({ obs_validacion: nuevoHistorial }),
+        body: JSON.stringify({
+          obs_validacion: nuevoHistorial,
+          ...(tipSel && ['validado','fraude','grabado','aprobado','en_ejecucion',
+              'instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(tipSel)
+            ? { estado: tipSel }
+            : {}),
+        }),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }

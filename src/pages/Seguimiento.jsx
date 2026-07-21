@@ -166,7 +166,7 @@ export default function Seguimiento() {
 
   useEffect(() => {
     cargarVentas()
-    const fc = setInterval(cargarVentas, 60000)
+    const fc = setInterval(cargarVentas, 3000)
     return () => clearInterval(fc)
   }, [cargarVentas])
 

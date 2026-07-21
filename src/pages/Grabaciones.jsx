@@ -163,7 +163,7 @@ export default function Grabaciones() {
 
   useEffect(() => {
     cargarVentas()
-    const t = setInterval(cargarVentas, 30000)
+    const t = setInterval(cargarVentas, 3000)
     return () => clearInterval(t)
   }, [cargarVentas])
 

@@ -367,7 +367,7 @@ export default function Backoffice() {
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
-    const t = setInterval(cargarLeads, 15000)
+    const t = setInterval(cargarLeads, 3000)
     return () => clearInterval(t)
   }, [cargarAsesores, cargarLeads])
 

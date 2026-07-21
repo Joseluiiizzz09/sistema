@@ -285,7 +285,7 @@ export default function Jefatura() {
     agregarLog('Sesión iniciada', 'Panel de Jefatura')
     const iv = setInterval(async () => {
       await cargarVentasCache()
-    }, 60000)
+    }, 3000)
     return () => clearInterval(iv)
   }, [cargarUsuarios, cargarVentasCache])
 
