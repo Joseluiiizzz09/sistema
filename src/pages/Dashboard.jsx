@@ -113,12 +113,18 @@ function BadgeVS({ e, sup }) {
     'instalado':     { cls:'vs-badge-instalado',   label:'INSTALADO' },
     'caida':         { cls:'vs-badge-caida',       label:'CAIDA' },
     'duplicada':     { cls:'vs-badge-duplicada',   label:'DUPLICADA' },
-    'rechazado':     { cls:'vs-badge-caida',       label:'RECHAZADO' },
-    'observado':     { cls:'vs-badge-observado',   label:'OBSERVADO' },
+    'rechazado':      { cls:'vs-badge-caida',      label:'RECHAZADO' },
+    'observado':      { cls:'vs-badge-observado',  label:'OBSERVADO' },
+    'servicio_activo':{ cls:'vs-badge-servicioactivo', label:'SERVICIO ACTIVO' },
+    'fraude':         { cls:'vs-badge-fraude',         label:'FRAUDE' },
+    'no_contesta':    { cls:'vs-badge-nocontesta',     label:'NO CONTESTA' },
+    'buzon_voz':      { cls:'vs-badge-buzonvoz',       label:'BUZÓN DE VOZ' },
+    'corta_llamada':  { cls:'vs-badge-cortallamada',   label:'CORTA LLAMADA' },
+    'no_desea':       { cls:'vs-badge-nodesea',        label:'NO DESEA' },
   }
   const found = map[estado]
   if (!found) return <span className="vs-badge vs-badge-venta">{e ? e.toUpperCase() : '-'}</span>
-  return <span className={`vs-badge ${found.cls}`}>{found.label}</span>
+  return <span className={`vs-badge ${found.cls}`} style={found.style || {}}>{found.label}</span>
 }
 
 function CopyIcon() {

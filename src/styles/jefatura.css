@@ -902,7 +902,6 @@ button.flujo-kpi.active {
 }
 
 .flujo-estado.estado-no_validado,
-.flujo-estado.estado-fraude,
 .flujo-estado.estado-zona_restringida,
 .flujo-estado.estado-bloqueado {
   background: #fee2e2;
@@ -932,6 +931,13 @@ button.flujo-kpi.active {
   color: #b91c1c;
   border-color: #fca5a5;
 }
+
+.flujo-estado.estado-fraude         { background: #fecaca; color: #7f1d1d; border-color: #ef4444; }
+.flujo-estado.estado-no_desea       { background: #e9d5b8; color: #5c2e0a; border-color: #b45309; }
+.flujo-estado.estado-no_contesta    { background: #fde68a; color: #78350f; border-color: #f59e0b; }
+.flujo-estado.estado-buzon_voz      { background: #a5f3fc; color: #0e4a5e; border-color: #06b6d4; }
+.flujo-estado.estado-corta_llamada  { background: #bfdbfe; color: #1e3a8a; border-color: #3b82f6; }
+.flujo-estado.estado-servicio_activo{ background: #e5e7eb; color: #1f2937; border-color: #9ca3af; }
 
 @media (max-width: 760px) {
   .flujo-panel {

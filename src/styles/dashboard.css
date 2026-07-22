@@ -797,7 +797,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .badge-estado.estado-validado{background:#f5f3ff!important;color:#6d28d9!important;border-color:rgba(167,139,250,.45)!important;}
 .badge-estado.estado-programado{background:#eff6ff!important;color:#2563eb!important;border-color:rgba(96,165,250,.45)!important;}
 .badge-estado.estado-bloqueado{background:#fee2e2!important;color:#b91c1c!important;border-color:rgba(248,113,113,.45)!important;}
-.vs-badge-validado{background:#f5f3ff!important;color:#6d28d9!important;border:1px solid rgba(167,139,250,.45)!important;box-shadow:none!important;}
+.vs-badge-validado{background:#ddd6fe!important;color:#3b0764!important;border:1px solid #8b5cf6!important;box-shadow:none!important;}
 .vs-badge-tecnico{background:#ecfeff!important;color:#0e7490!important;border:1px solid rgba(34,211,238,.45)!important;box-shadow:none!important;}
 .vs-badge-ejecucion{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;box-shadow:none!important;}
 .vs-badge-programado{background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.45)!important;box-shadow:none!important;}
@@ -806,3 +806,9 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 
 /* Codex pass 2: tecnico casa en rosa */
 .vs-badge-tecnico{background:#fce7f3!important;color:#be185d!important;border:1px solid rgba(244,114,182,.5)!important;box-shadow:none!important;}
+.vs-badge-fraude        {background:#fecaca!important;color:#7f1d1d!important;border:1px solid #ef4444!important;box-shadow:none!important;}
+.vs-badge-nodesea       {background:#e9d5b8!important;color:#5c2e0a!important;border:1px solid #b45309!important;box-shadow:none!important;}
+.vs-badge-nocontesta    {background:#fde68a!important;color:#78350f!important;border:1px solid #f59e0b!important;box-shadow:none!important;}
+.vs-badge-buzonvoz      {background:#a5f3fc!important;color:#0e4a5e!important;border:1px solid #06b6d4!important;box-shadow:none!important;}
+.vs-badge-cortallamada  {background:#bfdbfe!important;color:#1e3a8a!important;border:1px solid #3b82f6!important;box-shadow:none!important;}
+.vs-badge-servicioactivo{background:#e5e7eb!important;color:#1f2937!important;border:1px solid #9ca3af!important;box-shadow:none!important;}

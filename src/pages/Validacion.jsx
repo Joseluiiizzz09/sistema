@@ -29,6 +29,7 @@ const TIP_BTNS = [
   { id:'fraude',          label:'FRAUDE',           cls:'be-fraude' },
   { id:'no_desea',        label:'NO DESEA',         cls:'be-nodesea' },
   { id:'no_contesta',     label:'NO CONTESTA',      cls:'be-nocontesta' },
+  { id:'buzon_voz',       label:'BUZÓN DE VOZ',     cls:'be-buzon' },
   { id:'servicio_activo', label:'SERVICIO ACTIVO',  cls:'be-servicio' },
   { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
 ]
@@ -58,7 +59,7 @@ function getObsDisplay(obsVal) {
 }
 
 function derivarTipifVal(obsValidacion) {
-  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','servicio_activo','validado']
+  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','validado']
   const lineas = (obsValidacion||'').split('\n').filter(l=>l.trim())
   for (let i=lineas.length-1; i>=0; i--) {
     const txt = ((lineas[i].match(/^\[.+?\]\s*(.*)$/)||[])[1]||'').toLowerCase().replace(/ /g,'_')
@@ -279,7 +280,8 @@ export default function Validacion() {
         method:'PATCH', headers:ncHeaders(),
         body: JSON.stringify({
           obs_validacion: nuevoHistorial,
-          ...(tipSel && ['validado','fraude','grabado','aprobado','en_ejecucion',
+          ...(tipSel && ['validado','fraude','no_desea','no_contesta','buzon_voz',
+              'servicio_activo','corta_llamada','grabado','aprobado','en_ejecucion',
               'instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(tipSel)
             ? { estado: tipSel }
             : {}),

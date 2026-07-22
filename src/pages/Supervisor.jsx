@@ -20,7 +20,13 @@ const ESTADOS_VENTA = [
   { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-caida',      dot:'#ea580c' },
   { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#7c3aed' },
-  { id:'no_instalado',  label:'No Instalado',     cls:'be-caida',      dot:'#991b1b' },
+  { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
+  { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
+  { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
+  { id:'no_contesta',    label:'No Contesta',     cls:'be-nocontesta', dot:'#78350f', bg:'#fde68a', border:'1px solid #f59e0b' },
+  { id:'buzon_voz',      label:'Buzón de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
+  { id:'corta_llamada',  label:'Corta Llamada',   cls:'be-corta',      dot:'#1e3a8a', bg:'#bfdbfe', border:'1px solid #3b82f6' },
+  { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
 ]
 const TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed',
@@ -57,6 +63,7 @@ function mapearEstado(e, sup = '') {
   if(s==='rechazo_campo') return 'rechazo_campo'
   if(s==='tecnico_casa')  return 'tecnico_casa'
   if(s==='no_instalado')  return 'no_instalado'
+  if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo'].includes(s)) return s
   return 'venta'
 }
 function estadoObj(id) { return ESTADOS_VENTA.find(e=>e.id===id)||ESTADOS_VENTA[0] }
@@ -67,7 +74,9 @@ function getUltimos7Dias() {
 
 function BadgeEstado({ id }) {
   const e = estadoObj(id)
-  return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:`${e.dot}22`,color:e.dot,border:`1px solid ${e.dot}44`}}>{e.label}</span>
+  const bg = e.bg || `${e.dot}22`
+  const border = e.border || `1px solid ${e.dot}44`
+  return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:bg,color:e.dot,border:border}}>{e.label}</span>
 }
 
 // ── Componente principal ──────────────────────────────────────────────────

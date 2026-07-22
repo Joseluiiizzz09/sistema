@@ -88,7 +88,7 @@ function normEstado(v) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 }
-const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda'])
+const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda'])
 const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
 const FLUJO_SEGUIMIENTO = new Set(['programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
 function flujoTieneAudio(v) {
@@ -124,6 +124,7 @@ function flujoLabelEstado(estado) {
     no_desea:'No desea',
     no_contesta:'No contesta',
     servicio_activo:'Servicio activo',
+    buzon_voz:'Buzón de voz',
     bloqueado:'Bloqueado',
     zona_restringida:'Zona restringida',
     caracter_especial:'Carácter especial',
