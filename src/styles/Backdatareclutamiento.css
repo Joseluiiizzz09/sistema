@@ -376,6 +376,20 @@ body{
   box-shadow:-8px 0 12px rgba(15,23,42,.08);
 }
 .bo-root .base-tabla tbody tr:not(.historial-row):hover>td:last-child{background:#fff7f7!important;}
+
+.reclutados-head-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.reclutados-count{display:inline-flex;align-items:center;padding:4px 9px;border-radius:99px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;}
+.reclutados-refresh{height:32px;padding:0 12px;border:1px solid #fecaca;border-radius:9px;background:#fff;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;}
+.reclutados-refresh:hover{background:#fff1f2;border-color:#fca5a5;}
+.reclutados-tabla-wrap{margin-top:14px;border-radius:14px;}
+.bo-root .reclutados-tabla{min-width:1500px;}
+.reclutados-tabla th{font-size:10px;}
+.reclutados-tabla td{font-size:11px;}
+.reclutados-nombre{min-width:180px;font-weight:700;color:#111827!important;}
+.reclutados-documento{font-family:monospace;}
+.reclutados-reclutador{font-weight:700;color:#7c3aed!important;}
+.reclutados-estado{display:inline-flex;padding:3px 8px;border:1px solid #86efac;border-radius:7px;background:#dcfce7;color:#166534;font-size:9px;font-weight:800;}
+.reclutados-empty{height:150px;text-align:center!important;color:#9ca3af!important;}
 .tabla-desliza-aviso{
   display:flex;justify-content:flex-end;margin:0 4px 6px;
   color:#64748b;font-size:10px;font-weight:700;letter-spacing:.15px;

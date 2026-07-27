@@ -510,13 +510,6 @@ export default function Jefatura() {
   }
 
   /* ── seguimiento ── */
-  const opcionesSeg = useMemo(() => ({
-    asesores:  opcionesUnicas(ventasSeg.map(v => v.asesor_nombre || v.vendedor)),
-    salas:     opcionesUnicas(ventasSeg.map(v => v.sala)),
-    distritos: opcionesUnicas(ventasSeg.map(v => v.distrito)),
-    planes:    opcionesUnicas(ventasSeg.map(v => v.paquete)),
-  }), [ventasSeg])
-
   const estadosSeg = useMemo(() => {
     const porClave = new Map()
     ventasSeg.forEach(v => {
@@ -531,10 +524,10 @@ export default function Jefatura() {
 
   const ventasSegFiltradas = useMemo(() => {
     let lista = filtroSeg ? ventasSeg.filter(v=>v._seg===filtroSeg) : [...ventasSeg]
-    if (fsAsesor)   lista = lista.filter(v => (v.asesor_nombre || v.vendedor || '') === fsAsesor)
-    if (fsSala)     lista = lista.filter(v => (v.sala || '') === fsSala)
-    if (fsDistrito) lista = lista.filter(v => (v.distrito || '') === fsDistrito)
-    if (fsPlan)     lista = lista.filter(v => (v.paquete || '') === fsPlan)
+    if (fsAsesor)   lista = lista.filter(v => String(v.asesor_nombre || v.vendedor || '').toLowerCase().includes(fsAsesor.trim().toLowerCase()))
+    if (fsSala)     lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fsSala.trim().toLowerCase()))
+    if (fsDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fsDistrito.trim().toLowerCase()))
+    if (fsPlan)     lista = lista.filter(v => String(v.paquete || '').toLowerCase().includes(fsPlan.trim().toLowerCase()))
     if (fsDesde || fsHasta) {
       lista = lista.filter(v => {
         const f = soloFecha(v._fecha)
@@ -600,9 +593,6 @@ export default function Jefatura() {
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
     validaciones: opcionesUnicas(ventasCache.map(estadoValidacion)),
     grabaciones: opcionesUnicas(ventasCache.map(estadoGrabacion)),
-    asesores: opcionesUnicas(ventasCache.map(v => v.asesor_nombre || v.asesor || v.vendedor)),
-    salas: opcionesUnicas(ventasCache.map(v => v.sala)),
-    distritos: opcionesUnicas(ventasCache.map(v => v.distrito)),
   }), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
@@ -617,9 +607,9 @@ export default function Jefatura() {
     if (fvEstado) lista = lista.filter(v => (v.estado || v.estado_venta || '') === fvEstado)
     if (fvValidacion) lista = lista.filter(v => estadoValidacion(v) === fvValidacion)
     if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
-    if (fvAsesor) lista = lista.filter(v => (v.asesor_nombre || v.asesor || v.vendedor || '') === fvAsesor)
-    if (fvSala) lista = lista.filter(v => (v.sala || '') === fvSala)
-    if (fvDistrito) lista = lista.filter(v => (v.distrito || '') === fvDistrito)
+    if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
+    if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
+    if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
     if (fvDesde || fvHasta) {
       lista = lista.filter(v => {
         const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
@@ -969,10 +959,10 @@ export default function Jefatura() {
             <div className="filtros-avanzados">
               <div className="filtros-titulo">Filtros avanzados</div>
               <div className="filtros-grid">
-                <label><span>Asesor</span><select value={fsAsesor} onChange={e=>setFsAsesor(e.target.value)}><option value="">Todos</option>{opcionesSeg.asesores.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Sala</span><select value={fsSala} onChange={e=>setFsSala(e.target.value)}><option value="">Todas</option>{opcionesSeg.salas.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Distrito</span><select value={fsDistrito} onChange={e=>setFsDistrito(e.target.value)}><option value="">Todos</option>{opcionesSeg.distritos.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Plan</span><select value={fsPlan} onChange={e=>setFsPlan(e.target.value)}><option value="">Todos</option>{opcionesSeg.planes.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Asesor</span><input value={fsAsesor} onChange={e=>setFsAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
+                <label><span>Sala</span><input value={fsSala} onChange={e=>setFsSala(e.target.value)} placeholder="Escribir sala..."/></label>
+                <label><span>Distrito</span><input value={fsDistrito} onChange={e=>setFsDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
+                <label><span>Plan</span><input value={fsPlan} onChange={e=>setFsPlan(e.target.value)} placeholder="Escribir plan..."/></label>
                 <label><span>Fecha desde</span><input type="date" value={fsDesde} onChange={e=>setFsDesde(e.target.value)}/></label>
                 <label><span>Fecha hasta</span><input type="date" value={fsHasta} onChange={e=>setFsHasta(e.target.value)}/></label>
                 <label className="filtro-busqueda"><span>Búsqueda general</span><input value={fsBusqueda} onChange={e=>setFsBusqueda(e.target.value)} placeholder="Cliente, DNI, asesor, distrito, sala, plan"/></label>
@@ -1074,9 +1064,9 @@ export default function Jefatura() {
                 <label><span>Estado actual</span><select value={fvEstado} onChange={e=>setFvEstado(e.target.value)}><option value="">Todos</option>{opcionesFlujo.estados.map(x=><option key={x}>{x}</option>)}</select></label>
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.validaciones.map(x=><option key={x}>{x}</option>)}</select></label>
                 <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.grabaciones.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Asesor</span><select value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)}><option value="">Todos</option>{opcionesFlujo.asesores.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Sala</span><select value={fvSala} onChange={e=>setFvSala(e.target.value)}><option value="">Todas</option>{opcionesFlujo.salas.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Distrito</span><select value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)}><option value="">Todos</option>{opcionesFlujo.distritos.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
+                <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
+                <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label><span>Fecha desde</span><input type="date" value={fvDesde} onChange={e=>setFvDesde(e.target.value)}/></label>
                 <label><span>Fecha hasta</span><input type="date" value={fvHasta} onChange={e=>setFvHasta(e.target.value)}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>

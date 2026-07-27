@@ -10,7 +10,7 @@ import '../styles/Backdatareclutamiento.css'
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
-const BO_SECCIONES = ['base', 'carga-masiva', 'rendimiento', 'avance']
+const BO_SECCIONES = ['base', 'reclutados', 'carga-masiva', 'rendimiento', 'avance']
 
 const PERU_TIME_ZONE = 'America/Lima'
 const PERU_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -166,6 +166,8 @@ export default function Backdatareclutamiento() {
   // ── Data ──
   const [asesores,      setAsesores]      = useState([])
   const [baseData,      setBaseData]      = useState({})
+  const [reclutados,    setReclutados]    = useState([])
+  const [cargandoReclutados, setCargandoReclutados] = useState(false)
   const [fechaPestanas, setFechaPestanas] = useState([fechaHoy()])
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
@@ -380,12 +382,29 @@ export default function Backdatareclutamiento() {
     } catch(e) { console.error('Error cargando leads:', e) }
   }, [])
 
+  const cargarReclutados = useCallback(async () => {
+    setCargandoReclutados(true)
+    try {
+      const res = await fetch(`${API}/ventas-reclutamiento`, { headers: ncHeaders() })
+      const data = await res.json()
+      setReclutados(data.ok
+        ? data.data.filter(v => String(v.estado_reclutamiento || '').toUpperCase() === 'RECLUTADO')
+        : [])
+    } catch(e) {
+      console.error('Error cargando reclutados:', e)
+      setReclutados([])
+    } finally {
+      setCargandoReclutados(false)
+    }
+  }, [])
+
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
+    cargarReclutados()
     const t = setInterval(cargarLeads, 3000)
     return () => clearInterval(t)
-  }, [cargarAsesores, cargarLeads])
+  }, [cargarAsesores, cargarLeads, cargarReclutados])
 
   // BL modal reload on fecha change
   useEffect(() => {
@@ -405,6 +424,7 @@ export default function Backdatareclutamiento() {
     sessionStorage.setItem('nc_backoffice_apartado', id)
     setSeccion(id)
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
+    if (id === 'reclutados') cargarReclutados()
   }
 
   // ── Date navigation ──────────────────────────────────────────────────────
@@ -906,6 +926,7 @@ export default function Backdatareclutamiento() {
         <aside className={`bo-sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Principal</div>
           <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
+          <button className={`bo-nav${seccion==='reclutados'?' active':''}`} onClick={()=>irSeccion('reclutados')}><BoNavIcon tipo="avance" /> <span>Reclutados</span></button>
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
         </aside>
 
@@ -1196,6 +1217,53 @@ export default function Backdatareclutamiento() {
                         ]
                       })
                   }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ══ SECCIÓN: RECLUTADOS ═════════════════════════════════════════════ */}
+          <section className={`bo-seccion${seccion==='reclutados'?'':' hidden'}`}>
+            <div className="bo-seccion-header">
+              <div>
+                <h2>Reclutados generales</h2>
+                <p className="bo-sub">Consolidado de postulantes reclutados por todos los asesores.</p>
+              </div>
+              <div className="reclutados-head-actions">
+                <span className="reclutados-count">{reclutados.length} registros</span>
+                <button type="button" className="reclutados-refresh" onClick={cargarReclutados}>↻ Actualizar</button>
+              </div>
+            </div>
+            <div className="base-tabla-wrap reclutados-tabla-wrap">
+              <table className="base-tabla reclutados-tabla">
+                <thead>
+                  <tr>
+                    <th>Fecha</th><th>Nombre y Apellidos</th><th>Tipo Doc.</th>
+                    <th>Documento</th><th>Teléfono</th><th>Distrito</th><th>Puesto</th>
+                    <th>Campaña</th><th>Empresa</th><th>Reclutador</th><th>Estado</th><th>Observación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cargandoReclutados ? (
+                    <tr><td colSpan="12" className="reclutados-empty">Cargando reclutados...</td></tr>
+                  ) : reclutados.length === 0 ? (
+                    <tr><td colSpan="12" className="reclutados-empty">Sin postulantes reclutados aún.</td></tr>
+                  ) : reclutados.map((v, i) => (
+                    <tr key={v.id || i}>
+                      <td>{normalizarFecha(v.created_at) || '—'}</td>
+                      <td className="reclutados-nombre">{v.nombre || '—'}</td>
+                      <td>{v.tipo_doc || 'DNI'}</td>
+                      <td className="reclutados-documento">{v.dni || '—'}</td>
+                      <td>{v.telefono1 || '—'}</td>
+                      <td>{v.distrito || '—'}</td>
+                      <td>{v.puesto || '—'}</td>
+                      <td>{v.fuente || v.campana || '—'}</td>
+                      <td>{v.empresa || '—'}</td>
+                      <td className="reclutados-reclutador">{v.usuario_nombre || '—'}</td>
+                      <td><span className="reclutados-estado">{v.estado_reclutamiento || '—'}</span></td>
+                      <td>{v.observacion || '—'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

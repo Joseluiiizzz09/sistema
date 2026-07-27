@@ -753,10 +753,6 @@ export default function DashboardReclutamiento() {
     navigate('/jefatura')
   }
 
-  // Reclutados: mismo dato de Postulantes/MySQL filtrado por estado final —
-  // sin duplicar registros, sin fetch adicional.
-  const reclutados = ventasSubidas.filter(v => (v.estado_reclutamiento || '').toUpperCase() === 'RECLUTADO')
-
   // ── KPIs computados ───────────────────────────────────────────────────────
   const hoy           = fechaHoy()
   const vHoy          = ventasSubidas.filter(v => normalizarFecha(v.created_at) === hoy)
@@ -799,7 +795,6 @@ export default function DashboardReclutamiento() {
           {[
             { id:'llamadas',      label:'Llamadas' },
             { id:'ventassubidas', label:'Postulantes' },
-            { id:'reclutados',    label:'Reclutados' },
           ].map(t => (
             <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => cambiarTab(t.id)}>
               {t.label}
@@ -947,51 +942,6 @@ export default function DashboardReclutamiento() {
                       <button className="vs-btn-accion vs-btn-editar" onClick={() => editarVenta(i)}>Editar</button>
                     </div>
                   </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── RECLUTADOS ─────────────────────────────────────────────────── */}
-      <div className={`pantalla${tab !== 'reclutados' ? ' hidden' : ''}`}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',flexWrap:'wrap',gap:'10px'}}>
-          <div>
-            <h2 style={{marginBottom:'4px'}}>Reclutados</h2>
-            <p style={{fontSize:'12px',color:'#9ca3af'}}>Postulantes que ya completaron el proceso de reclutamiento</p>
-          </div>
-        </div>
-
-        <div className="vs-barra-info"><span>{reclutados.length} registros</span></div>
-
-        <div className="vs-tabla-wrap">
-          <table className="vs-tabla">
-            <thead>
-              <tr>
-                <th>Fecha</th><th>Nombre y Apellidos</th>
-                <th>Tipo Doc.</th><th>Documento</th><th>Teléfono</th>
-                <th>Distrito</th><th>Puesto</th><th>Campaña</th><th>Empresa</th>
-                <th>Reclutador</th><th>Estado</th><th>Observación</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reclutados.length === 0 ? (
-                <tr className="vs-empty"><td colSpan={12}>Sin postulantes reclutados aún.</td></tr>
-              ) : reclutados.map((v, i) => (
-                <tr key={v.id || i}>
-                  <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
-                  <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>
-                  <td style={{fontFamily:'monospace',fontSize:'11px'}}>{v.dni||'-'}</td>
-                  <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefono1||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.distrito||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.puesto||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.fuente||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.empresa||'-'}</td>
-                  <td style={{fontSize:'11px'}}>{v.usuario_nombre||'-'}</td>
-                  <td><span className="badge-estado">{v.estado_reclutamiento||'-'}</span></td>
-                  <td style={{fontSize:'11px',color:'#6b7280',minWidth:'140px'}}>{v.observacion||'-'}</td>
                 </tr>
               ))}
             </tbody>
