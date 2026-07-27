@@ -755,3 +755,12 @@ body{
 .tabla tbody tr td{
   vertical-align:middle!important;
 }
+
+/* Tipificaciones nuevas del selector "Cambiar estado de grabación" —
+   mismos colores ya usados en Validación/Asesor para mantener consistencia. */
+.bg-grabando     {background:#fed7aa;color:#9a3412;border:1px solid rgba(234,88,12,.45);box-shadow:0 2px 8px rgba(234,88,12,.14);}
+.bg-suplantacion {background:#fce7f3;color:#9d174d;border:1px solid rgba(219,39,119,.45);box-shadow:0 2px 8px rgba(219,39,119,.14);}
+.bg-corta        {background:#eff6ff;color:#1d4ed8;border:1px solid rgba(96,165,250,.45);box-shadow:0 2px 8px rgba(96,165,250,.14);}
+.bg-nodesea      {background:#fff1f2;color:#be123c;border:1px solid rgba(251,113,133,.38);box-shadow:0 2px 8px rgba(251,113,133,.14);}
+.bg-nocontesta   {background:#fffbeb;color:#b45309;border:1px solid rgba(251,191,36,.45);box-shadow:0 2px 8px rgba(251,191,36,.14);}
+.bg-buzon        {background:#fff7ed;color:#c2410c;border:1px solid rgba(251,146,60,.46);box-shadow:0 2px 8px rgba(251,146,60,.14);}

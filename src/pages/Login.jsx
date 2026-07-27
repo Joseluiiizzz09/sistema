@@ -1,41 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Login.module.css";
+import { RUTAS, CARGO_LABELS } from "../utils/rutas";
+import { cargosDeUsuario } from "../utils/roles";
 
 const logo = "/assets/logo3.png";
 
 const API = "/api";
-
-/* ===== RUTAS POR CARGO ===== */
-const RUTAS = {
-  asesor:         "/dashboard",
-  supervisor:     "/supervisor",
-  backoffice:     "/backoffice",
-  validacion:     "/validacion",
-  grabaciones:    "/grabaciones",
-  seguimiento:    "/seguimiento",
-  jefatura:       "/jefatura",
-  usuarios:       "/usuarios",
-  instalacion:    "/instalacion",
-  postventa:      "/postventa",
-  programacion:   "/programacion",
-  supgrabaciones: "/sup-grabaciones",
-};
-
-const CARGO_LABELS = {
-  asesor: "Asesor",
-  supervisor: "Supervisor",
-  backoffice: "Back Office",
-  validacion: "Validación",
-  grabaciones: "Grabaciones",
-  seguimiento: "Seguimiento",
-  jefatura: "Jefatura",
-  usuarios: "Usuarios",
-  instalacion: "Instalación",
-  postventa: "Post Venta",
-  programacion: "Programación",
-  supgrabaciones: "Sup. Grabaciones",
-};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -118,12 +89,38 @@ export default function Login() {
     sessionStorage.setItem("nc_usuario", JSON.stringify(data.usuario));
     localStorage.removeItem("nc_token");
     localStorage.removeItem("nc_usuario");
+
+    // Cargos reales del usuario (principal + adicionales) que además tienen
+    // ruta navegable. Con más de uno, el usuario elige con cuál entrar —
+    // sin volver a autenticar, es la misma sesión/token ya guardada arriba.
+    const cargosReales = cargosDeUsuario(data.usuario).filter((c) => RUTAS[c]);
+    if (cargosReales.length > 1) {
+      setSeleccionCargo({ cargos: cargosReales, usuario: data.usuario });
+      setCargando(false);
+      return;
+    }
+
     setSeleccionCargo(null);
     mostrarBienvenida(data.usuario);
   };
 
-  /* ===== LOGIN Y SELECCIÓN DE CARGO ===== */
-  const autenticar = async (cargoActivo = null) => {
+  const elegirArea = (cargo) => {
+    if (!seleccionCargo) return;
+    setSeleccionCargo(null);
+    mostrarBienvenida({ ...seleccionCargo.usuario, cargo });
+  };
+
+  const cancelarSeleccion = () => {
+    sessionStorage.removeItem("nc_token");
+    sessionStorage.removeItem("nc_usuario");
+    setSeleccionCargo(null);
+    setError("");
+    setUsuario("");
+    setPassword("");
+  };
+
+  /* ===== LOGIN ===== */
+  const autenticar = async () => {
     setError("");
 
     const u = usuario.trim().toLowerCase();
@@ -137,18 +134,12 @@ export default function Login() {
       const res = await fetch(`${API}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario: u, password: p, ...(cargoActivo ? { cargoActivo } : {}) }),
+        body: JSON.stringify({ usuario: u, password: p }),
       });
       const data = await res.json();
 
       if (!data.ok) {
         mostrarError(data.mensaje || "Usuario o contraseña incorrectos.");
-        setCargando(false);
-        return;
-      }
-
-      if (data.requiereSeleccionCargo) {
-        setSeleccionCargo({ cargos: data.cargos || [], nombre: data.usuario?.nombre || u });
         setCargando(false);
         return;
       }
@@ -214,9 +205,9 @@ export default function Login() {
         <div className={styles.content}>
           {seleccionCargo ? (
             <>
-              <h2 className={styles.saludo}>Elige cómo ingresar</h2>
+              <h2 className={styles.saludo}>Selecciona el área de trabajo</h2>
               <p className={styles.roleSubtitle}>
-                {seleccionCargo.nombre}, selecciona el cargo que usarás en esta sesión.
+                {seleccionCargo.usuario?.nombre || usuario}, tienes más de un área asignada.
               </p>
 
               {error && <div key={errorKey} className={styles.errorMsg}>{error}</div>}
@@ -227,8 +218,7 @@ export default function Login() {
                     type="button"
                     key={cargo}
                     className={styles.roleButton}
-                    disabled={cargando}
-                    onClick={() => autenticar(cargo)}
+                    onClick={() => elegirArea(cargo)}
                   >
                     <span className={styles.roleIcon}>{(CARGO_LABELS[cargo] || cargo).slice(0, 1)}</span>
                     <span>
@@ -243,10 +233,9 @@ export default function Login() {
               <button
                 type="button"
                 className={styles.backButton}
-                onClick={() => { setSeleccionCargo(null); setError(""); }}
-                disabled={cargando}
+                onClick={cancelarSeleccion}
               >
-                Volver al inicio de sesión
+                Cerrar sesión
               </button>
             </>
           ) : (

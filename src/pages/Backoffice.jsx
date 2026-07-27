@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
@@ -885,6 +886,7 @@ export default function Backoffice() {
         </div>
         <div className="topbar-right">
           <JefaturaViewControls><span className="bo-usuario">{sesion?.nombre || 'Back Data'}</span></JefaturaViewControls>
+          <CambiarAreaMenu />
           <a href="#" className="bo-salir" onClick={e=>{ e.preventDefault(); logout(); navigate('/') }}>Salir</a>
         </div>
       </div>
@@ -937,7 +939,7 @@ export default function Backoffice() {
                       <div className="bo-panel" style={{padding:'14px 16px'}}>
                         <div className="bo-panel-title">Reglas de rotación</div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Sin repetir:</strong> el lead no puede ir a un asesor que ya lo tuvo</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-blue">⏱</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
+                        <div className="rot-regla"><div className="rot-regla-icon r-blue">T</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta o Nuevo</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>

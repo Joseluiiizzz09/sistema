@@ -1282,3 +1282,14 @@ body{
 }
 @media (max-width:900px){.programacion-shell .prog-reference-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important;}}
 @media (max-width:560px){.programacion-shell .prog-reference-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.programacion-shell .modal-body{padding:14px!important;}.programacion-shell .det-grid{grid-template-columns:1fr!important;}.programacion-shell .det-full{grid-column:auto!important;}}
+
+/* Legibilidad de ESTADO y VER/EDITAR en la tabla de Programación — estaban
+   en 8px por una doble cascada previa. Mismos selectores exactos (empatan en
+   especificidad, gana el último declarado). Tamaño intermedio, compacto. */
+.prog-reference-table .tabla td:nth-child(9) .badge{font-size:11px!important;font-weight:600!important;line-height:1.2!important;padding:4px 10px!important;min-height:24px!important;border-radius:999px!important;}
+.prog-reference-table .btn-ver-det{font-size:11px!important;font-weight:600!important;line-height:1.2!important;height:auto!important;min-height:0!important;padding:6px 10px!important;border-radius:6px!important;min-width:0!important;}
+
+/* Estado inicial "GRABADO" (calculado, no persistido) cuando una venta llega
+   a Programación recién aprobada por Super de Grabaciones — mismo verde ya
+   usado para GRABADO en Grabaciones/Super de Grabaciones (bg-grabado). */
+.prog-reference-table .tabla td:nth-child(9) .badge.b-grabado-prog{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;}

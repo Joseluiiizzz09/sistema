@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/usuarios.css'
 
 const CARGO_CLASE = {
@@ -16,6 +17,8 @@ const CARGO_CLASE = {
   programacion:  'bc-programacion',
   supgrabaciones:'bc-supgrabaciones',
   usuarios:      'bc-usuarios',
+  backreclutamiento:   'bc-backreclutamiento',
+  asesorreclutamiento: 'bc-asesorreclutamiento',
 }
 
 const CARGOS = [
@@ -29,6 +32,8 @@ const CARGOS = [
   { value: 'usuarios',       label: 'Usuarios'         },
   { value: 'programacion',   label: 'Programación'     },
   { value: 'supgrabaciones', label: 'Sup. Grabaciones' },
+  { value: 'backreclutamiento',   label: 'Back Data Reclutaminto'  },
+  { value: 'asesorreclutamiento', label: 'Asesor de Reclutamiento' },
 ]
 
 const FORM_VACIO = { nombre: '', usuario: '', pass: '', pass2: '', cargo: '', cargo2: '', sala: '', genero: 'M', activo: true }
@@ -195,7 +200,7 @@ export default function Usuarios() {
   function salir() { logout(); navigate('/login') }
 
   return (
-    <div>
+    <div className="usu-root">
       <div className="topbar">
         <div className="brand">
           <div className="logo-circle"><img src="/assets/logo3.png" alt="Netcontact" /></div>
@@ -206,6 +211,7 @@ export default function Usuarios() {
         </div>
         <div className="topbar-right">
           <button onClick={() => navigate(-1)} className="btn-volver">← Volver</button>
+          <CambiarAreaMenu />
           <button onClick={salir} className="btn-salir">Salir</button>
         </div>
       </div>
@@ -213,7 +219,7 @@ export default function Usuarios() {
       <div className="pagina">
         <div className="page-header">
           <div>
-            <h2>👥 Usuarios del sistema</h2>
+            <h2>Usuarios del sistema</h2>
             <p>Crea, activa o desactiva usuarios de Netcontact</p>
           </div>
           <button className="btn-nuevo" onClick={abrirModal}>+ Nuevo Usuario</button>
@@ -229,7 +235,7 @@ export default function Usuarios() {
 
         <div className="filtros-bar">
           <input type="text" className="input-buscar" value={buscar}
-            onChange={e => setBuscar(e.target.value)} placeholder="🔍  Buscar por nombre o usuario..." />
+            onChange={e => setBuscar(e.target.value)} placeholder="Buscar por nombre o usuario..." />
           <select className="select-filtro" value={filtroCargo} onChange={e => setFiltroCargo(e.target.value)}>
             <option value="">Todos los cargos</option>
             {CARGOS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -313,17 +319,16 @@ export default function Usuarios() {
 
       {/* MODAL CREAR / EDITAR */}
       {modalOpen && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) cerrarModal() }}>
-          <div className="modal-card">
-            <div className="modal-header">
+        <div className="modal-overlay usuarios-modal-overlay" onClick={e => { if (e.target === e.currentTarget) cerrarModal() }}>
+          <div className="modal-card usuarios-modal-card">
+            <div className="modal-header usuarios-modal-header">
               <div className="modal-titulo">
-                <span>{editandoId ? '✏️' : '✨'}</span>
                 <span>{editandoId ? 'Editar Usuario' : 'Nuevo Usuario'}</span>
               </div>
               <button className="modal-close" onClick={cerrarModal}>✕</button>
             </div>
 
-            <div className="modal-body">
+            <div className="modal-body usuarios-modal-body">
               <div className="campo-row">
                 <div className="campo">
                   <label>Nombre Completo *</label>
@@ -344,7 +349,7 @@ export default function Usuarios() {
                   <label>{editandoId ? 'Nueva contraseña' : 'Contraseña *'}</label>
                   <div className="pass-wrap">
                     <input type={passVisible ? 'text' : 'password'} value={form.pass} onChange={e => setField('pass', e.target.value)} placeholder="Mínimo 6 caracteres" />
-                    <button type="button" className="btn-ver" onClick={() => setPassVisible(v => !v)}>👁</button>
+                    <button type="button" className="btn-ver" onClick={() => setPassVisible(v => !v)}>{passVisible ? 'Ocultar' : 'Ver'}</button>
                   </div>
                   {errores.pass && <span className="campo-error">{errores.pass}</span>}
                 </div>
@@ -352,20 +357,24 @@ export default function Usuarios() {
                   <label>Confirmar Contraseña</label>
                   <div className="pass-wrap">
                     <input type={pass2Visible ? 'text' : 'password'} value={form.pass2} onChange={e => setField('pass2', e.target.value)} placeholder="Repite la contraseña" />
-                    <button type="button" className="btn-ver" onClick={() => setPass2Visible(v => !v)}>👁</button>
+                    <button type="button" className="btn-ver" onClick={() => setPass2Visible(v => !v)}>{pass2Visible ? 'Ocultar' : 'Ver'}</button>
                   </div>
                   {errores.pass2 && <span className="campo-error">{errores.pass2}</span>}
                 </div>
               </div>
 
               {editandoId && (
-                <div className="pass-hint">💡 Deja en blanco para mantener la contraseña actual</div>
+                <div className="pass-hint">Deja en blanco para mantener la contraseña actual</div>
               )}
 
               <div className="campo-row">
                 <div className="campo">
                   <label>Cargo principal *</label>
-                  <select value={form.cargo} onChange={e => setField('cargo', e.target.value)}>
+                  <select value={form.cargo} onChange={e => {
+                    const nuevoCargo = e.target.value
+                    setForm(f => ({ ...f, cargo: nuevoCargo, cargo2: f.cargo2 === nuevoCargo ? '' : f.cargo2 }))
+                    setErrores(er => ({ ...er, cargo: '' }))
+                  }}>
                     <option value="">— Seleccione cargo —</option>
                     {CARGOS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
@@ -373,12 +382,11 @@ export default function Usuarios() {
                 </div>
                 <div className="campo">
                   <label>Cargo adicional (opcional)</label>
-                  <select value={form.cargo2} onChange={e => setField('cargo2', e.target.value)} disabled={sesion?.cargo !== 'jefatura'}>
+                  <select value={form.cargo2} onChange={e => setField('cargo2', e.target.value)}>
                     <option value="">— Sin cargo adicional —</option>
                     {CARGOS.filter(c => c.value !== form.cargo && c.value !== 'jefatura').map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                   {errores.cargo2 && <span className="campo-error">{errores.cargo2}</span>}
-                  {sesion?.cargo !== 'jefatura' && <span className="cargo-secundario-note">Solo Jefatura puede asignar un segundo cargo.</span>}
                 </div>
               </div>
 
@@ -422,10 +430,10 @@ export default function Usuarios() {
               </div>
             </div>
 
-            <div className="modal-footer">
+            <div className="modal-footer usuarios-modal-footer">
               <button className="btn-cancel" onClick={cerrarModal}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarUsuario} disabled={guardando}>
-                {guardando ? 'Guardando...' : editandoId ? '💾 Guardar cambios' : '💾 Crear Usuario'}
+                {guardando ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Crear Usuario'}
               </button>
             </div>
           </div>
@@ -437,7 +445,7 @@ export default function Usuarios() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModalElim(null) }}>
           <div className="modal-card" style={{ maxWidth: '420px' }}>
             <div className="modal-header">
-              <div className="modal-titulo"><span>🗑️</span><span>Eliminar usuario</span></div>
+              <div className="modal-titulo"><span>Eliminar usuario</span></div>
               <button className="modal-close" onClick={() => setModalElim(null)}>✕</button>
             </div>
             <div className="modal-body">
@@ -450,7 +458,7 @@ export default function Usuarios() {
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setModalElim(null)}>Cancelar</button>
               <button className="btn-eliminar-confirm" onClick={confirmarEliminar} disabled={eliminando}>
-                {eliminando ? 'Eliminando...' : '🗑️ Sí, eliminar'}
+                {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
             </div>
           </div>

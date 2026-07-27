@@ -12,6 +12,8 @@ import SupGrabaciones from './pages/SupGrabaciones'
 import Programacion from './pages/Programacion'
 import Jefatura     from './pages/Jefatura'
 import Usuarios     from './pages/Usuarios'
+import Backdatareclutamiento from './pages/Backdatareclutamiento'
+import DashboardReclutamiento from './pages/dashboardreclutamiento'
 
 function PrivateRoute({ children }) {
   const { sesion } = useAuth()
@@ -35,6 +37,8 @@ export default function App() {
       <Route path="/programacion"  element={<PrivateRoute><Programacion /></PrivateRoute>} />
       <Route path="/jefatura"      element={<PrivateRoute><Jefatura /></PrivateRoute>} />
       <Route path="/usuarios"      element={<PrivateRoute><Usuarios /></PrivateRoute>} />
+      <Route path="/backdata-reclutamiento" element={<PrivateRoute><Backdatareclutamiento /></PrivateRoute>} />
+      <Route path="/reclutamiento"          element={<PrivateRoute><DashboardReclutamiento /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

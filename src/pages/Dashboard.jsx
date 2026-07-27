@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { UBIGEO } from '../services/ubigeo'
+import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboard.css'
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
@@ -88,9 +90,43 @@ function colorEstado(e) {
   return map[e] || 'estado-nuevo'
 }
 
-function BadgeVS({ e, sup }) {
+const GRAB_TIPIF_BADGE = {
+  corta_llamada: { cls:'vs-badge-cortallamada',  label:'CORTA LLAMADA' },
+  suplantacion:  { cls:'vs-badge-suplantacion',  label:'SUPLANTACIÓN' },
+  no_desea:      { cls:'vs-badge-nodesea',       label:'NO DESEA' },
+  no_contesta:   { cls:'vs-badge-nocontesta',    label:'NO CONTESTA' },
+  buzon_voz:     { cls:'vs-badge-buzonvoz',      label:'BUZÓN DE VOZ' },
+}
+
+function BadgeVS({ e, sup, estadoGrab, grabandoPorNombre }) {
   const estado = (e || '').toLowerCase().trim()
   const supEstado = (sup || '').toLowerCase().trim()
+  const eg = (estadoGrab || '').toLowerCase().trim()
+
+  // Estado de Grabaciones (independiente del estado de Validación, que sigue
+  // mostrando lo suyo sin cambios). Mientras Grabaciones tenga trabajo en
+  // curso o pendiente de que Super de Grabaciones corrobore, este badge
+  // manda — sin pisar `estado`. El nombre es solo visual (grabando_por_nombre
+  // viene resuelto por el backend desde grabando_por_id); el estado
+  // almacenado sigue siendo únicamente "grabando".
+  // Condicionado a estado==='validado': en cuanto Programación avanza el
+  // campo compartido `estado` (PROGRAMADO/BLOQUEADO/etc), esa etapa manda —
+  // estado_grab/estado_supgrab quedan fijos como historial y ya no deben
+  // seguir tapando el estado real posterior.
+  if (estado === 'validado') {
+    if (eg === 'grabando' || (eg === 'grabado' && supEstado !== 'aprobado')) {
+      const label = grabandoPorNombre ? `GRABANDO ${grabandoPorNombre.toUpperCase()}` : 'GRABANDO'
+      return <span className="vs-badge vs-badge-grabando">{label}</span>
+    }
+    if (eg === 'grabado' && supEstado === 'aprobado') {
+      return <span className="vs-badge vs-badge-grabado">GRABADO</span>
+    }
+    if (GRAB_TIPIF_BADGE[eg]) {
+      const b = GRAB_TIPIF_BADGE[eg]
+      return <span className={`vs-badge ${b.cls}`}>{b.label}</span>
+    }
+  }
+
   if (estado === 'grabado') {
     if (supEstado === 'sin_revisar' || supEstado === 'en_revision') {
       return <span className="vs-badge vs-badge-revision">EN REVISION</span>
@@ -100,25 +136,45 @@ function BadgeVS({ e, sup }) {
     }
     return <span className="vs-badge vs-badge-grabado">GRABADO</span>
   }
+  // FRAUDE es ambiguo: Validación y Programación pueden tipificar el mismo
+  // valor de `estado`. Solo llega a Programación tras ser aprobado por Super
+  // de Grabaciones (estado_supgrab='aprobado'), así que ese dato distingue
+  // cuál de los dos lo marcó, sin necesitar un campo nuevo.
+  if (estado === 'fraude' && supEstado === 'aprobado') {
+    return <span className="vs-badge vs-badge-fraude-prog">FRAUDE</span>
+  }
   const map = {
     'venta':         { cls:'vs-badge-venta',      label:'VENTA' },
     'validado':      { cls:'vs-badge-validado',    label:'VALIDADO' },
     'grabado':       { cls:'vs-badge-grabado',     label:'GRABADO' },
     'aprobado':      { cls:'vs-badge-programado',  label:'APROBADO' },
-    'programado':    { cls:'vs-badge-programado',  label:'PROGRAMADO' },
+    // PROGRAMADO (estado real de Programación, sin cambios en BD) se
+    // muestra públicamente como EN EJECUCIÓN — reutiliza exactamente la
+    // misma clase/label que ya existe para 'en_ejecucion', no un color nuevo.
+    'programado':    { cls:'vs-badge-ejecucion',   label:'EN EJECUCION' },
+    'bloqueado':     { cls:'vs-badge-bloqueado',   label:'BLOQUEADO' },
+    'sin_agenda':    { cls:'vs-badge-sinagenda',   label:'SIN AGENDA' },
+    'caracter_especial': { cls:'vs-badge-caracterespecial', label:'CARÁCTER ESPECIAL' },
+    'zona_restringida':  { cls:'vs-badge-zonarestringida',  label:'ZONA RESTRINGIDA' },
     'en_ejecucion':  { cls:'vs-badge-ejecucion',   label:'EN EJECUCION' },
     'tecnico_casa':  { cls:'vs-badge-tecnico',     label:'TECNICO EN CASA' },
-    'rechazo_campo': { cls:'vs-badge-caida',       label:'RECHAZO EN CAMPO' },
+    'rechazo_campo': { cls:'vs-badge-rechazocampo', label:'RECHAZO EN CAMPO' },
     'no_validado':   { cls:'vs-badge-observado',   label:'NO VALIDADO' },
     'instalado':     { cls:'vs-badge-instalado',   label:'INSTALADO' },
     'caida':         { cls:'vs-badge-caida',       label:'CAIDA' },
     'duplicada':     { cls:'vs-badge-duplicada',   label:'DUPLICADA' },
-    'rechazado':     { cls:'vs-badge-caida',       label:'RECHAZADO' },
-    'observado':     { cls:'vs-badge-observado',   label:'OBSERVADO' },
+    'rechazado':      { cls:'vs-badge-caida',      label:'RECHAZADO' },
+    'observado':      { cls:'vs-badge-observado',  label:'OBSERVADO' },
+    'servicio_activo':{ cls:'vs-badge-servicioactivo', label:'SERVICIO ACTIVO' },
+    'fraude':         { cls:'vs-badge-fraude',         label:'FRAUDE' },
+    'no_contesta':    { cls:'vs-badge-nocontesta',     label:'NO CONTESTA' },
+    'buzon_voz':      { cls:'vs-badge-buzonvoz',       label:'BUZÓN DE VOZ' },
+    'corta_llamada':  { cls:'vs-badge-cortallamada',   label:'CORTA LLAMADA' },
+    'no_desea':       { cls:'vs-badge-nodesea',        label:'NO DESEA' },
   }
   const found = map[estado]
   if (!found) return <span className="vs-badge vs-badge-venta">{e ? e.toUpperCase() : '-'}</span>
-  return <span className={`vs-badge ${found.cls}`}>{found.label}</span>
+  return <span className={`vs-badge ${found.cls}`} style={found.style || {}}>{found.label}</span>
 }
 
 function CopyIcon() {
@@ -807,6 +863,7 @@ export default function Dashboard() {
           <span className="dash-usuario">
             {vistaJefatura ? `Vista de: ${asesorObjetivo.nombre}` : `${saludoHora}, ${sesion?.nombre || 'ASESOR'}`}
           </span>
+          <CambiarAreaMenu />
           {vistaJefatura && <button type="button" className="topbar-salir" onClick={volverAJefatura}>Volver a Jefatura</button>}
           <a href="#" className="topbar-salir" onClick={handleSalir}>Salir</a>
         </div>
@@ -976,7 +1033,7 @@ export default function Dashboard() {
           <table className="vs-tabla">
             <thead>
               <tr>
-                <th>Estado</th><th>Fecha</th><th>Nombre y Apellidos</th>
+                <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Nombre y Apellidos</th>
                 <th>Tipo Doc.</th><th>DNI</th><th>Tel. Contacto</th><th>Tel. Referencia</th>
                 <th>Departamento</th><th>Provincia</th><th>Distrito</th>
                 <th>Dirección</th><th>Coordenadas</th>
@@ -990,10 +1047,11 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {ventasMostradas.length === 0 ? (
-                <tr className="vs-empty"><td colSpan={28}>Sin registros. Usa los filtros para buscar.</td></tr>
+                <tr className="vs-empty"><td colSpan={29}>Sin registros. Usa los filtros para buscar.</td></tr>
               ) : ventasMostradas.map((v, i) => (
                 <tr key={v.id || i}>
-                  <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} /></td>
+                  <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} estadoGrab={v.estado_grab} grabandoPorNombre={v.grabando_por_nombre} /></td>
+                  <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>
@@ -1041,7 +1099,6 @@ export default function Dashboard() {
         </div>
         {frases.length === 0 ? (
           <div style={{textAlign:'center',padding:'60px 24px',color:'#9ca3af'}}>
-            <div style={{fontSize:'40px',marginBottom:'12px'}}>💬</div>
             <div style={{fontSize:'15px',fontWeight:600,color:'#374151',marginBottom:'6px'}}>Sin mensajes por ahora</div>
             <div style={{fontSize:'13px',lineHeight:1.5}}>Tu supervisor aún no ha publicado mensajes hoy.</div>
           </div>
@@ -1370,7 +1427,7 @@ export default function Dashboard() {
                         ? <img src={url} alt={f.nombre} onClick={() => window.open(url)}
                             style={{width:'100%',height:'100px',objectFit:'cover',display:'block',cursor:'pointer'}} />
                         : <div onClick={() => window.open(url)}
-                            style={{height:'100px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px',cursor:'pointer'}}>📄</div>
+                            style={{height:'100px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#6b7280',cursor:'pointer'}}>Archivo</div>
                       }
                       <div style={{padding:'6px 8px'}}>
                         <div style={{fontSize:'10px',fontWeight:600,color:'#374151',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.nombre}</div>

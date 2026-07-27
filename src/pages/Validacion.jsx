@@ -29,6 +29,7 @@ const TIP_BTNS = [
   { id:'fraude',          label:'FRAUDE',           cls:'be-fraude' },
   { id:'no_desea',        label:'NO DESEA',         cls:'be-nodesea' },
   { id:'no_contesta',     label:'NO CONTESTA',      cls:'be-nocontesta' },
+  { id:'buzon_voz',       label:'BUZÓN DE VOZ',     cls:'be-buzon' },
   { id:'servicio_activo', label:'SERVICIO ACTIVO',  cls:'be-servicio' },
   { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
 ]
@@ -58,7 +59,7 @@ function getObsDisplay(obsVal) {
 }
 
 function derivarTipifVal(obsValidacion) {
-  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','servicio_activo','validado']
+  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','validado']
   const lineas = (obsValidacion||'').split('\n').filter(l=>l.trim())
   for (let i=lineas.length-1; i>=0; i--) {
     const txt = ((lineas[i].match(/^\[.+?\]\s*(.*)$/)||[])[1]||'').toLowerCase().replace(/ /g,'_')
@@ -279,7 +280,8 @@ export default function Validacion() {
         method:'PATCH', headers:ncHeaders(),
         body: JSON.stringify({
           obs_validacion: nuevoHistorial,
-          ...(tipSel && ['validado','fraude','grabado','aprobado','en_ejecucion',
+          ...(tipSel && ['validado','fraude','no_desea','no_contesta','buzon_voz',
+              'servicio_activo','corta_llamada','grabado','aprobado','en_ejecucion',
               'instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(tipSel)
             ? { estado: tipSel }
             : {}),
@@ -293,7 +295,7 @@ export default function Validacion() {
         : x
       ))
       setModalEst({ open:false, id:null })
-      mostrarToast('✅ Tipificación y observación guardadas')
+      mostrarToast('Tipificación y observación guardadas')
     } catch(e) { mostrarToast('Error conectando al servidor') }
   }
 
@@ -308,7 +310,7 @@ export default function Validacion() {
       <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} />
+            <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='NC'}} />
           </div>
           <div className="brand-text">
             <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
@@ -404,7 +406,7 @@ export default function Validacion() {
                 className="tabla-search"
                 value={busqueda}
                 onChange={e=>setBusqueda(e.target.value)}
-                placeholder="🔍 Buscar por nombre, DNI, teléfono..."
+                placeholder="Buscar por nombre, DNI, teléfono..."
               />
               <div className="pag-size">
                 <select
@@ -427,7 +429,6 @@ export default function Validacion() {
                 <tr>
                   <th className="th-accion">ACCIÓN</th>
                   <th className="th-estado">ESTADO VENTA</th>
-                  <th className="th-obs-seg">OBS. SEGUIMIENTO</th>
                   <th className="th-fecha">FECHA INGRESO</th>
                   <th className="th-nombre">NOMBRE Y APELLIDOS</th>
                   <th className="th-dni">DNI / DOC.</th>
@@ -451,7 +452,7 @@ export default function Validacion() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr className="tabla-empty"><td colSpan={22}>Sin registros.</td></tr>
+                  ? <tr className="tabla-empty"><td colSpan={21}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
                       const mostrar  = v.tipifVal || v.estado
                       const eObj     = estadoObj(mostrar)
@@ -474,7 +475,6 @@ export default function Validacion() {
                               {eObj.label}
                             </span>
                           </td>
-                          <td className="td-wrap td-obs-seg">{v.obsSeg||'—'}</td>
                           <td style={{color:'#185FA5',fontWeight:700,fontFamily:'monospace',fontSize:10,whiteSpace:'nowrap'}}>
                             {formatF(v.fechaIngreso)}<br />
                             <span style={{color:'#9ca3af',fontWeight:400}}>{v.horaIngreso||''}</span>
@@ -590,7 +590,7 @@ export default function Validacion() {
 
               <div className="modal-btns">
                 <button className="btn-cancelar-modal" onClick={()=>setModalEst({open:false,id:null})}>Cancelar</button>
-                <button className="btn-guardar" onClick={guardarTipificacion}>💾 Guardar</button>
+                <button className="btn-guardar" onClick={guardarTipificacion}>Guardar</button>
               </div>
             </div>
           </div>

@@ -2,10 +2,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import '../styles/programacion.css'
 
 const BADGE_CLS = {
+  GRABADO:          'b-grabado-prog',
   PROGRAMADO:       'b-programado',
   BLOQUEADO:        'b-bloqueado',
   SIN_AGENDA:       'b-sinagenda',
@@ -28,6 +30,7 @@ const BADGE_CLS = {
 }
 
 const ESTADO_LABELS = {
+  GRABADO:          'Grabado',
   PROGRAMADO:       'Programado',
   BLOQUEADO:        'Bloqueado',
   SIN_AGENDA:       'Sin agenda',
@@ -58,6 +61,20 @@ const ESTADO_BTNS = [
   { id: 'ZONA_RESTRINGIDA',  label: 'Zona restringida',  cls: 'be-zona'       },
 ]
 
+// Estado inicial visible al llegar a Programación: si Programación todavía
+// no actuó (estado sigue en VALIDADO) y Super de Grabaciones ya corroboró
+// la grabación, se muestra GRABADO. Es puramente de presentación — no se
+// persiste nada distinto; `estado` sigue intacto (campo de Validación).
+function estadoVisible(v) {
+  const raw = (v.estado || '').toUpperCase()
+  if (raw === 'VALIDADO'
+      && (v.estado_grab || '').toLowerCase() === 'grabado'
+      && (v.estado_supgrab || '').toLowerCase() === 'aprobado') {
+    return 'GRABADO'
+  }
+  return raw
+}
+
 function formatF(f) {
   if (!f) return '—'
   const d = f.split('T')[0] || f
@@ -67,6 +84,14 @@ function formatF(f) {
 
 function DetCampo({ label, val }) {
   return <div className="det-campo"><label>{label}</label><span>{val || '—'}</span></div>
+}
+
+function DetSeccion({ titulo }) {
+  return (
+    <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: .3, margin: '14px 0 8px' }}>
+      {titulo}
+    </div>
+  )
 }
 
 export default function Programacion() {
@@ -217,6 +242,7 @@ export default function Programacion() {
             <span className="topbar-badge" style={{ background: '#7c3aed' }}>PROGRAMACIÓN</span>
             <span className="topbar-user">{sesion?.nombre || '—'}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={salir}>Salir</button>
         </div>
       </div>
@@ -300,7 +326,7 @@ export default function Programacion() {
                   <tr className="tabla-empty"><td colSpan="11">Sin registros con esos filtros.</td></tr>
                 ) : ventasFiltradas.map((v, i) => {
                   const fecha = formatF((v.created_at || '').split(' ')[0])
-                  const estadoRaw = (v.estado || '').toUpperCase()
+                  const estadoRaw = estadoVisible(v)
                   const cls   = BADGE_CLS[estadoRaw] || 'b-venta'
                   const estadoLabel = ESTADO_LABELS[estadoRaw] || estadoRaw || '—'
                   return (
@@ -338,28 +364,53 @@ export default function Programacion() {
               <button className="modal-close" onClick={cerrarModal}>×</button>
             </div>
             <div className="modal-body">
+              {/* Ficha completa de la venta — solo lectura. Programación no
+                  puede editar ningún dato original desde aquí, únicamente
+                  su propio estado y observación (sección al final). */}
+              <DetSeccion titulo="Datos personales" />
               <div className="det-grid">
-                <DetCampo label="Nombre"       val={modalDet.nombre} />
-                <DetCampo label="DNI / Doc."   val={`${modalDet.tipo_doc || 'DNI'}: ${modalDet.dni || '—'}`} />
-                <DetCampo label="Teléfono 1"   val={modalDet.telefono1} />
-                <DetCampo label="Teléfono 2"   val={modalDet.telefono2} />
-                <DetCampo label="Asesor"       val={modalDet.asesor_nombre} />
-                <DetCampo label="Sala"         val={modalDet.sala} />
-                <DetCampo label="Departamento" val={modalDet.departamento} />
-                <DetCampo label="Distrito"     val={modalDet.distrito} />
+                <DetCampo label="Nombre"            val={modalDet.nombre} />
+                <DetCampo label="Tipo Documento"    val={modalDet.tipo_doc || 'DNI'} />
+                <DetCampo label="DNI / Doc."        val={modalDet.dni} />
+                <DetCampo label="Fecha Nacimiento"  val={modalDet.fecha_nac} />
+                <DetCampo label="Lugar Nacimiento"  val={modalDet.lugar_nac} />
+                <DetCampo label="Padre"             val={modalDet.padre} />
+                <DetCampo label="Madre"             val={modalDet.madre} />
+              </div>
+
+              <DetSeccion titulo="Contacto y ubicación" />
+              <div className="det-grid">
+                <DetCampo label="Teléfono Contacto"   val={modalDet.telefono1} />
+                <DetCampo label="Teléfono Referencia" val={modalDet.telefono2} />
+                <DetCampo label="Departamento"        val={modalDet.departamento} />
+                <DetCampo label="Provincia"           val={modalDet.provincia} />
+                <DetCampo label="Distrito"            val={modalDet.distrito} />
+                <div className="det-campo det-full"><label>Dirección</label><span>{modalDet.direccion || '—'}</span></div>
+                <DetCampo label="Coordenadas"         val={modalDet.coordenadas} />
+              </div>
+
+              <DetSeccion titulo="Datos del servicio" />
+              <div className="det-grid">
+                <DetCampo label="Cuota Inst."  val={modalDet.cuota_inst} />
                 <DetCampo label="Claro Hogar"  val={modalDet.claro_hogar} />
                 <DetCampo label="Tecnología"   val={modalDet.tecnologia} />
                 <div className="det-campo det-full"><label>Paquete Real</label><span>{modalDet.paquete || '—'}</span></div>
+                <DetCampo label="Full Claro"   val={modalDet.full_claro} />
                 <DetCampo label="Decos"        val={modalDet.cant_decos} />
                 <DetCampo label="Mesh"         val={modalDet.cant_mesh} />
                 <DetCampo label="Plano"        val={modalDet.plano} />
-                <DetCampo label="Cuota Inst."  val={modalDet.cuota_inst} />
-                <DetCampo label="Full Claro"   val={modalDet.full_claro} />
-                <div className="det-campo det-full"><label>Dirección</label><span>{modalDet.direccion || '—'}</span></div>
-                <DetCampo label="Coordenadas"  val={modalDet.coordenadas} />
-                <DetCampo label="Fecha ingreso" val={formatF((modalDet.created_at || '').split(' ')[0])} />
               </div>
 
+              <DetSeccion titulo="Datos comerciales / operativos" />
+              <div className="det-grid">
+                <DetCampo label="Asesor / Vendedor" val={modalDet.asesor_nombre} />
+                <DetCampo label="Supervisor"        val={modalDet.supervisor} />
+                <DetCampo label="Sala"              val={modalDet.sala} />
+                <DetCampo label="Fecha ingreso"     val={formatF((modalDet.created_at || '').split(' ')[0])} />
+                <div className="det-campo det-full"><label>Observación original</label><span>{modalDet.observacion || '—'}</span></div>
+              </div>
+
+              <DetSeccion titulo="Programación" />
               <div className="cambiar-estado-wrap">
                 <label>Cambiar estado de programación</label>
                 <div className="estado-btns">

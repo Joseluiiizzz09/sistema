@@ -3,15 +3,27 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import '../styles/grabaciones.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
 const ESTADOS_GRAB = [
-  { id:'pendiente', label:'PENDIENTE', cls:'bg-pendiente' },
-  { id:'grabado',   label:'GRABADO',   cls:'bg-grabado'   },
+  { id:'pendiente',      label:'PENDIENTE',      cls:'bg-pendiente'     },
+  { id:'grabando',       label:'GRABANDO',       cls:'bg-grabando'      },
+  { id:'grabado',        label:'GRABADO',        cls:'bg-grabado'       },
+  { id:'corta_llamada',  label:'CORTA LLAMADA',  cls:'bg-corta'         },
+  { id:'suplantacion',   label:'SUPLANTACIÓN',   cls:'bg-suplantacion'  },
+  { id:'no_desea',       label:'NO DESEA',       cls:'bg-nodesea'       },
+  { id:'no_contesta',    label:'NO CONTESTA',    cls:'bg-nocontesta'    },
+  { id:'buzon_voz',      label:'BUZÓN DE VOZ',   cls:'bg-buzon'         },
+]
+// Estados que ya no aparecen en el selector de Back/Grabaciones pero que otros
+// módulos (Super de Grabaciones) siguen usando internamente — se conservan
+// aquí solo para que la tabla los siga rotulando correctamente.
+const ESTADOS_GRAB_BADGE = [
+  ...ESTADOS_GRAB,
   { id:'observado', label:'OBSERVADO', cls:'bg-observado' },
-  { id:'en_revision', label:'EN REVISION', cls:'bg-revisado' },
 ]
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -34,7 +46,20 @@ function fechaDesdeAudioPath(path) {
   const m = String(path || '').match(/_(\d{11,})\.[a-z0-9]+$/i)
   return m ? fechaPeruDesdeMs(Number(m[1])) : ''
 }
-function estadoGrab(id) { return ESTADOS_GRAB.find(e=>e.id===id)||ESTADOS_GRAB[0] }
+function estadoGrab(id) { return ESTADOS_GRAB_BADGE.find(e=>e.id===id)||ESTADOS_GRAB_BADGE[0] }
+// Extrae la fecha (yyyy-mm-dd) de la última línea "[dd/mm/yyyy ... ] VALIDADO"
+// que Validación escribe en obs_validacion al tipificar. Esa línea es el único
+// registro real de "cuándo esta venta pasó Validación y entró a Grabaciones";
+// no existe columna fecha_validacion en la BD.
+function fechaValidacionDesdeObs(obs) {
+  if (!obs) return ''
+  const lineas = String(obs).split('\n')
+  for (let i = lineas.length - 1; i >= 0; i--) {
+    const m = lineas[i].match(/^\[(\d{2})\/(\d{2})\/(\d{4})[^\]]*\]\s*VALIDADO\s*$/i)
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`
+  }
+  return ''
+}
 function getDateLabel() {
   const d = new Date()
   const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -43,14 +68,17 @@ function getDateLabel() {
 }
 function mapVenta(v) {
   const fechaRaw = (v.created_at||'').split(' ')[0].split('T')[0]
-  const fechaAudio = fechaDesdeAudioPath(v.audio_path)
+  const fechaValidacion = fechaValidacionDesdeObs(v.obs_validacion)
   return {
     ...v,
     nombreApellidos:  v.nombre        || '',
     telefonoContacto: v.telefono1     || '',
     vendedor:         v.asesor_nombre || '',
     fechaIngreso:     fechaRaw,
-    _fechaGrab:       fechaAudio || fechaRaw || fechaHoy(),
+    // Fecha en que la venta entró al flujo de Grabaciones = cuándo pasó
+    // Validación (no la fecha de creación de la venta). Ventas viejas sin
+    // ese historial parseable caen a created_at como último recurso.
+    _fechaGrab:       fechaValidacion || fechaRaw || fechaHoy(),
     _estadoGrab:      v.estado_grab   || 'pendiente',
     _grabAudio:       v.audio_path    || null,
     _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
@@ -154,7 +182,15 @@ export default function Grabaciones() {
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
-          .filter(v => { const e=(v.estado||'').toLowerCase(); return e==='validado'||e==='venta' })
+          .filter(v => {
+            const e  = (v.estado||'').toLowerCase()
+            const eg = (v.estado_grab||'').toLowerCase()
+            // Ya no depende de que `estado` cambie a 'grabado' (eso pisaría
+            // Validación). Una vez Back marca GRABADO, estado_grab='grabado'
+            // saca la venta de esta cola porque pasa a Super de Grabaciones;
+            // si Super la observa (estado_grab='observado') vuelve a aparecer.
+            return (e==='validado'||e==='venta') && eg!=='grabado'
+          })
           .map(mapVenta)
         )
       }
@@ -221,22 +257,31 @@ export default function Grabaciones() {
   async function guardarEstado() {
     const v = ventas.find(x=>x.id===modalEstado.id); if (!v) return
     if (nuevoEstadoSel === 'grabado') {
-      await fetch(`${API}/ventas/${v.id}`, {
-        method:'PATCH', headers:ncHeaders(),
-      body: JSON.stringify({ estado:'grabado', estado_supgrab:'sin_revisar', estado_grab:'en_revision' }),
-      }).catch(console.error)
+      try {
+        const res  = await fetch(`${API}/ventas/${v.id}`, {
+          method:'PATCH', headers:ncHeaders(),
+          // No se toca `estado` (campo de Validación) — solo el campo
+          // independiente de Grabaciones. Super de Grabaciones lee su cola
+          // desde estado_grab, no desde estado.
+          body: JSON.stringify({ estado_grab:'grabado', estado_supgrab:'sin_revisar' }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }
+      } catch(e) { console.error('Error guardando estado:', e); mostrarToast('Error conectando al servidor'); return }
       setVentas(list => list.filter(x=>x.id!==v.id))
       setModalEstado({ open:false, id:null })
-      mostrarToast('Venta marcada como GRABADA — pasa al Supervisor')
+      mostrarToast('Venta marcada como GRABADA — pasa a Super de Grabaciones')
       return
     }
     try {
-      await fetch(`${API}/ventas/${v.id}`, {
+      const res  = await fetch(`${API}/ventas/${v.id}`, {
         method:'PATCH', headers:ncHeaders(),
         body: JSON.stringify({ estado_grab: nuevoEstadoSel }),
       })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }
       setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel } : x))
-    } catch(e) { console.error('Error guardando estado:', e) }
+    } catch(e) { console.error('Error guardando estado:', e); mostrarToast('Error conectando al servidor'); return }
     setModalEstado({ open:false, id:null })
     mostrarToast('Estado actualizado: ' + nuevoEstadoSel.toUpperCase())
   }
@@ -272,18 +317,41 @@ export default function Grabaciones() {
         method:'POST', headers:ncHeadersFile(), body:formData,
       })
       const uploadData = await uploadRes.json()
-      if (uploadData.ok) rutaAudio = uploadData.ruta
-    } catch(e) { console.error('Error subiendo audio:', e) }
+      if (!uploadRes.ok || !uploadData.ok) {
+        mostrarToast('Error: ' + (uploadData.mensaje||'no se pudo subir el audio'))
+        setSubirLoading(false)
+        return
+      }
+      rutaAudio = uploadData.ruta
+    } catch(e) {
+      console.error('Error subiendo audio:', e)
+      mostrarToast('Error conectando al servidor')
+      setSubirLoading(false)
+      return
+    }
 
-    await fetch(`${API}/ventas/${v.id}`, {
-      method:'PATCH', headers:ncHeaders(),
-      body: JSON.stringify({
-        estado:'grabado',
-        estado_supgrab:'sin_revisar',
-        estado_grab:'en_revision',
-        ...(rutaAudio ? { audio_path:rutaAudio } : {}),
-      }),
-    }).catch(console.error)
+    try {
+      const res  = await fetch(`${API}/ventas/${v.id}`, {
+        method:'PATCH', headers:ncHeaders(),
+        body: JSON.stringify({
+          // No se toca `estado` (campo de Validación) — solo Grabaciones.
+          estado_grab:'grabado',
+          estado_supgrab:'sin_revisar',
+          ...(rutaAudio ? { audio_path:rutaAudio } : {}),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
+        setSubirLoading(false)
+        return
+      }
+    } catch(e) {
+      console.error('Error guardando estado tras subir audio:', e)
+      mostrarToast('Error conectando al servidor')
+      setSubirLoading(false)
+      return
+    }
 
     setVentas(list => list.filter(x=>x.id!==v.id))
     setModalSubir({ open:false, id:null })
@@ -374,7 +442,7 @@ export default function Grabaciones() {
       <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="NC" onError={e=>{ e.target.parentNode.textContent='🏢' }} />
+            <img src="/assets/logo3.png" alt="NC" onError={e=>{ e.target.parentNode.textContent='NC' }} />
           </div>
           <div className="brand-text">
             <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
@@ -387,6 +455,7 @@ export default function Grabaciones() {
             <span className="topbar-badge">GRABACIONES</span>
             <span className="topbar-user">{sesion?.nombre || 'Grabaciones'}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
@@ -412,10 +481,10 @@ export default function Grabaciones() {
         {/* TABS */}
         <div className="tabs-bar">
           <button className={`tab-btn${tabActiva==='hoy'?' active':''}`} onClick={()=>cambiarTab('hoy')}>
-            🗓️ Hoy <span className="tab-count">{kpis.hoy}</span>
+            Hoy <span className="tab-count">{kpis.hoy}</span>
           </button>
           <button className={`tab-btn${tabActiva==='pendientes'?' active':''}`} onClick={()=>cambiarTab('pendientes')}>
-            ⏳ Pendientes anteriores <span className="tab-count">{kpis.pendientes}</span>
+            Pendientes anteriores <span className="tab-count">{kpis.pendientes}</span>
           </button>
         </div>
 
@@ -468,7 +537,7 @@ export default function Grabaciones() {
                 className="tabla-search"
                 value={busqueda}
                 onChange={e=>setBusqueda(e.target.value)}
-                placeholder="🔍 Buscar por nombre, DNI, vendedor..."
+                placeholder="Buscar por nombre, DNI, vendedor..."
               />
               <div className="pag-size">
                 <select value={porPagina} onChange={e=>{ setPorPagina(parseInt(e.target.value)||18); setPagina(1) }} title="Por página">
@@ -512,7 +581,7 @@ export default function Grabaciones() {
                               <button className="btn-acc btn-acc-obs"    onClick={()=>abrirModalObs(v.id)}    title="Observación">Obs.</button>
                               <button className="btn-acc btn-acc-subir"  onClick={()=>abrirModalSubir(v.id)}  title="Subir grabación">Subir</button>
                               <button className="btn-acc btn-acc-estado" onClick={()=>abrirModalEstado(v.id)} title="Cambiar estado">Estado</button>
-                              <button className="btn-fotos btn-archivos" onClick={()=>setMediaVenta(v)} title="Ver fotos y documentos">📎 Archivos</button>
+                              <button className="btn-fotos btn-archivos" onClick={()=>setMediaVenta(v)} title="Ver fotos y documentos">Archivos</button>
                             </div>
                           </td>
                           <td><span className={`badge-grab ${eg.cls}`}>{eg.label}</span></td>
@@ -588,7 +657,7 @@ export default function Grabaciones() {
       {modalSubir.open && (
         <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalSubir({open:false,id:null}) }}>
           <div className="modal-box" style={{maxWidth:440}}>
-            <div className="modal-title">📎 Subir grabación</div>
+            <div className="modal-title">Subir grabación</div>
             <div className="modal-sub">Cliente: <strong>{vSubir?.nombreApellidos||'—'}</strong></div>
             <div
               className="upload-zone"
@@ -598,7 +667,7 @@ export default function Grabaciones() {
               onDragLeave={()=>setSubirDrag(false)}
               onDrop={e=>{ e.preventDefault(); setSubirDrag(false); handleFileSelect(e.dataTransfer.files) }}
             >
-              <div className="upload-icon">🎙️</div>
+              <div className="upload-icon"></div>
               <div style={{fontSize:13,fontWeight:600,color:'#374151',marginTop:6}}>Arrastra tu archivo aquí o haz clic</div>
               <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
               <input
@@ -615,7 +684,7 @@ export default function Grabaciones() {
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={()=>{ setModalSubir({open:false,id:null}); setArchivoSel(null); setSubirInfo('') }}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarAudio} disabled={subirLoading}>
-                {subirLoading ? 'Subiendo...' : '✅ Subir grabación'}
+                {subirLoading ? 'Subiendo...' : 'Subir grabación'}
               </button>
             </div>
           </div>
@@ -626,7 +695,7 @@ export default function Grabaciones() {
       {modalAudio.open && (
         <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) cerrarModalAudio() }}>
           <div className="modal-box" style={{maxWidth:460}}>
-            <div className="modal-title">🎙️ Grabación</div>
+            <div className="modal-title">Grabación</div>
             <div className="modal-sub">
               Cliente: <strong>{vAudio?.nombreApellidos||'—'}</strong> ·{' '}
               Vendedor: <strong>{vAudio?.vendedor||'—'}</strong> ·{' '}
@@ -647,14 +716,14 @@ export default function Grabaciones() {
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalAudio}>Cerrar</button>
               {audioSrc && (
-                <button className="btn-guardar" style={{background:'#059669'}} onClick={()=>descargarAudio(modalAudio.id)}>⬇️ Descargar</button>
+                <button className="btn-guardar" style={{background:'#059669'}} onClick={()=>descargarAudio(modalAudio.id)}>Descargar</button>
               )}
               <button
                 className="btn-guardar"
                 style={{background:'#2563eb'}}
                 onClick={()=>{ cerrarModalAudio(); abrirModalSubir(modalAudio.id) }}
               >
-                📎 Cambiar archivo
+                Cambiar archivo
               </button>
             </div>
           </div>
@@ -665,7 +734,7 @@ export default function Grabaciones() {
       {modalObs.open && (
         <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalObs({open:false,id:null}) }}>
           <div className="modal-box" style={{maxWidth:440}}>
-            <div className="modal-title">💬 Observación</div>
+            <div className="modal-title">Observación</div>
             <div className="modal-sub">Cliente: <strong>{vObs?.nombreApellidos||'—'}</strong></div>
             <div style={{fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:.3,marginBottom:6}}>Historial</div>
             <div className="obs-historial">{vObs?._grabObs||'Sin observaciones previas.'}</div>
