@@ -935,17 +935,18 @@ export default function Jefatura() {
           <section className={`section${seccion==='seguimiento'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Seguimiento en campo</h2><p>Estado actual de todas las ventas — se actualiza automáticamente</p></div>
-              <div className="filtros-acciones">
-                <button className="btn-exportar" type="button" onClick={exportarSeguimientoExcel}>Exportar Excel</button>
-                <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
-              </div>
+              <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
             </div>
-            <div className="kpi-grid" style={{gridTemplateColumns:'repeat(5,1fr)',marginBottom:'20px'}}>
+            <div className="kpi-grid seguimiento-kpi-grid">
               <div className="kpi-card k-teal">  <div className="kpi-num">{kpisSeg.ejecucion}</div><div className="kpi-label">En ejecución</div></div>
               <div className="kpi-card k-green">  <div className="kpi-num">{kpisSeg.instalado}</div><div className="kpi-label">Instalados</div></div>
               <div className="kpi-card k-orange"> <div className="kpi-num">{kpisSeg.rechazo}</div>  <div className="kpi-label">Rechazo en campo</div></div>
               <div className="kpi-card k-red">    <div className="kpi-num">{kpisSeg.caida}</div>    <div className="kpi-label">Caídas</div></div>
               <div className="kpi-card k-purple"> <div className="kpi-num">{kpisSeg.tecnico}</div>  <div className="kpi-label">Técnicos en casa</div></div>
+              <button type="button" className="kpi-card k-green export-kpi-card" onClick={exportarSeguimientoExcel}>
+                <span className="export-kpi-icon" aria-hidden="true">⇩</span>
+                <span className="kpi-label">Exportar Excel</span>
+              </button>
             </div>
             <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap'}}>
               {[['','Todos'], ...estadosSeg].map(([id, label]) => (
@@ -1020,10 +1021,7 @@ export default function Jefatura() {
               <div>
                 <h2>Ventas generales</h2>
               </div>
-              <div className="filtros-acciones">
-                <button className="btn-exportar" type="button" onClick={exportarVentasExcel}>Exportar Excel</button>
-                <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
-              </div>
+              <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
             </div>
 
             <div className="flujo-kpi-grid">
@@ -1045,6 +1043,10 @@ export default function Jefatura() {
                   <div className="kpi-label">{card.label}</div>
                 </button>
               ))}
+              <button type="button" className="kpi-card flujo-kpi k-green export-kpi-card" onClick={exportarVentasExcel}>
+                <span className="export-kpi-icon" aria-hidden="true">⇩</span>
+                <span className="kpi-label">Exportar Excel</span>
+              </button>
             </div>
 
             <div className="flujo-panel">
