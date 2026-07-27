@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
+import { API, ncHeaders } from '../services/api'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboardreclutamiento.css'
@@ -43,7 +43,11 @@ const FUENTES_RECLU = ['R3','R4','R5','CHANCAY']
 const EMPRESAS_RECLU = ['CLARO','WIN']
 const EXPERIENCIA_RECLU = ['Sin experiencia','Menos de 3 meses','3 a 6 meses','6 meses a 1 año','Más de 1 año']
 const DISPONIBILIDAD_RECLU = ['Inmediata','Esta semana','Próxima semana','Otra fecha']
-const ESTADOS_RECLU = ['NUEVO']
+// RECLUTADO = estado final que marca a un postulante como ya reclutado; no
+// existía ningún estado equivalente previo (se revisó el catálogo real antes
+// de agregarlo). Alimenta el tab "Reclutados" (filtra por este mismo valor,
+// sin duplicar el registro del postulante).
+const ESTADOS_RECLU = ['NUEVO', 'RECLUTADO']
 const LIMA_DISTRITOS = [
   'Ancón','Ate','Barranco','Breña','Carabayllo','Cercado de Lima','Chaclacayo','Chorrillos',
   'Cieneguilla','Comas','El Agustino','Independencia','Jesús María','La Molina','La Victoria',
@@ -247,10 +251,6 @@ export default function DashboardReclutamiento() {
   const [nvForm,      setNvForm]      = useState(NV_DEFAULT)
   const [nvPaquetes,  setNvPaquetes]  = useState([])
   const [guardandoNV, setGuardandoNV] = useState(false)
-
-  // Modal fotos
-  const [modalFotos, setModalFotos] = useState({ open:false, ventaId:null, nombre:'' })
-  const [fotos,      setFotos]      = useState([])
 
   // Filtros ventas subidas
   const [filtroDni,   setFiltroDni]   = useState('')
@@ -691,8 +691,8 @@ export default function DashboardReclutamiento() {
   }
 
   async function guardarNuevaVenta() {
-    if (!nvForm.dni.trim())    return mostrarToast('El DNI es obligatorio')
     if (!nvForm.nombre.trim()) return mostrarToast('El nombre es obligatorio')
+    if (!nvForm.tel1.trim())   return mostrarToast('El teléfono principal es obligatorio')
     if (nvForm.fuente === 'OTRO' && !nvForm.fuenteOtro.trim())
       return mostrarToast('Ingrese el nombre de la campaña')
     const campanaFinal = nvForm.fuente === 'OTRO' ? nvForm.fuenteOtro.trim() : nvForm.fuente
@@ -718,49 +718,6 @@ export default function DashboardReclutamiento() {
       mostrarToast(nvEditId ? 'Postulante actualizado correctamente' : 'Postulante guardado correctamente')
     } catch(e) { mostrarToast('Error conectando al servidor') }
     finally { setGuardandoNV(false) }
-  }
-
-  // ── Fotos ─────────────────────────────────────────────────────────────────
-  async function abrirFotos(i) {
-    const v = ventasMostradas[i]; if (!v) return
-    setModalFotos({ open:true, ventaId:v.id, nombre:v.nombre||'--' })
-    try {
-      const res  = await fetch(`${API}/ventas-reclutamiento/${v.id}/fotos`, { headers:ncHeaders() })
-      const data = await res.json()
-      setFotos(data.ok ? data.data : [])
-    } catch(e) { setFotos([]) }
-  }
-
-  async function recargarFotos(ventaId) {
-    try {
-      const res  = await fetch(`${API}/ventas-reclutamiento/${ventaId}/fotos`, { headers:ncHeaders() })
-      const data = await res.json()
-      setFotos(data.ok ? data.data : [])
-    } catch(e) { setFotos([]) }
-  }
-
-  async function adjuntarFotos(files, ventaId) {
-    for (const file of Array.from(files)) {
-      const fd = new FormData(); fd.append('foto', file)
-      try {
-        const res  = await fetch(`${API}/ventas-reclutamiento/${ventaId}/fotos`, {
-          method:'POST', headers:ncHeadersFile(), body:fd,
-        })
-        const data = await res.json()
-        if (!data.ok) mostrarToast('Error subiendo: ' + (data.mensaje || ''))
-      } catch(e) { mostrarToast('Error de conexión al subir foto') }
-    }
-    await recargarFotos(ventaId)
-    mostrarToast('Foto guardada correctamente')
-  }
-
-  async function eliminarFoto(fotoId, ventaId) {
-    if (!confirm('¿Eliminar esta foto?')) return
-    try {
-      await fetch(`${API}/ventas-reclutamiento/${ventaId}/fotos/${fotoId}`, { method:'DELETE', headers:ncHeaders() })
-      await recargarFotos(ventaId)
-      mostrarToast('Foto eliminada')
-    } catch(e) { mostrarToast('Error eliminando foto') }
   }
 
   // ── Filtros ventas subidas ────────────────────────────────────────────────
@@ -795,6 +752,10 @@ export default function DashboardReclutamiento() {
     sessionStorage.setItem('nc_jefatura_apartado', 'accesos')
     navigate('/jefatura')
   }
+
+  // Reclutados: mismo dato de Postulantes/MySQL filtrado por estado final —
+  // sin duplicar registros, sin fetch adicional.
+  const reclutados = ventasSubidas.filter(v => (v.estado_reclutamiento || '').toUpperCase() === 'RECLUTADO')
 
   // ── KPIs computados ───────────────────────────────────────────────────────
   const hoy           = fechaHoy()
@@ -838,6 +799,7 @@ export default function DashboardReclutamiento() {
           {[
             { id:'llamadas',      label:'Llamadas' },
             { id:'ventassubidas', label:'Postulantes' },
+            { id:'reclutados',    label:'Reclutados' },
           ].map(t => (
             <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => cambiarTab(t.id)}>
               {t.label}
@@ -983,9 +945,53 @@ export default function DashboardReclutamiento() {
                   <td>
                     <div className="vs-acciones-cell">
                       <button className="vs-btn-accion vs-btn-editar" onClick={() => editarVenta(i)}>Editar</button>
-                      <button className="vs-btn-accion vs-btn-fotos"  onClick={() => abrirFotos(i)}>Fotos</button>
                     </div>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── RECLUTADOS ─────────────────────────────────────────────────── */}
+      <div className={`pantalla${tab !== 'reclutados' ? ' hidden' : ''}`}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',flexWrap:'wrap',gap:'10px'}}>
+          <div>
+            <h2 style={{marginBottom:'4px'}}>Reclutados</h2>
+            <p style={{fontSize:'12px',color:'#9ca3af'}}>Postulantes que ya completaron el proceso de reclutamiento</p>
+          </div>
+        </div>
+
+        <div className="vs-barra-info"><span>{reclutados.length} registros</span></div>
+
+        <div className="vs-tabla-wrap">
+          <table className="vs-tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Nombre y Apellidos</th>
+                <th>Tipo Doc.</th><th>Documento</th><th>Teléfono</th>
+                <th>Distrito</th><th>Puesto</th><th>Campaña</th><th>Empresa</th>
+                <th>Reclutador</th><th>Estado</th><th>Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reclutados.length === 0 ? (
+                <tr className="vs-empty"><td colSpan={12}>Sin postulantes reclutados aún.</td></tr>
+              ) : reclutados.map((v, i) => (
+                <tr key={v.id || i}>
+                  <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
+                  <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>
+                  <td style={{fontFamily:'monospace',fontSize:'11px'}}>{v.dni||'-'}</td>
+                  <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefono1||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.distrito||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.puesto||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.fuente||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.empresa||'-'}</td>
+                  <td style={{fontSize:'11px'}}>{v.usuario_nombre||'-'}</td>
+                  <td><span className="badge-estado">{v.estado_reclutamiento||'-'}</span></td>
+                  <td style={{fontSize:'11px',color:'#6b7280',minWidth:'140px'}}>{v.observacion||'-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -1092,10 +1098,10 @@ export default function DashboardReclutamiento() {
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">
-                    {nvForm.tipoDoc === 'DNI' ? 'Número DNI' : nvForm.tipoDoc === 'CE' ? 'Número Carnet Extranjería' : 'Número RUC'} <span>*</span>
+                    {nvForm.tipoDoc === 'DNI' ? 'Número DNI' : nvForm.tipoDoc === 'CE' ? 'Número Carnet Extranjería' : 'Número RUC'} (opcional)
                   </label>
-                  <input className="nv-input" placeholder="Número de documento" maxLength={15} style={{fontFamily:'monospace'}}
-                    value={nvForm.dni} onChange={e => nvSet('dni', e.target.value)} />
+                  <input className="nv-input" placeholder="Número de documento" maxLength={15} inputMode="numeric" pattern="[0-9]*" style={{fontFamily:'monospace'}}
+                    value={nvForm.dni} onChange={e => nvSet('dni', e.target.value.replace(/\D/g, ''))} />
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Teléfono Principal <span>*</span></label>
@@ -1103,9 +1109,9 @@ export default function DashboardReclutamiento() {
                     value={nvForm.tel1} onChange={e => nvSet('tel1', e.target.value)} />
                 </div>
                 <div className="nv-field">
-                  <label className="nv-label">Teléfono Secundario</label>
-                  <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} style={{fontFamily:'monospace'}}
-                    value={nvForm.tel2} onChange={e => nvSet('tel2', e.target.value)} />
+                  <label className="nv-label">Teléfono Secundario (opcional)</label>
+                  <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} inputMode="numeric" pattern="[0-9]*" style={{fontFamily:'monospace'}}
+                    value={nvForm.tel2} onChange={e => nvSet('tel2', e.target.value.replace(/\D/g, ''))} />
                 </div>
               </div>
             </div>
@@ -1222,73 +1228,6 @@ export default function DashboardReclutamiento() {
           </div>
         </div>
       </div>
-
-      {/* ── MODAL FOTOS ────────────────────────────────────────────────── */}
-      {modalFotos.open && (
-        <div
-          style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}
-          onClick={e => { if (e.target === e.currentTarget) setModalFotos(p => ({...p,open:false})) }}
-        >
-          <div style={{background:'#fff',borderRadius:'20px',width:'min(600px,96vw)',maxHeight:'88vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 32px 80px rgba(0,0,0,.25)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid #f3f4f6'}}>
-              <div>
-                <div style={{fontSize:'15px',fontWeight:700,color:'#111827'}}>Fotos de la venta</div>
-                <div style={{fontSize:'12px',color:'#9ca3af',marginTop:'2px'}}>{modalFotos.nombre}</div>
-              </div>
-              <button onClick={() => setModalFotos(p => ({...p,open:false}))}
-                style={{width:'30px',height:'30px',border:'none',borderRadius:'8px',background:'#f3f4f6',color:'#6b7280',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            <div style={{padding:'20px 22px',overflowY:'auto',flex:1}}>
-              <div style={{marginBottom:'20px'}}>
-                <label style={{fontSize:'11px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.4px',display:'block',marginBottom:'8px'}}>
-                  Adjuntar foto
-                </label>
-                <label
-                  style={{border:'2px dashed #e5e7eb',borderRadius:'12px',padding:'24px',textAlign:'center',cursor:'pointer',display:'block'}}
-                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='#111827' }}
-                  onDragLeave={e => { e.currentTarget.style.borderColor='#e5e7eb' }}
-                  onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor='#e5e7eb'; adjuntarFotos(e.dataTransfer.files, modalFotos.ventaId) }}
-                >
-                  <input type="file" accept="image/*,.pdf" multiple style={{display:'none'}}
-                    onChange={e => { adjuntarFotos(e.target.files, modalFotos.ventaId); e.target.value='' }} />
-                  <div style={{fontSize:'13px',color:'#9ca3af',fontWeight:500}}>Arrastra fotos aquí o haz clic para seleccionar</div>
-                  <div style={{fontSize:'11px',color:'#d1d5db',marginTop:'4px'}}>JPG, PNG, PDF</div>
-                </label>
-              </div>
-              <div style={{fontSize:'11px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'10px'}}>Fotos adjuntas</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:'10px'}}>
-                {fotos.length === 0 ? (
-                  <div style={{gridColumn:'1/-1',textAlign:'center',padding:'30px',color:'#d1d5db',fontSize:'13px'}}>Sin fotos adjuntas aún.</div>
-                ) : fotos.map(f => {
-                  const url   = f.ruta ? `${NC_API}/${f.ruta}` : (f.url || '')
-                  const tipo  = f.mimetype || f.tipo || ''
-                  const fecha = (f.created_at || f.fecha || '').split(' ')[0]
-                  return (
-                    <div key={f.id || f.url} style={{border:'1px solid #e5e7eb',borderRadius:'12px',overflow:'hidden',background:'#f9fafb'}}>
-                      {tipo.startsWith('image')
-                        ? <img src={url} alt={f.nombre} onClick={() => window.open(url)}
-                            style={{width:'100%',height:'100px',objectFit:'cover',display:'block',cursor:'pointer'}} />
-                        : <div onClick={() => window.open(url)}
-                            style={{height:'100px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#6b7280',cursor:'pointer'}}>Archivo</div>
-                      }
-                      <div style={{padding:'6px 8px'}}>
-                        <div style={{fontSize:'10px',fontWeight:600,color:'#374151',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.nombre}</div>
-                        <div style={{fontSize:'9px',color:'#9ca3af'}}>{fecha}</div>
-                      </div>
-                      {f.id && (
-                        <button onClick={() => eliminarFoto(f.id, modalFotos.ventaId)}
-                          style={{width:'100%',padding:'4px',border:'none',background:'#fff5f5',color:'#dc2626',fontSize:'10px',fontWeight:700,cursor:'pointer'}}>
-                          Eliminar
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── TOAST ──────────────────────────────────────────────────────── */}
       {toast && (

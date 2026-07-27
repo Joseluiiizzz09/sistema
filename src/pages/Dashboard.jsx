@@ -1169,8 +1169,8 @@ export default function Dashboard() {
                 {mvTipoDoc === 'DNI' ? 'Número de DNI' : mvTipoDoc === 'CE' ? 'Número de Carnet de Extranjería' : 'Número de RUC'}
               </label>
               <input
-                placeholder="" maxLength={15}
-                value={mvDni} onChange={e => { setMvDni(e.target.value); setMvDniError(false) }}
+                placeholder="" maxLength={15} inputMode="numeric" pattern="[0-9]*"
+                value={mvDni} onChange={e => { setMvDni(e.target.value.replace(/\D/g, '')); setMvDniError(false) }}
                 style={{padding:'10px 12px',border:`1.5px solid ${mvDniError ? '#ef4444':'#e5e7eb'}`,borderRadius:'8px',fontSize:'15px',fontFamily:'monospace',outline:'none',background:'#fafafa',color:'#111827',letterSpacing:'2px',transition:'border .2s'}}
               />
             </div>
@@ -1224,8 +1224,8 @@ export default function Dashboard() {
                   <label className="nv-label">
                     {nvForm.tipoDoc === 'DNI' ? 'Número DNI' : nvForm.tipoDoc === 'CE' ? 'Número Carnet Extranjería' : 'Número RUC'} <span>*</span>
                   </label>
-                  <input className="nv-input" placeholder="Número de documento" maxLength={15} style={{fontFamily:'monospace'}}
-                    value={nvForm.dni} onChange={e => nvSet('dni', e.target.value)} />
+                  <input className="nv-input" placeholder="Número de documento" maxLength={15} inputMode="numeric" pattern="[0-9]*" style={{fontFamily:'monospace'}}
+                    value={nvForm.dni} onChange={e => nvSet('dni', e.target.value.replace(/\D/g, ''))} />
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Fecha de Nacimiento</label>

@@ -8,6 +8,7 @@ import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
 import Chart from 'chart.js/auto'
+import * as XLSX from 'xlsx'
 import '../styles/jefatura.css'
 
 /* ── constantes ── */
@@ -113,6 +114,12 @@ function flujoGrabada(v) {
     || flujoTieneAudio(v)
 }
 function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
+function estadoValidacion(v) {
+  return v?.estado_validacion || v?.validacion || (flujoValidada(v) ? 'Validada' : 'Pendiente / no válida')
+}
+function estadoGrabacion(v) {
+  return v?.estado_grab || v?.estado_grabacion || (flujoGrabada(v) ? 'Grabada' : 'Sin grabación')
+}
 function flujoLabelEstado(estado) {
   const e = normEstado(estado)
   return ({
@@ -146,6 +153,32 @@ function flujoLabelEstado(estado) {
 
 const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', pass:'', pass2:'' }
 
+// Valores únicos y ordenados para poblar selects dinámicos (Asesor/Sala/Distrito/Plan) —
+// nunca hardcodeados, siempre derivados de los datos reales ya cargados.
+function opcionesUnicas(valores) {
+  return [...new Set(valores.map(v => String(v || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+}
+
+// Fecha "YYYY-MM-DD" comparable como texto — sin conversiones de Date/timezone,
+// desde/hasta quedan inclusivos en ambos extremos.
+function soloFecha(v) {
+  return String(v || '').split(' ')[0].split('T')[0]
+}
+
+// Exportación genérica a Excel: recibe filas ya filtradas (nunca solo la
+// página visible) y una lista de columnas [encabezado, getter(fila)].
+function descargarExcel(filas, columnas, nombreArchivo) {
+  const datos = filas.map(fila => {
+    const obj = {}
+    columnas.forEach(([header, getter]) => { obj[header] = getter(fila) ?? '-' })
+    return obj
+  })
+  const hoja  = XLSX.utils.json_to_sheet(datos)
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, 'Datos')
+  XLSX.writeFile(libro, nombreArchivo)
+}
+
 export default function Jefatura() {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
@@ -176,6 +209,25 @@ export default function Jefatura() {
   const [busqUsuarios, setBusqUsuarios] = useState('')
   const [filtroFlujoVentas, setFiltroFlujoVentas] = useState('todas')
   const [busqFlujoVentas, setBusqFlujoVentas] = useState('')
+
+  /* filtros avanzados — Ventas generales (se combinan con filtroFlujoVentas/busqFlujoVentas) */
+  const [fvEstado,     setFvEstado]     = useState('')
+  const [fvValidacion, setFvValidacion] = useState('')
+  const [fvGrabacion,  setFvGrabacion]  = useState('')
+  const [fvAsesor,     setFvAsesor]     = useState('')
+  const [fvSala,       setFvSala]       = useState('')
+  const [fvDistrito,   setFvDistrito]   = useState('')
+  const [fvDesde,      setFvDesde]      = useState('')
+  const [fvHasta,      setFvHasta]      = useState('')
+
+  /* filtros avanzados — Seguimiento en campo (se combinan con filtroSeg) */
+  const [fsAsesor,    setFsAsesor]    = useState('')
+  const [fsSala,      setFsSala]      = useState('')
+  const [fsDistrito,  setFsDistrito]  = useState('')
+  const [fsPlan,      setFsPlan]      = useState('')
+  const [fsDesde,     setFsDesde]     = useState('')
+  const [fsHasta,     setFsHasta]     = useState('')
+  const [fsBusqueda,  setFsBusqueda]  = useState('')
 
   /* logs */
   const [logs, setLogs] = useState(() => {
@@ -458,11 +510,73 @@ export default function Jefatura() {
   }
 
   /* ── seguimiento ── */
+  const opcionesSeg = useMemo(() => ({
+    asesores:  opcionesUnicas(ventasSeg.map(v => v.asesor_nombre || v.vendedor)),
+    salas:     opcionesUnicas(ventasSeg.map(v => v.sala)),
+    distritos: opcionesUnicas(ventasSeg.map(v => v.distrito)),
+    planes:    opcionesUnicas(ventasSeg.map(v => v.paquete)),
+  }), [ventasSeg])
+
+  const estadosSeg = useMemo(() => {
+    const porClave = new Map()
+    ventasSeg.forEach(v => {
+      const clave = v._seg
+      if (clave && !porClave.has(clave)) {
+        porClave.set(clave, (SEG_BADGES[clave] || {}).label || flujoLabelEstado(v.estado))
+      }
+    })
+    return [...porClave.entries()].sort((a, b) =>
+      (SEG_ORD[a[0]] ?? 99) - (SEG_ORD[b[0]] ?? 99) || a[1].localeCompare(b[1]))
+  }, [ventasSeg])
+
   const ventasSegFiltradas = useMemo(() => {
-    const lista = (filtroSeg ? ventasSeg.filter(v=>v._seg===filtroSeg) : [...ventasSeg])
-      .sort((a,b) => (SEG_ORD[a._seg]??5) - (SEG_ORD[b._seg]??5))
-    return lista
-  }, [ventasSeg, filtroSeg])
+    let lista = filtroSeg ? ventasSeg.filter(v=>v._seg===filtroSeg) : [...ventasSeg]
+    if (fsAsesor)   lista = lista.filter(v => (v.asesor_nombre || v.vendedor || '') === fsAsesor)
+    if (fsSala)     lista = lista.filter(v => (v.sala || '') === fsSala)
+    if (fsDistrito) lista = lista.filter(v => (v.distrito || '') === fsDistrito)
+    if (fsPlan)     lista = lista.filter(v => (v.paquete || '') === fsPlan)
+    if (fsDesde || fsHasta) {
+      lista = lista.filter(v => {
+        const f = soloFecha(v._fecha)
+        if (!f) return false
+        if (fsDesde && f < fsDesde) return false
+        if (fsHasta && f > fsHasta) return false
+        return true
+      })
+    }
+    const b = fsBusqueda.trim().toLowerCase()
+    if (b) {
+      lista = lista.filter(v => [v.nombre, v.dni, v.asesor_nombre, v.vendedor, v.distrito, v.sala, v.paquete]
+        .some(x => String(x || '').toLowerCase().includes(b)))
+    }
+    return lista.sort((a,b) => (SEG_ORD[a._seg]??5) - (SEG_ORD[b._seg]??5))
+  }, [ventasSeg, filtroSeg, fsAsesor, fsSala, fsDistrito, fsPlan, fsDesde, fsHasta, fsBusqueda])
+
+  function limpiarFiltrosSeg() {
+    setFiltroSeg(''); try { sessionStorage.setItem(JEF_SEG_FILTRO_KEY, '') } catch {}
+    setFsAsesor(''); setFsSala(''); setFsDistrito(''); setFsPlan('')
+    setFsDesde(''); setFsHasta(''); setFsBusqueda('')
+  }
+
+  function exportarSeguimientoExcel() {
+    const columnas = [
+      ['ESTADO',           v => (SEG_BADGES[v._seg] || SEG_BADGES.ejecucion).label],
+      ['OBS. SEGUIMIENTO', v => v.obs_seguimiento || '-'],
+      ['FECHA',            v => formatF(v._fecha)],
+      ['CLIENTE',          v => v.nombre || '-'],
+      ['DNI',              v => v.dni || '-'],
+      ['DISTRITO',         v => v.distrito || '-'],
+      ['ASESOR',           v => v.asesor_nombre || '-'],
+      ['SALA',             v => v.sala || '-'],
+      ['PLAN',             v => v.paquete || '-'],
+      ['TRAMO',            v => v.tramo_seguimiento || '-'],
+      ['MOTIVO',           v => v.motivo_seguimiento || '-'],
+    ]
+    if (ventasSegFiltradas.some(v => v.comentario)) {
+      columnas.push(['COMENTARIO', v => v.comentario || '-'])
+    }
+    descargarExcel(ventasSegFiltradas, columnas, `seguimiento_en_campo_${fechaHoy()}.xlsx`)
+  }
 
   const kpisSeg = useMemo(() => ({
     ejecucion: ventasSeg.filter(v=>v._seg==='ejecucion').length,
@@ -482,6 +596,15 @@ export default function Jefatura() {
     seguimiento: ventasCache.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta))).length,
   }), [ventasCache])
 
+  const opcionesFlujo = useMemo(() => ({
+    estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
+    validaciones: opcionesUnicas(ventasCache.map(estadoValidacion)),
+    grabaciones: opcionesUnicas(ventasCache.map(estadoGrabacion)),
+    asesores: opcionesUnicas(ventasCache.map(v => v.asesor_nombre || v.asesor || v.vendedor)),
+    salas: opcionesUnicas(ventasCache.map(v => v.sala)),
+    distritos: opcionesUnicas(ventasCache.map(v => v.distrito)),
+  }), [ventasCache])
+
   const ventasFlujoFiltradas = useMemo(() => {
     let lista = [...ventasCache]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
@@ -490,6 +613,21 @@ export default function Jefatura() {
     if (filtroFlujoVentas === 'noGrabadas') lista = lista.filter(flujoNoGrabada)
     if (filtroFlujoVentas === 'seguimiento') {
       lista = lista.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)))
+    }
+    if (fvEstado) lista = lista.filter(v => (v.estado || v.estado_venta || '') === fvEstado)
+    if (fvValidacion) lista = lista.filter(v => estadoValidacion(v) === fvValidacion)
+    if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
+    if (fvAsesor) lista = lista.filter(v => (v.asesor_nombre || v.asesor || v.vendedor || '') === fvAsesor)
+    if (fvSala) lista = lista.filter(v => (v.sala || '') === fvSala)
+    if (fvDistrito) lista = lista.filter(v => (v.distrito || '') === fvDistrito)
+    if (fvDesde || fvHasta) {
+      lista = lista.filter(v => {
+        const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
+        if (!f) return false
+        if (fvDesde && f < fvDesde) return false
+        if (fvHasta && f > fvHasta) return false
+        return true
+      })
     }
 
     const b = busqFlujoVentas.trim().toLowerCase()
@@ -505,7 +643,31 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstado, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
+
+  function limpiarFiltrosFlujo() {
+    setFiltroFlujoVentas('todas')
+    setBusqFlujoVentas('')
+    setFvEstado(''); setFvValidacion(''); setFvGrabacion('')
+    setFvAsesor(''); setFvSala(''); setFvDistrito('')
+    setFvDesde(''); setFvHasta('')
+  }
+
+  function exportarVentasExcel() {
+    descargarExcel(ventasFlujoFiltradas, [
+      ['FECHA SUBIDA',      v => formatF(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))],
+      ['CLIENTE',           v => v.nombre || v.nombre_apellidos || v.cliente || '-'],
+      ['DNI',               v => v.dni || v.documento || '-'],
+      ['DISTRITO',          v => v.distrito || '-'],
+      ['ASESOR',            v => v.asesor_nombre || v.asesor || v.vendedor || '-'],
+      ['SALA',              v => v.sala || '-'],
+      ['ESTADO ACTUAL',     v => flujoLabelEstado(v.estado || v.estado_venta)],
+      ['VALIDACIÓN',        v => estadoValidacion(v)],
+      ['GRABACIÓN',         v => estadoGrabacion(v)],
+      ['SEGUIMIENTO',       v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)) ? flujoLabelEstado(v.estado || v.estado_venta) : '-'],
+      ['ÚLTIMA OBSERVACIÓN',v => v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '-'],
+    ], `ventas_generales_${fechaHoy()}.xlsx`)
+  }
 
   /* ── reportes ── */
   const { reporteData, repKpis } = useMemo(() => {
@@ -783,7 +945,10 @@ export default function Jefatura() {
           <section className={`section${seccion==='seguimiento'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Seguimiento en campo</h2><p>Estado actual de todas las ventas — se actualiza automáticamente</p></div>
-              <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
+              <div className="filtros-acciones">
+                <button className="btn-exportar" type="button" onClick={exportarSeguimientoExcel}>Exportar Excel</button>
+                <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
+              </div>
             </div>
             <div className="kpi-grid" style={{gridTemplateColumns:'repeat(5,1fr)',marginBottom:'20px'}}>
               <div className="kpi-card k-teal">  <div className="kpi-num">{kpisSeg.ejecucion}</div><div className="kpi-label">En ejecución</div></div>
@@ -793,20 +958,26 @@ export default function Jefatura() {
               <div className="kpi-card k-purple"> <div className="kpi-num">{kpisSeg.tecnico}</div>  <div className="kpi-label">Técnicos en casa</div></div>
             </div>
             <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap'}}>
-              {[
-                { id:'',          label:'Todos'           },
-                { id:'ejecucion', label:'En ejecución'    },
-                { id:'instalado', label:'Instalado'       },
-                { id:'rechazo',   label:'Rechazo en campo'},
-                { id:'caida',     label:'Caída'           },
-                { id:'tecnico',   label:'Técnicos en casa'},
-              ].map(tab => (
-                <button key={tab.id}
-                  className={`seg-tab${filtroSeg===tab.id?' active':''}`}
-                  onClick={() => { setFiltroSeg(tab.id); try{sessionStorage.setItem(JEF_SEG_FILTRO_KEY,tab.id)}catch{} }}>
-                  {tab.label}
+              {[['','Todos'], ...estadosSeg].map(([id, label]) => (
+                <button key={id || 'todos'}
+                  className={`seg-tab${filtroSeg===id?' active':''}`}
+                  onClick={() => { setFiltroSeg(id); try{sessionStorage.setItem(JEF_SEG_FILTRO_KEY,id)}catch{} }}>
+                  {label}
                 </button>
               ))}
+            </div>
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtros avanzados</div>
+              <div className="filtros-grid">
+                <label><span>Asesor</span><select value={fsAsesor} onChange={e=>setFsAsesor(e.target.value)}><option value="">Todos</option>{opcionesSeg.asesores.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Sala</span><select value={fsSala} onChange={e=>setFsSala(e.target.value)}><option value="">Todas</option>{opcionesSeg.salas.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Distrito</span><select value={fsDistrito} onChange={e=>setFsDistrito(e.target.value)}><option value="">Todos</option>{opcionesSeg.distritos.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Plan</span><select value={fsPlan} onChange={e=>setFsPlan(e.target.value)}><option value="">Todos</option>{opcionesSeg.planes.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Fecha desde</span><input type="date" value={fsDesde} onChange={e=>setFsDesde(e.target.value)}/></label>
+                <label><span>Fecha hasta</span><input type="date" value={fsHasta} onChange={e=>setFsHasta(e.target.value)}/></label>
+                <label className="filtro-busqueda"><span>Búsqueda general</span><input value={fsBusqueda} onChange={e=>setFsBusqueda(e.target.value)} placeholder="Cliente, DNI, asesor, distrito, sala, plan"/></label>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosSeg}>Limpiar</button>
+              </div>
             </div>
             <div className="tabla-wrap usuarios-pro-card">
               <div className="tabla-header">
@@ -859,7 +1030,10 @@ export default function Jefatura() {
               <div>
                 <h2>Ventas generales</h2>
               </div>
-              <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
+              <div className="filtros-acciones">
+                <button className="btn-exportar" type="button" onClick={exportarVentasExcel}>Exportar Excel</button>
+                <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
+              </div>
             </div>
 
             <div className="flujo-kpi-grid">
@@ -894,6 +1068,20 @@ export default function Jefatura() {
                 placeholder="Buscar cliente, DNI, asesor, sala..."
               />
             </div>
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtros avanzados</div>
+              <div className="filtros-grid filtros-grid-ventas">
+                <label><span>Estado actual</span><select value={fvEstado} onChange={e=>setFvEstado(e.target.value)}><option value="">Todos</option>{opcionesFlujo.estados.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.validaciones.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.grabaciones.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Asesor</span><select value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)}><option value="">Todos</option>{opcionesFlujo.asesores.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Sala</span><select value={fvSala} onChange={e=>setFvSala(e.target.value)}><option value="">Todas</option>{opcionesFlujo.salas.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Distrito</span><select value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)}><option value="">Todos</option>{opcionesFlujo.distritos.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Fecha desde</span><input type="date" value={fvDesde} onChange={e=>setFvDesde(e.target.value)}/></label>
+                <label><span>Fecha hasta</span><input type="date" value={fvHasta} onChange={e=>setFvHasta(e.target.value)}/></label>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
+              </div>
+            </div>
 
             <div className="tabla-wrap usuarios-pro-card flujo-tabla">
               <div className="tabla-header">
@@ -904,7 +1092,7 @@ export default function Jefatura() {
                 <button
                   type="button"
                   className="flujo-clear"
-                  onClick={() => { setFiltroFlujoVentas('todas'); setBusqFlujoVentas('') }}
+                  onClick={limpiarFiltrosFlujo}
                 >
                   Limpiar filtros
                 </button>
