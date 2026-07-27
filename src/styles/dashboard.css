@@ -812,3 +812,39 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .vs-badge-buzonvoz      {background:#a5f3fc!important;color:#0e4a5e!important;border:1px solid #06b6d4!important;box-shadow:none!important;}
 .vs-badge-cortallamada  {background:#bfdbfe!important;color:#1e3a8a!important;border:1px solid #3b82f6!important;box-shadow:none!important;}
 .vs-badge-servicioactivo{background:#e5e7eb!important;color:#1f2937!important;border:1px solid #9ca3af!important;box-shadow:none!important;}
+
+/* Sincronizar Ventas Subidas (Asesor) con los colores reales del modal
+   "Tipificar Venta" de Validación (.tip-val-btn.be-X en validacion.css).
+   Scopeado a .vs-tabla para ganar por especificidad sobre las reglas
+   .vs-badge-validado de backoffice.css/supervisor.css (color:#fff!important
+   que dejaba VALIDADO ilegible) sin depender del orden de carga del bundle. */
+.vs-tabla .vs-badge-validado       {background:#f5f3ff!important;color:#6d28d9!important;border:1px solid rgba(167,139,250,.45)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-fraude         {background:#fee2e2!important;color:#b91c1c!important;border:1px solid rgba(248,113,113,.42)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-nodesea        {background:#fff1f2!important;color:#be123c!important;border:1px solid rgba(251,113,133,.38)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-nocontesta     {background:#fffbeb!important;color:#b45309!important;border:1px solid rgba(251,191,36,.45)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-cortallamada   {background:#eff6ff!important;color:#1d4ed8!important;border:1px solid rgba(96,165,250,.45)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-servicioactivo {background:#ecfeff!important;color:#0e7490!important;border:1px solid rgba(34,211,238,.42)!important;box-shadow:none!important;}
+
+/* Badges de Grabaciones para Ventas Subidas (Asesor) — mismos colores que
+   Grabaciones/Supervisor para GRABANDO y SUPLANTACION, no existian antes. */
+.vs-tabla .vs-badge-grabando     {background:#fed7aa!important;color:#9a3412!important;border:1px solid rgba(234,88,12,.45)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-suplantacion {background:#fce7f3!important;color:#9d174d!important;border:1px solid rgba(219,39,119,.45)!important;box-shadow:none!important;}
+
+/* Estados propios de Programación propagados a Ventas Subidas (Asesor)
+   con los mismos colores reales usados en Programacion.jsx (programacion.css
+   .prog-reference-table .tabla td:nth-child(9) .badge.b-X). vs-badge-programado
+   existía con un azul que no coincidía con el verde real; se corrige aquí. */
+.vs-tabla .vs-badge-programado        {background:#dcfce7!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-bloqueado          {background:#fee2e2!important;color:#b91c1c!important;border:1px solid rgba(248,113,113,.5)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-sinagenda          {background:#fef9c3!important;color:#a16207!important;border:1px solid rgba(250,204,21,.55)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-caracterespecial   {background:#f5f3ff!important;color:#6d28d9!important;border:1px solid rgba(167,139,250,.55)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-zonarestringida    {background:#ffedd5!important;color:#c2410c!important;border:1px solid rgba(251,146,60,.52)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-fraude-prog        {background:#111827!important;color:#fff!important;border:1px solid #111827!important;box-shadow:none!important;}
+
+/* Estados posteriores de Seguimiento propagados a Ventas Subidas (Asesor)
+   con los mismos colores reales usados en Seguimiento.jsx (seguimiento.css
+   .bs-inst / .bs-rech). vs-badge-instalado tenía un verde que no coincidía
+   con el azul real de Seguimiento; RECHAZO EN CAMPO reutilizaba el rojo de
+   CAÍDA — se separa en su propia clase con el naranja real. */
+.vs-tabla .vs-badge-instalado    {background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.35)!important;box-shadow:none!important;}
+.vs-tabla .vs-badge-rechazocampo {background:#fff7ed!important;color:#c2410c!important;border:1px solid rgba(251,146,60,.38)!important;box-shadow:none!important;}

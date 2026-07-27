@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import '../styles/grabaciones.css'
 
@@ -94,7 +95,11 @@ export default function SupGrabaciones() {
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
-          .filter(v => (v.estado || '').toLowerCase() === 'grabado')
+          // Cola independiente de Validación: no depende de `estado`, sino
+          // del campo propio de Grabaciones (evita pisar el estado que ve
+          // el módulo Validación). Excluye las ya aprobadas para que no
+          // reaparezcan en el polling tras revisarlas.
+          .filter(v => (v.estado_grab || '').toLowerCase() === 'grabado' && (v.estado_supgrab || '').toLowerCase() !== 'aprobado')
           .map(v => ({
             ...v,
             nombreApellidos:  v.nombre        || '',
@@ -185,15 +190,19 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
-    const estadoPrincipal = estadoRevision === 'observado' ? 'validado' : 'grabado'
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}`, {
         method: 'PATCH', headers: ncHeaders(),
         body: JSON.stringify({
-          estado: estadoPrincipal,
+          // No se toca `estado` (campo de Validación) — solo el flujo propio
+          // de Grabaciones/Super de Grabaciones. Al observar, la venta
+          // regresa realmente a "grabando" (no a un estado "observado"
+          // aparte) para que Asesor/Supervisor/Jefatura sigan mostrando
+          // GRABANDO + el mismo responsable original (grabando_por_id se
+          // conserva, ver PATCH /:id en routes/ventas.js).
           obs_supgrab: nuevoHistorial,
           estado_supgrab: estadoRevision,
-          estado_grab: estadoRevision === 'observado' ? 'observado' : 'grabado',
+          estado_grab: estadoRevision === 'observado' ? 'grabando' : 'grabado',
         }),
       })
       const data = await res.json()
@@ -234,6 +243,7 @@ export default function SupGrabaciones() {
             <span className="topbar-badge" style={{ background: '#16a34a' }}>SUP. GRABACIONES</span>
             <span className="topbar-user">{usuarioActual}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="btn-cancelar-m" style={{ borderColor: '#fca5a5', color: '#ef4444' }} onClick={salir}>Salir</button>
         </div>
       </div>
@@ -347,7 +357,6 @@ export default function SupGrabaciones() {
                       <td className="supg-actions-td">
                         <div className="acciones-cell supg-actions">
                           <button className="btn-acc btn-acc-audio" onClick={() => abrirModalRevisar(v)} disabled={!v.audioUrl}>Escuchar</button>
-                          <button className="btn-acc btn-acc-subir" onClick={() => setMediaVenta(v)}>Archivos</button>
                           <button className="btn-acc btn-acc-fotos" onClick={() => setFotosVenta(v)}>Fotos</button>
                           <button className="btn-acc btn-acc-obs" onClick={() => setModalObs(v)}>Obs</button>
                         </div>

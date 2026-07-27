@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import '../styles/seguimiento.css'
 
@@ -151,9 +152,9 @@ export default function Seguimiento() {
             telefonoContacto: v.telefono1 || '',
             fechaIngreso:     v.created_at ? v.created_at.split(' ')[0] : '',
             _estadoSeg:       mapearEstado(v.estado),
-            _tramo:           v._tramo       || '',
-            _comentario:      v._comentario  || '',
-            _motivoRech:      v._motivoRech  || '',
+            _tramo:           v.tramo_seguimiento  || '',
+            _comentario:      v.obs_seguimiento    || '',
+            _motivoRech:      v.motivo_seguimiento || '',
             _proxSeg:         v._proxSeg     || '',
             _historial:       v._historial   || [],
             _audioPath:       v.audio_path   || '',
@@ -234,15 +235,23 @@ export default function Seguimiento() {
     if (!modalEstado) return
     const estadoBD = ESTADO_BD_MAP[estNuevo] || 'aprobado'
     const comentario = estObs.trim() || modalEstado._comentario
+    const motivoAplica = estNuevo === 'caida' || estNuevo === 'rechazo'
+    const body = { estado: estadoBD, obs_seguimiento: comentario, tramo_seguimiento: estTramo }
+    if (motivoAplica) body.motivo_seguimiento = estMotivo
     try {
-      await fetch(`${API}/ventas/${modalEstado.id}`, {
+      const res  = await fetch(`${API}/ventas/${modalEstado.id}`, {
         method: 'PATCH', headers: ncHeaders(),
-        body: JSON.stringify({ estado: estadoBD, observacion: comentario }),
+        body: JSON.stringify(body),
       })
-    } catch (e) { console.error(e) }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        mostrarToast(data.mensaje || 'No se pudo guardar el estado')
+        return
+      }
+    } catch (e) { console.error(e); mostrarToast('No se pudo guardar el estado'); return }
     setVentas(list => list.map(x =>
       x.id === modalEstado.id
-        ? { ...x, _estadoSeg: estNuevo, _tramo: estTramo, _comentario: comentario, _motivoRech: (estNuevo === 'caida' || estNuevo === 'rechazo') ? estMotivo : x._motivoRech }
+        ? { ...x, _estadoSeg: estNuevo, _tramo: estTramo, _comentario: comentario, _motivoRech: motivoAplica ? estMotivo : x._motivoRech }
         : x
     ))
     mostrarToast(`Estado: ${estadoObj(estNuevo).label}`)
@@ -265,11 +274,16 @@ export default function Seguimiento() {
     const nuevoHistorial = [...(modalObs._historial || []), { fecha: fechaHoy(), hora: horaAhora(), user: usuarioActual, resultado, obs }]
     const comentario = obsComentario.trim() || modalObs._comentario
     try {
-      await fetch(`${API}/ventas/${modalObs.id}`, {
+      const res  = await fetch(`${API}/ventas/${modalObs.id}`, {
         method: 'PATCH', headers: ncHeaders(),
-        body: JSON.stringify({ observacion: comentario }),
+        body: JSON.stringify({ obs_seguimiento: comentario }),
       })
-    } catch (e) { console.error(e) }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        mostrarToast(data.mensaje || 'No se pudo registrar la llamada')
+        return
+      }
+    } catch (e) { console.error(e); mostrarToast('No se pudo registrar la llamada'); return }
     setVentas(list => list.map(x =>
       x.id === modalObs.id ? { ...x, _historial: nuevoHistorial, _comentario: comentario } : x
     ))
@@ -320,6 +334,7 @@ export default function Seguimiento() {
             <span className="topbar-badge">SEGUIMIENTO</span>
             <span className="topbar-user">{usuarioActual}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={salir}>Salir</button>
         </div>
       </div>

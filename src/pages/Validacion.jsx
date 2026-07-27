@@ -295,7 +295,7 @@ export default function Validacion() {
         : x
       ))
       setModalEst({ open:false, id:null })
-      mostrarToast('✅ Tipificación y observación guardadas')
+      mostrarToast('Tipificación y observación guardadas')
     } catch(e) { mostrarToast('Error conectando al servidor') }
   }
 
@@ -310,7 +310,7 @@ export default function Validacion() {
       <div className="topbar module-topbar-standard">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} />
+            <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='NC'}} />
           </div>
           <div className="brand-text">
             <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
@@ -406,7 +406,7 @@ export default function Validacion() {
                 className="tabla-search"
                 value={busqueda}
                 onChange={e=>setBusqueda(e.target.value)}
-                placeholder="🔍 Buscar por nombre, DNI, teléfono..."
+                placeholder="Buscar por nombre, DNI, teléfono..."
               />
               <div className="pag-size">
                 <select
@@ -429,7 +429,6 @@ export default function Validacion() {
                 <tr>
                   <th className="th-accion">ACCIÓN</th>
                   <th className="th-estado">ESTADO VENTA</th>
-                  <th className="th-obs-seg">OBS. SEGUIMIENTO</th>
                   <th className="th-fecha">FECHA INGRESO</th>
                   <th className="th-nombre">NOMBRE Y APELLIDOS</th>
                   <th className="th-dni">DNI / DOC.</th>
@@ -453,7 +452,7 @@ export default function Validacion() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr className="tabla-empty"><td colSpan={22}>Sin registros.</td></tr>
+                  ? <tr className="tabla-empty"><td colSpan={21}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
                       const mostrar  = v.tipifVal || v.estado
                       const eObj     = estadoObj(mostrar)
@@ -476,7 +475,6 @@ export default function Validacion() {
                               {eObj.label}
                             </span>
                           </td>
-                          <td className="td-wrap td-obs-seg">{v.obsSeg||'—'}</td>
                           <td style={{color:'#185FA5',fontWeight:700,fontFamily:'monospace',fontSize:10,whiteSpace:'nowrap'}}>
                             {formatF(v.fechaIngreso)}<br />
                             <span style={{color:'#9ca3af',fontWeight:400}}>{v.horaIngreso||''}</span>
@@ -592,7 +590,7 @@ export default function Validacion() {
 
               <div className="modal-btns">
                 <button className="btn-cancelar-modal" onClick={()=>setModalEst({open:false,id:null})}>Cancelar</button>
-                <button className="btn-guardar" onClick={guardarTipificacion}>💾 Guardar</button>
+                <button className="btn-guardar" onClick={guardarTipificacion}>Guardar</button>
               </div>
             </div>
           </div>

@@ -172,6 +172,8 @@ body {
 .bc-usuarios     { background: #fce7f3; color: #9d174d; }
 .bc-programacion { background: #ede9fe; color: #5b21b6; }
 .bc-supgrabaciones { background: #dcfce7; color: #15803d; }
+.bc-backreclutamiento   { background: #e0e7ff; color: #3730a3; }
+.bc-asesorreclutamiento { background: #cffafe; color: #155e75; }
 .bc-default      { background: #f3f4f6; color: var(--mid); }
 .bu-activo       { background: #dcfce7; color: #15803d; }
 .bu-inactivo     { background: #fee2e2; color: #991b1b; }
@@ -764,58 +766,68 @@ body {
 /* ===== Ventas generales / flujo completo ===== */
 .flujo-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-  margin: 18px 0 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 16px;
 }
+@media (max-width: 1100px) { .flujo-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .flujo-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px)  { .flujo-kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-card.k-magenta { border-top-color: #be185d; }
 
 button.flujo-kpi {
   appearance: none;
   text-align: left;
-  border: 0;
-  background: #fff;
   cursor: pointer;
   font-family: inherit;
-  transition: transform .15s ease, box-shadow .15s ease, outline-color .15s ease;
+  min-height: 108px;
+  justify-content: center;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 
 button.flujo-kpi:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 button.flujo-kpi.active {
-  outline: 2px solid #111827;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, .16);
+  border-top-width: 4px;
+  background: #fafafa;
+  box-shadow: var(--shadow-md);
+}
+
+.flujo-kpi .kpi-num {
+  font-size: 26px;
+}
+
+.flujo-kpi .kpi-label {
+  font-weight: 600;
 }
 
 .flujo-kpi .kpi-sub {
-  margin-top: 4px;
+  margin-top: 2px;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: none;
-}
-
-.kpi-card.k-teal {
-  border-top-color: #0891b2;
 }
 
 .flujo-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, .06);
 }
 
 .flujo-panel h3 {
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   font-size: 16px;
   color: #111827;
 }
@@ -824,19 +836,25 @@ button.flujo-kpi.active {
   margin: 0;
   color: #94a3b8;
   font-weight: 600;
+  font-size: 12px;
 }
 
 .flujo-search {
-  max-width: 360px;
+  max-width: 340px;
+  flex-shrink: 0;
 }
 
 .flujo-clear {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
   border: 1px solid #e5e7eb;
   background: #fff;
-  border-radius: 12px;
-  padding: 9px 14px;
+  border-radius: 10px;
+  padding: 0 14px;
   color: #64748b;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -848,6 +866,47 @@ button.flujo-kpi.active {
 .flujo-tabla .tabla th,
 .flujo-tabla .tabla td {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Anchos por columna — table-layout:fixed evita que el navegador reparta
+   el 100% de forma pareja (eso inflaba "#" y dejaba a ACCIONES sin espacio,
+   cortando "Eliminar"). width:auto + min-width con la suma real de columnas
+   deja que la tabla mida lo que necesita; el wrapper de arriba ya tiene
+   overflow-x:auto para pantallas angostas. Proporciones inspiradas en la
+   tabla de Programación (columnas angostas para datos cortos, más aire en
+   Cliente/Estado/Acciones). */
+.flujo-tabla .tabla {
+  table-layout: fixed;
+  width: max(100%, 1420px);
+}
+.flujo-tabla .tabla th:nth-child(1),  .flujo-tabla .tabla td:nth-child(1)  { width: 40px; text-align: center; }
+.flujo-tabla .tabla th:nth-child(2),  .flujo-tabla .tabla td:nth-child(2)  { width: 95px; }
+.flujo-tabla .tabla th:nth-child(3),  .flujo-tabla .tabla td:nth-child(3)  { width: 140px; }
+.flujo-tabla .tabla th:nth-child(4),  .flujo-tabla .tabla td:nth-child(4)  { width: 95px; }
+.flujo-tabla .tabla th:nth-child(5),  .flujo-tabla .tabla td:nth-child(5)  { width: 95px; }
+.flujo-tabla .tabla th:nth-child(6),  .flujo-tabla .tabla td:nth-child(6)  { width: 80px; }
+.flujo-tabla .tabla th:nth-child(7),  .flujo-tabla .tabla td:nth-child(7)  { width: 130px; }
+.flujo-tabla .tabla th:nth-child(8),  .flujo-tabla .tabla td:nth-child(8)  { width: 100px; }
+.flujo-tabla .tabla th:nth-child(9),  .flujo-tabla .tabla td:nth-child(9)  { width: 100px; }
+.flujo-tabla .tabla th:nth-child(10), .flujo-tabla .tabla td:nth-child(10) { width: 138px; }
+.flujo-tabla .tabla th:nth-child(11), .flujo-tabla .tabla td:nth-child(11) {
+  width: 120px; overflow: hidden; text-overflow: ellipsis;
+}
+.flujo-tabla .tabla th:nth-child(12), .flujo-tabla .tabla td:nth-child(12) {
+  width: 300px; overflow: visible; text-overflow: clip;
+}
+
+/* Botones de Acciones más compactos, solo dentro de Ventas generales —
+   .venta-action-btn es compartido con Supervisor (venta-assignment.css),
+   no se toca la regla base para no afectar esa página. */
+.flujo-tabla .venta-actions { gap: 5px; }
+.flujo-tabla .venta-action-btn {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 9px;
+  font-weight: 600;
 }
 
 .flujo-cliente {
@@ -861,10 +920,10 @@ button.flujo-kpi.active {
 .flujo-info {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 900;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
   border: 1px solid transparent;
 }

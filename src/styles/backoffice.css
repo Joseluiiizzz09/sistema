@@ -271,7 +271,7 @@ body{
   color:#111827;font-size:13px;font-weight:600;
 }
 .bo-root .bo-nav-icon{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.bo-root .bo-nav.active{font-weight:700;}
+.bo-root .bo-nav.active{font-weight:700;color:#fff;}
 .bo-root .numero-copiar.secundario{color:#64748b;font-weight:600;}
 .bo-root .numero-copiar button{
   width:22px;height:22px;padding:0;border:1px solid #e2e8f0;border-radius:6px;

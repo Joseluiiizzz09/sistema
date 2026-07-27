@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import { ReasignarVentaModal } from '../components/VentaAssignmentModal'
+import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
@@ -16,10 +18,10 @@ const ESTADOS_VENTA = [
   { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
   { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
   { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
-  { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#16a34a' },
-  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c' },
-  { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-caida',      dot:'#ea580c' },
-  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#7c3aed' },
+  { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#2563eb', bg:'#eff6ff', border:'1px solid rgba(96,165,250,.35)' },
+  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
+  { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
+  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
   { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
   { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
   { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
@@ -27,6 +29,13 @@ const ESTADOS_VENTA = [
   { id:'buzon_voz',      label:'Buzón de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
   { id:'corta_llamada',  label:'Corta Llamada',   cls:'be-corta',      dot:'#1e3a8a', bg:'#bfdbfe', border:'1px solid #3b82f6' },
   { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
+  { id:'grabando',       label:'Grabando',        cls:'be-grabando',   dot:'#9a3412', bg:'#fed7aa', border:'1px solid rgba(234,88,12,.45)' },
+  { id:'suplantacion',   label:'Suplantación',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
+  { id:'programado',        label:'Programado',        cls:'be-prog-programado',  dot:'#047857', bg:'#dcfce7', border:'1px solid rgba(52,211,153,.45)' },
+  { id:'bloqueado',         label:'Bloqueado',         cls:'be-prog-bloqueado',   dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.5)' },
+  { id:'sin_agenda',        label:'Sin Agenda',        cls:'be-prog-sinagenda',   dot:'#a16207', bg:'#fef9c3', border:'1px solid rgba(250,204,21,.55)' },
+  { id:'caracter_especial', label:'Carácter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
+  { id:'zona_restringida',  label:'Zona Restringida',  cls:'be-prog-zona',        dot:'#c2410c', bg:'#ffedd5', border:'1px solid rgba(251,146,60,.52)' },
 ]
 const TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed',
@@ -47,9 +56,22 @@ function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
 function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
-function mapearEstado(e, sup = '') {
+function mapearEstado(e, sup = '', eg = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
+  const g=(eg||'').toLowerCase().trim()
+  // Estado de Grabaciones — independiente de `estado` (Validación no cambia).
+  // Mientras Super de Grabaciones no corrobore, se conserva GRABANDO.
+  // Condicionado a s==='validado': en cuanto Programación avanza `estado`
+  // (PROGRAMADO/BLOQUEADO/etc), esa etapa manda sobre el historial de
+  // Grabaciones, que ya quedó fijo y no debe seguir tapando el estado real.
+  if (s==='validado') {
+    if (g==='grabando' || (g==='grabado' && sr!=='aprobado')) return 'grabando'
+    if (g==='grabado' && sr==='aprobado') return 'grabado'
+    if (['corta_llamada','suplantacion','no_desea','no_contesta','buzon_voz'].includes(g)) return g
+  }
+  // ── Comportamiento previo (compatibilidad con filas viejas donde el flujo
+  // de Grabaciones todavía escribía en el campo compartido `estado`). ──
   if(s==='grabado' && (sr==='sin_revisar' || sr==='en_revision')) return 'en_revision'
   if(s==='grabado' && sr==='aprobado') return 'grabado'
   if(s===''||s==='venta') return 'venta'
@@ -57,7 +79,14 @@ function mapearEstado(e, sup = '') {
   if(s==='no_validado'||s==='observado') return 'no_validado'
   if(s==='grabado')       return 'grabado'
   if(s==='pendiente')     return 'no_grabado'
-  if(['aprobado','programado','en_ejecucion','en ejecucion'].includes(s)) return 'en_ejecucion'
+  // PROGRAMADO (estado real de Programación, sin cambios en BD) se muestra
+  // públicamente como EN EJECUCIÓN — reutiliza el id/color ya existente.
+  if(s==='programado')        return 'en_ejecucion'
+  if(s==='bloqueado')         return 'bloqueado'
+  if(s==='sin_agenda')        return 'sin_agenda'
+  if(s==='caracter_especial') return 'caracter_especial'
+  if(s==='zona_restringida')  return 'zona_restringida'
+  if(['aprobado','en_ejecucion','en ejecucion'].includes(s)) return 'en_ejecucion'
   if(s==='instalado')     return 'instalado'
   if(s==='caida')         return 'caida'
   if(s==='rechazo_campo') return 'rechazo_campo'
@@ -72,11 +101,19 @@ function getUltimos7Dias() {
   return dias
 }
 
-function BadgeEstado({ id }) {
+function BadgeEstado({ id, grabandoPorNombre, fraudeProgramacion }) {
   const e = estadoObj(id)
-  const bg = e.bg || `${e.dot}22`
-  const border = e.border || `1px solid ${e.dot}44`
-  return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:bg,color:e.dot,border:border}}>{e.label}</span>
+  // FRAUDE es ambiguo entre Validación y Programación (mismo valor de
+  // `estado`); solo llega a Programación tras estado_supgrab='aprobado',
+  // así que ese dato distingue cuál lo marcó, sin necesitar campo nuevo.
+  const progFraude = id === 'fraude' && fraudeProgramacion
+  const bg = progFraude ? '#111827' : (e.bg || `${e.dot}22`)
+  const border = progFraude ? '1px solid #111827' : (e.border || `1px solid ${e.dot}44`)
+  const color = progFraude ? '#fff' : e.dot
+  // El nombre es solo visual (resuelto por el backend desde grabando_por_id);
+  // el estado interno sigue siendo únicamente "grabando".
+  const label = (id === 'grabando' && grabandoPorNombre) ? `${e.label} ${grabandoPorNombre}` : e.label
+  return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:bg,color:color,border:border}}>{label}</span>
 }
 
 // ── Componente principal ──────────────────────────────────────────────────
@@ -216,7 +253,7 @@ export default function Supervisor() {
         distrito: v.distrito || '',
         _fecha:   (v.created_at||'').split(' ')[0],
         _hora:    (v.created_at||'').split(' ')[1] || '',
-        _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab),
+        _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab, v.estado_grab),
       })))
     } catch(e) { console.error(e) }
   }, [])
@@ -414,6 +451,7 @@ export default function Supervisor() {
             <span className="topbar-sala">{salaActual}</span>
             <span className="topbar-user">{supervisorNom}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
@@ -612,13 +650,15 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <table className="tabla">
-                <thead><tr><th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Estado</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
+                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
-                    ? <tr className="tabla-empty"><td colSpan={14}>Sin ventas con esos filtros.</td></tr>
+                    ? <tr className="tabla-empty"><td colSpan={15}>Sin ventas con esos filtros.</td></tr>
                     : ventasTabla.map((v,i)=>(
                         <tr key={v.id}>
                           <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                          <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
+                          <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                           <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
                           <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
@@ -633,12 +673,11 @@ export default function Supervisor() {
                               <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'—'}</span>
                             </div>
                           </td>
-                          <td><BadgeEstado id={v._estado||'venta'} /></td>
                           <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
                           <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
                           <td>
                             <div className="venta-actions">
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>📷</button>
+                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>Fotos</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
                             </div>
@@ -804,7 +843,7 @@ export default function Supervisor() {
                               <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
                               <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'—'}</td>
                               <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'—'}</span></div></td>
-                              <td><BadgeEstado id={v._estado} /></td>
+                              <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
                               <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'—'}</td>
                             </tr>
                           ))
@@ -892,7 +931,7 @@ export default function Supervisor() {
                       {ult5.map((v,i)=>(
                         <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'#f9fafb',borderRadius:8}}>
                           <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'—'}</span></div>
-                          <div style={{display:'flex',alignItems:'center',gap:8}}><BadgeEstado id={v._estado} /><span style={{fontSize:11,color:'#9ca3af'}}>{formatF(v._fecha)}</span></div>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /><span style={{fontSize:11,color:'#9ca3af'}}>{formatF(v._fecha)}</span></div>
                         </div>
                       ))}
                     </div>

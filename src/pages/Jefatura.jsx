@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import MediaViewer from '../components/MediaViewer'
 import { HistorialVentaModal, ReasignarVentaModal } from '../components/VentaAssignmentModal'
+import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
 import Chart from 'chart.js/auto'
@@ -24,6 +26,8 @@ const CARGOS = [
   { id:'usuarios',       label:'Usuarios',          cls:'bc-usuarios'       },
   { id:'programacion',   label:'Programación',      cls:'bc-programacion'   },
   { id:'supgrabaciones', label:'Sup. Grabaciones',  cls:'bc-supgrabaciones' },
+  { id:'backreclutamiento',   label:'Back Data Reclutaminto',  cls:'bc-backreclutamiento'   },
+  { id:'asesorreclutamiento', label:'Asesor de Reclutamiento', cls:'bc-asesorreclutamiento' },
 ]
 const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
 
@@ -32,12 +36,14 @@ const SEG_MAP = {
   instalado:'instalado',caida:'caida',rechazo_campo:'rechazo',tecnico_casa:'tecnico',
   validado:'ejecucion',observado:'ejecucion',
 }
+// Colores idénticos a los reales de Seguimiento.jsx (seguimiento.css
+// .bs-inst/.bs-rech/.bs-caida/.bs-tecnico). ejecucion no se toca.
 const SEG_BADGES = {
   ejecucion:{ label:'EN EJECUCIÓN',    bg:'#cffafe', color:'#155e75' },
-  instalado:{ label:'INSTALADO',       bg:'#d1fae5', color:'#065f46' },
-  rechazo:  { label:'RECHAZO CAMPO',   bg:'#ffedd5', color:'#9a3412' },
-  caida:    { label:'CAÍDA',           bg:'#fee2e2', color:'#991b1b' },
-  tecnico:  { label:'TÉCNICO EN CASA', bg:'#f3e8ff', color:'#6b21a8' },
+  instalado:{ label:'INSTALADO',       bg:'#eff6ff', color:'#2563eb' },
+  rechazo:  { label:'RECHAZO CAMPO',   bg:'#fff7ed', color:'#c2410c' },
+  caida:    { label:'CAÍDA',           bg:'#fee2e2', color:'#b91c1c' },
+  tecnico:  { label:'TÉCNICO EN CASA', bg:'#fce7f3', color:'#be185d' },
 }
 const SEG_ORD = { caida:0, rechazo:1, tecnico:2, ejecucion:3, instalado:4 }
 
@@ -51,6 +57,8 @@ const ACCESOS_MODS = [
   { nombre:'Gestión Usuarios', desc:'Administración de accesos',     icon:'users',     path:'/usuarios',        color:'#be185d', cargo:'usuarios' },
   { nombre:'Programación',     desc:'Agenda de instalaciones',       icon:'calendar',  path:'/programacion',    color:'#c2410c', cargo:'programacion' },
   { nombre:'Sup. Grabaciones', desc:'Supervisión del equipo de audio',icon:'headphones',path:'/sup-grabaciones',color:'#047857', cargo:'supgrabaciones' },
+  { nombre:'Back Data Reclutaminto',        desc:'Gestión y asignación de candidatos', icon:'clipboard', path:'/backdata-reclutamiento', color:'#4338ca', cargo:'backreclutamiento' },
+  { nombre:'Sistema de Llamadas Reclutamiento', desc:'Contacto y seguimiento de postulantes', icon:'chart', path:'/reclutamiento', color:'#0e7490', cargo:'asesorreclutamiento' },
 ]
 
 function ModuloIcon({ tipo, size = 24 }) {
@@ -99,7 +107,11 @@ function flujoValidada(v) {
   const e = normEstado(v?.estado || v?.estado_venta)
   return Boolean(e) && e !== 'venta' && !flujoNoValidada(v)
 }
-function flujoGrabada(v) { return FLUJO_GRABADA.has(normEstado(v?.estado || v?.estado_venta)) || flujoTieneAudio(v) }
+function flujoGrabada(v) {
+  return FLUJO_GRABADA.has(normEstado(v?.estado || v?.estado_venta))
+    || normEstado(v?.estado_grab) === 'grabado'
+    || flujoTieneAudio(v)
+}
 function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
 function flujoLabelEstado(estado) {
   const e = normEstado(estado)
@@ -132,7 +144,6 @@ function flujoLabelEstado(estado) {
   })[e] || (estado || 'Venta subida')
 }
 
-const MEDALS = ['🥇','🥈','🥉']
 const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', pass:'', pass2:'' }
 
 export default function Jefatura() {
@@ -309,8 +320,8 @@ export default function Jefatura() {
       const estados = [
         { label:'Validadas',       val: ventasCache.filter(v=>!['venta','','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length, color:'#7C3AED' },
         { label:'No validadas',    val: ventasCache.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,        color:'#ef4444' },
-        { label:'Grabadas',        val: ventasCache.filter(v=>['grabado','aprobado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(e(v.estado))).length, color:'#d97706' },
-        { label:'No grabadas',     val: ventasCache.filter(v=>e(v.estado)==='validado').length,  color:'#9ca3af' },
+        { label:'Grabadas',        val: ventasCache.filter(flujoGrabada).length,   color:'#d97706' },
+        { label:'No grabadas',     val: ventasCache.filter(flujoNoGrabada).length, color:'#9ca3af' },
         { label:'No programadas',  val: ventasCache.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length, color:'#6366f1' },
         { label:'Instaladas',      val: ventasCache.filter(v=>e(v.estado)==='instalado').length, color:'#16a34a' },
         { label:'Caídas',          val: ventasCache.filter(v=>e(v.estado)==='caida').length,     color:'#dc2626' },
@@ -390,8 +401,8 @@ export default function Jefatura() {
       ventasHoy:     ventasCache.filter(v=>v._fecha===hoy).length,
       validadas:     ventasCache.filter(v=>!['venta',''].includes(e(v.estado))).length,
       noValidadas:   ventasCache.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,
-      grabadas:      ventasCache.filter(v=>['grabado','aprobado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(e(v.estado))).length,
-      noGrabadas:    ventasCache.filter(v=>e(v.estado)==='validado').length,
+      grabadas:      ventasCache.filter(flujoGrabada).length,
+      noGrabadas:    ventasCache.filter(flujoNoGrabada).length,
       enEjecucion:   ventasCache.filter(v=>['aprobado','programado','en_ejecucion','tecnico_casa'].includes(e(v.estado))).length,
       noProgramadas: ventasCache.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length,
       instaladas:    inst,
@@ -547,7 +558,7 @@ export default function Jefatura() {
     if (cargo2 && cargo2 === cargo) errs.cargo2 = true
     if (!editandoId && !pass)   errs.pass    = true
     if (pass && pass !== pass2) errs.pass2   = true
-    if (Object.keys(errs).length) { setModErrores(errs); mostrarToast('⚠️ Completa los campos requeridos'); return }
+    if (Object.keys(errs).length) { setModErrores(errs); mostrarToast('Completa los campos requeridos'); return }
     setGuardandoUsu(true)
     try {
       const loginNorm = usuario.toLowerCase().replace(/\s+/g,'.')
@@ -556,19 +567,19 @@ export default function Jefatura() {
         if (pass) body.password = pass
         const res  = await fetch(`${API}/usuarios/${editandoId}`,{method:'PATCH',headers:ncHeaders(),body:JSON.stringify(body)})
         const data = await res.json()
-        if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'Error')); setGuardandoUsu(false); return }
+        if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
         agregarLog('Usuario editado', nombre)
-        mostrarToast(`✅ Usuario actualizado: ${nombre}`)
+        mostrarToast(`Usuario actualizado: ${nombre}`)
       } else {
         const res  = await fetch(`${API}/usuarios`,{method:'POST',headers:ncHeaders(),body:JSON.stringify({nombre,usuario:loginNorm,password:pass,cargo,sala,activo:true,permisos:cargo2 ? [cargo2] : []})})
         const data = await res.json()
-        if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'Error')); setGuardandoUsu(false); return }
+        if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
         agregarLog('Usuario creado', `${nombre} — ${cargo}`)
-        mostrarToast(`✅ Usuario creado: ${nombre}`)
+        mostrarToast(`Usuario creado: ${nombre}`)
       }
       await cargarUsuarios()
       cerrarModalUsu()
-    } catch { mostrarToast('❌ Error conectando') }
+    } catch { mostrarToast('Error conectando') }
     setGuardandoUsu(false)
   }
 
@@ -577,11 +588,11 @@ export default function Jefatura() {
     try {
       const res  = await fetch(`${API}/usuarios/${u.id}/estado`,{method:'PATCH',headers:ncHeaders(),body:JSON.stringify({activo:nuevo})})
       const data = await res.json()
-      if (!data.ok) { mostrarToast('❌ '+data.mensaje); return }
+      if (!data.ok) { mostrarToast(data.mensaje); return }
       setUsuarios(list=>list.map(x=>x.id===u.id?{...x,activo:nuevo}:x))
       agregarLog(nuevo?'Activado':'Desactivado', u.nombre)
-      mostrarToast(`${nuevo?'✅ Activado':'🔴 Desactivado'}: ${u.nombre}`)
-    } catch { mostrarToast('❌ Error') }
+      mostrarToast(`${nuevo?'Activado':'Desactivado'}: ${u.nombre}`)
+    } catch { mostrarToast('Error') }
   }
 
   async function confirmarEliminarUsuario() {
@@ -589,7 +600,7 @@ export default function Jefatura() {
     if (modalEliminar.cargo === 'jefatura') {
       const jefActivas = usuarios.filter(u => usuarioTieneCargo(u, 'jefatura') && u.activo)
       if (jefActivas.length <= 1) {
-        mostrarToast('⚠️ No puedes eliminar el último usuario de Jefatura')
+        mostrarToast('No puedes eliminar el último usuario de Jefatura')
         return
       }
     }
@@ -597,13 +608,13 @@ export default function Jefatura() {
     try {
       const res = await fetch(`${API}/usuarios/${modalEliminar.id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('❌ '+(data.mensaje||'No se pudo eliminar')); setEliminandoUsu(false); return }
+      if (!data.ok) { mostrarToast(data.mensaje||'No se pudo eliminar'); setEliminandoUsu(false); return }
       agregarLog('Usuario eliminado', modalEliminar.nombre)
-      mostrarToast(`✅ Usuario eliminado: ${modalEliminar.nombre}`)
+      mostrarToast(`Usuario eliminado: ${modalEliminar.nombre}`)
       setModalEliminar(null)
       await cargarUsuarios()
     } catch {
-      mostrarToast('❌ Error conectando con el servidor')
+      mostrarToast('Error conectando con el servidor')
     } finally {
       setEliminandoUsu(false)
     }
@@ -647,7 +658,7 @@ export default function Jefatura() {
             <span></span><span></span><span></span>
           </button>
           <div className="brand">
-          <div className="logo-circle"><img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='🏢'}} /></div>
+          <div className="logo-circle"><img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='NC'}} /></div>
           <div className="brand-text">
             <h1>NET<span className="dot"></span><span className="red">CONTACT</span></h1>
             <span className="brand-sub">Panel de Jefatura</span>
@@ -657,6 +668,7 @@ export default function Jefatura() {
         <div className="topbar-right">
           <span className="topbar-badge">JEFATURA</span>
           <span className="topbar-user">{usuarioNombre}</span>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={salir}>Salir</button>
         </div>
       </div>
@@ -712,12 +724,12 @@ export default function Jefatura() {
             </div>
             <div className="charts-grid">
               <div className="chart-card">
-                <div className="chart-title">🥧 Ventas por estado</div>
+                <div className="chart-title">Ventas por estado</div>
                 <div className="chart-wrap"><canvas ref={canvasEstados}></canvas></div>
               </div>
               <div className="chart-card">
                 <div className="chart-title-row">
-                  <span>🏢 Instaladas y Caídas por sala</span>
+                  <span>Instaladas y Caídas por sala</span>
                   <select value={mesReporte} onChange={e=>setMesReporte(e.target.value)}
                     style={{padding:'4px 8px',border:'1px solid #e5e7eb',borderRadius:'7px',fontSize:'11px',fontFamily:'inherit',outline:'none',color:'#374151',cursor:'pointer'}}>
                     {MESES_SALAS.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
@@ -727,7 +739,7 @@ export default function Jefatura() {
               </div>
               <div className="chart-card full">
                 <div className="chart-title-row">
-                  <span>📈 Ventas diarias por sala — últimos 7 días</span>
+                  <span>Ventas diarias por sala — últimos 7 días</span>
                   <span style={{fontSize:'11px',color:'#9ca3af'}}>Se actualiza cada 60 seg.</span>
                 </div>
                 <div className="chart-wrap"><canvas ref={canvasDiario}></canvas></div>
@@ -804,18 +816,18 @@ export default function Jefatura() {
               <div style={{overflowX:'auto'}}>
                 <table className="tabla">
                   <thead><tr>
-                    <th>Estado</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
-                    <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Tramo</th><th>Motivo / Obs.</th><th>Acciones</th>
+                    <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
+                    <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Acciones</th>
                   </tr></thead>
                   <tbody>
                     {ventasSegFiltradas.length === 0
-                      ? <tr><td colSpan="11" className="tabla-empty">Sin registros.</td></tr>
+                      ? <tr><td colSpan="10" className="tabla-empty">Sin registros.</td></tr>
                       : ventasSegFiltradas.map((v, i) => {
                           const b = SEG_BADGES[v._seg] || SEG_BADGES.ejecucion
-                          const motivo = v.obs_backoffice || v.observacion || '—'
                           return (
                             <tr key={v.id != null ? `seg-${v.id}` : `seg-i-${i}`}>
                               <td><span style={{display:'inline-block',padding:'4px 12px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:b.bg,color:b.color,whiteSpace:'nowrap'}}>{b.label}</span></td>
+                              <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                               <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700,whiteSpace:'nowrap'}}>{formatF(v._fecha)}</td>
                               <td style={{fontWeight:600,fontSize:'12px'}}>{v.nombre||'—'}</td>
                               <td style={{fontFamily:'monospace',fontSize:'11px'}}>{v.dni||'—'}</td>
@@ -823,8 +835,6 @@ export default function Jefatura() {
                               <td style={{fontWeight:600,color:'#7C3AED',fontSize:'11px'}}>{v.asesor_nombre||'—'}</td>
                               <td style={{fontSize:'11px',color:'#9ca3af'}}>{v.sala||'—'}</td>
                               <td style={{fontSize:'10px',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.paquete||'—'}</td>
-                              <td style={{fontSize:'11px',textAlign:'center'}}>{v._tramo||'—'}</td>
-                              <td style={{fontSize:'10px',color:'#6b7280',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={motivo}>{motivo}</td>
                               <td style={{minWidth:'310px'}}>
                                 <div className="venta-actions">
                                   <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
@@ -848,19 +858,18 @@ export default function Jefatura() {
             <div className="sec-header">
               <div>
                 <h2>Ventas generales</h2>
-                <p>Flujo completo desde que el asesor sube la venta. Seguimiento en campo queda en su apartado.</p>
               </div>
-              <button className="btn-nuevo" onClick={cargarVentasCache}>↻ Actualizar</button>
+              <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
             </div>
 
             <div className="flujo-kpi-grid">
               {[
-                { id:'todas', label:'Ventas generales', sub:'subidas por asesores', value:resumenFlujoVentas.todas, cls:'k-blue' },
-                { id:'validadas', label:'Validadas', sub:'pasaron validación', value:resumenFlujoVentas.validadas, cls:'k-green' },
-                { id:'noValidadas', label:'No validadas', sub:'rechazadas / no aptas', value:resumenFlujoVentas.noValidadas, cls:'k-red' },
-                { id:'grabadas', label:'Grabadas', sub:'con audio aprobado o subido', value:resumenFlujoVentas.grabadas, cls:'k-orange' },
-                { id:'noGrabadas', label:'No grabadas', sub:'esperando audio', value:resumenFlujoVentas.noGrabadas, cls:'k-purple' },
-                { id:'seguimiento', label:'En seguimiento', sub:'postventa / campo', value:resumenFlujoVentas.seguimiento, cls:'k-teal' },
+                { id:'todas', label:'Ventas generales', value:resumenFlujoVentas.todas, cls:'k-magenta' },
+                { id:'validadas', label:'Validadas', value:resumenFlujoVentas.validadas, cls:'k-yellow' },
+                { id:'noValidadas', label:'No validadas', value:resumenFlujoVentas.noValidadas, cls:'k-red' },
+                { id:'grabadas', label:'Grabadas', value:resumenFlujoVentas.grabadas, cls:'k-green' },
+                { id:'noGrabadas', label:'No grabadas', value:resumenFlujoVentas.noGrabadas, cls:'k-blue' },
+                { id:'seguimiento', label:'En seguimiento', value:resumenFlujoVentas.seguimiento, cls:'k-purple' },
               ].map(card => (
                 <button
                   type="button"
@@ -870,7 +879,6 @@ export default function Jefatura() {
                 >
                   <div className="kpi-num">{card.value}</div>
                   <div className="kpi-label">{card.label}</div>
-                  <div className="kpi-sub">{card.sub}</div>
                 </button>
               ))}
             </div>
@@ -878,7 +886,6 @@ export default function Jefatura() {
             <div className="flujo-panel">
               <div>
                 <h3>Vista completa del flujo</h3>
-                <p>Acá se ve cada venta desde carga del asesor, validación, grabación y estado final.</p>
               </div>
               <input
                 className="tabla-search flujo-search"
@@ -917,11 +924,12 @@ export default function Jefatura() {
                       <th>Grabación</th>
                       <th>Seguimiento</th>
                       <th>Última obs.</th>
+                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoFiltradas.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const enSeg = FLUJO_SEGUIMIENTO.has(estado)
@@ -938,6 +946,14 @@ export default function Jefatura() {
                           <td>{flujoGrabada(v) ? <span className="flujo-ok">Grabada</span> : <span className="flujo-warn">Sin grabación</span>}</td>
                           <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
                           <td>{v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '—'}</td>
+                          <td>
+                            <div className="venta-actions">
+                              <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
+                              <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
+                              <button type="button" className="venta-action-btn" onClick={()=>setVentaHistorial(v)}>Historial</button>
+                              <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v)}>Eliminar</button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
@@ -962,7 +978,7 @@ export default function Jefatura() {
                   </span>
                 </div>
                 <input type="text" className="tabla-search" value={busqUsuarios}
-                  onChange={e=>setBusqUsuarios(e.target.value)} placeholder="🔍 Buscar usuario..." />
+                  onChange={e=>setBusqUsuarios(e.target.value)} placeholder="Buscar usuario..." />
               </div>
               <table className="tabla tabla-usuarios-pro">
                 <thead><tr><th>Usuario</th><th>Cargo</th><th>Sala</th><th>Login</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -1005,13 +1021,13 @@ export default function Jefatura() {
                             <td><span className={`badge-estado-user ${u.activo?'bu-activo':'bu-inactivo'}`}>{u.activo?'Activo':'Inactivo'}</span></td>
                             <td>
                               <div className="acc-cell">
-                                <button className="btn-edit" onClick={()=>abrirModalEditar(u)}>✏️ Editar</button>
+                                <button className="btn-edit" onClick={()=>abrirModalEditar(u)}>Editar</button>
                                 <button className={`btn-toggle-activo ${u.activo?'btn-desactivar':'btn-activar'}`} onClick={()=>toggleActivo(u)}>
                                   {u.activo?'Desactivar':'Activar'}
                                 </button>
                                 <button className="btn-eliminar-usuario" onClick={()=>setModalEliminar(u)} disabled={protegido}
                                   title={protegido?'Esta cuenta está protegida':'Eliminar usuario'}>
-                                  🗑️ Eliminar
+                                  Eliminar
                                 </button>
                               </div>
                             </td>
@@ -1052,7 +1068,7 @@ export default function Jefatura() {
             </div>
             <div className="tabla-wrap ranking-pro-card">
               <div className="tabla-header">
-                <span className="tabla-title">🏆 Ranking de Asesores</span>
+                <span className="tabla-title">Ranking de Asesores</span>
                 <span className="tabla-count">{reporteData.length} asesores</span>
               </div>
               <div style={{overflowX:'auto'}}>
@@ -1063,7 +1079,7 @@ export default function Jefatura() {
                       ? <tr><td colSpan="7" className="tabla-empty">Sin datos.</td></tr>
                       : reporteData.map((r, i) => (
                           <tr key={r.id != null ? `rep-${r.id}` : `rep-i-${i}`}>
-                            <td style={{textAlign:'center',fontSize:i<3?'18px':'13px',fontWeight:700}}>{i<3?MEDALS[i]:i+1}</td>
+                            <td style={{textAlign:'center',fontSize:'13px',fontWeight:700}}>{i+1}</td>
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
                                 <div style={{width:'32px',height:'32px',borderRadius:'50%',background:colorAvatar(r.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff'}}>{iniciales(r.nombre)}</div>
@@ -1095,7 +1111,7 @@ export default function Jefatura() {
           <section className={`section${seccion==='logs'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Logs de Actividad</h2><p>Registro de acciones en el sistema</p></div>
-              <button className="btn-nuevo" style={{background:'#ef4444'}} onClick={limpiarLogs}>🗑️ Limpiar</button>
+              <button className="btn-nuevo" style={{background:'#ef4444'}} onClick={limpiarLogs}>Limpiar</button>
             </div>
             <div className="tabla-wrap" style={{padding:'16px 20px'}}>
               {logs.length === 0
@@ -1167,12 +1183,12 @@ export default function Jefatura() {
               </div>
             </div>
             <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'10px 14px',fontSize:'12px',color:'#14532d',marginBottom:'16px'}}>
-              💡 Al crear un usuario con cargo <strong>Asesor</strong>, estará disponible en Back Data para asignar leads.
+              Al crear un usuario con cargo <strong>Asesor</strong>, estará disponible en Back Data para asignar leads.
             </div>
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalUsu}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarUsuario} disabled={guardandoUsu}>
-                {guardandoUsu ? 'Guardando...' : '💾 Guardar usuario'}
+                {guardandoUsu ? 'Guardando...' : 'Guardar usuario'}
               </button>
             </div>
           </div>
@@ -1210,7 +1226,6 @@ export default function Jefatura() {
       {modalEliminar && (
         <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget&&!eliminandoUsu)setModalEliminar(null)}}>
           <div className="modal-box modal-eliminar-box" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-usuario">
-            <div className="modal-eliminar-icon">🗑️</div>
             <div id="titulo-eliminar-usuario" className="modal-title">Eliminar usuario</div>
             <p className="modal-eliminar-texto">
               ¿Estás seguro de eliminar a <strong>{modalEliminar.nombre}</strong>?
