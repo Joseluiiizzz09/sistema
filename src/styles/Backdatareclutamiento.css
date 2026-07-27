@@ -382,7 +382,7 @@ body{
 .reclutados-refresh{height:32px;padding:0 12px;border:1px solid #fecaca;border-radius:9px;background:#fff;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;}
 .reclutados-refresh:hover{background:#fff1f2;border-color:#fca5a5;}
 .reclutados-tabla-wrap{margin-top:14px;border-radius:14px;}
-.bo-root .reclutados-tabla{min-width:1500px;}
+.bo-root .reclutados-tabla{width:100%!important;min-width:1500px;}
 .reclutados-tabla th{font-size:10px;}
 .reclutados-tabla td{font-size:11px;}
 .reclutados-nombre{min-width:180px;font-weight:700;color:#111827!important;}
