@@ -1294,3 +1294,29 @@ body{
    a Programación recién aprobada por Super de Grabaciones — mismo verde ya
    usado para GRABADO en Grabaciones/Super de Grabaciones (bg-grabado). */
 .prog-reference-table .tabla td:nth-child(9) .badge.b-grabado-prog{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;}
+
+/* Selector de estados del detalle: compacto y con selección morada, igual
+   que la referencia visual del módulo de Programación. */
+.programacion-shell .cambiar-estado-wrap {
+  padding: 11px 12px !important;
+}
+
+.programacion-shell .estado-btns {
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+.programacion-shell .btn-estado {
+  min-height: 28px !important;
+  padding: 6px 11px !important;
+  border-radius: 7px !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  font-weight: 700 !important;
+}
+
+.programacion-shell .btn-estado.selected {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #7c3aed, 0 2px 7px rgba(124, 58, 237, .18) !important;
+  transform: none !important;
+}
