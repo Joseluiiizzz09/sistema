@@ -292,7 +292,6 @@ export default function Dashboard() {
         document.execCommand('copy')
         area.remove()
       }
-      mostrarToast(`Número ${texto} copiado`)
     } catch(e) {
       mostrarToast('No se pudo copiar el número')
     }
@@ -636,7 +635,6 @@ export default function Dashboard() {
       }
     }
     cerrarModales()
-    mostrarToast(`Venta cerrada: ${docObs}`)
   }
 
   // ── Panel nueva / editar venta ───────────────────────────────────────────
@@ -728,7 +726,6 @@ export default function Dashboard() {
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje || '')); return }
       cerrarNuevaVenta()
       await cargarVentasSubidas()
-      mostrarToast(nvEditId ? 'Venta actualizada correctamente' : 'Venta guardada correctamente')
     } catch(e) { mostrarToast('Error conectando al servidor') }
     finally { setGuardandoNV(false) }
   }
@@ -764,7 +761,6 @@ export default function Dashboard() {
       } catch(e) { mostrarToast('Error de conexión al subir foto') }
     }
     await recargarFotos(ventaId)
-    mostrarToast('Foto guardada correctamente')
   }
 
   async function eliminarFoto(fotoId, ventaId) {
@@ -772,7 +768,6 @@ export default function Dashboard() {
     try {
       await fetch(`${API}/ventas/${ventaId}/fotos/${fotoId}`, { method:'DELETE', headers:ncHeaders() })
       await recargarFotos(ventaId)
-      mostrarToast('Foto eliminada')
     } catch(e) { mostrarToast('Error eliminando foto') }
   }
 

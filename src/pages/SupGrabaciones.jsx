@@ -216,10 +216,6 @@ export default function SupGrabaciones() {
       }
       cerrarModalRevisar()
       setPagina(1)
-      mostrarToast(
-        estadoRevision === 'aprobado'  ? 'Aprobado — se muestra como GRABADO' :
-        'Observado — vuelve a Grabaciones para corregir'
-      )
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 

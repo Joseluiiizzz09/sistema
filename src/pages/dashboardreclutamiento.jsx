@@ -299,7 +299,6 @@ export default function DashboardReclutamiento() {
         document.execCommand('copy')
         area.remove()
       }
-      mostrarToast(`Número ${texto} copiado`)
     } catch(e) {
       mostrarToast('No se pudo copiar el número')
     }
@@ -643,7 +642,6 @@ export default function DashboardReclutamiento() {
       }
     }
     cerrarModales()
-    mostrarToast(`Venta cerrada: ${docObs}`)
   }
 
   // ── Panel nueva / editar venta ───────────────────────────────────────────
@@ -715,7 +713,6 @@ export default function DashboardReclutamiento() {
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje || '')); return }
       cerrarNuevaVenta()
       await cargarVentasSubidas()
-      mostrarToast(nvEditId ? 'Postulante actualizado correctamente' : 'Postulante guardado correctamente')
     } catch(e) { mostrarToast('Error conectando al servidor') }
     finally { setGuardandoNV(false) }
   }

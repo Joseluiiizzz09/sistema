@@ -254,7 +254,6 @@ export default function Seguimiento() {
         ? { ...x, _estadoSeg: estNuevo, _tramo: estTramo, _comentario: comentario, _motivoRech: motivoAplica ? estMotivo : x._motivoRech }
         : x
     ))
-    mostrarToast(`Estado: ${estadoObj(estNuevo).label}`)
     setModalEstado(null)
   }
 
@@ -287,7 +286,6 @@ export default function Seguimiento() {
     setVentas(list => list.map(x =>
       x.id === modalObs.id ? { ...x, _historial: nuevoHistorial, _comentario: comentario } : x
     ))
-    mostrarToast('Llamada registrada')
     setModalObs(null)
   }
 
@@ -309,7 +307,6 @@ export default function Seguimiento() {
       }
       return { ...x, _proxSeg: agFecha, _historial: hist }
     }))
-    mostrarToast(`Agendado: ${formatF(agFecha)}`)
     setModalAgenda(null)
   }
 

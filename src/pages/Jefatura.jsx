@@ -324,7 +324,6 @@ export default function Jefatura() {
     setVentaReasignar(null)
     await Promise.all([cargarSeguimiento(), cargarVentasCache()])
     agregarLog('Venta reasignada', data?.mensaje || `Venta ${venta?.id || ''}`)
-    mostrarToast(data?.mensaje || 'Venta reasignada correctamente')
   }
 
   async function eliminarVenta(venta) {
@@ -337,7 +336,6 @@ export default function Jefatura() {
       setVentasSeg(prev => prev.filter(item => item.id !== venta.id))
       setVentasCache(prev => prev.filter(item => item.id !== venta.id))
       agregarLog('Venta eliminada', `${cliente} · DNI ${venta?.dni || '—'}`)
-      mostrarToast('Venta eliminada correctamente')
     } catch (error) {
       mostrarToast(error.message || 'Error de conexión')
     }
@@ -722,13 +720,11 @@ export default function Jefatura() {
         const data = await res.json()
         if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
         agregarLog('Usuario editado', nombre)
-        mostrarToast(`Usuario actualizado: ${nombre}`)
       } else {
         const res  = await fetch(`${API}/usuarios`,{method:'POST',headers:ncHeaders(),body:JSON.stringify({nombre,usuario:loginNorm,password:pass,cargo,sala,activo:true,permisos:cargo2 ? [cargo2] : []})})
         const data = await res.json()
         if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
         agregarLog('Usuario creado', `${nombre} — ${cargo}`)
-        mostrarToast(`Usuario creado: ${nombre}`)
       }
       await cargarUsuarios()
       cerrarModalUsu()
@@ -744,7 +740,6 @@ export default function Jefatura() {
       if (!data.ok) { mostrarToast(data.mensaje); return }
       setUsuarios(list=>list.map(x=>x.id===u.id?{...x,activo:nuevo}:x))
       agregarLog(nuevo?'Activado':'Desactivado', u.nombre)
-      mostrarToast(`${nuevo?'Activado':'Desactivado'}: ${u.nombre}`)
     } catch { mostrarToast('Error') }
   }
 
@@ -763,7 +758,6 @@ export default function Jefatura() {
       const data = await res.json()
       if (!data.ok) { mostrarToast(data.mensaje||'No se pudo eliminar'); setEliminandoUsu(false); return }
       agregarLog('Usuario eliminado', modalEliminar.nombre)
-      mostrarToast(`Usuario eliminado: ${modalEliminar.nombre}`)
       setModalEliminar(null)
       await cargarUsuarios()
     } catch {
@@ -777,7 +771,6 @@ export default function Jefatura() {
     if (!window.confirm('¿Limpiar logs?')) return
     setLogs([])
     try { localStorage.removeItem('jef_logs') } catch {}
-    mostrarToast('Logs limpiados')
   }
 
   /* ── meses para select ── */

@@ -279,7 +279,6 @@ export default function Supervisor() {
         setFraseTexto('')
         const hora = new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
         setFrases(prev => [{ texto, hora, sala:salaActual }, ...prev])
-        mostrarToast('Frase publicada')
       } else mostrarToast('Error: ' + data.mensaje)
     } catch(e) { mostrarToast('Error conectando') }
   }
@@ -289,7 +288,7 @@ export default function Supervisor() {
     try {
       const res  = await fetch(`${API}/ventas/${id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json()
-      if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)); mostrarToast('Venta eliminada') }
+      if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
     } catch(e) { mostrarToast('Error de conexión') }
   }
@@ -297,7 +296,6 @@ export default function Supervisor() {
   async function completarReasignacion(data) {
     await cargarDatos()
     setVentaReasignar(null)
-    mostrarToast(data?.mensaje || 'Venta reasignada correctamente')
   }
 
   async function agregarVentaManual() {
@@ -309,7 +307,7 @@ export default function Supervisor() {
         body: JSON.stringify({ telefono1:nvForm.n1.trim(), telefono2:nvForm.n2.trim(), claro_hogar:nvForm.campana.trim(), asesor_nombre:nvForm.asesor, estado:nvForm.estado||'venta', observacion:nvForm.obs }),
       })
       const data = await res.json()
-      if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT); mostrarToast('Venta registrada') }
+      if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
     } catch(e) { mostrarToast('Error de conexión') }
   }

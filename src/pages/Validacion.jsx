@@ -295,7 +295,6 @@ export default function Validacion() {
         : x
       ))
       setModalEst({ open:false, id:null })
-      mostrarToast('Tipificación y observación guardadas')
     } catch(e) { mostrarToast('Error conectando al servidor') }
   }
 

@@ -270,7 +270,6 @@ export default function Grabaciones() {
       } catch(e) { console.error('Error guardando estado:', e); mostrarToast('Error conectando al servidor'); return }
       setVentas(list => list.filter(x=>x.id!==v.id))
       setModalEstado({ open:false, id:null })
-      mostrarToast('Venta marcada como GRABADA — pasa a Super de Grabaciones')
       return
     }
     try {
@@ -283,7 +282,6 @@ export default function Grabaciones() {
       setVentas(list => list.map(x => x.id===v.id ? { ...x, _estadoGrab:nuevoEstadoSel } : x))
     } catch(e) { console.error('Error guardando estado:', e); mostrarToast('Error conectando al servidor'); return }
     setModalEstado({ open:false, id:null })
-    mostrarToast('Estado actualizado: ' + nuevoEstadoSel.toUpperCase())
   }
 
   // ── Modal Subir ───────────────────────────────────────────────────────────
@@ -356,7 +354,6 @@ export default function Grabaciones() {
     setVentas(list => list.filter(x=>x.id!==v.id))
     setModalSubir({ open:false, id:null })
     setArchivoSel(null); setSubirInfo(''); setSubirLoading(false)
-    mostrarToast('Audio subido — queda EN REVISIÓN')
   }
 
   // ── Modal Audio ───────────────────────────────────────────────────────────
@@ -403,7 +400,6 @@ export default function Grabaciones() {
       a.href=url; a.download=nombre
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(()=>URL.revokeObjectURL(url), 1500)
-      mostrarToast('Descargando: ' + nombre)
     } catch (err) {
       console.error('No se pudo descargar el audio', err)
       mostrarToast('No se pudo descargar el audio.')
@@ -427,7 +423,6 @@ export default function Grabaciones() {
     }).catch(e => console.error('Error obs:', e))
     setVentas(list => list.map(x => x.id===v.id ? { ...x, _grabObs:obsNueva } : x))
     setModalObs({ open:false, id:null }); setNuevaObs('')
-    mostrarToast('Observación guardada')
   }
 
   // ── JSX ───────────────────────────────────────────────────────────────────

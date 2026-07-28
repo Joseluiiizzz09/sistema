@@ -153,7 +153,6 @@ export default function Usuarios() {
           setGuardando(false); return
         }
         await fetch(`${API}/usuarios/${editandoId}/estado`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ activo: form.activo }) })
-        mostrarToast(`Usuario @${form.usuario} actualizado`)
       } else {
         res  = await fetch(`${API}/usuarios`, {
           method: 'POST', headers: ncHeaders(),
@@ -165,7 +164,6 @@ export default function Usuarios() {
           else mostrarToast(data.mensaje || 'Error creando')
           setGuardando(false); return
         }
-        mostrarToast(`Usuario @${form.usuario} creado correctamente`)
       }
       await cargarUsuarios()
       cerrarModal()
@@ -179,7 +177,6 @@ export default function Usuarios() {
       const data = await res.json()
       if (!data.ok) { mostrarToast(data.mensaje || 'Error'); return }
       setUsuarios(list => list.map(u => u.id === id ? { ...u, activo: nuevoEstado } : u))
-      mostrarToast(nuevoEstado ? 'Usuario activado' : 'Usuario desactivado')
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 
@@ -190,7 +187,6 @@ export default function Usuarios() {
       const res  = await fetch(`${API}/usuarios/${modalElim.id}`, { method: 'DELETE', headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) { mostrarToast(data.mensaje || 'Error eliminando'); setEliminando(false); return }
-      mostrarToast('Usuario eliminado')
       setModalElim(null)
       await cargarUsuarios()
     } catch (e) { mostrarToast('Error conectando al servidor') }

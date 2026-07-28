@@ -184,7 +184,6 @@ export default function Programacion() {
         x.id === modalDet.id ? { ...x, estado: estadoModal, obs_programacion: obsProg } : x
       ))
       cerrarModal()
-      mostrarToast('Venta actualizada')
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }
 

@@ -266,7 +266,6 @@ export default function Backoffice() {
         document.execCommand('copy')
         area.remove()
       }
-      mostrarToast(`Número ${texto} copiado`)
     } catch(e) {
       mostrarToast('No se pudo copiar el número')
     }
@@ -283,7 +282,6 @@ export default function Backoffice() {
       })
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'Error al guardar')
-      mostrarToast('Datos de Back Data guardados')
     } catch(e) {
       mostrarToast(e.message || 'No se pudieron guardar los datos')
       cargarLeads()
@@ -410,7 +408,6 @@ export default function Backoffice() {
     setBaseData(prev => prev[f] ? prev : { ...prev, [f]: [] })
     setFechaActiva(f)
     setCalPicker('')
-    mostrarToast('Fecha ' + formatFecha(f) + ' agregada')
   }
 
   function agregarFechaCargaMasiva() {
@@ -421,7 +418,6 @@ export default function Backoffice() {
     setBaseData(prev => prev[f] ? prev : { ...prev, [f]: [] })
     setFechaActiva(f)
     setCmCalPicker('')
-    mostrarToast('Fecha ' + formatFecha(f) + ' agregada')
   }
 
   // ── Form (agregar registro individual) ───────────────────────────────────
@@ -462,7 +458,6 @@ export default function Backoffice() {
       }
     } catch(e) {}
     setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
-    mostrarToast(`N1: ${n1} agregado${asesor ? ' → '+asesor : ''}`)
   }
 
   // ── Reasignar ────────────────────────────────────────────────────────────
@@ -483,7 +478,6 @@ export default function Backoffice() {
     const newHist = [...reg.historial, { asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
-    mostrarToast(`N1 ${reg.n1} → ${nuevoAsesor} · ${hora}`)
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
@@ -492,7 +486,6 @@ export default function Backoffice() {
     if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
     setHistOpen(prev => { const n={...prev}; delete n[id]; return n })
-    mostrarToast('Lead eliminado')
   }
 
   // ── Tipif vendedor ────────────────────────────────────────────────────────
@@ -503,7 +496,6 @@ export default function Backoffice() {
     const hora = horaAhora()
     updateReg(id, { _tipifVend:valor, _tipifHora:hora })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) }).catch(()=>{})
-    mostrarToast(`Tipif. vendedor: ${valor||'— Pendiente —'} · N1 ${reg.n1}`)
   }
 
   // ── Modal rotación manual ─────────────────────────────────────────────────
@@ -535,7 +527,6 @@ export default function Backoffice() {
     const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
     updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
-    mostrarToast(`Rotado: ${reg.asesor||'Sin asignar'} → ${rotModalAsesor} · ${hora}`)
     setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
   }
 
@@ -587,7 +578,6 @@ export default function Backoffice() {
     setRotRotados(prev => prev + rotados.length)
     setRotResultado(res)
     setRotSel({})
-    mostrarToast(`${rotados.length} leads rotados a ${asesorActual}`)
   }
 
   async function rotEjecutar() {
@@ -684,7 +674,6 @@ export default function Backoffice() {
       } catch(e) {}
     }
     setMasivaNums(''); setMasivaFilas([]); setInclDup(false)
-    mostrarToast(`${nuevosRegs.length} registros cargados${asesor?' → '+asesor:''}`)
   }
 
   function procesarArchivo(file) {
@@ -731,7 +720,6 @@ export default function Backoffice() {
     }
     setArchivoRows([]); setArchivoInfo(''); setArchivoStatus('')
     if (archivoInputRef.current) archivoInputRef.current.value = ''
-    mostrarToast(`${nuevos.length} importados${omitidos?' · '+omitidos+' omitidos':''}`)
   }
 
   function procesarLegacy(file) {
@@ -785,7 +773,6 @@ export default function Backoffice() {
     if (leadsBackend.length) { try { await fetch(`${API}/leads`,{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)}) } catch(e){} }
     setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
     if (legacyInputRef.current) legacyInputRef.current.value = ''
-    mostrarToast(`${importados} importados${omitidos?' · '+omitidos+' omitidos':''}`)
   }
 
   // ── BL Modal ──────────────────────────────────────────────────────────────
