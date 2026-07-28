@@ -1027,6 +1027,18 @@ export default function Jefatura() {
               </div>
               <div style={{overflowX:'auto'}}>
                 <table className="tabla seguimiento-tabla">
+                  <colgroup>
+                    <col style={{width:'145px'}} />
+                    <col style={{width:'240px'}} />
+                    <col style={{width:'110px'}} />
+                    <col style={{width:'160px'}} />
+                    <col style={{width:'110px'}} />
+                    <col style={{width:'120px'}} />
+                    <col style={{width:'110px'}} />
+                    <col style={{width:'90px'}} />
+                    <col style={{width:'180px'}} />
+                    <col style={{width:'330px'}} />
+                  </colgroup>
                   <thead><tr>
                     <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
                     <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Acciones</th>
