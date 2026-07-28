@@ -134,6 +134,7 @@ export default function Supervisor() {
   // ── Section / period ──
   const [seccion, setSeccion] = useState(() => sessionStorage.getItem('nc_supervisor_apartado') || 'dashboard')
   const [periodo, setPeriodoState] = useState(() => sessionStorage.getItem('nc_supervisor_periodo') || 'mes')
+  const [sidebarAbierto, setSidebarAbierto] = useState(() => sessionStorage.getItem('nc_supervisor_sidebar') !== 'cerrado')
 
   // ── Data ──
   const [asesores, setAsesores] = useState([])
@@ -444,6 +445,19 @@ export default function Supervisor() {
             <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
             <span className="brand-sub">Supervisor</span>
           </div>
+          <button
+            type="button"
+            className={`sup-sidebar-toggle${sidebarAbierto ? ' abierto' : ''}`}
+            aria-label={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            title={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            onClick={() => setSidebarAbierto(valor => {
+              const nuevo = !valor
+              sessionStorage.setItem('nc_supervisor_sidebar', nuevo ? 'abierto' : 'cerrado')
+              return nuevo
+            })}
+          >
+            <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2.5"/><path d="M7 3v12"/></svg>
+          </button>
         </div>
         <div className="topbar-right">
           <JefaturaViewControls>
@@ -455,9 +469,9 @@ export default function Supervisor() {
         </div>
       </div>
 
-      <div className="app-layout">
+      <div className={`app-layout${sidebarAbierto ? '' : ' sidebar-cerrado'}`}>
         {/* SIDEBAR */}
-        <aside className="sidebar">
+        <aside className={`sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Mi Sala</div>
           <button className={`nav-btn${seccion==='dashboard'?' active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot" /> Dashboard</button>
           <button className={`nav-btn${seccion==='ventas'?' active':''}`} onClick={()=>irSeccion('ventas')}><span className="nav-dot" /> Ventas</button>

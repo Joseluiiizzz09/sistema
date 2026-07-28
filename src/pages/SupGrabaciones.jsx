@@ -20,6 +20,17 @@ function formatF(f) {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : f
 }
 
+// Fecha/hora REAL (venta_historial vía backend, columna fecha_programado) en
+// que Programación puso estado=PROGRAMADO — nunca la hora actual del navegador.
+function formatProgramado(fechaHistorial) {
+  if (!fechaHistorial) return null
+  const [fecha, hora] = String(fechaHistorial).split(' ')
+  const p = (fecha || '').split('-')
+  if (p.length !== 3) return null
+  const hm = (hora || '').slice(0, 5)
+  return `PROGRAMADO: ${hm} / ${p[2]}/${p[1]}/${p[0]}`
+}
+
 function nowLabel() {
   return new Date().toLocaleString('es-PE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -111,6 +122,11 @@ export default function SupGrabaciones() {
             audioPath:        v.audio_path || '',
             audioUrl:         v.audio_path ? `${NC_API}/${v.audio_path}` : null,
             audioNombre:      v.audio_path ? v.audio_path.split('/').pop() : '',
+            // Solo cuando Programación ya marcó PROGRAMADO y el audio sigue
+            // sin subir — señal operativa real, no observación manual.
+            obsProgramacion:  (String(v.estado || '').trim().toUpperCase() === 'PROGRAMADO' && !v.audio_path)
+              ? formatProgramado(v.fecha_programado)
+              : null,
           }))
         )
       }
@@ -337,7 +353,7 @@ export default function SupGrabaciones() {
                   <th style={{ minWidth: '130px' }}>VENDEDOR</th>
                   <th style={{ minWidth: '110px' }}>SUPERVISOR</th>
                   <th style={{ minWidth: '150px' }}>ARCHIVO AUDIO</th>
-                  <th style={{ minWidth: '180px' }}>OBS. SUPERVISOR</th>
+                  <th style={{ minWidth: '180px' }}>OBS. PROGRAMACIÓN</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,8 +390,8 @@ export default function SupGrabaciones() {
                           : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaciÃ³n</span>
                         }
                       </td>
-                      <td style={{ fontSize: '10px', color: '#6b7280', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ultimaObs}>
-                        {ultimaObs}
+                      <td style={{ fontSize: '10px', color: v.obsProgramacion ? '#c2410c' : '#9ca3af', fontWeight: v.obsProgramacion ? 700 : 400, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.obsProgramacion || ''}>
+                        {v.obsProgramacion || '—'}
                       </td>
                     </tr>
                   )
