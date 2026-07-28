@@ -416,8 +416,7 @@ export default function Programacion() {
                   {ESTADO_BTNS.map(btn => (
                     <button
                       key={btn.id}
-                      className={`btn-estado ${btn.cls}`}
-                      style={{ outline: estadoModal === btn.id ? '3px solid #7c3aed' : 'none' }}
+                      className={`btn-estado ${btn.cls}${estadoModal === btn.id ? ' selected' : ''}`}
                       onClick={() => setEstadoModal(btn.id)}
                     >{btn.label}</button>
                   ))}
@@ -444,7 +443,6 @@ export default function Programacion() {
         </div>
       )}
 
-      <div className={`toast${toastMsg ? ' show' : ''}`}>{toastMsg}</div>
     </div>
   )
 }

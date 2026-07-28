@@ -621,7 +621,6 @@ export default function Validacion() {
       })()}
 
       {/* ══ TOAST ═══════════════════════════════════════════════════════════ */}
-      <div className={`toast${toast?' show':''}`}>{toast}</div>
     </div>
   )
 }

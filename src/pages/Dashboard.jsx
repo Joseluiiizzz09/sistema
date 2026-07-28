@@ -1443,12 +1443,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── TOAST ──────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={{position:'fixed',bottom:'24px',right:'24px',background:'#111827',color:'#fff',padding:'12px 20px',borderRadius:'12px',fontSize:'13px',fontWeight:600,zIndex:9999,boxShadow:'0 8px 24px rgba(0,0,0,.2)'}}>
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

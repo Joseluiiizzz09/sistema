@@ -1580,7 +1580,6 @@ export default function Backdatareclutamiento() {
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
-      <div className={`notify-toast${toast?' show':''}`}>{toast}</div>
     </div>
   )
 }

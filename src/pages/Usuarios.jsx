@@ -461,7 +461,6 @@ export default function Usuarios() {
         </div>
       )}
 
-      <div className={`toast${toastMsg ? '' : ' hidden'}`}>{toastMsg}</div>
     </div>
   )
 }

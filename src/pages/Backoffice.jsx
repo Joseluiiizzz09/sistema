@@ -1660,7 +1660,6 @@ export default function Backoffice() {
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
-      <div className={`notify-toast${toast?' show':''}`}>{toast}</div>
     </div>
   )
 }

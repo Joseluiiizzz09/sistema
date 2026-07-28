@@ -497,7 +497,6 @@ export default function SupGrabaciones() {
         </div>
       )}
 
-      <div className={`toast${toastMsg ? ' show' : ''}`}>{toastMsg}</div>
     </div>
   )
 }

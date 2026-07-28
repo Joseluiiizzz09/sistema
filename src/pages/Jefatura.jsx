@@ -116,7 +116,7 @@ function flujoGrabada(v) {
 }
 function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
 function estadoValidacion(v) {
-  return v?.estado_validacion || v?.validacion || (flujoValidada(v) ? 'Validada' : 'Pendiente / no válida')
+  return v?.estado_validacion || v?.validacion || (flujoValidada(v) ? 'Validada' : 'Pendiente')
 }
 function estadoGrabacion(v) {
   return v?.estado_grab || v?.estado_grabacion || (flujoGrabada(v) ? 'Grabada' : 'Sin grabación')
@@ -197,6 +197,10 @@ export default function Jefatura() {
   const [usuariosCarga, setUsuariosCarga] = useState({ cargando:true, error:'' })
   const [ventasCache, setVentasCache] = useState([])
   const [ventasSeg,   setVentasSeg]   = useState([])
+  const [reclutados, setReclutados] = useState([])
+  const [cargandoReclutados, setCargandoReclutados] = useState(false)
+  const [eliminaciones, setEliminaciones] = useState([])
+  const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
 
 
   /* filtros persistentes */
@@ -319,6 +323,46 @@ export default function Jefatura() {
     } catch { console.error('Error seguimiento') }
   }, [])
 
+  const cargarReclutados = useCallback(async () => {
+    setCargandoReclutados(true)
+    try {
+      const res = await fetch(`${API}/ventas-reclutamiento`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      setReclutados(res.ok && data.ok && Array.isArray(data.data) ? data.data : [])
+    } catch {
+      setReclutados([])
+    } finally {
+      setCargandoReclutados(false)
+    }
+  }, [])
+
+  const cargarEliminaciones = useCallback(async () => {
+    setCargandoEliminaciones(true)
+    try {
+      const res = await fetch(`${API}/eliminaciones`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      setEliminaciones(res.ok && data.ok && Array.isArray(data.data) ? data.data : [])
+    } catch {
+      setEliminaciones([])
+    } finally {
+      setCargandoEliminaciones(false)
+    }
+  }, [])
+
+  async function eliminarReclutado(postulante) {
+    if (!window.confirm(`¿Eliminar definitivamente a ${postulante.nombre || 'este postulante'}?`)) return
+    const res = await fetch(`${API}/ventas-reclutamiento/${postulante.id}`, {
+      method:'DELETE',
+      headers:ncHeaders(),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.ok) {
+      console.error(data.mensaje || 'No se pudo eliminar el postulante')
+      return
+    }
+    setReclutados(prev => prev.filter(item => item.id !== postulante.id))
+  }
+
   async function completarReasignacion(data) {
     const venta = ventaReasignar
     setVentaReasignar(null)
@@ -354,7 +398,9 @@ export default function Jefatura() {
 
   useEffect(() => {
     if (seccion === 'seguimiento') cargarSeguimiento()
-  }, [seccion, cargarSeguimiento])
+    if (seccion === 'reclutados-generales') cargarReclutados()
+    if (seccion === 'eliminaciones') cargarEliminaciones()
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -828,11 +874,13 @@ export default function Jefatura() {
           <div className="sidebar-sep">Operaciones</div>
           <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
           <button className={`nav-btn${seccion==='seguimiento'?' active':''}`} onClick={()=>irSeccion('seguimiento')}><span className="nav-dot"></span> Seguimiento en campo</button>
+          <button className={`nav-btn${seccion==='reclutados-generales'?' active':''}`} onClick={()=>irSeccion('reclutados-generales')}><span className="nav-dot"></span> Reclutados generales</button>
           <div className="sidebar-sep">Gestión</div>
           <button className={`nav-btn${seccion==='usuarios'?'   active':''}`} onClick={()=>irSeccion('usuarios')}><span className="nav-dot"></span> Usuarios</button>
           <button className={`nav-btn${seccion==='reportes'?'   active':''}`} onClick={()=>irSeccion('reportes')}><span className="nav-dot"></span> Reportes</button>
           <div className="sidebar-sep">Sistema</div>
           <button className={`nav-btn${seccion==='logs'?'       active':''}`} onClick={()=>irSeccion('logs')}><span className="nav-dot"></span> Logs de actividad</button>
+          <button className={`nav-btn${seccion==='eliminaciones'?' active':''}`} onClick={()=>irSeccion('eliminaciones')}><span className="nav-dot"></span> Eliminaciones generales</button>
         </aside>
 
         {menuMovilAbierto && (
@@ -1117,7 +1165,7 @@ export default function Jefatura() {
                           <td>{v.asesor_nombre || v.asesor || v.vendedor || '—'}</td>
                           <td>{v.sala || '—'}</td>
                           <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
-                          <td>{flujoValidada(v) ? <span className="flujo-ok">Validada</span> : <span className="flujo-warn">Pendiente / no válida</span>}</td>
+                          <td>{flujoValidada(v) ? <span className="flujo-ok">Validada</span> : <span className="flujo-warn">Pendiente</span>}</td>
                           <td>{flujoGrabada(v) ? <span className="flujo-ok">Grabada</span> : <span className="flujo-warn">Sin grabación</span>}</td>
                           <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
                           <td>{v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '—'}</td>
@@ -1276,6 +1324,88 @@ export default function Jefatura() {
                           </tr>
                         ))
                     }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== RECLUTADOS GENERALES ===== */}
+          <section className={`section${seccion==='reclutados-generales'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Reclutados generales</h2><p>Postulantes registrados por todos los asesores de reclutamiento</p></div>
+              <button className="btn-nuevo" onClick={cargarReclutados}>Actualizar</button>
+            </div>
+            <div className="tabla-wrap">
+              <div className="tabla-header">
+                <span className="tabla-title">Postulantes generales</span>
+                <span className="tabla-count">{reclutados.length} registros</span>
+              </div>
+              <div className="tabla-scroll">
+                <table className="tabla reclutados-generales-tabla">
+                  <thead><tr><th>#</th><th>Fecha</th><th>Nombre y apellidos</th><th>Documento</th><th>Teléfono</th><th>Distrito</th><th>Puesto</th><th>Campaña</th><th>Empresa</th><th>Reclutador</th><th>Estado</th><th>Acción</th></tr></thead>
+                  <tbody>
+                    {cargandoReclutados ? (
+                      <tr className="tabla-empty"><td colSpan="12">Cargando reclutados...</td></tr>
+                    ) : reclutados.length === 0 ? (
+                      <tr className="tabla-empty"><td colSpan="12">Sin postulantes registrados.</td></tr>
+                    ) : reclutados.map((v, i) => (
+                      <tr key={v.id}>
+                        <td>{i + 1}</td>
+                        <td>{formatF(soloFecha(v.created_at))}</td>
+                        <td style={{fontWeight:700}}>{v.nombre || '—'}</td>
+                        <td>{v.dni || '—'}</td>
+                        <td>{v.telefono1 || '—'}</td>
+                        <td>{v.distrito || '—'}</td>
+                        <td>{v.puesto || '—'}</td>
+                        <td>{v.fuente || v.campana || '—'}</td>
+                        <td>{v.empresa || '—'}</td>
+                        <td>{v.usuario_nombre || '—'}</td>
+                        <td><span className="flujo-ok">{v.estado_reclutamiento || 'NUEVO'}</span></td>
+                        <td><button type="button" className="venta-action-btn delete" onClick={()=>eliminarReclutado(v)}>Eliminar</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== ELIMINACIONES GENERALES ===== */}
+          <section className={`section${seccion==='eliminaciones'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Eliminaciones generales</h2><p>Auditoría de ventas y postulantes eliminados</p></div>
+              <button className="btn-nuevo" onClick={cargarEliminaciones}>Actualizar</button>
+            </div>
+            <div className="tabla-wrap">
+              <div className="tabla-header">
+                <span className="tabla-title">Registro general de eliminaciones</span>
+                <span className="tabla-count">{eliminaciones.length} registros</span>
+              </div>
+              <div className="tabla-scroll">
+                <table className="tabla eliminaciones-tabla">
+                  <thead><tr><th>#</th><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Cargo</th><th>Tipo</th><th>ID</th><th>Detalle eliminado</th></tr></thead>
+                  <tbody>
+                    {cargandoEliminaciones ? (
+                      <tr className="tabla-empty"><td colSpan="8">Cargando eliminaciones...</td></tr>
+                    ) : eliminaciones.length === 0 ? (
+                      <tr className="tabla-empty"><td colSpan="8">Todavía no hay eliminaciones registradas.</td></tr>
+                    ) : eliminaciones.map((item, i) => {
+                      const fechaHora = String(item.created_at || '').replace('T', ' ').split('.')[0]
+                      const partes = fechaHora.split(' ')
+                      return (
+                        <tr key={item.id}>
+                          <td>{i + 1}</td>
+                          <td>{formatF(partes[0])}</td>
+                          <td>{partes[1] || '—'}</td>
+                          <td style={{fontWeight:700}}>{item.actor_nombre || '—'}</td>
+                          <td>{cargoObj(item.actor_cargo).label || item.actor_cargo || '—'}</td>
+                          <td><span className="flujo-warn">{item.tipo || '—'}</span></td>
+                          <td>{item.registro_id || '—'}</td>
+                          <td>{item.detalle || '—'}</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1471,7 +1601,6 @@ export default function Jefatura() {
         </div>
       )}
 
-      <div className={`toast${toastMsg?' show':''}`}>{toastMsg}</div>
     </div>
   )
 }

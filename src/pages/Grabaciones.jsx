@@ -750,7 +750,6 @@ export default function Grabaciones() {
       )}
 
       {/* ══ TOAST ═══════════════════════════════════════════════════════════ */}
-      <div className={`toast${toast?' show':''}`}>{toast}</div>
     </div>
   )
 }

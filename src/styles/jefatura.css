@@ -1003,6 +1003,20 @@ button.export-kpi-card:hover {
   text-overflow: ellipsis;
 }
 
+.reclutados-generales-tabla,
+.eliminaciones-tabla {
+  min-width: 1180px;
+}
+
+.reclutados-generales-tabla th:first-child,
+.reclutados-generales-tabla td:first-child,
+.eliminaciones-tabla th:first-child,
+.eliminaciones-tabla td:first-child {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+}
+
 /* .filtros-grid ahora es flex-wrap (igual que /seguimiento) — reflow
    responsivo nativo, sin media queries de grid-template-columns. */
 @media (max-width: 460px) {

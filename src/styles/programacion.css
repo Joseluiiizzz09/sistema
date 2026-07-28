@@ -520,6 +520,7 @@ body{
 .estado-btns{display:flex;gap:6px;flex-wrap:wrap;}
 .btn-estado{padding:6px 12px;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .16s var(--sp);}
 .btn-estado:hover{transform:scale(1.06);}
+.btn-estado.selected{outline:2px solid currentColor;outline-offset:2px;box-shadow:0 2px 8px rgba(15,23,42,.12);}
 .be-programado{background:#eff6ff;color:#1e40af;}
 .be-instalado{background:#ecfdf5;color:#065f46;}
 .be-caida{background:var(--brand-soft);color:var(--brand-deep);}

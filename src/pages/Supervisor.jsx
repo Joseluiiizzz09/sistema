@@ -1021,7 +1021,6 @@ export default function Supervisor() {
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
-      <div className={`toast${toast?' show':''}`}>{toast}</div>
     </div>
   )
 }
