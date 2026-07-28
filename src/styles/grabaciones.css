@@ -764,3 +764,42 @@ body{
 .bg-nodesea      {background:#fff1f2;color:#be123c;border:1px solid rgba(251,113,133,.38);box-shadow:0 2px 8px rgba(251,113,133,.14);}
 .bg-nocontesta   {background:#fffbeb;color:#b45309;border:1px solid rgba(251,191,36,.45);box-shadow:0 2px 8px rgba(251,191,36,.14);}
 .bg-buzon        {background:#fff7ed;color:#c2410c;border:1px solid rgba(251,146,60,.46);box-shadow:0 2px 8px rgba(251,146,60,.14);}
+
+/* Posición de columnas de Ventas validadas: acciones en una sola fila,
+   seguidas por estado, fecha y datos, como en la referencia. */
+.grabaciones-ventas-tabla {
+  width: 1900px !important;
+  min-width: 1900px !important;
+  table-layout: fixed !important;
+}
+
+.grabaciones-ventas-tabla th,
+.grabaciones-ventas-tabla td {
+  box-sizing: border-box;
+  vertical-align: middle !important;
+}
+
+.grabaciones-ventas-tabla th:first-child,
+.grabaciones-ventas-tabla td:first-child {
+  width: 330px !important;
+  min-width: 330px !important;
+  max-width: 330px !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.grabaciones-ventas-tabla .acciones-cell {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.grabaciones-ventas-tabla .acciones-cell > button {
+  flex: 0 0 auto !important;
+}

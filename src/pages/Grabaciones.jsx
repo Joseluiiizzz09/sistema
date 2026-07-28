@@ -545,10 +545,22 @@ export default function Grabaciones() {
           </div>
 
           <div className="tabla-scroll">
-            <table className="tabla">
+            <table className="tabla grabaciones-ventas-tabla">
+              <colgroup>
+                <col style={{width:330}} />
+                <col style={{width:150}} />
+                <col style={{width:120}} />
+                <col style={{width:250}} />
+                <col style={{width:120}} />
+                <col style={{width:140}} />
+                <col style={{width:180}} />
+                <col style={{width:160}} />
+                <col style={{width:230}} />
+                <col style={{width:220}} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{width:260,minWidth:260}}>ACCIONES</th>
+                  <th style={{width:330,minWidth:330}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
                   <th style={{width:120}}>FECHA</th>
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
