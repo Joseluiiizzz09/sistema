@@ -8,6 +8,7 @@ import '../styles/programacion.css'
 
 const BADGE_CLS = {
   GRABADO:          'b-grabado-prog',
+  GRABADA_REVISION: 'b-grabada-revision',
   PROGRAMADO:       'b-programado',
   BLOQUEADO:        'b-bloqueado',
   SIN_AGENDA:       'b-sinagenda',
@@ -31,6 +32,7 @@ const BADGE_CLS = {
 
 const ESTADO_LABELS = {
   GRABADO:          'Grabado',
+  GRABADA_REVISION: 'Grabada/Revisión',
   PROGRAMADO:       'Programado',
   BLOQUEADO:        'Bloqueado',
   SIN_AGENDA:       'Sin agenda',
@@ -54,6 +56,7 @@ const ESTADO_LABELS = {
 
 const ESTADO_BTNS = [
   { id: 'PROGRAMADO',        label: 'Programado',        cls: 'be-programado' },
+  { id: 'RECHAZADO',         label: 'Rechazado',         cls: 'be-rechazado'  },
   { id: 'BLOQUEADO',         label: 'Bloqueado',         cls: 'be-bloqueado'  },
   { id: 'SIN_AGENDA',        label: 'Sin agenda',        cls: 'be-sinagenda'  },
   { id: 'CARACTER_ESPECIAL', label: 'Carácter especial', cls: 'be-caracter'   },
@@ -67,10 +70,10 @@ const ESTADO_BTNS = [
 // persiste nada distinto; `estado` sigue intacto (campo de Validación).
 function estadoVisible(v) {
   const raw = (v.estado || '').toUpperCase()
-  if (raw === 'VALIDADO'
-      && (v.estado_grab || '').toLowerCase() === 'grabado'
-      && (v.estado_supgrab || '').toLowerCase() === 'aprobado') {
-    return 'GRABADO'
+  if (raw === 'VALIDADO' && (v.estado_grab || '').toLowerCase() === 'grabado') {
+    return (v.estado_supgrab || '').toLowerCase() === 'aprobado'
+      ? 'GRABADO'
+      : 'GRABADA_REVISION'
   }
   return raw
 }
@@ -108,6 +111,8 @@ export default function Programacion() {
   const [modalDet, setModalDet]       = useState(null)
   const [estadoModal, setEstadoModal] = useState('')
   const [obsProg, setObsProg]         = useState('')
+  const [sotProg, setSotProg]         = useState('')
+  const [fechaProg, setFechaProg]     = useState('')
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -130,10 +135,14 @@ export default function Programacion() {
     } catch (e) { mostrarToast('Error conectando al servidor') }
   }, [])
 
-  useEffect(() => { cargarVentas() }, [cargarVentas])
+  useEffect(() => {
+    cargarVentas()
+    const timer = setInterval(cargarVentas, 3000)
+    return () => clearInterval(timer)
+  }, [cargarVentas])
 
   const ventasFiltradas = useMemo(() => ventas.filter(v => {
-    const est   = (v.estado || '').toUpperCase()
+    const est   = estadoVisible(v)
     const fecha = (v.created_at || '').split('T')[0].split(' ')[0]
     if (fEstado  && est !== fEstado.toUpperCase()) return false
     if (fAsesor  && !(v.asesor_nombre || '').toLowerCase().includes(fAsesor.toLowerCase())) return false
@@ -161,27 +170,57 @@ export default function Programacion() {
 
   function abrirDetalle(v) {
     setModalDet(v)
-    setEstadoModal(v.estado || '')
+    setEstadoModal(estadoVisible(v))
     setObsProg(v.obs_programacion || '')
+    setSotProg(v.sot || '')
+    setFechaProg((v.fecha_programada || '').split('T')[0])
   }
 
   function cerrarModal() {
     setModalDet(null)
     setEstadoModal('')
     setObsProg('')
+    setSotProg('')
+    setFechaProg('')
   }
 
   async function guardarCambios() {
     if (!modalDet) return
+    if (estadoModal === 'PROGRAMADO' && (!sotProg.trim() || !fechaProg)) {
+      mostrarToast('Ingrese SOT y fecha programada')
+      return
+    }
+    const esRechazo = estadoModal === 'RECHAZADO'
+    const payload = esRechazo
+      ? {
+          estado: 'VALIDADO',
+          estado_grab: 'grabado',
+          estado_supgrab: 'sin_revisar',
+          obs_programacion: obsProg,
+        }
+      : {
+          estado: estadoModal,
+          obs_programacion: obsProg,
+          ...(estadoModal === 'PROGRAMADO'
+            ? { sot: sotProg.trim(), fecha_programada: fechaProg }
+            : {}),
+        }
     try {
       const res  = await fetch(`${API}/ventas/${modalDet.id}`, {
         method: 'PATCH', headers: ncHeaders(),
-        body: JSON.stringify({ estado: estadoModal, obs_programacion: obsProg }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error actualizando'); return }
       setVentas(list => list.map(x =>
-        x.id === modalDet.id ? { ...x, estado: estadoModal, obs_programacion: obsProg } : x
+        x.id === modalDet.id
+          ? {
+              ...x,
+              ...payload,
+              sot: payload.sot ?? x.sot,
+              fecha_programada: payload.fecha_programada ?? x.fecha_programada,
+            }
+          : x
       ))
       cerrarModal()
     } catch (e) { mostrarToast('Error conectando al servidor') }
@@ -270,6 +309,8 @@ export default function Programacion() {
               <label>Estado</label>
               <select className="filtro-select" value={fEstado} onChange={e => setFEstado(e.target.value)}>
                 <option value="">Todos</option>
+                <option value="GRABADA_REVISION">Grabada/Revisión</option>
+                <option value="GRABADO">Grabado</option>
                 <option value="PROGRAMADO">Programado</option>
                 <option value="BLOQUEADO">Bloqueado</option>
                 <option value="SIN_AGENDA">Sin agenda</option>
@@ -425,6 +466,28 @@ export default function Programacion() {
                   <div style={{ marginTop: '8px', fontSize: '11px', color: '#7c3aed', fontWeight: 600 }}>
                     {estadoModal === modalDet.estado ? 'Estado actual: ' : 'Nuevo estado: '}
                     {ESTADO_LABELS[estadoModal] || estadoModal}
+                  </div>
+                )}
+                {estadoModal === 'PROGRAMADO' && (
+                  <div className="programado-datos">
+                    <label>
+                      SOT
+                      <input
+                        type="text"
+                        value={sotProg}
+                        onChange={e => setSotProg(e.target.value)}
+                        placeholder="Ingrese SOT"
+                        maxLength={100}
+                      />
+                    </label>
+                    <label>
+                      Fecha programada
+                      <input
+                        type="date"
+                        value={fechaProg}
+                        onChange={e => setFechaProg(e.target.value)}
+                      />
+                    </label>
                   </div>
                 )}
               </div>

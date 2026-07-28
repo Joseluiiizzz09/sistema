@@ -644,3 +644,37 @@ body{
 .fila-tecnico td{background:#fff5fb!important;}
 .fila-tecnico:hover td{background:#fdf2f8!important;}
 .kpi-item.k-tec{border-left-color:#ec4899!important;}
+
+.seguimiento-ventas-tabla {
+  width: 2460px !important;
+  min-width: 2460px !important;
+  table-layout: fixed !important;
+}
+
+.seguimiento-ventas-tabla th,
+.seguimiento-ventas-tabla td {
+  box-sizing: border-box;
+  vertical-align: middle !important;
+}
+
+.seguimiento-ventas-tabla th:first-child,
+.seguimiento-ventas-tabla td:first-child {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.seguimiento-ventas-tabla th:nth-child(2),
+.seguimiento-ventas-tabla td:nth-child(2) {
+  width: 130px !important;
+  min-width: 130px !important;
+  max-width: 130px !important;
+}
+
+.seguimiento-ventas-tabla .seg-acciones {
+  width: 100% !important;
+  max-width: none !important;
+  flex-wrap: nowrap !important;
+}

@@ -1372,6 +1372,13 @@ body{
   color: #b91c1c !important;
 }
 
+.programacion-shell .btn-estado.be-rechazado,
+.programacion-shell .btn-estado.be-rechazado.selected {
+  border-color: #fb7185 !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}
+
 .programacion-shell .btn-estado.be-sinagenda,
 .programacion-shell .btn-estado.be-sinagenda.selected {
   border-color: #facc15 !important;
@@ -1416,4 +1423,52 @@ body{
   font-size: 11px !important;
   font-weight: 600 !important;
   line-height: 1.35 !important;
+}
+
+.prog-reference-table .tabla td:nth-child(9) .badge.b-grabada-revision {
+  border: 1px solid #facc15 !important;
+  background: #fef9c3 !important;
+  color: #a16207 !important;
+}
+
+.programado-datos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.programado-datos label {
+  display: flex !important;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 !important;
+  color: #475569 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.programado-datos input {
+  width: 100%;
+  min-height: 35px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #0f172a;
+  font: 600 12px/1.2 inherit;
+}
+
+.programado-datos input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .1);
+}
+
+@media (max-width: 560px) {
+  .programado-datos {
+    grid-template-columns: 1fr;
+  }
 }
