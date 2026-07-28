@@ -1008,6 +1008,45 @@ button.export-kpi-card:hover {
   min-width: 1180px;
 }
 
+.seguimiento-tabla {
+  table-layout: fixed;
+  width: max(100%, 1500px);
+}
+
+.seguimiento-tabla th:nth-child(1),
+.seguimiento-tabla td:nth-child(1) {
+  width: 150px;
+  min-width: 150px;
+}
+
+.seguimiento-tabla th:nth-child(2),
+.seguimiento-tabla td:nth-child(2) {
+  width: 235px;
+  min-width: 235px;
+  overflow: visible;
+}
+
+.seguimiento-tabla th:nth-child(3),
+.seguimiento-tabla td:nth-child(3) { width: 110px; }
+.seguimiento-tabla th:nth-child(4),
+.seguimiento-tabla td:nth-child(4) { width: 150px; }
+.seguimiento-tabla th:nth-child(5),
+.seguimiento-tabla td:nth-child(5) { width: 105px; }
+.seguimiento-tabla th:nth-child(6),
+.seguimiento-tabla td:nth-child(6) { width: 120px; }
+.seguimiento-tabla th:nth-child(7),
+.seguimiento-tabla td:nth-child(7) { width: 105px; }
+.seguimiento-tabla th:nth-child(8),
+.seguimiento-tabla td:nth-child(8) { width: 90px; }
+.seguimiento-tabla th:nth-child(9),
+.seguimiento-tabla td:nth-child(9) { width: 170px; }
+.seguimiento-tabla th:nth-child(10),
+.seguimiento-tabla td:nth-child(10) {
+  width: 315px;
+  min-width: 315px;
+  overflow: visible;
+}
+
 .reclutados-generales-tabla th:first-child,
 .reclutados-generales-tabla td:first-child,
 .eliminaciones-tabla th:first-child,
@@ -1015,6 +1054,59 @@ button.export-kpi-card:hover {
   width: 44px;
   min-width: 44px;
   max-width: 44px;
+}
+
+.eliminacion-detalle-modal {
+  width: min(920px, calc(100vw - 32px));
+  max-width: 920px;
+}
+
+.eliminacion-resumen {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff1f2;
+  color: #7f1d1d;
+  font-size: 12px;
+}
+
+.eliminacion-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.eliminacion-campo {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+
+.eliminacion-campo span {
+  color: #ef4444;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.eliminacion-campo strong {
+  overflow-wrap: anywhere;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .eliminacion-campos {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* .filtros-grid ahora es flex-wrap (igual que /seguimiento) — reflow

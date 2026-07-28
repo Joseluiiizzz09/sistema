@@ -166,6 +166,12 @@ function soloFecha(v) {
   return String(v || '').split(' ')[0].split('T')[0]
 }
 
+function snapshotEliminado(item) {
+  if (!item?.snapshot_json) return null
+  if (typeof item.snapshot_json === 'object') return item.snapshot_json
+  try { return JSON.parse(item.snapshot_json) } catch { return null }
+}
+
 // Exportación genérica a Excel: recibe filas ya filtradas (nunca solo la
 // página visible) y una lista de columnas [encabezado, getter(fila)].
 function descargarExcel(filas, columnas, nombreArchivo) {
@@ -201,6 +207,7 @@ export default function Jefatura() {
   const [cargandoReclutados, setCargandoReclutados] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
+  const [detalleEliminacion, setDetalleEliminacion] = useState(null)
 
 
   /* filtros persistentes */
@@ -1019,7 +1026,7 @@ export default function Jefatura() {
                 <span className="tabla-count">{ventasSegFiltradas.length} registros</span>
               </div>
               <div style={{overflowX:'auto'}}>
-                <table className="tabla">
+                <table className="tabla seguimiento-tabla">
                   <thead><tr>
                     <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
                     <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Acciones</th>
@@ -1384,12 +1391,12 @@ export default function Jefatura() {
               </div>
               <div className="tabla-scroll">
                 <table className="tabla eliminaciones-tabla">
-                  <thead><tr><th>#</th><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Cargo</th><th>Tipo</th><th>ID</th><th>Detalle eliminado</th></tr></thead>
+                  <thead><tr><th>#</th><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Cargo</th><th>Tipo</th><th>ID</th><th>Detalle eliminado</th><th>Acción</th></tr></thead>
                   <tbody>
                     {cargandoEliminaciones ? (
-                      <tr className="tabla-empty"><td colSpan="8">Cargando eliminaciones...</td></tr>
+                      <tr className="tabla-empty"><td colSpan="9">Cargando eliminaciones...</td></tr>
                     ) : eliminaciones.length === 0 ? (
-                      <tr className="tabla-empty"><td colSpan="8">Todavía no hay eliminaciones registradas.</td></tr>
+                      <tr className="tabla-empty"><td colSpan="9">Todavía no hay eliminaciones registradas.</td></tr>
                     ) : eliminaciones.map((item, i) => {
                       const fechaHora = String(item.created_at || '').replace('T', ' ').split('.')[0]
                       const partes = fechaHora.split(' ')
@@ -1403,6 +1410,16 @@ export default function Jefatura() {
                           <td><span className="flujo-warn">{item.tipo || '—'}</span></td>
                           <td>{item.registro_id || '—'}</td>
                           <td>{item.detalle || '—'}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="venta-action-btn history"
+                              disabled={!snapshotEliminado(item)}
+                              onClick={()=>setDetalleEliminacion(item)}
+                            >
+                              Ver detalle
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
@@ -1441,6 +1458,36 @@ export default function Jefatura() {
       </div>
 
       {/* MODAL USUARIO */}
+      {detalleEliminacion && (() => {
+        const snapshot = snapshotEliminado(detalleEliminacion) || {}
+        return (
+          <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget)setDetalleEliminacion(null)}}>
+            <div className="modal-box eliminacion-detalle-modal">
+              <div className="modal-head">
+                <span className="modal-head-title">Detalle completo de {detalleEliminacion.tipo === 'VENTA' ? 'la venta eliminada' : 'el postulante eliminado'}</span>
+                <button className="modal-close" onClick={()=>setDetalleEliminacion(null)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="eliminacion-resumen">
+                  Eliminado por <strong>{detalleEliminacion.actor_nombre}</strong> · ID {detalleEliminacion.registro_id}
+                </div>
+                <div className="eliminacion-campos">
+                  {Object.entries(snapshot).map(([campo, valor]) => (
+                    <div className="eliminacion-campo" key={campo}>
+                      <span>{campo.replaceAll('_', ' ')}</span>
+                      <strong>{valor === null || valor === '' ? '—' : typeof valor === 'object' ? JSON.stringify(valor) : String(valor)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-cancelar-m" onClick={()=>setDetalleEliminacion(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {modalUsu && (
         <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget)cerrarModalUsu()}}>
           <div className="modal-box">
