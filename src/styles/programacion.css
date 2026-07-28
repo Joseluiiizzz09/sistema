@@ -1320,3 +1320,100 @@ body{
   box-shadow: 0 0 0 2px #7c3aed, 0 2px 7px rgba(124, 58, 237, .18) !important;
   transform: none !important;
 }
+
+/* Ajuste final, exclusivo del selector de estados del modal. */
+.programacion-shell .cambiar-estado-wrap {
+  margin-top: 12px !important;
+  padding: 13px 14px !important;
+  border: 1px solid #dfe5ec !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+}
+
+.programacion-shell .cambiar-estado-wrap > label {
+  margin-bottom: 9px !important;
+  color: #334155 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+.programacion-shell .estado-btns {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  flex-wrap: wrap !important;
+}
+
+.programacion-shell .btn-estado {
+  min-height: 30px !important;
+  padding: 6px 12px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-radius: 7px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: none;
+}
+
+.programacion-shell .btn-estado.be-programado,
+.programacion-shell .btn-estado.be-programado.selected {
+  border-color: #86efac !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.programacion-shell .btn-estado.be-bloqueado,
+.programacion-shell .btn-estado.be-bloqueado.selected {
+  border-color: #fca5a5 !important;
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+.programacion-shell .btn-estado.be-sinagenda,
+.programacion-shell .btn-estado.be-sinagenda.selected {
+  border-color: #facc15 !important;
+  background: #fef9c3 !important;
+  color: #a16207 !important;
+}
+
+.programacion-shell .btn-estado.be-caracter,
+.programacion-shell .btn-estado.be-caracter.selected {
+  border-color: #c4b5fd !important;
+  background: #f5f3ff !important;
+  color: #6d28d9 !important;
+}
+
+.programacion-shell .btn-estado.be-fraude,
+.programacion-shell .btn-estado.be-fraude.selected {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.programacion-shell .btn-estado.be-zona,
+.programacion-shell .btn-estado.be-zona.selected {
+  border-color: #fdba74 !important;
+  background: #ffedd5 !important;
+  color: #c2410c !important;
+}
+
+.programacion-shell .btn-estado:hover {
+  opacity: 1 !important;
+  filter: brightness(.985) !important;
+}
+
+.programacion-shell .btn-estado.selected {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #7c3aed, 0 2px 7px rgba(124, 58, 237, .18) !important;
+}
+
+.programacion-shell .estado-btns + div {
+  margin-top: 9px !important;
+  color: #7c3aed !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+}
