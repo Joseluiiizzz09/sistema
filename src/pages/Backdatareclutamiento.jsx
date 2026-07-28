@@ -387,9 +387,10 @@ export default function Backdatareclutamiento() {
     try {
       const res = await fetch(`${API}/ventas-reclutamiento`, { headers: ncHeaders() })
       const data = await res.json()
-      setReclutados(data.ok
-        ? data.data.filter(v => String(v.estado_reclutamiento || '').toUpperCase() === 'RECLUTADO')
-        : [])
+      // Consolidado general: todos los postulantes captados por cualquier
+      // asesor, en cualquier etapa (NUEVO, CONTACTADO, RECLUTADO, ...) — no
+      // se filtra por un estado final, la columna ESTADO ya muestra la etapa.
+      setReclutados(data.ok ? data.data : [])
     } catch(e) {
       console.error('Error cargando reclutados:', e)
       setReclutados([])

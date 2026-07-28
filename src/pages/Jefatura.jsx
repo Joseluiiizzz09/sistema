@@ -37,14 +37,15 @@ const SEG_MAP = {
   instalado:'instalado',caida:'caida',rechazo_campo:'rechazo',tecnico_casa:'tecnico',
   validado:'ejecucion',observado:'ejecucion',
 }
-// Colores idénticos a los reales de Seguimiento.jsx (seguimiento.css
-// .bs-inst/.bs-rech/.bs-caida/.bs-tecnico). ejecucion no se toca.
+// Colores idénticos al resultado final real de seguimiento.css (cascada de
+// .bs-ejec/.bs-inst/.bs-rech/.bs-caida/.bs-tecnico + overrides !important en
+// .leyenda-item.l-*, que son los que realmente ganan en /seguimiento).
 const SEG_BADGES = {
-  ejecucion:{ label:'EN EJECUCIÓN',    bg:'#cffafe', color:'#155e75' },
-  instalado:{ label:'INSTALADO',       bg:'#eff6ff', color:'#2563eb' },
-  rechazo:  { label:'RECHAZO CAMPO',   bg:'#fff7ed', color:'#c2410c' },
-  caida:    { label:'CAÍDA',           bg:'#fee2e2', color:'#b91c1c' },
-  tecnico:  { label:'TÉCNICO EN CASA', bg:'#fce7f3', color:'#be185d' },
+  ejecucion:{ label:'EN EJECUCIÓN',    bg:'#ecfdf5', color:'#047857', border:'rgba(52,211,153,.35)'  },
+  instalado:{ label:'INSTALADO',       bg:'#eff6ff', color:'#2563eb', border:'rgba(96,165,250,.35)'  },
+  rechazo:  { label:'RECHAZO CAMPO',   bg:'#fff7ed', color:'#c2410c', border:'rgba(251,146,60,.38)'  },
+  caida:    { label:'CAÍDA',           bg:'#fee2e2', color:'#b91c1c', border:'rgba(248,113,113,.35)' },
+  tecnico:  { label:'TÉCNICO EN CASA', bg:'#fce7f3', color:'#be185d', border:'rgba(244,114,182,.45)' },
 }
 const SEG_ORD = { caida:0, rechazo:1, tecnico:2, ejecucion:3, instalado:4 }
 
@@ -952,6 +953,7 @@ export default function Jefatura() {
               {[['','Todos'], ...estadosSeg].map(([id, label]) => (
                 <button key={id || 'todos'}
                   className={`seg-tab${filtroSeg===id?' active':''}`}
+                  style={filtroSeg===id && SEG_BADGES[id] ? { background:SEG_BADGES[id].bg, color:SEG_BADGES[id].color, borderColor:SEG_BADGES[id].border } : undefined}
                   onClick={() => { setFiltroSeg(id); try{sessionStorage.setItem(JEF_SEG_FILTRO_KEY,id)}catch{} }}>
                   {label}
                 </button>
@@ -988,7 +990,7 @@ export default function Jefatura() {
                           const b = SEG_BADGES[v._seg] || SEG_BADGES.ejecucion
                           return (
                             <tr key={v.id != null ? `seg-${v.id}` : `seg-i-${i}`}>
-                              <td><span style={{display:'inline-block',padding:'4px 12px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:b.bg,color:b.color,whiteSpace:'nowrap'}}>{b.label}</span></td>
+                              <td><span style={{display:'inline-block',padding:'4px 12px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:b.bg,color:b.color,border:`1px solid ${b.border}`,whiteSpace:'nowrap'}}>{b.label}</span></td>
                               <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                               <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700,whiteSpace:'nowrap'}}>{formatF(v._fecha)}</td>
                               <td style={{fontWeight:600,fontSize:'12px'}}>{v.nombre||'—'}</td>
