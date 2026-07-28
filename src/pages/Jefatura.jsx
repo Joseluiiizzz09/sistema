@@ -1223,6 +1223,15 @@ export default function Jefatura() {
                   onChange={e=>setBusqUsuarios(e.target.value)} placeholder="Buscar usuario..." />
               </div>
               <table className="tabla tabla-usuarios-pro">
+                <colgroup>
+                  <col style={{width:'300px'}} />
+                  <col style={{width:'380px'}} />
+                  <col style={{width:'140px'}} />
+                  <col style={{width:'150px'}} />
+                  <col style={{width:'150px'}} />
+                  <col style={{width:'140px'}} />
+                  <col style={{width:'300px'}} />
+                </colgroup>
                 <thead><tr><th>Usuario</th><th>Cargo</th><th>Sala</th><th>Login</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody>
                   {usuariosCarga.cargando

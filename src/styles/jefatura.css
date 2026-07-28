@@ -634,6 +634,47 @@ body {
 }
 .usuario-cargos{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 
+.tabla-usuarios-pro {
+  width: 1560px;
+  min-width: 1560px;
+  table-layout: fixed;
+}
+
+.tabla-usuarios-pro th,
+.tabla-usuarios-pro td {
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.tabla-usuarios-pro th:nth-child(1),
+.tabla-usuarios-pro td:nth-child(1) {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.tabla-usuarios-pro th:nth-child(2),
+.tabla-usuarios-pro td:nth-child(2) {
+  width: 380px;
+  min-width: 380px;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.tabla-usuarios-pro td:nth-child(2) .usuario-cargos {
+  width: 100%;
+  min-width: 0;
+}
+
+.tabla-usuarios-pro th:nth-child(7),
+.tabla-usuarios-pro td:nth-child(7) {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  overflow: visible;
+}
+
 /* ===== AJUSTE LOGO / MARCA JEFATURA =====
    Estilo limpio como referencia: topbar completo, logo compacto y alineado. */
 .jef-root .topbar {
