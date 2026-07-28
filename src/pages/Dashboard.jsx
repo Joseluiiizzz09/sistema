@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { UBIGEO } from '../services/ubigeo'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboard.css'
 
@@ -1028,7 +1029,7 @@ export default function Dashboard() {
           <table className="vs-tabla">
             <thead>
               <tr>
-                <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Nombre y Apellidos</th>
+                <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre y Apellidos</th>
                 <th>Tipo Doc.</th><th>DNI</th><th>Tel. Contacto</th><th>Tel. Referencia</th>
                 <th>Departamento</th><th>Provincia</th><th>Distrito</th>
                 <th>Dirección</th><th>Coordenadas</th>
@@ -1042,11 +1043,12 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {ventasMostradas.length === 0 ? (
-                <tr className="vs-empty"><td colSpan={29}>Sin registros. Usa los filtros para buscar.</td></tr>
+                <tr className="vs-empty"><td colSpan={30}>Sin registros. Usa los filtros para buscar.</td></tr>
               ) : ventasMostradas.map((v, i) => (
                 <tr key={v.id || i}>
                   <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} estadoGrab={v.estado_grab} grabandoPorNombre={v.grabando_por_nombre} /></td>
                   <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
+                  <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>

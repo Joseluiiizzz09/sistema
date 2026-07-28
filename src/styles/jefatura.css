@@ -1051,8 +1051,8 @@ button.export-kpi-card:hover {
 
 .seguimiento-tabla {
   table-layout: fixed;
-  width: 1595px;
-  min-width: 1595px;
+  width: 1795px;
+  min-width: 1795px;
 }
 
 .seguimiento-tabla th,
@@ -1085,21 +1085,23 @@ button.export-kpi-card:hover {
 }
 
 .seguimiento-tabla th:nth-child(3),
-.seguimiento-tabla td:nth-child(3) { width: 110px; }
+.seguimiento-tabla td:nth-child(3) { width: 200px; }
 .seguimiento-tabla th:nth-child(4),
-.seguimiento-tabla td:nth-child(4) { width: 160px; }
+.seguimiento-tabla td:nth-child(4) { width: 110px; }
 .seguimiento-tabla th:nth-child(5),
-.seguimiento-tabla td:nth-child(5) { width: 110px; }
+.seguimiento-tabla td:nth-child(5) { width: 160px; }
 .seguimiento-tabla th:nth-child(6),
-.seguimiento-tabla td:nth-child(6) { width: 120px; }
+.seguimiento-tabla td:nth-child(6) { width: 110px; }
 .seguimiento-tabla th:nth-child(7),
-.seguimiento-tabla td:nth-child(7) { width: 110px; }
+.seguimiento-tabla td:nth-child(7) { width: 120px; }
 .seguimiento-tabla th:nth-child(8),
-.seguimiento-tabla td:nth-child(8) { width: 90px; }
+.seguimiento-tabla td:nth-child(8) { width: 110px; }
 .seguimiento-tabla th:nth-child(9),
-.seguimiento-tabla td:nth-child(9) { width: 180px; }
+.seguimiento-tabla td:nth-child(9) { width: 90px; }
 .seguimiento-tabla th:nth-child(10),
-.seguimiento-tabla td:nth-child(10) {
+.seguimiento-tabla td:nth-child(10) { width: 180px; }
+.seguimiento-tabla th:nth-child(11),
+.seguimiento-tabla td:nth-child(11) {
   width: 330px;
   min-width: 330px;
   overflow: visible;

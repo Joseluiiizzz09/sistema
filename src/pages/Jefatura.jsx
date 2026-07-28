@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import MediaViewer from '../components/MediaViewer'
 import { HistorialVentaModal, ReasignarVentaModal } from '../components/VentaAssignmentModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
@@ -607,6 +608,7 @@ export default function Jefatura() {
     const columnas = [
       ['ESTADO',           v => (SEG_BADGES[v._seg] || SEG_BADGES.ejecucion).label],
       ['OBS. SEGUIMIENTO', v => v.obs_seguimiento || '-'],
+      ['OBS. PROGRAMACIÓN', v => `SOT: ${v.sot || '-'} | Fecha programada: ${formatF(v.fecha_programada)}`],
       ['FECHA',            v => formatF(v._fecha)],
       ['CLIENTE',          v => v.nombre || '-'],
       ['DNI',              v => v.dni || '-'],
@@ -1030,6 +1032,7 @@ export default function Jefatura() {
                   <colgroup>
                     <col style={{width:'145px'}} />
                     <col style={{width:'240px'}} />
+                    <col style={{width:'200px'}} />
                     <col style={{width:'110px'}} />
                     <col style={{width:'160px'}} />
                     <col style={{width:'110px'}} />
@@ -1040,18 +1043,19 @@ export default function Jefatura() {
                     <col style={{width:'330px'}} />
                   </colgroup>
                   <thead><tr>
-                    <th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
+                    <th>Estado</th><th>Obs. Seguimiento</th><th>Obs. Programación</th><th>Fecha</th><th>Cliente</th><th>DNI</th>
                     <th>Distrito</th><th>Asesor</th><th>Sala</th><th>Plan</th><th>Acciones</th>
                   </tr></thead>
                   <tbody>
                     {ventasSegFiltradas.length === 0
-                      ? <tr><td colSpan="10" className="tabla-empty">Sin registros.</td></tr>
+                      ? <tr><td colSpan="11" className="tabla-empty">Sin registros.</td></tr>
                       : ventasSegFiltradas.map((v, i) => {
                           const b = SEG_BADGES[v._seg] || SEG_BADGES.ejecucion
                           return (
                             <tr key={v.id != null ? `seg-${v.id}` : `seg-i-${i}`}>
                               <td><span style={{display:'inline-block',padding:'4px 12px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:b.bg,color:b.color,border:`1px solid ${b.border}`,whiteSpace:'nowrap'}}>{b.label}</span></td>
                               <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
+                              <td><ProgramacionInfoCell sot={v.sot} fecha={v.fecha_programada} /></td>
                               <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700,whiteSpace:'nowrap'}}>{formatF(v._fecha)}</td>
                               <td style={{fontWeight:600,fontSize:'12px'}}>{v.nombre||'—'}</td>
                               <td style={{fontFamily:'monospace',fontSize:'11px'}}>{v.dni||'—'}</td>

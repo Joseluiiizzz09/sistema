@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import { ReasignarVentaModal } from '../components/VentaAssignmentModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
+import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { usuarioTieneCargo } from '../utils/roles'
@@ -648,15 +649,16 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <table className="tabla">
-                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
+                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
-                    ? <tr className="tabla-empty"><td colSpan={15}>Sin ventas con esos filtros.</td></tr>
+                    ? <tr className="tabla-empty"><td colSpan={16}>Sin ventas con esos filtros.</td></tr>
                     : ventasTabla.map((v,i)=>(
                         <tr key={v.id}>
                           <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
                           <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
                           <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
+                          <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
                           <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
                           <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>

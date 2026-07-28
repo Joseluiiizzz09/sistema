@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import { API, ncHeaders } from '../services/api'
 import '../styles/seguimiento.css'
 
@@ -110,6 +111,11 @@ export default function Seguimiento() {
   const [estTramo, setEstTramo]             = useState('')
   const [estMotivo, setEstMotivo]           = useState('')
   const [estObs, setEstObs]                 = useState('')
+
+  // Modal datos de programación
+  const [modalProgramacion, setModalProgramacion] = useState(null)
+  const [progSot, setProgSot]                     = useState('')
+  const [progFecha, setProgFecha]                 = useState('')
 
   // Modal llamada
   const [modalObs, setModalObs]             = useState(null)
@@ -255,6 +261,42 @@ export default function Seguimiento() {
         : x
     ))
     setModalEstado(null)
+  }
+
+  function abrirModalProgramacion(v) {
+    setModalProgramacion(v)
+    setProgSot(v.sot || '')
+    setProgFecha(v.fecha_programada ? String(v.fecha_programada).slice(0, 10) : '')
+  }
+
+  async function guardarProgramacion() {
+    if (!modalProgramacion) return
+    const sot = progSot.trim()
+    if (!sot || !progFecha) {
+      mostrarToast('Ingrese la SOT y la fecha programada')
+      return
+    }
+    try {
+      const res = await fetch(`${API}/ventas/${modalProgramacion.id}`, {
+        method: 'PATCH',
+        headers: ncHeaders(),
+        body: JSON.stringify({ sot, fecha_programada: progFecha }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        mostrarToast(data.mensaje || 'No se pudo actualizar la programación')
+        return
+      }
+    } catch (e) {
+      console.error(e)
+      mostrarToast('No se pudo actualizar la programación')
+      return
+    }
+    setVentas(list => list.map(v => v.id === modalProgramacion.id
+      ? { ...v, sot, fecha_programada: progFecha }
+      : v
+    ))
+    setModalProgramacion(null)
   }
 
   // MODAL OBS / LLAMADA
@@ -442,6 +484,7 @@ export default function Seguimiento() {
               <colgroup>
                 <col style={{ width: 260 }} />
                 <col style={{ width: 130 }} />
+                <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 220 }} />
                 <col style={{ width: 100 }} />
@@ -462,6 +505,7 @@ export default function Seguimiento() {
                 <tr>
                   <th className="th-acc">ACCIÓN</th>
                   <th className="th-est">ESTADO</th>
+                  <th>OBS. PROGRAMACIÓN</th>
                   <th className="th-fecha">FECHA</th>
                   <th className="th-cliente">NOMBRE Y APELLIDOS</th>
                   <th className="th-dni">DNI</th>
@@ -481,7 +525,7 @@ export default function Seguimiento() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="17" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
+                  <tr><td colSpan="18" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
                 ) : ventasPag.map(v => {
                   const est     = estadoObj(v._estadoSeg)
                   const motCls  = motivoBadgeCls(v._motivoRech)
@@ -499,6 +543,13 @@ export default function Seguimiento() {
                         <span className={`badge-seg ${est.cls}`} onClick={() => abrirModalEstado(v)} style={{ cursor: 'pointer' }} title="Click para cambiar estado">
                           {est.label}
                         </span>
+                      </td>
+                      <td>
+                        <ProgramacionInfoCell
+                          sot={v.sot}
+                          fecha={v.fecha_programada}
+                          onEdit={() => abrirModalProgramacion(v)}
+                        />
                       </td>
                       <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>
                       <td style={{ fontWeight: 600 }}>{v.nombreApellidos || '--'}</td>
@@ -578,6 +629,30 @@ export default function Seguimiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={() => setModalEstado(null)}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarEstado}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DATOS DE PROGRAMACIÓN */}
+      {modalProgramacion && (
+        <div className="modal-bg open" onClick={e => { if (e.target === e.currentTarget) setModalProgramacion(null) }}>
+          <div className="modal-box" style={{ maxWidth: '440px' }}>
+            <div className="modal-title">Editar datos de programación</div>
+            <div className="modal-sub">Cliente: <strong>{modalProgramacion.nombreApellidos || '--'}</strong></div>
+            <div className="modal-grid">
+              <div className="modal-campo">
+                <label>SOT *</label>
+                <input value={progSot} onChange={e => setProgSot(e.target.value)} placeholder="Número de SOT" />
+              </div>
+              <div className="modal-campo">
+                <label>Fecha programada *</label>
+                <input type="date" value={progFecha} onChange={e => setProgFecha(e.target.value)} />
+              </div>
+            </div>
+            <div className="modal-btns">
+              <button className="btn-cancelar-m" onClick={() => setModalProgramacion(null)}>Cancelar</button>
+              <button className="btn-guardar" onClick={guardarProgramacion}>Guardar</button>
             </div>
           </div>
         </div>
