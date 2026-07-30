@@ -14,6 +14,7 @@ const ESTADOS = [
   { id: 'caida',     label: 'CAIDA',            cls: 'bs-caida',   fila: 'fila-caida'   },
   { id: 'rechazo',   label: 'RECHAZO EN CAMPO', cls: 'bs-rech',    fila: 'fila-rech'    },
   { id: 'tecnico',   label: 'TECNICOS EN CASA', cls: 'bs-tecnico', fila: 'fila-tecnico' },
+  { id: 'rechazo_programacion', label: 'RECHAZO', cls: 'bs-rech', fila: 'fila-rech' },
 ]
 
 const MOTIVOS_CAIDA = ['FRAUDE','EXCESO DE ACOMETIDA','INFRAESTRUCTURA','RED SATURADA','EDIFICIO NO LIBERADO']
@@ -27,6 +28,7 @@ const ESTADO_BD_MAP = {
   caida:     'caida',
   rechazo:   'rechazo_campo',
   tecnico:   'tecnico_casa',
+  rechazo_programacion: 'pendiente',
 }
 
 const SEG_FILTRO_KEY = 'nc_seguimiento_filtro'
@@ -149,7 +151,7 @@ export default function Seguimiento() {
         setVentas(data.data
           .filter(v => {
             const e = (v.estado || '').toLowerCase()
-            return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== ''
+            return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== 'pendiente' && e !== ''
           })
           .map(v => ({
             ...v,
@@ -243,6 +245,7 @@ export default function Seguimiento() {
     const comentario = estObs.trim() || modalEstado._comentario
     const motivoAplica = estNuevo === 'caida' || estNuevo === 'rechazo'
     const body = { estado: estadoBD, obs_seguimiento: comentario, tramo_seguimiento: estTramo }
+    if (estNuevo === 'rechazo_programacion') body.estado_supgrab = 'aprobado'
     if (motivoAplica) body.motivo_seguimiento = estMotivo
     try {
       const res  = await fetch(`${API}/ventas/${modalEstado.id}`, {
@@ -296,6 +299,9 @@ export default function Seguimiento() {
       ? { ...v, sot, fecha_programada: progFecha }
       : v
     ))
+    if (estNuevo === 'rechazo_programacion') {
+      setVentas(list => list.filter(x => x.id !== modalEstado.id))
+    }
     setModalProgramacion(null)
   }
 
