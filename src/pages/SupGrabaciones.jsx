@@ -10,6 +10,7 @@ import '../styles/grabaciones.css'
 const BADGE_MAP = {
   aprobado:    { cls: 'bg-grabado',  label: 'GRABADO'     },
   observado:   { cls: 'bg-observado',label: 'OBSERVADO'   },
+  programado:  { cls: 'bg-revisado', label: 'PROGRAMADO'  },
   sin_revisar: { cls: 'bg-revisado', label: 'EN REVISION' },
 }
 
@@ -110,7 +111,11 @@ export default function SupGrabaciones() {
           // del campo propio de Grabaciones (evita pisar el estado que ve
           // el módulo Validación). Excluye las ya aprobadas para que no
           // reaparezcan en el polling tras revisarlas.
-          .filter(v => (v.estado_grab || '').toLowerCase() === 'grabado' && (v.estado_supgrab || '').toLowerCase() !== 'aprobado')
+          .filter(v => {
+            const grab = (v.estado_grab || '').toLowerCase()
+            const revision = (v.estado_supgrab || 'sin_revisar').toLowerCase()
+            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
+          })
           .map(v => ({
             ...v,
             nombreApellidos:  v.nombre        || '',
@@ -122,6 +127,7 @@ export default function SupGrabaciones() {
             audioPath:        v.audio_path || '',
             audioUrl:         v.audio_path ? `${NC_API}/${v.audio_path}` : null,
             audioNombre:      v.audio_path ? v.audio_path.split('/').pop() : '',
+            programacionExpiraAt: v.programacion_expira_at || null,
             // Solo cuando Programación ya marcó PROGRAMADO y el audio sigue
             // sin subir — señal operativa real, no observación manual.
             obsProgramacion:  (String(v.estado || '').trim().toUpperCase() === 'PROGRAMADO' && !v.audio_path)
@@ -140,6 +146,23 @@ export default function SupGrabaciones() {
     const fc = setInterval(cargarVentas, 3000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
+
+  useEffect(() => {
+    const umbrales = [1, 5, 10, 20, 30]
+    for (const venta of ventas) {
+      if (venta.estadoRev !== 'programado' || !venta.programacionExpiraAt) continue
+      const expira = new Date(String(venta.programacionExpiraAt).replace(' ', 'T')).getTime()
+      if (!Number.isFinite(expira)) continue
+      const restantes = Math.ceil((expira - Date.now()) / 60000)
+      const umbral = umbrales.find(minutos => restantes > 0 && restantes <= minutos)
+      if (!umbral) continue
+      const clave = `nc_supgrab_aviso_${venta.id}_${umbral}_${venta.programacionExpiraAt}`
+      if (sessionStorage.getItem(clave)) continue
+      sessionStorage.setItem(clave, '1')
+      mostrarToast(`La venta ${venta.nombreApellidos || venta.id} expira en ${umbral} minuto${umbral === 1 ? '' : 's'}`)
+      break
+    }
+  }, [ventas])
 
   const ventasFiltradas = useMemo(() => ventas.filter(v => {
     if (fEstado   && v.estadoRev !== fEstado) return false
@@ -173,7 +196,7 @@ export default function SupGrabaciones() {
 
   async function abrirModalRevisar(v) {
     setModalRevisar(v)
-    setEstadoRevision(v.estadoRev || 'sin_revisar')
+    setEstadoRevision(v.estadoRev === 'programado' ? '' : (v.estadoRev || 'sin_revisar'))
     setRevObs('')
     setAudioSrc('')
     if (v.audioUrl) {
@@ -200,7 +223,7 @@ export default function SupGrabaciones() {
 
   async function guardarRevision() {
     if (!modalRevisar) return
-    if (!estadoRevision || estadoRevision === 'sin_revisar') {
+    if (!estadoRevision || estadoRevision === 'sin_revisar' || estadoRevision === 'programado') {
       mostrarToast('Selecciona un resultado'); return
     }
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
@@ -217,13 +240,19 @@ export default function SupGrabaciones() {
           // GRABANDO + el mismo responsable original (grabando_por_id se
           // conserva, ver PATCH /:id en routes/ventas.js).
           obs_supgrab: nuevoHistorial,
-          estado_supgrab: estadoRevision,
-          estado_grab: estadoRevision === 'observado' ? 'grabando' : 'grabado',
+          ...(estadoRevision === 'conforme'
+            ? { estado: 'EN_EJECUCION', estado_supgrab: 'conforme', estado_grab: 'grabado' }
+            : estadoRevision === 'no_conforme'
+              ? { estado: 'VALIDADO', estado_supgrab: 'no_conforme', estado_grab: 'pendiente' }
+              : {
+                  estado_supgrab: estadoRevision,
+                  estado_grab: estadoRevision === 'observado' ? 'grabando' : 'grabado',
+                }),
         }),
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error guardando'); return }
-      if (estadoRevision === 'aprobado' || estadoRevision === 'observado') {
+      if (['aprobado', 'observado', 'conforme', 'no_conforme'].includes(estadoRevision)) {
         setVentas(list => list.filter(x => x.id !== modalRevisar.id))
       } else {
         setVentas(list => list.map(x =>
@@ -457,10 +486,16 @@ export default function SupGrabaciones() {
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: '8px' }}>Resultado de revisión</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {[
-                  { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
-                  { id: 'observado', label: 'OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
-                ].map(btn => (
+                {(modalRevisar.estadoRev === 'programado'
+                  ? [
+                      { id: 'conforme', label: 'CONFORME', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                      { id: 'no_conforme', label: 'NO CONFORME', border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                    ]
+                  : [
+                      { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                      { id: 'observado', label: 'OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
+                    ]
+                ).map(btn => (
                   <button key={btn.id} onClick={() => setEstadoRevision(btn.id)}
                     style={{
                       padding: '9px 18px', border: `2px solid ${btn.border}`,

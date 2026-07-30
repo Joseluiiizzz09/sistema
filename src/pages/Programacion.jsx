@@ -202,7 +202,12 @@ export default function Programacion() {
           estado: estadoModal,
           obs_programacion: obsProg,
           ...(estadoModal === 'PROGRAMADO'
-            ? { sot: sotProg.trim(), fecha_programada: fechaProg }
+            ? {
+                sot: sotProg.trim(),
+                fecha_programada: fechaProg,
+                estado_supgrab: 'programado',
+                estado_grab: 'grabado',
+              }
             : {}),
         }
     try {
