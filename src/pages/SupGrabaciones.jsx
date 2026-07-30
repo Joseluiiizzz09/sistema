@@ -375,6 +375,7 @@ export default function SupGrabaciones() {
                 <tr>
                   <th style={{ minWidth: '240px' }}>ACCIONES</th>
                   <th style={{ minWidth: '110px' }}>ESTADO REV.</th>
+                  <th style={{ minWidth: '110px' }}>SOT</th>
                   <th style={{ minWidth: '100px' }}>FECHA</th>
                   <th style={{ minWidth: '160px' }}>NOMBRE Y APELLIDOS</th>
                   <th style={{ minWidth: '90px'  }}>DNI / DOC.</th>
@@ -387,7 +388,7 @@ export default function SupGrabaciones() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="10" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
+                  <tr><td colSpan="11" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
                 ) : ventasPag.map(v => {
                   const badge    = BADGE_MAP[v.estadoRev] || BADGE_MAP.sin_revisar
                   const ultimaObs = v.obsSup
@@ -407,6 +408,7 @@ export default function SupGrabaciones() {
                           {badge.label}
                         </span>
                       </td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: '#374151' }}>{v.sot || '—'}</td>
                       <td><span style={{ color: '#185FA5', fontWeight: 700, fontSize: '11px' }}>{formatF(v.fechaIngreso)}</span></td>
                       <td style={{ fontWeight: 600 }}>{v.nombreApellidos || '--'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{v.dni || '--'}</td>
