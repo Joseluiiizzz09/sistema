@@ -89,7 +89,6 @@ function colorAvatar(n){ const c=["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef44
 function iniciales(n)  { return n.trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
 function mapSeg(e)     { const s=(e||'').toLowerCase(); if(s.includes('tecnico'))return'tecnico'; if(s.includes('rechazo'))return'rechazo'; if(s.includes('ejecucion'))return'ejecucion'; return SEG_MAP[s]||null }
 function efColor(v)    { return v>=70?'#16a34a':v>=40?'#d97706':'#dc2626' }
-function efBg(v)       { return v>=70?'#d1fae5':v>=40?'#fef3c7':'#fee2e2' }
 function normEstado(v) {
   return String(v || '')
     .trim()
@@ -715,25 +714,36 @@ export default function Jefatura() {
 
   /* ── reportes ── */
   const { reporteData, repKpis } = useMemo(() => {
+    const ventasDelMes = mesReporte
+      ? ventasCache.filter(v => {
+          const fecha = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
+          return fecha && String(fecha).slice(0, 7) === mesReporte
+        })
+      : ventasCache
     let asesFilt = usuarios.filter(u=>usuarioTieneCargo(u,'asesor'))
     if (salaReporte !== 'todas') asesFilt = asesFilt.filter(u=>u.sala===salaReporte)
-    let ventasFilt = ventasCache
+    let ventasFilt = ventasDelMes
     if (salaReporte !== 'todas') {
       const nombres = asesFilt.map(a=>a.nombre)
-      ventasFilt = ventasCache.filter(v=>nombres.includes(v.asesor_nombre||''))
+      ventasFilt = ventasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
     }
     const inst   = ventasFilt.filter(v=>(v.estado||'').toLowerCase()==='instalado').length
     const caidas = ventasFilt.filter(v=>(v.estado||'').toLowerCase()==='caida').length
     const efect  = ventasFilt.length ? Math.round(inst/ventasFilt.length*100) : 0
     const rendData = asesFilt.map(a => {
-      const mis   = ventasCache.filter(v=>(v.asesor_nombre||'')===a.nombre)
+      const mis   = ventasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre)
       const inst2 = mis.filter(v=>(v.estado||'').toLowerCase()==='instalado').length
       const caid  = mis.filter(v=>(v.estado||'').toLowerCase()==='caida').length
       const ef    = mis.length ? Math.round(inst2/mis.length*100) : 0
       return { ...a, totalVentas:mis.length, instaladas:inst2, caidas:caid, efectividad:ef }
-    }).sort((a,b)=>b.instaladas-a.instaladas)
+    }).sort((a,b)=>
+      b.instaladas-a.instaladas ||
+      b.efectividad-a.efectividad ||
+      b.totalVentas-a.totalVentas ||
+      String(a.nombre||'').localeCompare(String(b.nombre||''))
+    )
     return { reporteData:rendData, repKpis:{ total:ventasFilt.length, inst, caidas, efect:efect+'%' } }
-  }, [usuarios, ventasCache, salaReporte])
+  }, [usuarios, ventasCache, salaReporte, mesReporte])
 
   /* ── usuarios filtrados ── */
   const usuariosFiltrados = useMemo(() => {
@@ -1297,7 +1307,22 @@ export default function Jefatura() {
 
           {/* ===== REPORTES ===== */}
           <section className={`section${seccion==='reportes'?' active':''}`}>
-            <div className="sec-header"><div><h2>Reportes Globales</h2><p>Rendimiento por sala y asesor — solo asesores</p></div></div>
+            <div className="sec-header reportes-header">
+              <div><h2>Reportes Globales</h2><p>Rendimiento por sala y asesor — solo asesores</p></div>
+              <div className="reporte-periodo">
+                <label htmlFor="mes-reporte">Periodo</label>
+                <div className="reporte-periodo-controls">
+                  <input
+                    id="mes-reporte"
+                    type="month"
+                    value={mesReporte}
+                    onChange={e=>setMesReporte(e.target.value)}
+                    aria-label="Filtrar reportes por mes"
+                  />
+                  {mesReporte && <button type="button" onClick={()=>setMesReporte('')}>Ver todos</button>}
+                </div>
+              </div>
+            </div>
             <div className="sala-tabs sala-tabs-pro">
               {[
                 { id:'todas', label:'Todas las salas' },
@@ -1322,8 +1347,11 @@ export default function Jefatura() {
               <div className="kpi-card k-purple"><div className="kpi-num">{repKpis.efect}</div> <div className="kpi-label">Efectividad</div></div>
             </div>
             <div className="tabla-wrap ranking-pro-card">
-              <div className="tabla-header">
-                <span className="tabla-title">Ranking de Asesores</span>
+              <div className="tabla-header ranking-pro-header">
+                <div>
+                  <span className="tabla-title">Ranking de Asesores</span>
+                  <span className="ranking-periodo-label">{mesReporte ? `Periodo ${mesReporte.split('-').reverse().join('/')}` : 'Histórico completo'}</span>
+                </div>
                 <span className="tabla-count">{reporteData.length} asesores</span>
               </div>
               <div style={{overflowX:'auto'}}>
@@ -1333,24 +1361,29 @@ export default function Jefatura() {
                     {reporteData.length === 0
                       ? <tr><td colSpan="7" className="tabla-empty">Sin datos.</td></tr>
                       : reporteData.map((r, i) => (
-                          <tr key={r.id != null ? `rep-${r.id}` : `rep-i-${i}`}>
-                            <td style={{textAlign:'center',fontSize:'13px',fontWeight:700}}>{i+1}</td>
+                          <tr className={i < 3 ? `ranking-top ranking-top-${i+1}` : ''} key={r.id != null ? `rep-${r.id}` : `rep-i-${i}`}>
+                            <td className="ranking-pos-cell">
+                              <span className={`ranking-pos ranking-pos-${Math.min(i+1,4)}`}>{i < 3 ? ['1°','2°','3°'][i] : i+1}</span>
+                            </td>
                             <td>
-                              <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
-                                <div style={{width:'32px',height:'32px',borderRadius:'50%',background:colorAvatar(r.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff'}}>{iniciales(r.nombre)}</div>
-                                <div><div style={{fontWeight:700,fontSize:'13px'}}>{r.nombre}</div><div style={{fontSize:'10px',color:'#9ca3af'}}>{r.usuario||''}</div></div>
+                              <div className="ranking-asesor">
+                                <div className="ranking-avatar" style={{background:colorAvatar(r.nombre)}}>{iniciales(r.nombre)}</div>
+                                <div><div className="ranking-nombre">{r.nombre}</div><div className="ranking-usuario">@{r.usuario||'sin-usuario'}</div></div>
                               </div>
                             </td>
-                            <td style={{fontSize:'12px',color:'#6b7280'}}>{r.sala||'—'}</td>
-                            <td style={{fontSize:'24px',fontWeight:900,color:'#16a34a',textAlign:'center'}}>{r.instaladas}</td>
-                            <td style={{fontWeight:700,textAlign:'center'}}>{r.totalVentas}</td>
-                            <td style={{color:'#dc2626',fontWeight:600,textAlign:'center'}}>{r.caidas}</td>
-                            <td>
-                              <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                                <div style={{height:'7px',background:'#e5e7eb',borderRadius:'99px',overflow:'hidden',width:'70px'}}>
-                                  <div style={{height:'100%',background:efColor(r.efectividad),borderRadius:'99px',width:r.efectividad+'%'}}></div>
+                            <td><span className="ranking-sala">{r.sala||'—'}</span></td>
+                            <td className="ranking-number ranking-installed">{r.instaladas}</td>
+                            <td className="ranking-number">{r.totalVentas}</td>
+                            <td className="ranking-number ranking-falls">{r.caidas}</td>
+                            <td className="ranking-effect-cell">
+                              <div className="ranking-effect">
+                                <div className="ranking-effect-meta">
+                                  <span>Efectividad</span>
+                                  <strong style={{color:efColor(r.efectividad)}}>{r.efectividad}%</strong>
                                 </div>
-                                <span style={{fontSize:'12px',fontWeight:700,padding:'2px 8px',borderRadius:'6px',background:efBg(r.efectividad),color:efColor(r.efectividad)}}>{r.efectividad}%</span>
+                                <div className="ranking-effect-track">
+                                  <div style={{background:efColor(r.efectividad),width:r.efectividad+'%'}}></div>
+                                </div>
                               </div>
                             </td>
                           </tr>

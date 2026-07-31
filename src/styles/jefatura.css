@@ -126,6 +126,60 @@ body {
 .sala-tab:hover { color: var(--dark); background: rgba(255,255,255,.5); }
 .sala-tab.active { background: #fff; color: var(--dark); font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
 
+/* ===== REPORTES ===== */
+.reportes-header { align-items: flex-end; }
+.reporte-periodo { display: flex; flex-direction: column; gap: 5px; }
+.reporte-periodo > label { font-size: 9px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
+.reporte-periodo-controls { display: flex; align-items: center; gap: 7px; }
+.reporte-periodo input {
+  height: 36px; min-width: 168px; padding: 0 11px; border: 1.5px solid var(--border);
+  border-radius: 10px; background: #fff; color: var(--mid); font: 600 12px/1 'Inter', sans-serif;
+  outline: none; box-shadow: var(--shadow-sm); transition: border-color .2s, box-shadow .2s;
+}
+.reporte-periodo input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.reporte-periodo button {
+  height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: #fff; color: var(--soft); font: 700 11px/1 'Inter', sans-serif; cursor: pointer;
+}
+.reporte-periodo button:hover { color: var(--red); border-color: #fca5a5; background: #fff7f7; }
+.ranking-pro-card { overflow: hidden; border-color: #dde3ec; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+.ranking-pro-header { padding: 14px 18px; background: linear-gradient(135deg,#fff,#f8fafc); }
+.ranking-pro-header > div { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ranking-periodo-label { font-size: 10px; font-weight: 600; color: var(--muted); padding-left: 10px; border-left: 1px solid var(--border); }
+.tabla-ranking-pro thead th { padding-top: 12px; padding-bottom: 12px; }
+.tabla-ranking-pro tbody td { padding-top: 11px; padding-bottom: 11px; }
+.tabla-ranking-pro tbody tr.ranking-top td { background: linear-gradient(90deg,rgba(255,251,235,.65),#fff); }
+.ranking-pos-cell { text-align: center; }
+.ranking-pos {
+  width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px; background: #f3f4f6; color: var(--soft); font-size: 11px; font-weight: 800;
+}
+.ranking-pos-1 { color: #92400e; background: linear-gradient(135deg,#fef3c7,#fde68a); box-shadow: 0 3px 9px rgba(217,119,6,.18); }
+.ranking-pos-2 { color: #475569; background: linear-gradient(135deg,#f8fafc,#dbe2ea); }
+.ranking-pos-3 { color: #9a3412; background: linear-gradient(135deg,#ffedd5,#fed7aa); }
+.ranking-asesor { display: flex; align-items: center; gap: 10px; }
+.ranking-avatar {
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 11px; display: flex;
+  align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 800;
+  box-shadow: 0 3px 9px rgba(15,23,42,.15);
+}
+.ranking-nombre { font-size: 12px; font-weight: 800; color: var(--dark); }
+.ranking-usuario { margin-top: 2px; font-size: 9px; color: var(--muted); }
+.ranking-sala {
+  display: inline-flex; padding: 4px 8px; border-radius: 7px; background: #f1f5f9;
+  color: #475569; font-size: 10px; font-weight: 700;
+}
+.tabla-ranking-pro td.ranking-number { text-align: center; font-size: 16px; font-weight: 800; color: var(--dark); }
+.tabla-ranking-pro td.ranking-installed { color: var(--green); font-size: 21px; }
+.tabla-ranking-pro td.ranking-falls { color: var(--red); }
+.ranking-effect-cell { min-width: 180px; }
+.ranking-effect { width: 100%; max-width: 190px; }
+.ranking-effect-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.ranking-effect-meta span { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .35px; }
+.ranking-effect-meta strong { font-size: 12px; }
+.ranking-effect-track { height: 7px; overflow: hidden; background: #e9edf3; border-radius: 99px; }
+.ranking-effect-track > div { height: 100%; min-width: 0; border-radius: inherit; transition: width .3s ease; }
+
 /* ===== SEG TABS ===== */
 .seg-tab { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 9px; background: #fff; color: var(--soft); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s var(--sp); }
 .seg-tab:hover  { background: var(--bg); color: var(--dark); }
