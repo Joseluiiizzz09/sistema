@@ -1372,9 +1372,9 @@ export default function Jefatura() {
                               </div>
                             </td>
                             <td><span className="ranking-sala">{r.sala||'—'}</span></td>
-                            <td className="ranking-number ranking-installed">{r.instaladas}</td>
-                            <td className="ranking-number">{r.totalVentas}</td>
-                            <td className="ranking-number ranking-falls">{r.caidas}</td>
+                            <td className="ranking-number"><span className="ranking-stat ranking-stat-installed">{r.instaladas}</span></td>
+                            <td className="ranking-number"><span className="ranking-stat ranking-stat-total">{r.totalVentas}</span></td>
+                            <td className="ranking-number"><span className="ranking-stat ranking-stat-falls">{r.caidas}</span></td>
                             <td className="ranking-effect-cell">
                               <div className="ranking-effect">
                                 <div className="ranking-effect-meta">
