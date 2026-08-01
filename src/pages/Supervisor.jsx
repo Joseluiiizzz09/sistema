@@ -10,32 +10,32 @@ import { API, ncHeaders } from '../services/api'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
 
-// ── Constantes ────────────────────────────────────────────────────────────
+// â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ESTADOS_VENTA = [
   { id:'venta',         label:'Venta',           cls:'be-venta',      dot:'#2563eb' },
   { id:'validado',      label:'Validado',         cls:'be-validado',   dot:'#7c3aed' },
   { id:'no_validado',   label:'No Validado',      cls:'be-caida',      dot:'#dc2626' },
-  { id:'en_revision',   label:'En Revisión',      cls:'be-revision',   dot:'#2563eb' },
+  { id:'en_revision',   label:'En RevisiÃ³n',      cls:'be-revision',   dot:'#2563eb' },
   { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
   { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
-  { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
+  { id:'en_ejecucion',  label:'En EjecuciÃ³n',     cls:'be-ejecucion',  dot:'#0891b2' },
   { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#2563eb', bg:'#eff6ff', border:'1px solid rgba(96,165,250,.35)' },
-  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
+  { id:'caida',         label:'CaÃ­da',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
-  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
+  { id:'tecnico_casa',  label:'TÃ©cnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
   { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
   { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
   { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
   { id:'no_contesta',    label:'No Contesta',     cls:'be-nocontesta', dot:'#78350f', bg:'#fde68a', border:'1px solid #f59e0b' },
-  { id:'buzon_voz',      label:'Buzón de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
+  { id:'buzon_voz',      label:'BuzÃ³n de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
   { id:'corta_llamada',  label:'Corta Llamada',   cls:'be-corta',      dot:'#1e3a8a', bg:'#bfdbfe', border:'1px solid #3b82f6' },
   { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
   { id:'grabando',       label:'Grabando',        cls:'be-grabando',   dot:'#9a3412', bg:'#fed7aa', border:'1px solid rgba(234,88,12,.45)' },
-  { id:'suplantacion',   label:'Suplantación',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
+  { id:'suplantacion',   label:'SuplantaciÃ³n',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
   { id:'programado',        label:'Programado',        cls:'be-prog-programado',  dot:'#047857', bg:'#dcfce7', border:'1px solid rgba(52,211,153,.45)' },
   { id:'bloqueado',         label:'Bloqueado',         cls:'be-prog-bloqueado',   dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.5)' },
   { id:'sin_agenda',        label:'Sin Agenda',        cls:'be-prog-sinagenda',   dot:'#a16207', bg:'#fef9c3', border:'1px solid rgba(250,204,21,.55)' },
-  { id:'caracter_especial', label:'Carácter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
+  { id:'caracter_especial', label:'CarÃ¡cter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
   { id:'zona_restringida',  label:'Zona Restringida',  cls:'be-prog-zona',        dot:'#c2410c', bg:'#ffedd5', border:'1px solid rgba(251,146,60,.52)' },
 ]
 const TIPIF_COLORS = {
@@ -46,7 +46,7 @@ const TIPIF_COLORS = {
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899','#f59e0b']
 const NV_DEFAULT = { n1:'', n2:'', campana:'', asesor:'', estado:'', fecha:'', obs:'' }
 
-// ── Utilidades ────────────────────────────────────────────────────────────
+// â”€â”€ Utilidades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function colorFor(n) { let s=0; for(const c of (n||'')) s+=c.charCodeAt(0); return COLORES_AV[s%COLORES_AV.length] }
 function iniciales(n) { return (n||'?').trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
 function fechaHoy() {
@@ -56,23 +56,23 @@ function fechaHoy() {
 function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
-function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function formatF(f) { if(!f)return'â€”'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
 function mapearEstado(e, sup = '', eg = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
   const g=(eg||'').toLowerCase().trim()
-  // Estado de Grabaciones — independiente de `estado` (Validación no cambia).
+  // Estado de Grabaciones â€” independiente de `estado` (ValidaciÃ³n no cambia).
   // Mientras Super de Grabaciones no corrobore, se conserva GRABANDO.
-  // Condicionado a s==='validado': en cuanto Programación avanza `estado`
+  // Condicionado a s==='validado': en cuanto ProgramaciÃ³n avanza `estado`
   // (PROGRAMADO/BLOQUEADO/etc), esa etapa manda sobre el historial de
-  // Grabaciones, que ya quedó fijo y no debe seguir tapando el estado real.
+  // Grabaciones, que ya quedÃ³ fijo y no debe seguir tapando el estado real.
   if (s==='validado') {
     if (g==='grabando' || (g==='grabado' && sr!=='aprobado')) return 'grabando'
     if (g==='grabado' && sr==='aprobado') return 'grabado'
     if (['corta_llamada','suplantacion','no_desea','no_contesta','buzon_voz'].includes(g)) return g
   }
-  // ── Comportamiento previo (compatibilidad con filas viejas donde el flujo
-  // de Grabaciones todavía escribía en el campo compartido `estado`). ──
+  // â”€â”€ Comportamiento previo (compatibilidad con filas viejas donde el flujo
+  // de Grabaciones todavÃ­a escribÃ­a en el campo compartido `estado`). â”€â”€
   if(s==='grabado' && (sr==='sin_revisar' || sr==='en_revision')) return 'en_revision'
   if(s==='grabado' && sr==='aprobado') return 'grabado'
   if(s===''||s==='venta') return 'venta'
@@ -80,8 +80,8 @@ function mapearEstado(e, sup = '', eg = '') {
   if(s==='no_validado'||s==='observado') return 'no_validado'
   if(s==='grabado')       return 'grabado'
   if(s==='pendiente')     return 'no_grabado'
-  // PROGRAMADO (estado real de Programación, sin cambios en BD) se muestra
-  // públicamente como EN EJECUCIÓN — reutiliza el id/color ya existente.
+  // PROGRAMADO (estado real de ProgramaciÃ³n, sin cambios en BD) se muestra
+  // pÃºblicamente como EN EJECUCIÃ“N â€” reutiliza el id/color ya existente.
   if(s==='programado')        return 'en_ejecucion'
   if(s==='bloqueado')         return 'bloqueado'
   if(s==='sin_agenda')        return 'sin_agenda'
@@ -104,20 +104,20 @@ function getUltimos7Dias() {
 
 function BadgeEstado({ id, grabandoPorNombre, fraudeProgramacion }) {
   const e = estadoObj(id)
-  // FRAUDE es ambiguo entre Validación y Programación (mismo valor de
-  // `estado`); solo llega a Programación tras estado_supgrab='aprobado',
-  // así que ese dato distingue cuál lo marcó, sin necesitar campo nuevo.
+  // FRAUDE es ambiguo entre ValidaciÃ³n y ProgramaciÃ³n (mismo valor de
+  // `estado`); solo llega a ProgramaciÃ³n tras estado_supgrab='aprobado',
+  // asÃ­ que ese dato distingue cuÃ¡l lo marcÃ³, sin necesitar campo nuevo.
   const progFraude = id === 'fraude' && fraudeProgramacion
   const bg = progFraude ? '#111827' : (e.bg || `${e.dot}22`)
   const border = progFraude ? '1px solid #111827' : (e.border || `1px solid ${e.dot}44`)
   const color = progFraude ? '#fff' : e.dot
   // El nombre es solo visual (resuelto por el backend desde grabando_por_id);
-  // el estado interno sigue siendo únicamente "grabando".
+  // el estado interno sigue siendo Ãºnicamente "grabando".
   const label = (id === 'grabando' && grabandoPorNombre) ? `${e.label} ${grabandoPorNombre}` : e.label
   return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:bg,color:color,border:border}}>{label}</span>
 }
 
-// ── Componente principal ──────────────────────────────────────────────────
+// â”€â”€ Componente principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Supervisor() {
   const navigate   = useNavigate()
   const { sesion, logout } = useAuth()
@@ -127,52 +127,52 @@ export default function Supervisor() {
   const ch1Ref = useRef(null), ch2Ref = useRef(null), ch3Ref = useRef(null), ch4Ref = useRef(null)
   const chartInst = useRef({})
 
-  // ── Session ──
+  // â”€â”€ Session â”€â”€
   const salaActual    = sesion?.sala || 'SALA 1'
   const supervisorNom = sesion?.nombre || 'Supervisor'
 
-  // ── Section / period ──
+  // â”€â”€ Section / period â”€â”€
   const [seccion, setSeccion] = useState(() => sessionStorage.getItem('nc_supervisor_apartado') || 'dashboard')
   const [periodo, setPeriodoState] = useState(() => sessionStorage.getItem('nc_supervisor_periodo') || 'mes')
   const [sidebarAbierto, setSidebarAbierto] = useState(() => sessionStorage.getItem('nc_supervisor_sidebar') !== 'cerrado')
 
-  // ── Data ──
+  // â”€â”€ Data â”€â”€
   const [asesores, setAsesores] = useState([])
   const [ventas,   setVentas]   = useState([])
   const [frases,   setFrases]   = useState([])
 
-  // ── Filtros ventas ──
+  // â”€â”€ Filtros ventas â”€â”€
   const [filtroAsesor,  setFiltroAsesor]  = useState('')
   const [filtroEstado,  setFiltroEstado]  = useState('')
   const [filtroDesde,   setFiltroDesde]   = useState('')
   const [filtroHasta,   setFiltroHasta]   = useState('')
   const [tablaSearch,   setTablaSearch]   = useState('')
 
-  // ── Equipo ──
+  // â”€â”€ Equipo â”€â”€
   const [equipoBuscar,      setEquipoBuscar]      = useState('')
   const [equipoFiltroEstado,setEquipoFiltroEstado] = useState('')
 
-  // ── Panel agregar venta ──
+  // â”€â”€ Panel agregar venta â”€â”€
   const [panelNV, setPanelNV] = useState(false)
   const [nvForm,  setNvForm]  = useState(NV_DEFAULT)
 
-  // ── Modal detalle asesor ──
+  // â”€â”€ Modal detalle asesor â”€â”€
   const [modalAsesor, setModalAsesor] = useState({ open:false, nombre:'' })
 
-  // ── Modal base de llamadas ──
+  // â”€â”€ Modal base de llamadas â”€â”€
   const [blModal,    setBlModal]    = useState({ open:false, nombre:'', asesorId:null })
   const [blLeads,    setBlLeads]    = useState([])
   const [blFecha,    setBlFecha]    = useState(fechaHoy())
   const [blCargando, setBlCargando] = useState(false)
 
-  // ── Frases ──
+  // â”€â”€ Frases â”€â”€
   const [fraseTexto, setFraseTexto] = useState('')
 
-  // ── Toast ──
+  // â”€â”€ Toast â”€â”€
   const [toast, setToast] = useState('')
   const [ventaReasignar, setVentaReasignar] = useState(null)
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function mostrarToast(msg) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast(msg)
@@ -190,7 +190,7 @@ export default function Supervisor() {
     if (id === 'frases') cargarFrases()
   }
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const asesoresSala = useMemo(() =>
     asesores.filter(a => !salaActual || a.sala === salaActual),
   [asesores, salaActual])
@@ -237,7 +237,7 @@ export default function Supervisor() {
     }).sort((a,b)=>b.total-a.total),
   [dashVentas, asesoresSala])
 
-  // ── API ───────────────────────────────────────────────────────────────────
+  // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cargarDatos = useCallback(async () => {
     try {
       const [rU, rV] = await Promise.all([
@@ -286,13 +286,13 @@ export default function Supervisor() {
   }
 
   async function eliminarVenta(id) {
-    if (!confirm('¿Seguro que deseas eliminar esta venta?')) return
+    if (!confirm('Â¿Seguro que deseas eliminar esta venta?')) return
     try {
       const res  = await fetch(`${API}/ventas/${id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json()
       if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
-    } catch(e) { mostrarToast('Error de conexión') }
+    } catch(e) { mostrarToast('Error de conexiÃ³n') }
   }
 
   async function completarReasignacion(data) {
@@ -311,10 +311,10 @@ export default function Supervisor() {
       const data = await res.json()
       if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
-    } catch(e) { mostrarToast('Error de conexión') }
+    } catch(e) { mostrarToast('Error de conexiÃ³n') }
   }
 
-  // ── BL Modal ──────────────────────────────────────────────────────────────
+  // â”€â”€ BL Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function abrirBaseLlamadas(nombre, asesorId) {
     setBlModal({ open:true, nombre, asesorId })
     setBlFecha(fechaHoy())
@@ -331,7 +331,7 @@ export default function Supervisor() {
       .catch(() => { setBlLeads(null); setBlCargando(false) })
   }, [blFecha, blModal.open, blModal.asesorId])
 
-  // ── Charts ────────────────────────────────────────────────────────────────
+  // â”€â”€ Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (seccion !== 'dashboard') return
     let cancelled = false
@@ -356,7 +356,7 @@ export default function Supervisor() {
         })
       }
 
-      // ch2: Distribución por estado (doughnut)
+      // ch2: DistribuciÃ³n por estado (doughnut)
       destroyChart('ch2')
       if (ch2Ref.current) {
         const ed = ESTADOS_VENTA.map(e=>({ label:e.label, cnt:dashVentas.filter(v=>v._estado===e.id).length, color:e.dot }))
@@ -383,7 +383,7 @@ export default function Supervisor() {
         }
       }
 
-      // ch3: Ventas diarias últimos 7 días (line)
+      // ch3: Ventas diarias Ãºltimos 7 dÃ­as (line)
       destroyChart('ch3')
       if (ch3Ref.current) {
         const datasets = asesoresSala.map(a=>({
@@ -399,12 +399,12 @@ export default function Supervisor() {
         })
       }
 
-      // ch4: Conversión por asesor (horizontal bar)
+      // ch4: ConversiÃ³n por asesor (horizontal bar)
       destroyChart('ch4')
       if (ch4Ref.current && dashRendData.length) {
         chartInst.current.ch4 = new Chart(ch4Ref.current, {
           type:'bar',
-          data:{ labels:nombres, datasets:[{ label:'Conversión %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
+          data:{ labels:nombres, datasets:[{ label:'ConversiÃ³n %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
           options:{ indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}} }
         })
       }
@@ -417,7 +417,7 @@ export default function Supervisor() {
     return () => { Object.values(chartInst.current).forEach(c=>c.destroy()) }
   }, [])
 
-  // ── Load & poll ───────────────────────────────────────────────────────────
+  // â”€â”€ Load & poll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     cargarDatos()
     if (seccion === 'frases') cargarFrases()
@@ -425,14 +425,14 @@ export default function Supervisor() {
     return () => clearInterval(t)
   }, [cargarDatos])
 
-  // ── Computed helpers ──────────────────────────────────────────────────────
+  // â”€â”€ Computed helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cntEst = (id) => dashVentas.filter(v=>v._estado===id).length
   const periodoLabel = () => {
     if(periodo==='dia')return'hoy'; if(periodo==='semana')return'semana'
-    if(periodo==='mes')return'mes actual'; return'histórico'
+    if(periodo==='mes')return'mes actual'; return'histÃ³rico'
   }
 
-  // ── JSX ───────────────────────────────────────────────────────────────────
+  // â”€â”€ JSX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="sup-root">
       {/* TOPBAR */}
@@ -448,8 +448,8 @@ export default function Supervisor() {
           <button
             type="button"
             className={`sup-sidebar-toggle${sidebarAbierto ? ' abierto' : ''}`}
-            aria-label={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
-            title={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            aria-label={sidebarAbierto ? 'Ocultar menÃº' : 'Mostrar menÃº'}
+            title={sidebarAbierto ? 'Ocultar menÃº' : 'Mostrar menÃº'}
             onClick={() => setSidebarAbierto(valor => {
               const nuevo = !valor
               sessionStorage.setItem('nc_supervisor_sidebar', nuevo ? 'abierto' : 'cerrado')
@@ -476,15 +476,15 @@ export default function Supervisor() {
           <button className={`nav-btn${seccion==='dashboard'?' active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot" /> Dashboard</button>
           <button className={`nav-btn${seccion==='ventas'?' active':''}`} onClick={()=>irSeccion('ventas')}><span className="nav-dot" /> Ventas</button>
           <button className={`nav-btn${seccion==='equipo'?' active':''}`} onClick={()=>irSeccion('equipo')}><span className="nav-dot" /> Mi Equipo</button>
-          <div className="sidebar-sep">Análisis</div>
+          <div className="sidebar-sep">AnÃ¡lisis</div>
           <button className={`nav-btn${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><span className="nav-dot" /> Rendimiento</button>
-          <div className="sidebar-sep">Comunicación</div>
-          <button className={`nav-btn${seccion==='frases'?' active':''}`} onClick={()=>irSeccion('frases')}><span className="nav-dot" /> Frases del día</button>
+          <div className="sidebar-sep">ComunicaciÃ³n</div>
+          <button className={`nav-btn${seccion==='frases'?' active':''}`} onClick={()=>irSeccion('frases')}><span className="nav-dot" /> Frases del dÃ­a</button>
         </aside>
 
         <main className="main">
 
-          {/* ══ DASHBOARD ══════════════════════════════════════════════════════ */}
+          {/* â•â• DASHBOARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='dashboard'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Dashboard</h2><p>Resumen general de tu sala</p></div>
@@ -499,12 +499,12 @@ export default function Supervisor() {
             <div className="kpi-grid">
               {[
                 { label:'Total ventas',   val:dashVentas.length,       cls:'k-blue',   sub:periodoLabel() },
-                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validación' },
+                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validaciÃ³n' },
                 { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
                 { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
-                { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
+                { label:'En EjecuciÃ³n',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
                 { label:'Instaladas',     val:cntEst('instalado'),      cls:'k-green',  sub:'completadas' },
-                { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
+                { label:'CaÃ­das',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
                 { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
               ].map(k=>(
                 <div key={k.label} className={`kpi-card ${k.cls}`}>
@@ -529,9 +529,9 @@ export default function Supervisor() {
             {/* Charts */}
             <div className="charts-grid">
               <div className="chart-card"><div className="chart-title">Ventas por asesor</div><div className="chart-wrap"><canvas ref={ch1Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Distribución por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Ventas diarias — últimos 7 días</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Conversión por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">DistribuciÃ³n por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Ventas diarias â€” Ãºltimos 7 dÃ­as</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">ConversiÃ³n por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
             </div>
 
             {/* Ranking */}
@@ -570,7 +570,7 @@ export default function Supervisor() {
                     <div key={o} className="comp-card">
                       <div className="comp-mes">{getMesLabel(o)}</div>
                       <div className="comp-val">{cnt}</div>
-                      <div className={`comp-diff ${dc}`}>{diff>0?'↑':diff<0?'↓':'→'} {Math.abs(diff)} vs mes anterior</div>
+                      <div className={`comp-diff ${dc}`}>{diff>0?'â†‘':diff<0?'â†“':'â†’'} {Math.abs(diff)} vs mes anterior</div>
                     </div>
                   )
                 })}
@@ -578,10 +578,10 @@ export default function Supervisor() {
             </div>
           </section>
 
-          {/* ══ VENTAS ═════════════════════════════════════════════════════════ */}
+          {/* â•â• VENTAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='ventas'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto · usa filtros para ver otros periodos</p></div>
+              <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto Â· usa filtros para ver otros periodos</p></div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 <button className="btn-filtrar" onClick={()=>{ setPanelNV(v=>!v); if(!panelNV) setNvForm({...NV_DEFAULT,fecha:fechaHoy()}) }}>+ Registrar venta</button>
               </div>
@@ -592,24 +592,24 @@ export default function Supervisor() {
               <div style={{background:'#fff',border:'1.5px dashed #e5e7eb',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#ff2d2d',textTransform:'uppercase',letterSpacing:.7,marginBottom:14}}>+ Registrar nueva venta</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:12}}>
-                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="NÃºmero principal" style={{fontFamily:'monospace'}} /></div>
                   <div className="filtro-group"><label>N2</label><input className="filtro-input" value={nvForm.n2} onChange={e=>setNvForm(p=>({...p,n2:e.target.value}))} placeholder="Secundario" style={{fontFamily:'monospace'}} /></div>
-                  <div className="filtro-group"><label>Campaña</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                  <div className="filtro-group"><label>CampaÃ±a</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
                   <div className="filtro-group"><label>Asesor *</label>
                     <select className="filtro-select" value={nvForm.asesor} onChange={e=>setNvForm(p=>({...p,asesor:e.target.value}))}>
-                      <option value="">— Asesor —</option>
+                      <option value="">â€” Asesor â€”</option>
                       {asesoresSala.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                     </select>
                   </div>
                   <div className="filtro-group"><label>Estado *</label>
                     <select className="filtro-select" value={nvForm.estado} onChange={e=>setNvForm(p=>({...p,estado:e.target.value}))}>
-                      <option value="">— Estado —</option>
+                      <option value="">â€” Estado â€”</option>
                       {ESTADOS_VENTA.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
                     </select>
                   </div>
                   <div className="filtro-group"><label>Fecha</label><input type="date" className="filtro-input" value={nvForm.fecha} onChange={e=>setNvForm(p=>({...p,fecha:e.target.value}))} /></div>
                 </div>
-                <div className="filtro-group" style={{marginBottom:12}}><label>Observación</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
+                <div className="filtro-group" style={{marginBottom:12}}><label>ObservaciÃ³n</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
                 <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
                   <button className="btn-limpiar" onClick={()=>setPanelNV(false)}>Cancelar</button>
                   <button className="btn-filtrar" onClick={agregarVentaManual}>Guardar venta</button>
@@ -663,7 +663,7 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <table className="tabla">
-                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
+                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>AcciÃ³n</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
                     ? <tr className="tabla-empty"><td colSpan={16}>Sin ventas con esos filtros.</td></tr>
@@ -674,24 +674,24 @@ export default function Supervisor() {
                           <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                           <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
                           <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
-                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
-                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
-                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'—'}</td>
-                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'—'}</td>
-                          <td style={{fontSize:11}}>{v.departamento||'—'}</td>
-                          <td style={{fontSize:11}}>{v.distrito||'—'}</td>
-                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'—'}</td>
+                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'â€”'}</td>
+                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'â€”'}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'â€”'}</td>
+                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'â€”'}</td>
+                          <td style={{fontSize:11}}>{v.departamento||'â€”'}</td>
+                          <td style={{fontSize:11}}>{v.distrito||'â€”'}</td>
+                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'â€”'}</td>
                           <td>
                             <div className="asesor-cell">
                               <div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:24,height:24,fontSize:9}}>{iniciales(v.asesor||'?')}</div>
-                              <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'—'}</span>
+                              <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'â€”'}</span>
                             </div>
                           </td>
-                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
-                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
+                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'â€”'}</td>
+                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'â€”'}</td>
                           <td>
                             <div className="venta-actions">
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>Fotos</button>
+                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos â€” ver mÃ³dulo de validaciÃ³n')}>Fotos</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
                             </div>
@@ -704,13 +704,28 @@ export default function Supervisor() {
             </div>
           </section>
 
-          {/* ══ MI EQUIPO ══════════════════════════════════════════════════════ */}
+          {/* â•â• MI EQUIPO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='equipo'?' active':''}`}>
+
+            {/* Header */}
             <div className="sec-header">
-              <div><h2>Mi Equipo</h2><p>Asesores activos en {salaActual}</p></div>
-              <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <input type="text" value={equipoBuscar} onChange={e=>setEquipoBuscar(e.target.value)} placeholder="Buscar asesor..." style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',width:200}} />
-                <select value={equipoFiltroEstado} onChange={e=>setEquipoFiltroEstado(e.target.value)} style={{padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff'}}>
+              <div>
+                <h2>Mi Equipo</h2>
+                <p>Resumen de asesores y rendimiento de {salaActual}</p>
+              </div>
+              <div className="eq-filters">
+                <input
+                  type="text"
+                  value={equipoBuscar}
+                  onChange={e=>setEquipoBuscar(e.target.value)}
+                  placeholder="Buscar asesor..."
+                  className="eq-search-input"
+                />
+                <select
+                  value={equipoFiltroEstado}
+                  onChange={e=>setEquipoFiltroEstado(e.target.value)}
+                  className="eq-filter-select"
+                >
                   <option value="">Todos</option>
                   <option value="1">Activos</option>
                   <option value="0">Inactivos</option>
@@ -719,11 +734,27 @@ export default function Supervisor() {
             </div>
 
             {/* KPIs equipo */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginBottom:20}}>
-              <div className="kpi-card k-blue"><div className="kpi-label">Total asesores</div><div className="kpi-value">{asesoresSala.length}</div><div className="kpi-sub">{salaActual}</div></div>
-              <div className="kpi-card k-green"><div className="kpi-label">Activos</div><div className="kpi-value">{asesoresSala.filter(a=>a.activo).length}</div><div className="kpi-sub">en servicio</div></div>
-              <div className="kpi-card k-red"><div className="kpi-label">Inactivos</div><div className="kpi-value">{asesoresSala.filter(a=>!a.activo).length}</div><div className="kpi-sub">desactivados</div></div>
-              <div className="kpi-card k-purple"><div className="kpi-label">Ventas hoy</div><div className="kpi-value">{todasVentas.filter(v=>v._fecha===fechaHoy()).length}</div><div className="kpi-sub">de tu sala</div></div>
+            <div className="eq-kpi-grid">
+              <div className="kpi-card k-blue">
+                <div className="kpi-label">Total asesores</div>
+                <div className="kpi-value">{asesoresSala.length}</div>
+                <div className="kpi-sub">{salaActual}</div>
+              </div>
+              <div className="kpi-card k-green">
+                <div className="kpi-label">Activos</div>
+                <div className="kpi-value">{asesoresSala.filter(a=>a.activo).length}</div>
+                <div className="kpi-sub">en servicio</div>
+              </div>
+              <div className="kpi-card k-red">
+                <div className="kpi-label">Inactivos</div>
+                <div className="kpi-value">{asesoresSala.filter(a=>!a.activo).length}</div>
+                <div className="kpi-sub">desactivados</div>
+              </div>
+              <div className="kpi-card k-purple">
+                <div className="kpi-label">Ventas hoy</div>
+                <div className="kpi-value">{todasVentas.filter(v=>v._fecha===fechaHoy()).length}</div>
+                <div className="kpi-sub">de tu sala</div>
+              </div>
             </div>
 
             {/* Cards de asesores */}
@@ -736,7 +767,7 @@ export default function Supervisor() {
               })
               if (!lista.length) return <div style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin asesores.</div>
               return (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14,marginBottom:20}}>
+                <div className="eq-cards-grid">
                   {lista.map(a => {
                     const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
                     const hoyV = mis.filter(v=>v._fecha===hoy).length
@@ -744,31 +775,62 @@ export default function Supervisor() {
                     const inst = mis.filter(v=>v._estado==='instalado').length
                     const conv = mis.length?Math.round(inst/mis.length*100):0
                     return (
-                      <div key={a.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:16,padding:20,boxShadow:'0 2px 8px rgba(0,0,0,.05)'}}>
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                          <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <div style={{width:44,height:44,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
-                            <div><div style={{fontSize:13,fontWeight:700}}>{a.nombre}</div><div style={{fontSize:11,color:'#9ca3af'}}>@{a.usuario||'—'}</div></div>
+                      <div key={a.id} className="eq-card">
+
+                        {/* A. Cabecera */}
+                        <div className="eq-card-header">
+                          <div
+                            className="eq-avatar"
+                            style={{background:colorFor(a.nombre)}}
+                            aria-label={`Avatar de ${a.nombre}`}
+                          >
+                            {iniciales(a.nombre)}
                           </div>
-                          {a.activo
-                            ? <span style={{background:'#d1fae5',color:'#065f46',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>ACTIVO</span>
-                            : <span style={{background:'#fee2e2',color:'#991b1b',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>INACTIVO</span>}
+                          <div className="eq-name-block">
+                            <div className="eq-name" title={a.nombre}>{a.nombre}</div>
+                            <div className="eq-username">@{a.usuario||'â€”'}</div>
+                          </div>
+                          <span className={`eq-badge-activo${a.activo?' activo':' inactivo'}`}>
+                            {a.activo ? 'Activo' : 'Inactivo'}
+                          </span>
                         </div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
-                          {[['Hoy',hoyV,'#111827'],['Mes',mesV,'#2563eb'],['Inst.',inst,'#16a34a'],[`${conv}%`,'Conv.','#7c3aed']].map(([v,l,c],idx)=>(
-                            <div key={idx} style={{background:'#f9fafb',borderRadius:8,padding:8,textAlign:'center'}}>
-                              <div style={{fontSize:18,fontWeight:800,color:c}}>{v}</div>
-                              <div style={{fontSize:9,color:'#9ca3af',textTransform:'uppercase',marginTop:2}}>{l}</div>
+
+                        {/* B. MÃ©tricas */}
+                        <div className="eq-metrics">
+                          {[
+                            ['HOY',   hoyV,       '#374151'],
+                            ['MES',   mesV,       '#2563eb'],
+                            ['INST.', inst,       '#16a34a'],
+                            ['CONV.', `${conv}%`, '#7c3aed'],
+                          ].map(([label, value, color]) => (
+                            <div key={label} className="eq-metric">
+                              <div className="eq-metric-label">{label}</div>
+                              <div className="eq-metric-value" style={{color}}>{value}</div>
                             </div>
                           ))}
                         </div>
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:12,borderTop:'1px solid #f3f4f6'}}>
-                          <span style={{fontSize:11,color:'#9ca3af'}}>{a.sala||'—'}</span>
-                          <div style={{display:'flex',gap:6}}>
-                            <button onClick={()=>abrirBaseLlamadas(a.nombre,a.id)} style={{padding:'6px 12px',border:'1px solid #bfdbfe',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Base llamadas</button>
-                            <button onClick={()=>setModalAsesor({open:true,nombre:a.nombre})} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#374151',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Ver detalle</button>
+
+                        {/* C. Footer */}
+                        <div className="eq-card-footer">
+                          <span className="eq-sala-badge" title={a.sala||'â€”'}>{a.sala||'â€”'}</span>
+                          <div className="eq-btns">
+                            <button
+                              type="button"
+                              className="eq-btn-base"
+                              onClick={()=>abrirBaseLlamadas(a.nombre,a.id)}
+                            >
+                              Base llamadas
+                            </button>
+                            <button
+                              type="button"
+                              className="eq-btn-detalle"
+                              onClick={()=>setModalAsesor({open:true,nombre:a.nombre})}
+                            >
+                              Ver detalle
+                            </button>
                           </div>
                         </div>
+
                       </div>
                     )
                   })}
@@ -777,7 +839,7 @@ export default function Supervisor() {
             })()}
           </section>
 
-          {/* ══ RENDIMIENTO ═════════════════════════════════════════════════════ */}
+          {/* â•â• RENDIMIENTO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='rendimiento'?' active':''}`}>
             <div className="sec-header"><div><h2>Rendimiento de Asesores</h2><p>Productividad individual y comparativo mensual</p></div></div>
             <div className="asesores-cards">
@@ -798,9 +860,9 @@ export default function Supervisor() {
                           <div className="ac-stat"><div className="ac-stat-num">{mis.length}</div><div className="ac-stat-label">Total</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#16a34a'}}>{inst}</div><div className="ac-stat-label">Inst.</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#dc2626'}}>{noVal}</div><div className="ac-stat-label">No Val.</div></div>
-                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">Caídas</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">CaÃ­das</div></div>
                         </div>
-                        <div className="ac-conv"><span className="ac-conv-label">Conversión (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
+                        <div className="ac-conv"><span className="ac-conv-label">ConversiÃ³n (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
                       </div>
                     )
                   })
@@ -814,7 +876,7 @@ export default function Supervisor() {
                 <thead><tr>
                   <th>#</th><th>Asesor</th>
                   {[0,1,2].map(o=><th key={o}>{getMesLabel(o)} (instaladas)</th>)}
-                  <th>Total histórico</th>
+                  <th>Total histÃ³rico</th>
                 </tr></thead>
                 <tbody>
                   {asesoresSala.length === 0
@@ -842,7 +904,7 @@ export default function Supervisor() {
               return (
                 <div className="tabla-wrap" style={{marginTop:16}}>
                   <div className="tabla-header">
-                    <span className="tabla-title">Ventas con problemas — No validadas · Caídas</span>
+                    <span className="tabla-title">Ventas con problemas â€” No validadas Â· CaÃ­das</span>
                     <span className="tabla-count">{problemas.length} registros</span>
                   </div>
                   <table className="tabla">
@@ -853,12 +915,12 @@ export default function Supervisor() {
                         : problemas.map((v,i)=>(
                             <tr key={v.id||i}>
                               <td style={{fontSize:11,color:'#185FA5',fontWeight:700}}>{formatF(v._fecha)}</td>
-                              <td style={{fontWeight:600}}>{v.nombre||'—'}</td>
-                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
-                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'—'}</td>
-                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'—'}</span></div></td>
+                              <td style={{fontWeight:600}}>{v.nombre||'â€”'}</td>
+                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'â€”'}</td>
+                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'â€”'}</td>
+                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'â€”'}</span></div></td>
                               <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
-                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'—'}</td>
+                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'â€”'}</td>
                             </tr>
                           ))
                       }
@@ -869,9 +931,9 @@ export default function Supervisor() {
             })()}
           </section>
 
-          {/* ══ FRASES ═════════════════════════════════════════════════════════ */}
+          {/* â•â• FRASES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='frases'?' active':''}`}>
-            <div className="sec-header"><div><h2>Frases del Día</h2><p>Envía mensajes motivacionales a tu equipo</p></div></div>
+            <div className="sec-header"><div><h2>Frases del DÃ­a</h2><p>EnvÃ­a mensajes motivacionales a tu equipo</p></div></div>
             <div className="frases-layout">
               <div>
                 <div className="frases-panel">
@@ -892,11 +954,11 @@ export default function Supervisor() {
                 </div>
                 <div>
                   {frases.length === 0
-                    ? <div className="frase-vacia">Aún no publicaste ninguna frase.</div>
+                    ? <div className="frase-vacia">AÃºn no publicaste ninguna frase.</div>
                     : frases.map((f,i)=>(
                         <div key={i} className="frase-item">
                           <div className="frase-item-texto">"{f.texto}"</div>
-                          <div className="frase-item-meta">{f.sala} · {f.hora}</div>
+                          <div className="frase-item-meta">{f.sala} Â· {f.hora}</div>
                         </div>
                       ))
                   }
@@ -908,7 +970,7 @@ export default function Supervisor() {
         </main>
       </div>
 
-      {/* ══ MODAL DETALLE ASESOR ═══════════════════════════════════════════════ */}
+      {/* â•â• MODAL DETALLE ASESOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {modalAsesor.open && (() => {
         const a    = asesoresSala.find(x=>x.nombre===modalAsesor.nombre)
         if (!a) return null
@@ -923,12 +985,12 @@ export default function Supervisor() {
             <div style={{background:'#fff',borderRadius:18,width:'min(500px,94vw)',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,.2)'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px 14px',borderBottom:'1px solid #f3f4f6'}}>
                 <span style={{fontSize:14,fontWeight:800,color:'#111827',textTransform:'uppercase',letterSpacing:.4}}>Detalle del Asesor</span>
-                <button onClick={()=>setModalAsesor({open:false,nombre:''})} style={{width:28,height:28,border:'none',borderRadius:7,background:'#f3f4f6',color:'#6b7280',fontSize:14,cursor:'pointer',fontWeight:700}}>✕</button>
+                <button onClick={()=>setModalAsesor({open:false,nombre:''})} style={{width:28,height:28,border:'none',borderRadius:7,background:'#f3f4f6',color:'#6b7280',fontSize:14,cursor:'pointer',fontWeight:700}}>âœ•</button>
               </div>
               <div style={{padding:'20px 22px'}}>
                 <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
                   <div style={{width:60,height:60,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
-                  <div><div style={{fontSize:16,fontWeight:800}}>{a.nombre}</div><div style={{fontSize:12,color:'#9ca3af'}}>@{a.usuario||'—'} · {a.sala||'—'}</div></div>
+                  <div><div style={{fontSize:16,fontWeight:800}}>{a.nombre}</div><div style={{fontSize:12,color:'#9ca3af'}}>@{a.usuario||'â€”'} Â· {a.sala||'â€”'}</div></div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
                   {[['Hoy',hoyV,'#111827'],['Este mes',mesV,'#2563eb'],['Instaladas',inst,'#16a34a'],['Conv.',conv+'%','#7c3aed']].map(([l,v,c])=>(
@@ -938,13 +1000,13 @@ export default function Supervisor() {
                     </div>
                   ))}
                 </div>
-                <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Últimas 5 ventas</div>
+                <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Ãšltimas 5 ventas</div>
                 {ult5.length === 0
                   ? <div style={{textAlign:'center',padding:20,color:'#9ca3af'}}>Sin ventas.</div>
                   : <div style={{display:'flex',flexDirection:'column',gap:6}}>
                       {ult5.map((v,i)=>(
                         <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'#f9fafb',borderRadius:8}}>
-                          <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'—'}</span></div>
+                          <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'â€”'}</span></div>
                           <div style={{display:'flex',alignItems:'center',gap:8}}><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /><span style={{fontSize:11,color:'#9ca3af'}}>{formatF(v._fecha)}</span></div>
                         </div>
                       ))}
@@ -956,16 +1018,16 @@ export default function Supervisor() {
         )
       })()}
 
-      {/* ══ MODAL BASE DE LLAMADAS ═════════════════════════════════════════════ */}
+      {/* â•â• MODAL BASE DE LLAMADAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {blModal.open && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center',padding:16,backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)setBlModal(p=>({...p,open:false}))}}>
           <div style={{background:'#fff',borderRadius:18,width:'100%',maxWidth:960,maxHeight:'92vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.25)'}}>
             <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <div>
-                <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas — {blModal.nombre}</div>
-                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura · Supervisor</div>
+                <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas â€” {blModal.nombre}</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura Â· Supervisor</div>
               </div>
-              <button onClick={()=>setBlModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>×</button>
+              <button onClick={()=>setBlModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>Ã—</button>
             </div>
             <div style={{padding:'10px 24px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
               <label style={{fontSize:12,fontWeight:600}}>Fecha:</label>
@@ -975,7 +1037,7 @@ export default function Supervisor() {
             </div>
             {blLeads && blLeads.length > 0 && (
               <div style={{padding:'10px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
-                {[{l:'Leads',v:blLeads.length,c:'#2563eb'},{l:'Tipificados',v:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,c:'#16a34a'},{l:'VENTA CERRADA',v:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,c:'#7c3aed'},{l:'NC/Buzón',v:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,c:'#d97706'}].map(k=>(
+                {[{l:'Leads',v:blLeads.length,c:'#2563eb'},{l:'Tipificados',v:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,c:'#16a34a'},{l:'VENTA CERRADA',v:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,c:'#7c3aed'},{l:'NC/BuzÃ³n',v:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,c:'#d97706'}].map(k=>(
                   <div key={k.l} style={{background:'#f9fafb',borderRadius:10,padding:'8px 14px',display:'flex',flexDirection:'column',gap:2,minWidth:100}}>
                     <div style={{fontSize:18,fontWeight:800,color:k.c}}>{k.v}</div>
                     <div style={{fontSize:10,color:'#9ca3af',textTransform:'uppercase'}}>{k.l}</div>
@@ -986,7 +1048,7 @@ export default function Supervisor() {
             <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
-                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Observación'].map(h=>(
+                  {['#','TelÃ©fono N1','N2','Zona','CampaÃ±a','Hora asig.','TipificaciÃ³n','ObservaciÃ³n'].map(h=>(
                     <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                   ))}
                 </tr></thead>
@@ -994,7 +1056,7 @@ export default function Supervisor() {
                   {blCargando
                     ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
                     : !blLeads
-                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
+                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexiÃ³n.</td></tr>
                       : blLeads.length === 0
                         ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para esta fecha.</td></tr>
                         : blLeads.map((l,i) => {
@@ -1003,18 +1065,18 @@ export default function Supervisor() {
                             return (
                               <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:t.toUpperCase()==='VENTA CERRADA'?'#f0fdf4':''}}>
                                 <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                                <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'—'}</td>
-                                <td style={{padding:8,fontFamily:'monospace',color:'#6b7280'}}>{l.n2||'—'}</td>
-                                <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'—'}</td>
-                                <td style={{padding:8,fontSize:11}}>{l.campana||'—'}</td>
-                                <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'—'}</td>
+                                <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'â€”'}</td>
+                                <td style={{padding:8,fontFamily:'monospace',color:'#6b7280'}}>{l.n2||'â€”'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'â€”'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.campana||'â€”'}</td>
+                                <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'â€”'}</td>
                                 <td style={{padding:8}}>
                                   {t
                                     ? <span style={{background:`${color}22`,color,border:`1px solid ${color}44`,padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:700}}>{t}</span>
                                     : <span style={{color:'#d1d5db',fontStyle:'italic',fontSize:11}}>Sin tipif.</span>
                                   }
                                 </td>
-                                <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'—'}</td>
+                                <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'â€”'}</td>
                               </tr>
                             )
                           })
@@ -1036,7 +1098,7 @@ export default function Supervisor() {
         />
       )}
 
-      {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
+      {/* â•â• TOAST â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
     </div>
   )
 }
