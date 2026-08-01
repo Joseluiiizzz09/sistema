@@ -985,12 +985,12 @@ export default function Supervisor() {
             <div style={{background:'#fff',borderRadius:18,width:'min(500px,94vw)',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,.2)'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px 14px',borderBottom:'1px solid #f3f4f6'}}>
                 <span style={{fontSize:14,fontWeight:800,color:'#111827',textTransform:'uppercase',letterSpacing:.4}}>Detalle del Asesor</span>
-                <button onClick={()=>setModalAsesor({open:false,nombre:''})} style={{width:28,height:28,border:'none',borderRadius:7,background:'#f3f4f6',color:'#6b7280',fontSize:14,cursor:'pointer',fontWeight:700}}>âœ•</button>
+                <button onClick={()=>setModalAsesor({open:false,nombre:''})} aria-label="Cerrar" style={{width:28,height:28,border:'none',borderRadius:7,background:'#f3f4f6',color:'#6b7280',fontSize:14,cursor:'pointer',fontWeight:700}}>×</button>
               </div>
               <div style={{padding:'20px 22px'}}>
                 <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
                   <div style={{width:60,height:60,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
-                  <div><div style={{fontSize:16,fontWeight:800}}>{a.nombre}</div><div style={{fontSize:12,color:'#9ca3af'}}>@{a.usuario||'â€”'} Â· {a.sala||'â€”'}</div></div>
+                  <div><div style={{fontSize:16,fontWeight:800}}>{a.nombre}</div><div style={{fontSize:12,color:'#9ca3af'}}>@{a.usuario||'—'} · {a.sala||'—'}</div></div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
                   {[['Hoy',hoyV,'#111827'],['Este mes',mesV,'#2563eb'],['Instaladas',inst,'#16a34a'],['Conv.',conv+'%','#7c3aed']].map(([l,v,c])=>(
@@ -1000,13 +1000,13 @@ export default function Supervisor() {
                     </div>
                   ))}
                 </div>
-                <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Ãšltimas 5 ventas</div>
+                <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Últimas 5 ventas</div>
                 {ult5.length === 0
                   ? <div style={{textAlign:'center',padding:20,color:'#9ca3af'}}>Sin ventas.</div>
                   : <div style={{display:'flex',flexDirection:'column',gap:6}}>
                       {ult5.map((v,i)=>(
                         <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'#f9fafb',borderRadius:8}}>
-                          <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'â€”'}</span></div>
+                          <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:12}}>{v.n1}</span><span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>{v.campana||'—'}</span></div>
                           <div style={{display:'flex',alignItems:'center',gap:8}}><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /><span style={{fontSize:11,color:'#9ca3af'}}>{formatF(v._fecha)}</span></div>
                         </div>
                       ))}
@@ -1024,10 +1024,10 @@ export default function Supervisor() {
           <div style={{background:'#fff',borderRadius:18,width:'100%',maxWidth:960,maxHeight:'92vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.25)'}}>
             <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <div>
-                <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas â€” {blModal.nombre}</div>
-                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura Â· Supervisor</div>
+                <div style={{fontSize:15,fontWeight:800,color:'#111827'}}>Base de llamadas — {blModal.nombre}</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>Solo lectura · Supervisor</div>
               </div>
-              <button onClick={()=>setBlModal(p=>({...p,open:false}))} style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>Ã—</button>
+              <button onClick={()=>setBlModal(p=>({...p,open:false}))} aria-label="Cerrar" style={{width:32,height:32,borderRadius:'50%',border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:18,cursor:'pointer'}}>×</button>
             </div>
             <div style={{padding:'10px 24px',borderBottom:'1px solid #f3f4f6',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
               <label style={{fontSize:12,fontWeight:600}}>Fecha:</label>
@@ -1037,7 +1037,7 @@ export default function Supervisor() {
             </div>
             {blLeads && blLeads.length > 0 && (
               <div style={{padding:'10px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
-                {[{l:'Leads',v:blLeads.length,c:'#2563eb'},{l:'Tipificados',v:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,c:'#16a34a'},{l:'VENTA CERRADA',v:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,c:'#7c3aed'},{l:'NC/BuzÃ³n',v:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,c:'#d97706'}].map(k=>(
+                {[{l:'Leads',v:blLeads.length,c:'#2563eb'},{l:'Tipificados',v:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,c:'#16a34a'},{l:'VENTA CERRADA',v:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,c:'#7c3aed'},{l:'NC/Buzón',v:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,c:'#d97706'}].map(k=>(
                   <div key={k.l} style={{background:'#f9fafb',borderRadius:10,padding:'8px 14px',display:'flex',flexDirection:'column',gap:2,minWidth:100}}>
                     <div style={{fontSize:18,fontWeight:800,color:k.c}}>{k.v}</div>
                     <div style={{fontSize:10,color:'#9ca3af',textTransform:'uppercase'}}>{k.l}</div>
@@ -1048,7 +1048,7 @@ export default function Supervisor() {
             <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
-                  {['#','TelÃ©fono N1','N2','Zona','CampaÃ±a','Hora asig.','TipificaciÃ³n','ObservaciÃ³n'].map(h=>(
+                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Observación'].map(h=>(
                     <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                   ))}
                 </tr></thead>
@@ -1056,7 +1056,7 @@ export default function Supervisor() {
                   {blCargando
                     ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
                     : !blLeads
-                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexiÃ³n.</td></tr>
+                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
                       : blLeads.length === 0
                         ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para esta fecha.</td></tr>
                         : blLeads.map((l,i) => {
@@ -1065,18 +1065,18 @@ export default function Supervisor() {
                             return (
                               <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:t.toUpperCase()==='VENTA CERRADA'?'#f0fdf4':''}}>
                                 <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                                <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'â€”'}</td>
-                                <td style={{padding:8,fontFamily:'monospace',color:'#6b7280'}}>{l.n2||'â€”'}</td>
-                                <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'â€”'}</td>
-                                <td style={{padding:8,fontSize:11}}>{l.campana||'â€”'}</td>
-                                <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'â€”'}</td>
+                                <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'—'}</td>
+                                <td style={{padding:8,fontFamily:'monospace',color:'#6b7280'}}>{l.n2||'—'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'—'}</td>
+                                <td style={{padding:8,fontSize:11}}>{l.campana||'—'}</td>
+                                <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'—'}</td>
                                 <td style={{padding:8}}>
                                   {t
                                     ? <span style={{background:`${color}22`,color,border:`1px solid ${color}44`,padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:700}}>{t}</span>
                                     : <span style={{color:'#d1d5db',fontStyle:'italic',fontSize:11}}>Sin tipif.</span>
                                   }
                                 </td>
-                                <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'â€”'}</td>
+                                <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'—'}</td>
                               </tr>
                             )
                           })
