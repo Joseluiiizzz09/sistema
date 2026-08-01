@@ -167,6 +167,7 @@ export default function Supervisor() {
 
   // â”€â”€ Frases â”€â”€
   const [fraseTexto, setFraseTexto] = useState('')
+  const [fraseEliminandoId, setFraseEliminandoId] = useState(null)
 
   // â”€â”€ Toast â”€â”€
   const [toast, setToast] = useState('')
@@ -265,8 +266,8 @@ export default function Supervisor() {
       const url = salaActual ? `${API}/frases?sala=${encodeURIComponent(salaActual)}` : `${API}/frases`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok && data.data?.length) {
-        setFrases(data.data.map(f => ({ texto:f.texto, hora:(f.created_at||'').split(' ')[1]||'', sala:f.sala||salaActual })))
+      if (data.ok) {
+        setFrases((data.data || []).map(f => ({ id:f.id, texto:f.texto, hora:(f.created_at||'').split(' ')[1]||'', sala:f.sala||salaActual })))
       }
     } catch(e) {}
   }, [salaActual])
@@ -280,9 +281,26 @@ export default function Supervisor() {
       if (data.ok) {
         setFraseTexto('')
         const hora = new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
-        setFrases(prev => [{ texto, hora, sala:salaActual }, ...prev])
+        setFrases(prev => [{ id:data.id, texto, hora, sala:salaActual }, ...prev])
       } else mostrarToast('Error: ' + data.mensaje)
     } catch(e) { mostrarToast('Error conectando') }
+  }
+
+  async function eliminarFrase(frase) {
+    if (!frase?.id || fraseEliminandoId !== null) return
+    if (!window.confirm('¿Eliminar esta frase publicada?')) return
+    setFraseEliminandoId(frase.id)
+    try {
+      const res = await fetch(`${API}/frases/${frase.id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar la frase')
+      setFrases(prev => prev.filter(item => item.id !== frase.id))
+      mostrarToast(data.mensaje || 'Frase eliminada')
+    } catch(e) {
+      mostrarToast(e.message || 'Error de conexión')
+    } finally {
+      setFraseEliminandoId(null)
+    }
   }
 
   async function eliminarVenta(id) {
@@ -936,8 +954,18 @@ export default function Supervisor() {
                   {frases.length === 0
                     ? <div className="frase-vacia">Aún no publicaste ninguna frase.</div>
                     : frases.map((f,i)=>(
-                        <div key={i} className="frase-item">
-                          <div className="frase-item-texto">"{f.texto}"</div>
+                        <div key={f.id || i} className="frase-item">
+                          <div className="frase-item-head">
+                            <div className="frase-item-texto">"{f.texto}"</div>
+                            <button
+                              type="button"
+                              className="frase-eliminar-btn"
+                              disabled={fraseEliminandoId !== null}
+                              onClick={()=>eliminarFrase(f)}
+                            >
+                              {fraseEliminandoId === f.id ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div>
                           <div className="frase-item-meta">{f.sala} · {f.hora}</div>
                         </div>
                       ))
