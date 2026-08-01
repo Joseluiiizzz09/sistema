@@ -556,26 +556,6 @@ export default function Supervisor() {
               </table>
             </div>
 
-            {/* Comparativo mensual */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:13,fontWeight:700,color:'#374151',marginBottom:12}}>Comparativo mensual</div>
-              <div className="comp-grid">
-                {[0,1,2].map(o=>{
-                  const cl  = getMesClave(o)
-                  const cnt = todasVentas.filter(v=>v._fecha&&v._fecha.startsWith(cl)).length
-                  const prev= todasVentas.filter(v=>v._fecha&&v._fecha.startsWith(getMesClave(o+1))).length
-                  const diff= cnt-prev
-                  const dc  = diff>0?'up':diff<0?'down':'eq'
-                  return (
-                    <div key={o} className="comp-card">
-                      <div className="comp-mes">{getMesLabel(o)}</div>
-                      <div className="comp-val">{cnt}</div>
-                      <div className={`comp-diff ${dc}`}>{diff>0?'â†‘':diff<0?'â†“':'â†’'} {Math.abs(diff)} vs mes anterior</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
           </section>
 
           {/* â•â• VENTAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
