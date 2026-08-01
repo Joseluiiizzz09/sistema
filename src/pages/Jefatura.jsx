@@ -1481,7 +1481,7 @@ export default function Jefatura() {
               <div className="eliminaciones-acciones">
                 <button className="btn-nuevo" onClick={cargarEliminaciones} disabled={cargandoEliminaciones}>Actualizar</button>
                 <button className="btn-eliminar-historial" onClick={limpiarEliminaciones} disabled={!eliminaciones.length || limpiandoEliminaciones}>
-                  {limpiandoEliminaciones ? 'Eliminando...' : 'Eliminar historial'}
+                  {limpiandoEliminaciones ? 'Eliminando...' : 'Eliminar'}
                 </button>
               </div>
             </div>
