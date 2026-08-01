@@ -998,3 +998,21 @@ body{
 }
 .btn-confirmar-modal:hover { transform: scale(1.04) translateY(-1px); box-shadow: 0 6px 18px rgba(229,62,62,.45); }
 .btn-confirmar-modal:active { transform: scale(.97); }
+
+/* ━━ RENDIMIENTO — REDISEÑO ━━ */
+.rd-asesor-cell{display:flex;align-items:center;gap:9px;}
+.rd-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;letter-spacing:.3px;flex-shrink:0;}
+.rd-name-block{display:flex;flex-direction:column;gap:1px;}
+.rd-asesor-name{font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+.rd-asesor-user{font-size:10px;color:var(--ink-4);}
+.rd-ventas-num{font-size:15px;font-weight:800;color:var(--ink);}
+.rd-bar-pct{font-size:10px;font-weight:700;color:var(--ink-3);}
+.rd-kpi-leads{border-left:3px solid #0891b2;}
+.rd-kpi-ventas{border-left:3px solid #059669;}
+.rd-kpi-conv{border-left:3px solid #7c3aed;}
+.rd-kpi-asesores{border-left:3px solid #d97706;}
+.rend-bar{height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden;width:90px;}
+.rend-pos{width:28px;height:28px;border-radius:50%;background:#f8fafc;color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1.5px solid #e2e8f0;}
+.rend-pos.p1{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;border-color:#f59e0b;box-shadow:0 1px 4px rgba(245,158,11,.3);}
+.rend-pos.p2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#1e293b;border-color:#94a3b8;box-shadow:0 1px 4px rgba(148,163,184,.3);}
+.rend-pos.p3{background:linear-gradient(135deg,#fb923c,#ea580c);color:#fff;border-color:#ea580c;box-shadow:0 1px 4px rgba(234,88,12,.3);}

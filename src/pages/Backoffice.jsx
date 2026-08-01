@@ -1474,7 +1474,12 @@ export default function Backoffice() {
 
           {/* ══ SECCIÓN: RENDIMIENTO ═══════════════════════════════════════════ */}
           <section className={`bo-seccion${seccion==='rendimiento'?'':' hidden'}`}>
-            <div className="bo-seccion-header"><h2>Rendimiento de Asesores</h2></div>
+            <div className="bo-seccion-header">
+              <div>
+                <h2>Rendimiento de Asesores</h2>
+                <p className="bo-sub">Ranking por período · métricas de leads, ventas y conversión</p>
+              </div>
+            </div>
             <div className="rend-filtros">
               <div className="bo-input-group" style={{minWidth:150}}>
                 <label>Filtrar por</label>
@@ -1509,8 +1514,8 @@ export default function Backoffice() {
               </div>
             </div>
             <div className="rend-kpis">
-              {[['Total Leads',rendTotLeads],['Total Ventas',rendTotVentas],['Conversion',rendTotConv+'%'],['Asesores',asesores.length]].map(([l,v])=>(
-                <div key={l} className="rend-kpi"><div className="rend-kpi-label">{l}</div><div className="rend-kpi-valor">{v}</div></div>
+              {[['Total Leads',rendTotLeads,'rd-kpi-leads'],['Total Ventas',rendTotVentas,'rd-kpi-ventas'],['Conversión',rendTotConv+'%','rd-kpi-conv'],['Asesores',asesores.length,'rd-kpi-asesores']].map(([l,v,cls])=>(
+                <div key={l} className={`rend-kpi ${cls}`}><div className="rend-kpi-label">{l}</div><div className="rend-kpi-valor">{v}</div></div>
               ))}
             </div>
             <div className="bo-tabla-wrap">
@@ -1530,13 +1535,13 @@ export default function Backoffice() {
                     : rendData.map((r,i)=>(
                         <tr key={r.nombre}>
                           <td><div className={`rend-pos${i<3?' '+['p1','p2','p3'][i]:''}`}>{i+1}</div></td>
-                          <td><div className="bo-cliente-cell"><div className="bo-cliente-avatar" style={{background:colorAv(r.nombre)}}>{iniciales(r.nombre)}</div><div><div style={{fontWeight:600,fontSize:13}}>{r.nombre}</div><div style={{fontSize:10,color:'#9ca3af'}}>{r.usuario}</div></div></div></td>
+                          <td><div className="rd-asesor-cell"><div className="rd-avatar" style={{background:colorAv(r.nombre)}}>{iniciales(r.nombre)}</div><div className="rd-name-block"><div className="rd-asesor-name">{r.nombre}</div><div className="rd-asesor-user">{r.usuario}</div></div></div></td>
                           <td style={{fontWeight:600}}>{r.leads}</td>
                           <td style={{color:'#16a34a',fontWeight:600}}>{r.contesta}</td>
                           <td style={{color:'#d97706',fontWeight:600}}>{r.nc}</td>
-                          <td><span style={{fontSize:18,fontWeight:800,color:'#111827'}}>{r.ventas}</span></td>
+                          <td><span className="rd-ventas-num">{r.ventas}</span></td>
                           <td><span className={`tipif-badge ${r.conv>=30?'b-venta':r.conv>=15?'b-nocontesta':'b-default'}`}>{r.conv}%</span></td>
-                          <td><div className="rend-bar-wrap"><div className="rend-bar"><div className="rend-bar-fill" style={{width:`${Math.round(r.ventas/rendMaxVentas*100)}%`}} /></div><span style={{fontSize:10,color:'#9ca3af'}}>{Math.round(r.ventas/rendMaxVentas*100)}%</span></div></td>
+                          <td><div className="rend-bar-wrap"><div className="rend-bar"><div className="rend-bar-fill" style={{width:`${Math.round(r.ventas/rendMaxVentas*100)}%`}} /></div><span className="rd-bar-pct">{Math.round(r.ventas/rendMaxVentas*100)}%</span></div></td>
                         </tr>
                       ))
                   }
