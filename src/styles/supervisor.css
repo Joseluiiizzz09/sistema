@@ -930,9 +930,9 @@ body{
 .frase-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .frase-item-texto { font-size: 13px; color: var(--ink-2); line-height: 1.5; font-style: italic; }
 .frase-item-meta  { font-size: 10px; color: var(--ink-4); margin-top: 6px; }
-.frase-eliminar-btn { flex: 0 0 auto; padding: 6px 11px; border: 1px solid #dc2626; border-radius: 8px; background: #dc2626; color: #fff; font: 700 10px/1 inherit; cursor: pointer; transition: background .18s, border-color .18s; }
-.frase-eliminar-btn:hover:not(:disabled) { border-color: #b91c1c; background: #b91c1c; }
-.frase-eliminar-btn:disabled { opacity: .55; cursor: not-allowed; }
+.frase-eliminar-btn { flex: 0 0 auto; padding: 5px 11px; border: none; border-radius: 8px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .2s var(--sp); }
+.frase-eliminar-btn:hover:not(:disabled) { background: #b91c1c; transform: scale(1.03); }
+.frase-eliminar-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .frase-vacia { text-align: center; padding: 30px; color: var(--ink-4); font-size: 13px; }
 
 @media (max-width: 900px) {
