@@ -842,49 +842,6 @@ body{
   line-height: 1;
 }
 
-/* Comparativo mensual */
-.comp-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.comp-card {
-  background: var(--surf-0);
-  border: 1px solid var(--line);
-  border-radius: var(--r2);
-  padding: 16px 18px;
-  box-shadow: var(--sh);
-  transition: all .22s var(--sp);
-}
-.comp-card:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
-.comp-mes {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-4);
-  text-transform: capitalize;
-  margin-bottom: 6px;
-}
-.comp-val {
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: -1px;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.comp-diff {
-  font-size: 11px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-.comp-diff.up   { background: #dcfce7; color: #15803d; }
-.comp-diff.down { background: #fee2e2; color: #991b1b; }
-.comp-diff.eq   { background: #f3f4f6; color: #6b7280; }
-
 /* Asesor cell en tabla */
 .asesor-cell {
   display: flex;
