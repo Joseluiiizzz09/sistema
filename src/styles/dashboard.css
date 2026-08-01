@@ -213,7 +213,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .dash-root .dash-contacto{
     display:inline-flex;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap;
 }
-.dash-root .dash-contacto.wsp{background:#dcfce7;color:#15803d;}
+.dash-root .dash-contacto.wsp{padding:5px 12px;background:#dcfce7;color:#15803d;font-size:11px;}
 .dash-root .dash-contacto.llamada{background:#eff6ff;color:#1d4ed8;}
 .dash-root .dash-ubicacion{display:flex;flex-direction:column;gap:2px;min-width:145px;max-width:220px;}
 .dash-root .dash-ubicacion span{white-space:normal;line-height:1.25;}
