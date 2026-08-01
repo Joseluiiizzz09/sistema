@@ -1519,7 +1519,7 @@ export default function Backoffice() {
               ))}
             </div>
             <div className="bo-tabla-wrap">
-              <table className="bo-tabla table table-sm table-hover">
+              <table className="bo-tabla rend-tabla table table-sm table-hover">
                 <thead><tr>
                   <th>#</th><th>Asesor</th>
                   <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('leads_desc')}>Leads</th>
