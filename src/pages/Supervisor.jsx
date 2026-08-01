@@ -913,7 +913,7 @@ export default function Supervisor() {
 
           {/* â•â• FRASES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <section className={`section${seccion==='frases'?' active':''}`}>
-            <div className="sec-header"><div><h2>Frases del DÃ­a</h2><p>EnvÃ­a mensajes motivacionales a tu equipo</p></div></div>
+            <div className="sec-header"><div><h2>Frases del Día</h2><p>Envía mensajes motivacionales a tu equipo</p></div></div>
             <div className="frases-layout">
               <div>
                 <div className="frases-panel">
@@ -934,11 +934,11 @@ export default function Supervisor() {
                 </div>
                 <div>
                   {frases.length === 0
-                    ? <div className="frase-vacia">AÃºn no publicaste ninguna frase.</div>
+                    ? <div className="frase-vacia">Aún no publicaste ninguna frase.</div>
                     : frases.map((f,i)=>(
                         <div key={i} className="frase-item">
                           <div className="frase-item-texto">"{f.texto}"</div>
-                          <div className="frase-item-meta">{f.sala} Â· {f.hora}</div>
+                          <div className="frase-item-meta">{f.sala} · {f.hora}</div>
                         </div>
                       ))
                   }
