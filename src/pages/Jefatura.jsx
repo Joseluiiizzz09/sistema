@@ -172,6 +172,15 @@ function snapshotEliminado(item) {
   try { return JSON.parse(item.snapshot_json) } catch { return null }
 }
 
+function etiquetaTipoEliminacion(tipo) {
+  return ({
+    VENTA: 'Venta',
+    POSTULANTE: 'Postulante',
+    NUMERO_BACKDATA: 'Número Back Data',
+    NUMERO_RECLUTAMIENTO: 'Número Reclutamiento',
+  })[tipo] || tipo || 'Registro'
+}
+
 // Exportación genérica a Excel: recibe filas ya filtradas (nunca solo la
 // página visible) y una lista de columnas [encabezado, getter(fila)].
 function descargarExcel(filas, columnas, nombreArchivo) {
@@ -207,6 +216,7 @@ export default function Jefatura() {
   const [cargandoReclutados, setCargandoReclutados] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
+  const [limpiandoEliminaciones, setLimpiandoEliminaciones] = useState(false)
   const [detalleEliminacion, setDetalleEliminacion] = useState(null)
 
 
@@ -355,6 +365,34 @@ export default function Jefatura() {
       setCargandoEliminaciones(false)
     }
   }, [])
+
+  async function limpiarEliminaciones() {
+    if (!eliminaciones.length || limpiandoEliminaciones) return
+    const confirmacion = window.prompt(
+      `Esta acción eliminará definitivamente los ${eliminaciones.length} registros del historial.\n\nEscribe ELIMINAR para continuar.`
+    )
+    if (confirmacion !== 'ELIMINAR') {
+      if (confirmacion !== null) mostrarToast('La confirmación no coincide')
+      return
+    }
+    setLimpiandoEliminaciones(true)
+    try {
+      const res = await fetch(`${API}/eliminaciones`, {
+        method:'DELETE',
+        headers:ncHeaders(),
+        body:JSON.stringify({ confirmacion:'ELIMINAR' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo limpiar el historial')
+      setEliminaciones([])
+      setDetalleEliminacion(null)
+      mostrarToast(data.mensaje || 'Historial de eliminaciones limpiado')
+    } catch (error) {
+      mostrarToast(error.message || 'Error de conexión')
+    } finally {
+      setLimpiandoEliminaciones(false)
+    }
+  }
 
   async function eliminarReclutado(postulante) {
     if (!window.confirm(`¿Eliminar definitivamente a ${postulante.nombre || 'este postulante'}?`)) return
@@ -1439,8 +1477,13 @@ export default function Jefatura() {
           {/* ===== ELIMINACIONES GENERALES ===== */}
           <section className={`section${seccion==='eliminaciones'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Eliminaciones generales</h2><p>Auditoría de ventas y postulantes eliminados</p></div>
-              <button className="btn-nuevo" onClick={cargarEliminaciones}>Actualizar</button>
+              <div><h2>Eliminaciones generales</h2><p>Auditoría de ventas, postulantes y números eliminados desde todos los módulos</p></div>
+              <div className="eliminaciones-acciones">
+                <button className="btn-nuevo" onClick={cargarEliminaciones} disabled={cargandoEliminaciones}>Actualizar</button>
+                <button className="btn-eliminar-historial" onClick={limpiarEliminaciones} disabled={!eliminaciones.length || limpiandoEliminaciones}>
+                  {limpiandoEliminaciones ? 'Eliminando...' : 'Eliminar historial'}
+                </button>
+              </div>
             </div>
             <div className="tabla-wrap">
               <div className="tabla-header">
@@ -1465,7 +1508,7 @@ export default function Jefatura() {
                           <td>{partes[1] || '—'}</td>
                           <td style={{fontWeight:700}}>{item.actor_nombre || '—'}</td>
                           <td>{cargoObj(item.actor_cargo).label || item.actor_cargo || '—'}</td>
-                          <td><span className="flujo-warn">{item.tipo || '—'}</span></td>
+                          <td><span className="flujo-warn">{etiquetaTipoEliminacion(item.tipo)}</span></td>
                           <td>{item.registro_id || '—'}</td>
                           <td>{item.detalle || '—'}</td>
                           <td>
@@ -1522,7 +1565,7 @@ export default function Jefatura() {
           <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget)setDetalleEliminacion(null)}}>
             <div className="modal-box eliminacion-detalle-modal">
               <div className="modal-head">
-                <span className="modal-head-title">Detalle completo de {detalleEliminacion.tipo === 'VENTA' ? 'la venta eliminada' : 'el postulante eliminado'}</span>
+                <span className="modal-head-title">Detalle completo: {etiquetaTipoEliminacion(detalleEliminacion.tipo)}</span>
                 <button className="modal-close" onClick={()=>setDetalleEliminacion(null)}>×</button>
               </div>
               <div className="modal-body">

@@ -1109,6 +1109,37 @@ button.export-kpi-card:hover {
   min-width: 1180px;
 }
 
+.eliminaciones-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-eliminar-historial {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fff;
+  color: #b91c1c;
+  font: 700 11px/1 inherit;
+  cursor: pointer;
+  transition: background .18s, color .18s, border-color .18s, box-shadow .18s;
+}
+
+.btn-eliminar-historial:hover:not(:disabled) {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(220,38,38,.22);
+}
+
+.btn-eliminar-historial:disabled,
+.eliminaciones-acciones .btn-nuevo:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
 .seguimiento-tabla {
   table-layout: fixed;
   width: 1795px;
