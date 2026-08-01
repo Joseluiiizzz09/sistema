@@ -1000,6 +1000,13 @@ body{
 .btn-confirmar-modal:active { transform: scale(.97); }
 
 /* ━━ RENDIMIENTO — REDISEÑO ━━ */
+.bo-root .rend-tabla thead th{
+  background:linear-gradient(180deg,#1e293b,#0f172a)!important;
+  color:#f8fafc!important;
+  --bs-table-color:#f8fafc;
+  --bs-table-bg:transparent;
+  text-shadow:0 1px 1px rgba(0,0,0,.18);
+}
 .rd-asesor-cell{display:flex;align-items:center;gap:9px;}
 .rd-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;letter-spacing:.3px;flex-shrink:0;}
 .rd-name-block{display:flex;flex-direction:column;gap:1px;}
