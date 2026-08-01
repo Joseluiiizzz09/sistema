@@ -183,6 +183,7 @@ export default function Backoffice() {
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
+  const [rotandoManual, setRotandoManual] = useState(false)
 
   // ── Carga masiva ──
   const [cargaTab,     setCargaTab]     = useState(() => sessionStorage.getItem('nc_backoffice_carga_tab') || 'pegar')
@@ -334,7 +335,7 @@ export default function Backoffice() {
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
         if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha)
         nuevoBase[fecha].push({
-          id:         idCntRef.current++,
+          id:         l.id,
           _backendId: l.id,
           campana:    l.campana || '—',
           distrito:   l.distrito || '—',
@@ -438,7 +439,7 @@ export default function Backoffice() {
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
+      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
@@ -453,7 +454,7 @@ export default function Backoffice() {
           const next = { ...prev }
           const arr  = [...(next[fecha] || [])]
           const idx  = arr.findIndex(r => r.id === reg.id)
-          if (idx >= 0) { arr[idx] = { ...arr[idx], _backendId: bid }; next[fecha] = arr }
+          if (idx >= 0) { arr[idx] = { ...arr[idx], id: bid, _backendId: bid }; next[fecha] = arr }
           return next
         })
       }
@@ -514,9 +515,12 @@ export default function Backoffice() {
   }
 
   async function confirmarRotacion() {
-    if (!rotModalAsesor) return
+    if (!rotModalAsesor || rotandoManual) return
     const found = findReg(modalRotar.regId)
-    if (!found) return
+    if (!found) {
+      mostrarToast('El registro cambió. Abre nuevamente la opción Rotar.')
+      return
+    }
     const { reg } = found
     if (esLeadProhibido(reg)) {
       mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
@@ -526,9 +530,23 @@ export default function Backoffice() {
     const hora    = horaAhora()
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
-    updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
-    setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+    if (!reg._backendId) {
+      mostrarToast('Espera a que el registro termine de guardarse antes de rotarlo.')
+      return
+    }
+    setRotandoManual(true)
+    try {
+      const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
+      updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
+      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+      mostrarToast(`Registro rotado a ${rotModalAsesor}`)
+    } catch (error) {
+      mostrarToast(error.message || 'Error de conexión al rotar')
+    } finally {
+      setRotandoManual(false)
+    }
   }
 
   // ── Rotation panel ────────────────────────────────────────────────────────
@@ -652,7 +670,7 @@ export default function Backoffice() {
     const nuevosRegs = []
     lista.forEach(n1 => {
       if ((baseData[fecha]||[]).find(r=>r.n1===n1)) return
-      const reg = { id:idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
+      const reg = { id:-idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
       nuevosRegs.push(reg)
       leadsParaBackend.push({ campana, distrito:'—', n1, n2:'', tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora })
     })
@@ -711,7 +729,7 @@ export default function Backoffice() {
     const nuevos = []; const leadsBackend = []
     archivoRows.forEach(r => {
       if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)) return
-      nuevos.push({ id:idCntRef.current++, _backendId:null, campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipifBack:r.tipif, asesor:'', horaAsig:'', sinAsignar:true, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:[] })
+      nuevos.push({ id:-idCntRef.current++, _backendId:null, campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipifBack:r.tipif, asesor:'', horaAsig:'', sinAsignar:true, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:[] })
       leadsBackend.push({ campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipif_back:r.tipif, asesor_nombre:'', fecha, hora_asig:'' })
     })
     const omitidos = archivoRows.length - nuevos.length
@@ -765,7 +783,7 @@ export default function Backoffice() {
       if (!updates[fecha]) updates[fecha] = []
       if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)||updates[fecha].find(x=>x.n1===r.n1)) { omitidos++; return }
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
-      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
+      updates[fecha].push({ id:-idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
       leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
       importados++
     })
@@ -1597,7 +1615,7 @@ export default function Backoffice() {
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor}>Rotar ahora</button>
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>{rotandoManual ? 'Rotando...' : 'Rotar ahora'}</button>
             </div>
           </div>
         </div>
