@@ -527,21 +527,19 @@ export default function Backoffice() {
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       return
     }
-    const hora    = horaAhora()
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
-    const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
     if (!reg._backendId) {
       mostrarToast('Espera a que el registro termine de guardarse antes de rotarlo.')
       return
     }
     setRotandoManual(true)
     try {
-      const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+      const res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, motivo }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
-      updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
+      await cargarLeads()
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
-      mostrarToast(`Registro rotado a ${rotModalAsesor}`)
+      mostrarToast(data.mensaje || `Registro rotado a ${rotModalAsesor}`)
     } catch (error) {
       mostrarToast(error.message || 'Error de conexión al rotar')
     } finally {
@@ -589,12 +587,15 @@ export default function Backoffice() {
     const res = []
     for (const l of rotados) {
       const reg = l._reg
-      const newHist = [...reg.historial, { asesor:asesorActual, hora, fecha:fechaHoy(), motivo:'Rotacion masiva' }]
-      updateReg(reg.id, { asesor:asesorActual, horaAsig:hora, sinAsignar:false, rotaciones:(reg.rotaciones||0)+1, historial:newHist })
-      if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
-      res.push({ tel:reg.n1, asesor:asesorActual, hora })
+      if (!reg._backendId) continue
+      try {
+        const respuesta = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, motivo:'Rotacion masiva' }) })
+        const data = await respuesta.json().catch(() => ({}))
+        if (respuesta.ok && data.ok) res.push({ tel:reg.n1, asesor:asesorActual, hora })
+      } catch {}
     }
-    setRotRotados(prev => prev + rotados.length)
+    await cargarLeads()
+    setRotRotados(prev => prev + res.length)
     setRotResultado(res)
     setRotSel({})
   }
