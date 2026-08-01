@@ -476,10 +476,10 @@ export default function Supervisor() {
           <button className={`nav-btn${seccion==='dashboard'?' active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot" /> Dashboard</button>
           <button className={`nav-btn${seccion==='ventas'?' active':''}`} onClick={()=>irSeccion('ventas')}><span className="nav-dot" /> Ventas</button>
           <button className={`nav-btn${seccion==='equipo'?' active':''}`} onClick={()=>irSeccion('equipo')}><span className="nav-dot" /> Mi Equipo</button>
-          <div className="sidebar-sep">AnÃ¡lisis</div>
+          <div className="sidebar-sep">ANÁLISIS</div>
           <button className={`nav-btn${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><span className="nav-dot" /> Rendimiento</button>
-          <div className="sidebar-sep">ComunicaciÃ³n</div>
-          <button className={`nav-btn${seccion==='frases'?' active':''}`} onClick={()=>irSeccion('frases')}><span className="nav-dot" /> Frases del dÃ­a</button>
+          <div className="sidebar-sep">COMUNICACIÓN</div>
+          <button className={`nav-btn${seccion==='frases'?' active':''}`} onClick={()=>irSeccion('frases')}><span className="nav-dot" /> Frases del día</button>
         </aside>
 
         <main className="main">
