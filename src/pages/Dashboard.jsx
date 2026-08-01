@@ -81,7 +81,7 @@ function colorEstado(e) {
     'AGENDADO':'estado-agendado','NO CALIFICA':'estado-no-califica',
     'EDIFICIO NO LIBERADO':'estado-sh-edificio-no-liberado',
     'CONTACTO CON TERCEROS':'estado-contacto-con-terceros',
-    'NO DESEA':'estado-no-desea','BUZON DE VOZ':'estado-buzon-voz','NUEVO':'estado-nuevo',
+    'NO DESEA':'estado-no-desea','BUZON DE VOZ':'estado-buzon-voz','DERIVADO':'estado-derivado','NUEVO':'estado-nuevo',
     'INSTALADO':'estado-instalado','CAIDA':'estado-caida','CAÍDA':'estado-caida',
     'TECNICO EN CASA':'estado-tecnico-casa','TECNICOS EN CASA':'estado-tecnico-casa',
     'TÉCNICO EN CASA':'estado-tecnico-casa','TÉCNICOS EN CASA':'estado-tecnico-casa',
@@ -348,7 +348,8 @@ export default function Dashboard() {
             obsBack: l.obs_back || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
-            estado:   l.tipif_vend && l.tipif_vend !== '' ? l.tipif_vend : (p.estado || 'NUEVO'),
+            estado:   l.tipif_vend && l.tipif_vend !== '' ? l.tipif_vend : (l.tipif_back || p.estado || 'NUEVO'),
+            derivadoPor: l.derivado_por_nombre || '',
             obs:      l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || ''),
           }
         })
@@ -899,7 +900,7 @@ export default function Dashboard() {
                 <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
                 <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
                 <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
-                <td><span className={`badge-estado ${colorEstado(c.estado)}`}>{c.estado}</span></td>
+                <td><div style={{display:'flex',flexDirection:'column',gap:3}}><span className={`badge-estado ${colorEstado(c.estado)}`}>{c.estado}</span>{c.estado==='DERIVADO' && c.derivadoPor && <small style={{fontSize:9,color:'#6b7280',fontWeight:700}}>Derivado por: {c.derivadoPor}</small>}</div></td>
                 <td>
                   <input
                     className="input-obs"

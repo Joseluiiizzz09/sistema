@@ -788,6 +788,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .badge-estado.estado-contacto-con-terceros{background:#f0fdf4!important;color:#166534!important;border-color:rgba(74,222,128,.42)!important;}
 .badge-estado.estado-no-desea{background:#fff1f2!important;color:#be123c!important;border-color:rgba(251,113,133,.42)!important;}
 .badge-estado.estado-buzon-voz{background:#f1f5f9!important;color:#475569!important;border-color:rgba(148,163,184,.45)!important;}
+.badge-estado.estado-derivado{background:#ede9fe!important;color:#5b21b6!important;border-color:rgba(139,92,246,.4)!important;}
 .badge-estado.estado-nuevo{background:#f8fafc!important;color:#64748b!important;border-color:rgba(148,163,184,.35)!important;}
 .badge-estado.estado-instalado{background:#dcfce7!important;color:#047857!important;border-color:rgba(52,211,153,.45)!important;}
 .badge-estado.estado-caida{background:#fee2e2!important;color:#b91c1c!important;border-color:rgba(248,113,113,.45)!important;}

@@ -66,7 +66,7 @@ function tipifBadgeClass(t) {
   return 'b-default'
 }
 
-const TIPIF_BACK_OPTIONS = ['BUZON','NO CONTESTA','DER CHAMO','VENTA CERRADA','NO DESEA','CORTA LLAMADA','PREVENTA','EN EJECUCION','AGENDADO','NO CALIFICA','EDIFICIO NO LIBERADO']
+const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','VENTA CERRADA','NO DESEA','PREVENTA','EN EJECUCION','AGENDADO','NO CALIFICA','EDIFICIO NO LIBERADO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','DERIVADO','NC','NO TOCAR','FRAUDE']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE'])
 function esLeadProhibido(reg) {
@@ -345,6 +345,7 @@ export default function Backoffice() {
           coordenadas: l.coordenadas || '',
           obs_back:    l.obs_back || '',
           tipifBack:  l.tipif_back || '',
+          derivadoPor: l.derivado_por_nombre || '',
           asesor:     l.asesor_nombre || '',
           horaAsig:   l.hora_asig || '',
           sinAsignar: !!l.sin_asignar,
@@ -437,7 +438,7 @@ export default function Backoffice() {
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, asesor, horaAsig:hora,
+      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
@@ -476,7 +477,7 @@ export default function Backoffice() {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
 
@@ -1169,7 +1170,7 @@ export default function Backoffice() {
                               </div>
                             </td>
                             <td><input className="bo-obs-back" defaultValue={r.obs_back||''} onBlur={e=>guardarDatosBack(r.id,{obs_back:e.target.value.trim()})} placeholder="Observación para asesor" maxLength={2000}/></td>
-                            <td>{r.tipifBack ? <span className={`tipif-badge ${tipifBadgeClass(r.tipifBack)}`}>{r.tipifBack}</span> : <span style={{color:'#ccc',fontSize:10}}>—</span>}</td>
+                            <td>{r.tipifBack ? <div style={{display:'flex',flexDirection:'column',gap:3}}><span className={`tipif-badge ${tipifBadgeClass(r.tipifBack)}`}>{r.tipifBack}</span>{r.tipifBack==='DERIVADO' && r.derivadoPor && <small style={{fontSize:9,color:'#6b7280',fontWeight:700}}>Por: {r.derivadoPor}</small>}</div> : <span style={{color:'#ccc',fontSize:10}}>—</span>}</td>
                             <td>
                               <select className="sel-asesor-tabla" value={r.asesor} disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''} onChange={e=>reasignarReg(r.id,e.target.value)}>
                                 <option value="">— Sin asignar —</option>
