@@ -706,11 +706,11 @@ export default function Supervisor() {
 
           {/* ══ MI EQUIPO ══════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='equipo'?' active':''}`}>
-            <div className="sec-header">
-              <div><h2>Mi Equipo</h2><p>Asesores activos en {salaActual}</p></div>
-              <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <input type="text" value={equipoBuscar} onChange={e=>setEquipoBuscar(e.target.value)} placeholder="Buscar asesor..." style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',width:200}} />
-                <select value={equipoFiltroEstado} onChange={e=>setEquipoFiltroEstado(e.target.value)} style={{padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff'}}>
+            <div className="team-header">
+              <div className="team-heading"><span className="team-eyebrow">GESTIÓN DE PERSONAL</span><h2>Mi Equipo</h2><p>Supervisa el rendimiento y la disponibilidad de los asesores en <strong>{salaActual}</strong>.</p></div>
+              <div className="team-toolbar">
+                <label className="team-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.15a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg><input type="text" value={equipoBuscar} onChange={e=>setEquipoBuscar(e.target.value)} placeholder="Buscar por nombre o usuario" aria-label="Buscar asesor" /></label>
+                <select className="team-filter" value={equipoFiltroEstado} onChange={e=>setEquipoFiltroEstado(e.target.value)} aria-label="Filtrar por estado">
                   <option value="">Todos</option>
                   <option value="1">Activos</option>
                   <option value="0">Inactivos</option>
@@ -719,11 +719,11 @@ export default function Supervisor() {
             </div>
 
             {/* KPIs equipo */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginBottom:20}}>
-              <div className="kpi-card k-blue"><div className="kpi-label">Total asesores</div><div className="kpi-value">{asesoresSala.length}</div><div className="kpi-sub">{salaActual}</div></div>
-              <div className="kpi-card k-green"><div className="kpi-label">Activos</div><div className="kpi-value">{asesoresSala.filter(a=>a.activo).length}</div><div className="kpi-sub">en servicio</div></div>
-              <div className="kpi-card k-red"><div className="kpi-label">Inactivos</div><div className="kpi-value">{asesoresSala.filter(a=>!a.activo).length}</div><div className="kpi-sub">desactivados</div></div>
-              <div className="kpi-card k-purple"><div className="kpi-label">Ventas hoy</div><div className="kpi-value">{todasVentas.filter(v=>v._fecha===fechaHoy()).length}</div><div className="kpi-sub">de tu sala</div></div>
+            <div className="team-kpis">
+              <div className="team-kpi tk-blue"><span className="team-kpi-icon">👥</span><div><div className="team-kpi-label">Total asesores</div><div className="team-kpi-value">{asesoresSala.length}</div><div className="team-kpi-sub">Equipo de {salaActual}</div></div></div>
+              <div className="team-kpi tk-green"><span className="team-kpi-icon">✓</span><div><div className="team-kpi-label">Activos</div><div className="team-kpi-value">{asesoresSala.filter(a=>a.activo).length}</div><div className="team-kpi-sub">Disponibles en servicio</div></div></div>
+              <div className="team-kpi tk-red"><span className="team-kpi-icon">−</span><div><div className="team-kpi-label">Inactivos</div><div className="team-kpi-value">{asesoresSala.filter(a=>!a.activo).length}</div><div className="team-kpi-sub">Fuera de servicio</div></div></div>
+              <div className="team-kpi tk-purple"><span className="team-kpi-icon">↗</span><div><div className="team-kpi-label">Ventas hoy</div><div className="team-kpi-value">{todasVentas.filter(v=>v._fecha===fechaHoy()).length}</div><div className="team-kpi-sub">Registradas en tu sala</div></div></div>
             </div>
 
             {/* Cards de asesores */}
@@ -734,9 +734,9 @@ export default function Supervisor() {
                 const me = equipoFiltroEstado==='' || String(a.activo?1:0)===equipoFiltroEstado
                 return mb && me
               })
-              if (!lista.length) return <div style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin asesores.</div>
+              if (!lista.length) return <div className="team-empty"><span>⌕</span><strong>No encontramos asesores</strong><p>Prueba con otro nombre o cambia el filtro de estado.</p></div>
               return (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14,marginBottom:20}}>
+                <div className="team-grid">
                   {lista.map(a => {
                     const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
                     const hoyV = mis.filter(v=>v._fecha===hoy).length
@@ -744,7 +744,7 @@ export default function Supervisor() {
                     const inst = mis.filter(v=>v._estado==='instalado').length
                     const conv = mis.length?Math.round(inst/mis.length*100):0
                     return (
-                      <div key={a.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:16,padding:20,boxShadow:'0 2px 8px rgba(0,0,0,.05)'}}>
+                      <div key={a.id} className="team-member">
                         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
                           <div style={{display:'flex',alignItems:'center',gap:10}}>
                             <div style={{width:44,height:44,borderRadius:'50%',background:colorFor(a.nombre),display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,color:'#fff'}}>{iniciales(a.nombre)}</div>
@@ -754,9 +754,9 @@ export default function Supervisor() {
                             ? <span style={{background:'#d1fae5',color:'#065f46',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>ACTIVO</span>
                             : <span style={{background:'#fee2e2',color:'#991b1b',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99}}>INACTIVO</span>}
                         </div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
+                        <div className="team-metrics">
                           {[['Hoy',hoyV,'#111827'],['Mes',mesV,'#2563eb'],['Inst.',inst,'#16a34a'],[`${conv}%`,'Conv.','#7c3aed']].map(([v,l,c],idx)=>(
-                            <div key={idx} style={{background:'#f9fafb',borderRadius:8,padding:8,textAlign:'center'}}>
+                            <div key={idx} className="team-metric">
                               <div style={{fontSize:18,fontWeight:800,color:c}}>{v}</div>
                               <div style={{fontSize:9,color:'#9ca3af',textTransform:'uppercase',marginTop:2}}>{l}</div>
                             </div>
@@ -765,8 +765,8 @@ export default function Supervisor() {
                         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:12,borderTop:'1px solid #f3f4f6'}}>
                           <span style={{fontSize:11,color:'#9ca3af'}}>{a.sala||'—'}</span>
                           <div style={{display:'flex',gap:6}}>
-                            <button onClick={()=>abrirBaseLlamadas(a.nombre,a.id)} style={{padding:'6px 12px',border:'1px solid #bfdbfe',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Base llamadas</button>
-                            <button onClick={()=>setModalAsesor({open:true,nombre:a.nombre})} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#374151',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Ver detalle</button>
+                            <button className="team-btn primary" onClick={()=>abrirBaseLlamadas(a.nombre,a.id)}>Base de llamadas</button>
+                            <button className="team-btn secondary" onClick={()=>setModalAsesor({open:true,nombre:a.nombre})}>Ver detalle</button>
                           </div>
                         </div>
                       </div>
