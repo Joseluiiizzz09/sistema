@@ -216,7 +216,7 @@ export default function Jefatura() {
   const [cargandoReclutados, setCargandoReclutados] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
-  const [limpiandoEliminaciones, setLimpiandoEliminaciones] = useState(false)
+  const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
   const [detalleEliminacion, setDetalleEliminacion] = useState(null)
 
 
@@ -366,31 +366,24 @@ export default function Jefatura() {
     }
   }, [])
 
-  async function limpiarEliminaciones() {
-    if (!eliminaciones.length || limpiandoEliminaciones) return
-    const confirmacion = window.prompt(
-      `Esta acción eliminará definitivamente los ${eliminaciones.length} registros del historial.\n\nEscribe ELIMINAR para continuar.`
-    )
-    if (confirmacion !== 'ELIMINAR') {
-      if (confirmacion !== null) mostrarToast('La confirmación no coincide')
-      return
-    }
-    setLimpiandoEliminaciones(true)
+  async function eliminarRegistroEliminacion(item) {
+    if (!item?.id || eliminacionBorrandoId !== null) return
+    if (!window.confirm('¿Eliminar este registro del historial?\n\nEsta acción solo borra el registro de auditoría.')) return
+    setEliminacionBorrandoId(item.id)
     try {
-      const res = await fetch(`${API}/eliminaciones`, {
+      const res = await fetch(`${API}/eliminaciones/${item.id}`, {
         method:'DELETE',
         headers:ncHeaders(),
-        body:JSON.stringify({ confirmacion:'ELIMINAR' }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo limpiar el historial')
-      setEliminaciones([])
-      setDetalleEliminacion(null)
-      mostrarToast(data.mensaje || 'Historial de eliminaciones limpiado')
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el registro')
+      setEliminaciones(actuales => actuales.filter(registro => registro.id !== item.id))
+      if (detalleEliminacion?.id === item.id) setDetalleEliminacion(null)
+      mostrarToast(data.mensaje || 'Registro eliminado del historial')
     } catch (error) {
       mostrarToast(error.message || 'Error de conexión')
     } finally {
-      setLimpiandoEliminaciones(false)
+      setEliminacionBorrandoId(null)
     }
   }
 
@@ -1478,12 +1471,7 @@ export default function Jefatura() {
           <section className={`section${seccion==='eliminaciones'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Eliminaciones generales</h2><p>Auditoría de ventas, postulantes y números eliminados desde todos los módulos</p></div>
-              <div className="eliminaciones-acciones">
-                <button className="btn-nuevo" onClick={cargarEliminaciones} disabled={cargandoEliminaciones}>Actualizar</button>
-                <button className="btn-eliminar-historial" onClick={limpiarEliminaciones} disabled={!eliminaciones.length || limpiandoEliminaciones}>
-                  {limpiandoEliminaciones ? 'Eliminando...' : 'Eliminar'}
-                </button>
-              </div>
+              <button className="btn-nuevo" onClick={cargarEliminaciones} disabled={cargandoEliminaciones}>Actualizar</button>
             </div>
             <div className="tabla-wrap">
               <div className="tabla-header">
@@ -1511,7 +1499,7 @@ export default function Jefatura() {
                           <td><span className="flujo-warn">{etiquetaTipoEliminacion(item.tipo)}</span></td>
                           <td>{item.registro_id || '—'}</td>
                           <td>{item.detalle || '—'}</td>
-                          <td>
+                          <td><div className="venta-actions">
                             <button
                               type="button"
                               className="venta-action-btn history"
@@ -1520,7 +1508,15 @@ export default function Jefatura() {
                             >
                               Ver detalle
                             </button>
-                          </td>
+                            <button
+                              type="button"
+                              className="btn-eliminar-usuario"
+                              disabled={eliminacionBorrandoId !== null}
+                              onClick={()=>eliminarRegistroEliminacion(item)}
+                            >
+                              {eliminacionBorrandoId === item.id ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div></td>
                         </tr>
                       )
                     })}
