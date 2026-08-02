@@ -242,6 +242,13 @@ export default function Dashboard() {
   const [nvPaquetes,  setNvPaquetes]  = useState([])
   const [guardandoNV, setGuardandoNV] = useState(false)
 
+  // Selector de Teléfono Contacto — VENTA CERRADA del día
+  const [nvVentasCerradas, setNvVentasCerradas] = useState([])
+  const [nvCargandoVC,     setNvCargandoVC]     = useState(false)
+  const [nvTelSearch,      setNvTelSearch]      = useState('')
+  const [nvTelOpen,        setNvTelOpen]        = useState(false)
+  const nvTelRef = useRef(null)
+
   // Modal fotos
   const [modalFotos, setModalFotos] = useState({ open:false, ventaId:null, nombre:'' })
   const [fotos,      setFotos]      = useState([])
@@ -413,6 +420,16 @@ export default function Dashboard() {
       document.removeEventListener('visibilitychange', sincronizarAlVolver)
     }
   }, [cargarLeadsAsesor, cargarVentasSubidas, cargarFrasesSuper])
+
+  // ── Click fuera del selector de teléfono ────────────────────────────────
+  useEffect(() => {
+    if (!nvTelOpen) return
+    function handleOutside(e) {
+      if (nvTelRef.current && !nvTelRef.current.contains(e.target)) setNvTelOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [nvTelOpen])
 
   // ── Efectos por tab ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -643,7 +660,14 @@ export default function Dashboard() {
   function abrirNuevaVenta() {
     setNvEditId(null); setNvForm(NV_DEFAULT)
     setNvProvs([]); setNvDists([]); setNvPaquetes([])
+    setNvVentasCerradas([]); setNvCargandoVC(true)
+    setNvTelSearch(''); setNvTelOpen(false)
     setPanelNV(true); document.body.style.overflow = 'hidden'
+    fetch(`${API}/leads/ventas-cerradas`, { headers: ncHeaders() })
+      .then(r => r.json())
+      .then(d => { if (d.ok) setNvVentasCerradas(d.data || []) })
+      .catch(() => {})
+      .finally(() => setNvCargandoVC(false))
   }
 
   function cerrarNuevaVenta() {
@@ -705,8 +729,32 @@ export default function Dashboard() {
   }
 
   async function guardarNuevaVenta() {
-    if (!nvForm.dni.trim())    return mostrarToast('El DNI es obligatorio')
+    if (!nvEditId) {
+      if (!nvForm.tel1)
+        return mostrarToast('Selecciona el Teléfono Contacto')
+      if (!nvVentasCerradas.some(v => v.n1 === nvForm.tel1))
+        return mostrarToast('El teléfono de contacto debe ser una VENTA CERRADA del día')
+    } else {
+      if (!nvForm.tel1.trim())
+        return mostrarToast('El Teléfono Contacto es obligatorio')
+      if (!/^\d+$/.test(nvForm.tel1.trim()))
+        return mostrarToast('El teléfono de contacto solo puede contener números')
+    }
+    if (nvForm.tel2.trim() && !/^\d+$/.test(nvForm.tel2.trim()))
+      return mostrarToast('El teléfono de referencia es opcional, pero si se completa debe contener únicamente números')
+    if (!nvForm.dni.trim()) return mostrarToast('El DNI es obligatorio')
+    if (nvForm.tipoDoc === 'DNI' && !/^\d{8}$/.test(nvForm.dni.trim()))
+      return mostrarToast('El número de DNI debe contener exactamente 8 dígitos')
     if (!nvForm.nombre.trim()) return mostrarToast('El nombre es obligatorio')
+    const reNombre = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]+$/
+    if (!reNombre.test(nvForm.nombre.trim()))
+      return mostrarToast('El nombre solo puede contener letras, tildes, espacios y guiones')
+    if (nvForm.padre.trim() && !reNombre.test(nvForm.padre.trim()))
+      return mostrarToast('El nombre del padre solo puede contener letras, tildes, espacios y guiones')
+    if (nvForm.madre.trim() && !reNombre.test(nvForm.madre.trim()))
+      return mostrarToast('El nombre de la madre solo puede contener letras, tildes, espacios y guiones')
+    if (nvForm.lugarNac.trim() && !reNombre.test(nvForm.lugarNac.trim()))
+      return mostrarToast('El lugar de nacimiento solo puede contener letras, tildes, espacios y guiones')
     const body = {
       tipoDoc:nvForm.tipoDoc, dni:nvForm.dni.trim(), nombre:nvForm.nombre.trim(),
       telefono1:nvForm.tel1.trim(), telefono2:nvForm.tel2.trim(),
@@ -1248,10 +1296,52 @@ export default function Dashboard() {
             <div className="nv-section">
               <div className="nv-section-title">Contacto y Ubicación</div>
               <div className="nv-grid nv-grid-2">
-                <div className="nv-field">
+                <div className="nv-field" ref={nvTelRef} style={{position:'relative'}}>
                   <label className="nv-label">Teléfono Contacto <span>*</span></label>
-                  <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} style={{fontFamily:'monospace'}}
-                    value={nvForm.tel1} onChange={e => nvSet('tel1', e.target.value)} />
+                  {!nvEditId ? (
+                    <>
+                      <div
+                        className="nv-tel-display"
+                        onClick={() => setNvTelOpen(o => !o)}
+                        tabIndex={0}
+                        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setNvTelOpen(o => !o)}
+                      >
+                        {nvForm.tel1 ? nvForm.tel1 : <span className="nv-tel-placeholder">Seleccionar número...</span>}
+                        <span className="nv-tel-arrow">{nvTelOpen ? '▲' : '▼'}</span>
+                      </div>
+                      {nvTelOpen && (
+                        <div className="nv-tel-dropdown">
+                          <input
+                            className="nv-tel-search"
+                            placeholder="Buscar número..."
+                            value={nvTelSearch}
+                            onChange={e => setNvTelSearch(e.target.value)}
+                            autoFocus
+                          />
+                          {nvCargandoVC ? (
+                            <div className="nv-tel-msg">Cargando...</div>
+                          ) : nvVentasCerradas.length === 0 ? (
+                            <div className="nv-tel-msg">No tienes números con VENTA CERRADA el día de hoy.</div>
+                          ) : nvVentasCerradas.filter(v => !nvTelSearch || String(v.n1).includes(nvTelSearch)).length === 0 ? (
+                            <div className="nv-tel-msg">Sin coincidencias.</div>
+                          ) : (
+                            nvVentasCerradas
+                              .filter(v => !nvTelSearch || String(v.n1).includes(nvTelSearch))
+                              .map(v => (
+                                <div key={v.n1} className="nv-tel-option"
+                                  onMouseDown={e => { e.preventDefault(); nvSet('tel1', v.n1); setNvTelOpen(false); setNvTelSearch('') }}>
+                                  <span className="nv-tel-num">{v.n1}</span>
+                                  <span className="nv-tel-badge">VENTA CERRADA</span>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} style={{fontFamily:'monospace'}}
+                      value={nvForm.tel1} onChange={e => nvSet('tel1', e.target.value.replace(/\D/g, ''))} />
+                  )}
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Teléfono Referencia</label>
