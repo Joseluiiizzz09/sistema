@@ -500,6 +500,28 @@ export default function Backoffice() {
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) }).catch(()=>{})
   }
 
+  // ── Tipif back ────────────────────────────────────────────────────────────
+  async function guardarTipifBack(id, nuevoValor) {
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    const hora = horaAhora()
+    const tipifAntes = reg.tipifBack || ''
+    const esDer = nuevoValor === 'DERIVADO'
+    const entrada = {
+      tipo: esDer ? 'DERIVADO' : 'TIPIF_BACK',
+      asesor: reg.asesor || '',
+      hora, fecha: fechaHoy(),
+      motivo: esDer ? 'Marcado DERIVADO' : 'Cambio tipif. back',
+      tipifBackAntes: tipifAntes, tipifBackNueva: nuevoValor,
+      ...(esDer ? { derivadoPor: sesion?.nombre || '' } : {}),
+    }
+    const newHist = [...reg.historial, entrada]
+    const derivadoPor = esDer ? (sesion?.nombre || '') : ''
+    updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
+    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) }).catch(()=>{})
+  }
+
   // ── Modal rotación manual ─────────────────────────────────────────────────
   function abrirModalRotar(id) {
     const found = findReg(id)
@@ -537,7 +559,19 @@ export default function Backoffice() {
       const res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, motivo }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
-      await cargarLeads()
+      // Actualización optimista: el backend ahora UPDATE (mismo ID), no crea duplicado.
+      // histOpen[regId] se preserva; el polling sincronizará en ≤3s.
+      updateReg(modalRotar.regId, {
+        asesor:     rotModalAsesor,
+        horaAsig:   horaAhora(),
+        sinAsignar: false,
+        tipifBack:  '',
+        derivadoPor:'',
+        historial:  data.historial || reg.historial,
+        rotaciones: (reg.rotaciones || 0) + 1,
+        _tipifVend: '',
+        _tipifHora: '',
+      })
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       mostrarToast(data.mensaje || `Registro rotado a ${rotModalAsesor}`)
     } catch (error) {
@@ -556,7 +590,8 @@ export default function Backoffice() {
       (baseData[fecha]||[]).forEach(reg => {
         let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
-        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', tipifVend:reg._tipifVend||'', prohibido:esLeadProhibido(reg), asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores:reg.historial.map(h=>h.asesor), _reg:reg })
+        const histAsesores = reg.historial.filter(h=>!h.tipo||h.tipo==='ASIGNACION'||h.tipo==='ROTACION').map(h=>h.asesor)
+        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', tipifVend:reg._tipifVend||'', prohibido:esLeadProhibido(reg), asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
       })
     })
     return list
@@ -1189,7 +1224,13 @@ export default function Backoffice() {
                               </div>
                             </td>
                             <td><input className="bo-obs-back" defaultValue={r.obs_back||''} onBlur={e=>guardarDatosBack(r.id,{obs_back:e.target.value.trim()})} placeholder="Observación para asesor" maxLength={2000}/></td>
-                            <td>{r.tipifBack ? <div style={{display:'flex',flexDirection:'column',gap:3}}><span className={`tipif-badge ${tipifBadgeClass(r.tipifBack)}`}>{r.tipifBack}</span>{r.tipifBack==='DERIVADO' && r.derivadoPor && <small style={{fontSize:9,color:'#6b7280',fontWeight:700}}>Por: {r.derivadoPor}</small>}</div> : <span style={{color:'#ccc',fontSize:10}}>—</span>}</td>
+                            <td>
+                              <select className="bo-inline-select" value={r.tipifBack} onChange={e=>guardarTipifBack(r.id,e.target.value)} style={{fontSize:10,padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontFamily:'inherit',cursor:'pointer',background:'#fff',maxWidth:135}}>
+                                <option value="">— Sin tipif. —</option>
+                                {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+                              </select>
+                              {r.tipifBack==='DERIVADO' && r.derivadoPor && <small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:2}}>Por: {r.derivadoPor}</small>}
+                            </td>
                             <td>
                               <select className="sel-asesor-tabla" value={r.asesor} disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''} onChange={e=>reasignarReg(r.id,e.target.value)}>
                                 <option value="">— Sin asignar —</option>
@@ -1238,10 +1279,20 @@ export default function Backoffice() {
                                   ? r.historial.map((h,hi)=>(
                                       <div key={hi} className="hist-item">
                                         <div className="hist-dot" style={{background:DOT_COLORS[hi%DOT_COLORS.length]}} />
-                                        <span style={{fontWeight:600}}>{h.asesor}</span>
-                                        <span className="hora-cell" style={{marginLeft:4}}>{h.hora}</span>
-                                        <span style={{color:'#9ca3af',marginLeft:4}}>{h.fecha}</span>
-                                        <span style={{color:'#6b7280',fontStyle:'italic',marginLeft:8}}>{h.motivo}</span>
+                                        <div className="hist-content">
+                                          <div className="hist-title">
+                                            {h.tipo==='ROTACION'
+                                              ? <><strong>{h.asesorAnterior||'?'}</strong><span className="hist-arrow"> → </span><strong>{h.asesor}</strong></>
+                                              : <strong>{h.asesor||'—'}</strong>
+                                            }
+                                          </div>
+                                          <div className="hist-meta">{h.hora}{h.hora&&h.fecha?' · ':''}{h.fecha}</div>
+                                          {h.motivo && <div className="hist-sub">{h.motivo}</div>}
+                                          {h.rotadoPor && <div className="hist-sub">Rotado por: {h.rotadoPor}</div>}
+                                          {h.tipo==='ROTACION'&&h.tipifBackAntes && <div className="hist-sub">Estado anterior: {h.tipifBackAntes}</div>}
+                                          {h.tipo==='TIPIF_BACK' && <div className="hist-sub">{h.tipifBackAntes||'—'} → {h.tipifBackNueva||'—'}</div>}
+                                          {h.tipo==='DERIVADO'&&h.derivadoPor && <div className="hist-sub">Por: {h.derivadoPor}</div>}
+                                        </div>
                                       </div>
                                     ))
                                   : <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>

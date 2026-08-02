@@ -900,7 +900,7 @@ export default function Dashboard() {
                 <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
                 <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
                 <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
-                <td><span className={`badge-estado ${colorEstado(c.estado)}`}>{c.estado==='DERIVADO' && c.derivadoPor ? `DER.${c.derivadoPor}` : c.estado}</span></td>
+                <td><span className={`badge-estado ${colorEstado(c.estado)}`} title={c.estado==='DERIVADO'&&c.derivadoPor?`Derivado por ${c.derivadoPor}`:''}>{c.estado==='DERIVADO'&&c.derivadoPor?`DER. ${c.derivadoPor.trim().split(/\s+/)[0].toUpperCase()}`:c.estado}</span></td>
                 <td>
                   <input
                     className="input-obs"

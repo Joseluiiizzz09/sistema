@@ -1023,3 +1023,11 @@ body{
 .rend-pos.p1{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;border-color:#f59e0b;box-shadow:0 1px 4px rgba(245,158,11,.3);}
 .rend-pos.p2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#1e293b;border-color:#94a3b8;box-shadow:0 1px 4px rgba(148,163,184,.3);}
 .rend-pos.p3{background:linear-gradient(135deg,#fb923c,#ea580c);color:#fff;border-color:#ea580c;box-shadow:0 1px 4px rgba(234,88,12,.3);}
+
+/* ━━ HISTORIAL ENRIQUECIDO ━━ */
+.hist-item{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#1e293b;}
+.hist-content{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.hist-title{font-size:11px;font-weight:600;color:#0f172a;}
+.hist-arrow{color:#94a3b8;font-weight:400;}
+.hist-meta{font-size:10px;color:#94a3b8;}
+.hist-sub{font-size:10px;color:#64748b;font-style:italic;}
