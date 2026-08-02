@@ -447,7 +447,8 @@ export default function Backoffice() {
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
       const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.mensaje || 'Error al guardar el registro')
       const bid  = data.ids?.[0] || data.id
       if (bid) {
         setBaseData(prev => {
@@ -458,8 +459,12 @@ export default function Backoffice() {
           return next
         })
       }
-    } catch(e) {}
-    setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
+      setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
+    } catch(e) {
+      // Elimina el registro local fantasma inmediatamente — no espera al polling
+      setBaseData(prev => { const n={...prev}; n[fecha]=(n[fecha]||[]).filter(r=>r.id!==reg.id); return n })
+      mostrarToast(e.message || 'No se pudo guardar el registro. Intenta nuevamente.')
+    }
   }
 
   // ── Reasignar ────────────────────────────────────────────────────────────
