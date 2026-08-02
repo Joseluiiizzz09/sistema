@@ -514,7 +514,6 @@ export default function Backoffice() {
       hora, fecha: fechaHoy(),
       motivo: esDer ? 'Marcado DERIVADO' : 'Cambio tipif. back',
       tipifBackAntes: tipifAntes, tipifBackNueva: nuevoValor,
-      ...(esDer ? { derivadoPor: sesion?.nombre || '' } : {}),
     }
     const newHist = [...reg.historial, entrada]
     const derivadoPor = esDer ? (sesion?.nombre || '') : ''
