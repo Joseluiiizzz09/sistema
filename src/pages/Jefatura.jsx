@@ -799,33 +799,38 @@ export default function Jefatura() {
   async function guardarUsuario() {
     const { nombre, usuario, cargo, cargo2, sala, pass, pass2 } = modForm
     const errs = {}
-    if (!nombre.trim())         errs.nombre  = true
-    if (!usuario.trim())        errs.usuario = true
-    if (!cargo)                 errs.cargo   = true
-    if (cargo2 && cargo2 === cargo) errs.cargo2 = true
-    if (!editandoId && !pass)   errs.pass    = true
-    if (pass && pass !== pass2) errs.pass2   = true
-    if (Object.keys(errs).length) { setModErrores(errs); mostrarToast('Completa los campos requeridos'); return }
+    let primerError = ''
+    if (!nombre.trim())              { errs.nombre = true; primerError ||= 'El nombre completo es obligatorio.' }
+    if (!usuario.trim())             { errs.usuario = true; primerError ||= 'El usuario es obligatorio.' }
+    if (!cargo)                      { errs.cargo  = true; primerError ||= 'Selecciona un cargo principal.' }
+    if (cargo2 && cargo2 === cargo)  { errs.cargo2 = true; primerError ||= 'El cargo adicional debe ser diferente al principal.' }
+    if (!editandoId && !pass)        { errs.pass   = true; primerError ||= 'La contraseña es obligatoria.' }
+    if (pass && pass.length < 6)     { errs.pass   = true; primerError ||= 'La contraseña debe tener al menos 6 caracteres.' }
+    if (pass && pass !== pass2)      { errs.pass2  = true; primerError ||= 'Las contraseñas no coinciden.' }
+    if (Object.keys(errs).length) { setModErrores(errs); mostrarToast(primerError); return }
+
     setGuardandoUsu(true)
     try {
-      const loginNorm = usuario.toLowerCase().replace(/\s+/g,'.')
+      const loginNorm = usuario.trim().toLowerCase().replace(/\s+/g, '.')
+      let res
       if (editandoId) {
-        const body = { nombre, usuario:loginNorm, cargo, sala, permisos:cargo2 ? [cargo2] : [] }
+        const body = { nombre, usuario: loginNorm, cargo, sala: sala || null, permisos: cargo2 ? [cargo2] : [] }
         if (pass) body.password = pass
-        const res  = await fetch(`${API}/usuarios/${editandoId}`,{method:'PATCH',headers:ncHeaders(),body:JSON.stringify(body)})
-        const data = await res.json()
-        if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
-        agregarLog('Usuario editado', nombre)
+        res = await fetch(`${API}/usuarios/${editandoId}`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify(body) })
       } else {
-        const res  = await fetch(`${API}/usuarios`,{method:'POST',headers:ncHeaders(),body:JSON.stringify({nombre,usuario:loginNorm,password:pass,cargo,sala,activo:true,permisos:cargo2 ? [cargo2] : []})})
-        const data = await res.json()
-        if (!data.ok) { mostrarToast(data.mensaje||'Error'); setGuardandoUsu(false); return }
-        agregarLog('Usuario creado', `${nombre} — ${cargo}`)
+        res = await fetch(`${API}/usuarios`, {
+          method: 'POST', headers: ncHeaders(),
+          body: JSON.stringify({ nombre, usuario: loginNorm, password: pass, cargo, sala: sala || null, activo: true, permisos: cargo2 ? [cargo2] : [] })
+        })
       }
+      const ct   = res.headers.get('content-type') || ''
+      const data = ct.includes('application/json') ? await res.json() : { ok: false, mensaje: (await res.text()) || `Error HTTP ${res.status}` }
+      if (!res.ok || !data.ok) { mostrarToast(data.mensaje || `Error ${res.status}`); return }
+      agregarLog(editandoId ? 'Usuario editado' : 'Usuario creado', editandoId ? nombre : `${nombre} — ${cargo}`)
       await cargarUsuarios()
       cerrarModalUsu()
-    } catch { mostrarToast('Error conectando') }
-    setGuardandoUsu(false)
+    } catch { mostrarToast('Error conectando con el servidor') }
+    finally { setGuardandoUsu(false) }
   }
 
   async function toggleActivo(u) {
@@ -1744,6 +1749,8 @@ export default function Jefatura() {
           </div>
         </div>
       )}
+
+      {toastMsg && <div className="toast show">{toastMsg}</div>}
 
     </div>
   )
