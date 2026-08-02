@@ -774,6 +774,7 @@ export default function Dashboard() {
       const res  = await fetch(url, { method, headers:ncHeaders(), body:JSON.stringify(body) })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error: ' + (data.mensaje || '')); return }
+      if (!nvEditId) setNvVentasCerradas(prev => prev.filter(vc => vc.n1 !== nvForm.tel1))
       cerrarNuevaVenta()
       await cargarVentasSubidas()
     } catch(e) { mostrarToast('Error conectando al servidor') }
@@ -1321,7 +1322,7 @@ export default function Dashboard() {
                           {nvCargandoVC ? (
                             <div className="nv-tel-msg">Cargando...</div>
                           ) : nvVentasCerradas.length === 0 ? (
-                            <div className="nv-tel-msg">No tienes números con VENTA CERRADA el día de hoy.</div>
+                            <div className="nv-tel-msg">No tienes números con VENTA CERRADA disponibles el día de hoy.</div>
                           ) : nvVentasCerradas.filter(v => !nvTelSearch || String(v.n1).includes(nvTelSearch)).length === 0 ? (
                             <div className="nv-tel-msg">Sin coincidencias.</div>
                           ) : (
