@@ -765,15 +765,19 @@ export default function Dashboard() {
       cuotaInstalacion:nvForm.cuota, hogar:nvForm.hogar,
       tec:nvForm.tec, paquete:nvForm.paquete,
       full:nvForm.full, cantDecos:nvForm.decos, cantMesh:nvForm.mesh,
-      plano:nvForm.plano.trim(), estado:nvForm.estado, obs:nvForm.obs.trim(),
+      plano:nvForm.plano.trim(), estado: nvEditId ? nvForm.estado : 'VENTA', obs:nvForm.obs.trim(),
     }
     setGuardandoNV(true)
     try {
       const url    = nvEditId ? `${API}/ventas/${nvEditId}` : `${API}/ventas`
       const method = nvEditId ? 'PATCH' : 'POST'
       const res  = await fetch(url, { method, headers:ncHeaders(), body:JSON.stringify(body) })
-      const data = await res.json()
-      if (!data.ok) { mostrarToast('Error: ' + (data.mensaje || '')); return }
+      let data = {}
+      try {
+        const ct = res.headers.get('content-type') || ''
+        data = ct.includes('application/json') ? await res.json() : { ok: false, mensaje: (await res.text()) || `Error HTTP ${res.status}` }
+      } catch(_) { data = { ok: false, mensaje: `Error HTTP ${res.status}` } }
+      if (!res.ok || !data.ok) { mostrarToast('No se pudo guardar: ' + (data.mensaje || `Error ${res.status}`)); return }
       if (!nvEditId) setNvVentasCerradas(prev => prev.filter(vc => vc.n1 !== nvForm.tel1))
       cerrarNuevaVenta()
       await cargarVentasSubidas()
@@ -1347,7 +1351,7 @@ export default function Dashboard() {
                 <div className="nv-field">
                   <label className="nv-label">Teléfono Referencia</label>
                   <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} style={{fontFamily:'monospace'}}
-                    value={nvForm.tel2} onChange={e => nvSet('tel2', e.target.value)} />
+                    value={nvForm.tel2} onChange={e => nvSet('tel2', e.target.value.replace(/\D/g, ''))} />
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Departamento</label>
@@ -1444,10 +1448,14 @@ export default function Dashboard() {
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Estado Venta</label>
-                  <select className="nv-select" value={nvForm.estado} onChange={e => nvSet('estado', e.target.value)}>
-                    <option value="VENTA">VENTA</option>
-                    <option value="PROGRAMADO">PROGRAMADO</option>
-                  </select>
+                  {!nvEditId ? (
+                    <div className="nv-estado-badge">VENTA</div>
+                  ) : (
+                    <select className="nv-select" value={nvForm.estado} onChange={e => nvSet('estado', e.target.value)}>
+                      <option value="VENTA">VENTA</option>
+                      {nvForm.estado === 'PROGRAMADO' && <option value="PROGRAMADO">PROGRAMADO</option>}
+                    </select>
+                  )}
                 </div>
               </div>
             </div>
@@ -1469,6 +1477,20 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── TOAST ─────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={{
+          position:'fixed', bottom:'28px', left:'50%', transform:'translateX(-50%)',
+          background:'#1f2937', color:'#fff', padding:'12px 24px',
+          borderRadius:'12px', fontSize:'13px', fontWeight:600,
+          boxShadow:'0 8px 24px rgba(0,0,0,.3)', zIndex:9999,
+          maxWidth:'90vw', textAlign:'center', pointerEvents:'none',
+          whiteSpace:'pre-wrap',
+        }}>
+          {toast}
+        </div>
+      )}
 
       {/* ── MODAL FOTOS ────────────────────────────────────────────────── */}
       {modalFotos.open && (
