@@ -78,6 +78,7 @@ export default function SupGrabaciones() {
   const [estadoRevision, setEstadoRevision]   = useState('')
   const [revObs, setRevObs]                   = useState('')
   const [audioSrc, setAudioSrc]               = useState('')
+  const [guardando, setGuardando]             = useState(false)
   const audioRef = useRef(null)
 
   const [modalObs, setModalObs] = useState(null)
@@ -222,10 +223,11 @@ export default function SupGrabaciones() {
   }
 
   async function guardarRevision() {
-    if (!modalRevisar) return
+    if (!modalRevisar || guardando) return
     if (!estadoRevision || estadoRevision === 'sin_revisar' || estadoRevision === 'programado') {
       mostrarToast('Selecciona un resultado'); return
     }
+    setGuardando(true)
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
@@ -233,12 +235,6 @@ export default function SupGrabaciones() {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}`, {
         method: 'PATCH', headers: ncHeaders(),
         body: JSON.stringify({
-          // No se toca `estado` (campo de Validación) — solo el flujo propio
-          // de Grabaciones/Super de Grabaciones. Al observar, la venta
-          // regresa realmente a "grabando" (no a un estado "observado"
-          // aparte) para que Asesor/Supervisor/Jefatura sigan mostrando
-          // GRABANDO + el mismo responsable original (grabando_por_id se
-          // conserva, ver PATCH /:id en routes/ventas.js).
           obs_supgrab: nuevoHistorial,
           ...(estadoRevision === 'conforme'
             ? { estado: 'EN_EJECUCION', estado_supgrab: 'conforme', estado_grab: 'grabado' }
@@ -251,7 +247,7 @@ export default function SupGrabaciones() {
         }),
       })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('Error guardando'); return }
+      if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
       if (['aprobado', 'observado', 'conforme', 'no_conforme'].includes(estadoRevision)) {
         setVentas(list => list.filter(x => x.id !== modalRevisar.id))
       } else {
@@ -261,7 +257,10 @@ export default function SupGrabaciones() {
       }
       cerrarModalRevisar()
       setPagina(1)
-    } catch (e) { mostrarToast('Error conectando al servidor') }
+    } catch (e) {
+      mostrarToast('Error conectando al servidor')
+      setGuardando(false)
+    }
   }
 
   function salir() { logout(); navigate('/login') }
@@ -525,7 +524,7 @@ export default function SupGrabaciones() {
 
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={cerrarModalRevisar}>Cancelar</button>
-              <button className="btn-guardar" onClick={guardarRevision}>Guardar revisión</button>
+              <button className="btn-guardar" onClick={guardarRevision} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar revisión'}</button>
             </div>
           </div>
         </div>

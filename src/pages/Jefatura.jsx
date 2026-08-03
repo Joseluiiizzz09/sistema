@@ -34,7 +34,7 @@ const CARGOS = [
 const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
 
 const SEG_MAP = {
-  aprobado:'ejecucion',programado:'ejecucion',en_ejecucion:'ejecucion',
+  aprobado:'ejecucion',en_ejecucion:'ejecucion',
   instalado:'instalado',caida:'caida',rechazo_campo:'rechazo',tecnico_casa:'tecnico',
   validado:'ejecucion',observado:'ejecucion',
 }
@@ -118,7 +118,7 @@ function normEstado(v) {
 }
 const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda'])
 const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
-const FLUJO_SEGUIMIENTO = new Set(['programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
+const FLUJO_SEGUIMIENTO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
 function flujoTieneAudio(v) {
   return Boolean(v?.audio || v?.audio_url || v?.archivo_audio || v?.archivoAudio || v?.grabacion || v?.grabacion_url || v?.audio_path)
 }
@@ -351,7 +351,7 @@ export default function Jefatura() {
       const data = await res.json()
       if (data.ok) {
         setVentasSeg(data.data
-          .filter(v => { const e=(v.estado||'').toLowerCase(); return e!=='venta'&&e!=='validado'&&e!=='grabado'&&e!=='pendiente'&&e!=='' })
+          .filter(v => { const e=(v.estado||'').toLowerCase(); return e!=='venta'&&e!=='validado'&&e!=='grabado'&&e!=='pendiente'&&e!=='programado'&&e!=='' })
           .map(v => ({ ...v, _seg: mapSeg(v.estado)||(v.estado||'').toLowerCase(), _fecha: (v.created_at||'').split(' ')[0] }))
         )
       }
@@ -758,7 +758,6 @@ export default function Jefatura() {
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['SEGUIMIENTO',       v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)) ? flujoLabelEstado(v.estado || v.estado_venta) : '-'],
-      ['ÚLTIMA OBSERVACIÓN',v => v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
@@ -1235,13 +1234,12 @@ export default function Jefatura() {
                       <th>Grabación</th>
                       <th>Programación</th>
                       <th>Seguimiento</th>
-                      <th>Última obs.</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="13" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoFiltradas.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const enSeg = FLUJO_SEGUIMIENTO.has(estado)
@@ -1268,7 +1266,6 @@ export default function Jefatura() {
                             </div>
                           </td>
                           <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
-                          <td>{v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '—'}</td>
                           <td>
                             <div className="venta-actions">
                               <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>

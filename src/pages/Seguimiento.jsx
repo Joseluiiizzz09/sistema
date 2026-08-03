@@ -61,10 +61,9 @@ function mapearEstado(e) {
   if (est.includes('rechazo'))   return 'rechazo'
   if (est.includes('ejecucion')) return 'ejecucion'
   const m = {
-    aprobado: 'ejecucion', programado: 'ejecucion', en_ejecucion: 'ejecucion',
-    instalado: 'instalado', validado: 'ejecucion', caida: 'caida',
-    observado: 'ejecucion', venta: 'ejecucion', pendiente: 'ejecucion',
-    no_validado: 'ejecucion', rechazo_campo: 'rechazo', tecnico_casa: 'tecnico',
+    aprobado: 'ejecucion', en_ejecucion: 'ejecucion',
+    instalado: 'instalado', caida: 'caida',
+    observado: 'ejecucion', rechazo_campo: 'rechazo', tecnico_casa: 'tecnico',
   }
   return m[est] || 'ejecucion'
 }
@@ -151,7 +150,7 @@ export default function Seguimiento() {
         setVentas(data.data
           .filter(v => {
             const e = (v.estado || '').toLowerCase()
-            return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== 'pendiente' && e !== ''
+            return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== 'pendiente' && e !== 'programado' && e !== ''
           })
           .map(v => ({
             ...v,
