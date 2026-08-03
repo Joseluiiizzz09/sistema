@@ -50,6 +50,24 @@ const SEG_BADGES = {
 }
 const SEG_ORD = { caida:0, rechazo:1, tecnico:2, ejecucion:3, instalado:4 }
 
+const PROG_STYLES = {
+  PROGRAMADO:       { bg:'#dcfce7',color:'#15803d',border:'rgba(74,222,128,.4)'  },
+  BLOQUEADO:        { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
+  RECHAZADO:        { bg:'#ffedd5',color:'#9a3412',border:'rgba(251,146,60,.4)'  },
+  SIN_AGENDA:       { bg:'#fef9c3',color:'#854d0e',border:'rgba(250,204,21,.4)'  },
+  CARACTER_ESPECIAL:{ bg:'#ede9fe',color:'#5b21b6',border:'rgba(167,139,250,.4)' },
+  FRAUDE:           { bg:'#1f2937',color:'#f9fafb',border:'rgba(75,85,99,.4)'    },
+  ZONA_RESTRINGIDA: { bg:'#ffedd5',color:'#9a3412',border:'rgba(251,146,60,.4)'  },
+  PENDIENTE:        { bg:'#f3f4f6',color:'#6b7280',border:'rgba(156,163,175,.4)' },
+}
+function estadoProg(raw) {
+  const s = (raw || '').toUpperCase()
+  if (!s) return { key:'PENDIENTE', label:'PENDIENTE' }
+  if (s === 'VALIDADO') return { key:'RECHAZADO', label:'RECHAZADO' }
+  const m = { PROGRAMADO:'PROGRAMADO',BLOQUEADO:'BLOQUEADO',RECHAZADO:'RECHAZADO',SIN_AGENDA:'SIN AGENDA',CARACTER_ESPECIAL:'CARÁCTER ESPECIAL',FRAUDE:'FRAUDE',ZONA_RESTRINGIDA:'ZONA RESTRINGIDA' }
+  return { key:s, label:m[s]||s }
+}
+
 const ACCESOS_MODS = [
   { nombre:'Back Data',        desc:'Gestión y asignación de leads', icon:'clipboard', path:'/backoffice',      color:'#dc3545', cargo:'backoffice' },
   { nombre:'Validación',       desc:'Control y revisión de ventas',  icon:'shield',    path:'/validacion',      color:'#059669', cargo:'validacion' },
@@ -738,6 +756,7 @@ export default function Jefatura() {
       ['ESTADO ACTUAL',     v => flujoLabelEstado(v.estado || v.estado_venta)],
       ['VALIDACIÓN',        v => estadoValidacion(v)],
       ['GRABACIÓN',         v => estadoGrabacion(v)],
+      ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['SEGUIMIENTO',       v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)) ? flujoLabelEstado(v.estado || v.estado_venta) : '-'],
       ['ÚLTIMA OBSERVACIÓN',v => v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
@@ -1214,6 +1233,7 @@ export default function Jefatura() {
                       <th>Estado actual</th>
                       <th>Validación</th>
                       <th>Grabación</th>
+                      <th>Programación</th>
                       <th>Seguimiento</th>
                       <th>Última obs.</th>
                       <th>Acciones</th>
@@ -1221,10 +1241,15 @@ export default function Jefatura() {
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="13" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoFiltradas.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const enSeg = FLUJO_SEGUIMIENTO.has(estado)
+                      const pInfo = estadoProg(v.estado_prog)
+                      const pSt   = PROG_STYLES[pInfo.key] || PROG_STYLES.PENDIENTE
+                      const fpParts = (v.fecha_prog || '').split(' ')
+                      const fpStr = fpParts[0] ? formatF(fpParts[0]) + (fpParts[1] ? ' ' + fpParts[1].slice(0,5) : '') : ''
+                      const pTip = [v.obs_programacion && `Obs: ${v.obs_programacion}`, fpStr && `Fecha: ${fpStr}`].filter(Boolean).join('\n') || undefined
                       return (
                         <tr key={v.id || `${v.dni || v.documento || 'venta'}-${i}`}>
                           <td>{i + 1}</td>
@@ -1236,6 +1261,12 @@ export default function Jefatura() {
                           <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
                           <td>{flujoValidada(v) ? <span className="flujo-ok">Validada</span> : <span className="flujo-warn">Pendiente</span>}</td>
                           <td>{flujoGrabada(v) ? <span className="flujo-ok">Grabada</span> : <span className="flujo-warn">Sin grabación</span>}</td>
+                          <td>
+                            <div title={pTip}>
+                              <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:pSt.bg,color:pSt.color,border:`1px solid ${pSt.border}`,whiteSpace:'nowrap'}}>{pInfo.label}</span>
+                              {v.usuario_prog && <div style={{fontSize:'10px',color:'#6b7280',marginTop:'2px',whiteSpace:'nowrap'}}>Por: {v.usuario_prog.split(' ').slice(0,2).join(' ')}</div>}
+                            </div>
+                          </td>
                           <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
                           <td>{v.obs_backoffice || v.observacion || v.obs_supervisor || v.ultima_obs || '—'}</td>
                           <td>
