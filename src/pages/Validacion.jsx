@@ -201,6 +201,12 @@ export default function Validacion() {
 
   useEffect(() => { cargarVentas() }, [cargarVentas])
 
+  // ── Polling compartido: todos los validadores ven el mismo estado ──
+  useEffect(() => {
+    const interval = setInterval(cargarVentas, 5000)
+    return () => clearInterval(interval)
+  }, [cargarVentas])
+
   // ── Reset página al cambiar filtros ──
   useEffect(() => { setPagina(1) }, [fEstado, fAsesor, fDesde, fHasta, busqueda])
 
@@ -227,8 +233,8 @@ export default function Validacion() {
 
   const kpis = useMemo(() => ({
     total:       ventas.length,
-    validados:   ventas.filter(v => ESTADOS_OK.includes(v.estado) || v.tipifVal==='validado').length,
-    noValidados: ventas.filter(v => TIPIF_NO_VAL.includes(v.tipifVal)).length,
+    validados:   ventas.filter(v => v.estado === 'validado').length,
+    noValidados: ventas.filter(v => v.estado !== 'validado').length,
   }), [ventas])
 
   const totalPags   = Math.max(1, Math.ceil(ventasFiltradas.length / porPagina))
@@ -262,40 +268,46 @@ export default function Validacion() {
       return
     }
 
-    const lineas = parsearHistorial(v.obsVal)
-    const ts     = nowLabel()
-    const nombre = sesion?.nombre || 'Validador'
-
-    if (tipSel && tipSel !== v.estado) {
-      const etiquetaTip = estadoObj(tipSel).label
-      lineas.push(`[${ts} - ${nombre}] ${etiquetaTip}`)
-    }
-    if (nuevaObsModal.trim()) {
-      lineas.push(`[${ts} - ${nombre}] ${nuevaObsModal.trim()}`)
-    }
-    const nuevoHistorial = lineas.join('\n')
-
     try {
-      const res  = await fetch(`${API}/ventas/${v.id}`, {
-        method:'PATCH', headers:ncHeaders(),
+      const res = await fetch(`${API}/ventas/${v.id}/tipificar-validacion`, {
+        method: 'PATCH',
+        headers: ncHeaders(),
         body: JSON.stringify({
-          obs_validacion: nuevoHistorial,
-          ...(tipSel && ['validado','fraude','no_desea','no_contesta','buzon_voz',
-              'servicio_activo','corta_llamada','grabado','aprobado','en_ejecucion',
-              'instalado','caida','rechazo_campo','tecnico_casa','programado'].includes(tipSel)
-            ? { estado: tipSel }
-            : {}),
+          tipificacion: tipSel || null,
+          observacion: nuevaObsModal.trim() || null,
+          estadoAnteriorEsperado: v.estado,
         }),
       })
-      const data = await res.json()
-      if (!data.ok) { mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar')); return }
 
-      setVentas(prev => prev.map(x => x.id === v.id
-        ? { ...x, tipifVal: tipSel || x.tipifVal, obsVal: nuevoHistorial }
-        : x
-      ))
-      setModalEst({ open:false, id:null })
-    } catch(e) { mostrarToast('Error conectando al servidor') }
+      let data = {}
+      try {
+        const ct = res.headers.get('content-type') || ''
+        data = ct.includes('application/json')
+          ? await res.json()
+          : { ok: false, mensaje: `Error HTTP ${res.status}` }
+      } catch(_) { data = { ok: false, mensaje: `Error HTTP ${res.status}` } }
+
+      if (res.status === 409) {
+        mostrarToast(data.mensaje || 'La venta fue modificada por otro validador. Revisa el historial.')
+        await cargarVentas()
+        return
+      }
+
+      if (!res.ok || !data.ok) {
+        mostrarToast('Error: ' + (data.mensaje || `Error ${res.status}`))
+        return
+      }
+
+      if (data.venta) {
+        setVentas(prev => prev.map(x => x.id === v.id ? mapVenta(data.venta) : x))
+      } else {
+        await cargarVentas()
+      }
+      setModalEst({ open: false, id: null })
+      mostrarToast('Tipificación guardada')
+    } catch(e) {
+      mostrarToast('Error conectando al servidor')
+    }
   }
 
   function limpiarFiltros() {
@@ -621,6 +633,18 @@ export default function Validacion() {
       })()}
 
       {/* ══ TOAST ═══════════════════════════════════════════════════════════ */}
+      {toast && (
+        <div style={{
+          position:'fixed', bottom:'28px', left:'50%', transform:'translateX(-50%)',
+          background:'#1f2937', color:'#fff', padding:'12px 24px',
+          borderRadius:'12px', fontSize:'13px', fontWeight:600,
+          boxShadow:'0 8px 24px rgba(0,0,0,.3)', zIndex:9999,
+          maxWidth:'90vw', textAlign:'center', pointerEvents:'none',
+          whiteSpace:'pre-wrap',
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
