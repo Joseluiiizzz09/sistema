@@ -333,8 +333,8 @@ export default function Jefatura() {
       const data = await res.json()
       if (data.ok) {
         setVentasSeg(data.data
-          .filter(v => mapSeg(v.estado) !== null)
-          .map(v => ({ ...v, _seg: mapSeg(v.estado), _fecha: (v.created_at || '').split(' ')[0] }))
+          .filter(v => { const e=(v.estado||'').toLowerCase(); return e!=='venta'&&e!=='validado'&&e!=='grabado'&&e!=='pendiente'&&e!=='' })
+          .map(v => ({ ...v, _seg: mapSeg(v.estado)||(v.estado||'').toLowerCase(), _fecha: (v.created_at||'').split(' ')[0] }))
         )
       }
     } catch { console.error('Error seguimiento') }
