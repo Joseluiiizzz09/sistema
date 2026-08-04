@@ -130,6 +130,21 @@ function CopyIcon() {
   )
 }
 
+// Extrae número de teléfono válido del campo N2 (elimina GPS, texto, etc.)
+function limpiarN2Legacy(raw) {
+  if (!raw) return ''
+  const s = String(raw).trim()
+  if (!s) return ''
+  const primary = s.includes('///') ? s.split('///')[0].trim() : s
+  const digits = primary.replace(/[^0-9]/g, '')
+  if (digits.length >= 7 && digits.length <= 9) return digits
+  const m1 = s.match(/\b9\d{8}\b/)
+  if (m1) return m1[0]
+  const m2 = s.match(/\b\d{7,9}\b/)
+  if (m2) return m2[0]
+  return ''
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function Backoffice() {
   const navigate    = useNavigate()
@@ -166,8 +181,9 @@ export default function Backoffice() {
   // ── Filtros base ──
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
 
-  // ── Historial ──
+  // ── Historial / Detalles expandibles ──
   const [histOpen, setHistOpen] = useState({})
+  const [detOpen,  setDetOpen]  = useState({})
 
   // ── Rotación panel ──
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
@@ -910,15 +926,14 @@ const cargarLeads = useCallback(async () => {
       let n1, campana, distrito, n2, tipifBack, tipifVend, hora, asesoresHist
       if (usarFF) {
         // Nuevo formato: FECHA(0) CAMPAÑA(1) DISTRITO(2) N2(3) N1(4) TIPIFB(5) COM(6) TIPIFV(7) HORA(8) ASE(9-14)
-        n1=c[4]||''; campana=c[1]||'—'; distrito=c[2]||'—'
-        const n2rawF=c[3]||''; n2=(n2rawF.includes('///')?n2rawF.split('///')[0]:n2rawF).trim().substring(0,20)
+        n1=(c[4]||'').replace(/[^0-9]/g,''); campana=c[1]||'—'; distrito=c[2]||'—'
+        n2=limpiarN2Legacy(c[3]||'')
         tipifBack=c[5]||''; tipifVend=c[7]||''; hora=c[8]||''
         asesoresHist=[]; for(let i=9;i<=14;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       } else {
         // Formato original: CAMPAÑA(0) DISTRITO(1) N2(2) N1(3) TIPIFB(4) COM(5) TIPIFV(6) HORA(7) ASE(8-13)
-        n1=c[3]||''; campana=c[0]||'—'; distrito=c[1]||'—'
-        // Limpiar n2: sistemas legacy a veces concatenan GPS con '///' (ej: '970316718/// -12.01')
-        const n2raw=c[2]||''; n2=(n2raw.includes('///')?n2raw.split('///')[0]:n2raw).trim().substring(0,20)
+        n1=(c[3]||'').replace(/[^0-9]/g,''); campana=c[0]||'—'; distrito=c[1]||'—'
+        n2=limpiarN2Legacy(c[2]||'')
         tipifBack=c[4]||''; tipifVend=c[6]||''; hora=c[7]||''
         asesoresHist=[]; for(let i=8;i<=13;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       }
@@ -1435,93 +1450,159 @@ const cargarLeads = useCallback(async () => {
               </div>
             </div>
 
-            {/* TABLA BASE */}
-            <div className="tabla-desliza-aviso">← Desliza horizontalmente para ver todas las columnas →</div>
+            {/* TABLA BASE — diseño compacto sin scroll horizontal */}
             <div className="base-tabla-wrap">
-              <table className="base-tabla table table-sm table-hover">
+              <table className="base-tabla" style={{tableLayout:'fixed',width:'100%',minWidth:880}}>
+                <colgroup>
+                  <col style={{width:34}} />
+                  <col style={{width:78}} />
+                  <col style={{width:128}} />
+                  <col style={{width:82}} />
+                  <col style={{width:118}} />
+                  <col style={{width:140}} />
+                  <col style={{width:128}} />
+                  <col style={{width:52}} />
+                  <col style={{width:44}} />
+                  <col style={{width:112}} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>#</th><th>Campaña</th><th>Distrito</th>
-                    <th>N1</th><th>N2</th><th>Contacto</th><th>Dirección / Coord.</th><th>Obs. Back</th><th>Tipif. Back</th>
-                    <th>Asesor asignado</th><th>Hora / Fecha asign.</th>
-                    {filtros.verTipVend && <th>Tipif. Vendedor</th>}
-                    <th>Sin asig.</th><th>Rotaciones</th><th>Acciones</th>
+                    <th>#</th><th>Campaña</th><th>N1 / N2</th>
+                    <th>Contacto</th><th>Tipif. Back</th>
+                    <th>Asesor asignado</th><th>Tipif. Vendedor</th>
+                    <th>Hora</th><th>Rots.</th><th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={filtros.verTipVend?15:14} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
                         const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
+                        const detAbierto  = !!detOpen[r.id]
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
-                            <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                            <td><strong>{r.campana}</strong></td>
-                            <td style={{fontSize:11}}>{r.distrito}</td>
-                            <td><div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div></td>
-                            <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
+                            {/* # */}
+                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{i+1}</td>
+
+                            {/* Campaña */}
+                            <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
+                              <strong style={{fontSize:11}}>{r.campana}</strong>
+                            </td>
+
+                            {/* N1 / N2 combinados */}
                             <td>
-                              <select className="bo-inline-select" value={r.tipo_contacto||'LLAMADA'} onChange={e=>guardarDatosBack(r.id,{tipo_contacto:e.target.value})}>
+                              <div className="num-cell">
+                                <div className="num-primary">
+                                  <span>{r.n1}</span>
+                                  <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
+                                </div>
+                                {r.n2 && (
+                                  <div className="num-secondary">
+                                    <span>{r.n2}</span>
+                                    <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n2)} title="Copiar N2"><CopyIcon /></button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Contacto */}
+                            <td>
+                              <select className="bo-sel-compact" value={r.tipo_contacto||'LLAMADA'} onChange={e=>guardarDatosBack(r.id,{tipo_contacto:e.target.value})}>
                                 <option value="LLAMADA">Llamada</option>
                                 <option value="WHATSAPP">WhatsApp</option>
                               </select>
                             </td>
+
+                            {/* Tipif. Back */}
                             <td>
-                              <div className="bo-datos-ubicacion">
-                                <input defaultValue={r.direccion||''} onBlur={e=>guardarDatosBack(r.id,{direccion:e.target.value.trim()})} placeholder="Dirección" maxLength={1000}/>
-                                <input defaultValue={r.coordenadas||''} onBlur={e=>guardarDatosBack(r.id,{coordenadas:e.target.value.trim()})} placeholder="Coordenadas" maxLength={255}/>
-                              </div>
-                            </td>
-                            <td><input className="bo-obs-back" defaultValue={r.obs_back||''} onBlur={e=>guardarDatosBack(r.id,{obs_back:e.target.value.trim()})} placeholder="Observación para asesor" maxLength={2000}/></td>
-                            <td>
-                              <select className="bo-inline-select" value={r.tipifBack} onChange={e=>guardarTipifBack(r.id,e.target.value)} style={{fontSize:10,padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontFamily:'inherit',cursor:'pointer',background:'#fff',maxWidth:135}}>
+                              <select className="bo-sel-compact" value={r.tipifBack} onChange={e=>guardarTipifBack(r.id,e.target.value)}>
                                 <option value="">— Sin tipif. —</option>
                                 {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
                               </select>
-                              {r.tipifBack==='DERIVADO' && r.derivadoPor && <small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:2}}>Por: {r.derivadoPor}</small>}
+                              {r.tipifBack==='DERIVADO'&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
                             </td>
+
+                            {/* Asesor asignado */}
                             <td>
-                              <select className="sel-asesor-tabla" value={r.asesor} disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''} onChange={e=>reasignarReg(r.id,e.target.value)}>
+                              <select className="bo-sel-compact sel-asesor-tabla" value={r.asesor} disabled={esExclusiva}
+                                title={esExclusiva?`Prohibido: ${r._tipifVend}`:''}
+                                onChange={e=>reasignarReg(r.id,e.target.value)}>
                                 <option value="">— Sin asignar —</option>
                                 {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                               </select>
+                              {r.sinAsignar&&<span style={{display:'block',fontSize:9,color:'#c2410c',fontWeight:700,marginTop:1}}>sin asig.</span>}
                             </td>
-                            <td>{r.horaAsig ? <><span className="hora-cell">{r.horaAsig}</span> <span className="hora-date">{formatFecha(fechaActiva)}</span></> : <span className="hora-empty">—</span>}</td>
-                            {filtros.verTipVend && (
-                              <td>
-                                <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                                  <select className="sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)} style={{fontSize:10,padding:'3px 6px',border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,borderRadius:6,fontFamily:'inherit',maxWidth:155,cursor:'pointer',color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
-                                    <option value="">— Pendiente —</option>
-                                    {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
-                                  </select>
-                                  {r._tipifHora && <span style={{fontSize:9,color:'#9ca3af'}}>vendedor · {r._tipifHora}</span>}
-                                </div>
-                              </td>
-                            )}
-                            <td>{r.sinAsignar ? <span className="sin-asig-badge">Sin asig.</span> : <span style={{color:'#d1d5db',fontSize:10}}>—</span>}</td>
-                            <td style={{textAlign:'center'}}>
-                              {r.rotaciones > 0
-                                ? <span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:99,display:'inline-block'}}>{r.rotaciones}x</span>
-                                : <span style={{color:'#d1d5db',fontSize:11}}>0</span>}
-                            </td>
+
+                            {/* Tipif. Vendedor */}
                             <td>
-                              <div className="acciones-cell">
-                                <button className="btn-rotar" disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                  {esExclusiva?'Prohibido':'Rotar'}
+                              <select className="bo-sel-compact sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                style={{border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
+                                <option value="">— Pendiente —</option>
+                                {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                              </select>
+                              {r._tipifHora&&<span style={{display:'block',fontSize:9,color:'#9ca3af',marginTop:1}}>{r._tipifHora}</span>}
+                            </td>
+
+                            {/* Hora */}
+                            <td style={{textAlign:'center'}}>
+                              {r.horaAsig?<span className="hora-cell">{r.horaAsig}</span>:<span style={{color:'#d1d5db'}}>—</span>}
+                            </td>
+
+                            {/* Rotaciones */}
+                            <td style={{textAlign:'center'}}>
+                              {r.rotaciones>0
+                                ?<span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:99,display:'inline-block'}}>{r.rotaciones}x</span>
+                                :<span style={{color:'#d1d5db',fontSize:10}}>0</span>}
+                            </td>
+
+                            {/* Acciones */}
+                            <td>
+                              <div className="acc-cell-compact">
+                                <button className="btn-acc-det" onClick={()=>setDetOpen(p=>({...p,[r.id]:!p[r.id]}))}
+                                  title={detAbierto?'Ocultar detalles':'Ver detalles'} aria-label="Detalles">
+                                  {detAbierto?'▲':'⋯'}
                                 </button>
-                                <button className="btn-hist" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))}>
+                                <button className="btn-rotar btn-rotar-sm" disabled={esExclusiva}
+                                  title={esExclusiva?`Prohibido: ${r._tipifVend}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                </button>
+                                <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                  Historial
                                 </button>
                                 <button className="btn-del" onClick={()=>eliminarReg(r.id)} title="Eliminar">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                                 </button>
                               </div>
                             </td>
                           </tr>,
+
+                          /* Fila expandible: Detalles secundarios */
+                          <tr key={`det-${r.id}`} className={`detalles-row${detAbierto?' open':''}`}>
+                            <td colSpan={10}>
+                              <div className="detalles-inner">
+                                <div className="det-campo det-distrito">
+                                  <label>Distrito</label>
+                                  <span>{r.distrito||'—'}</span>
+                                </div>
+                                <div className="det-campo">
+                                  <label>Dirección</label>
+                                  <input defaultValue={r.direccion||''} onBlur={e=>guardarDatosBack(r.id,{direccion:e.target.value.trim()})} placeholder="Dirección" maxLength={1000}/>
+                                </div>
+                                <div className="det-campo det-coord">
+                                  <label>Coordenadas</label>
+                                  <input defaultValue={r.coordenadas||''} onBlur={e=>guardarDatosBack(r.id,{coordenadas:e.target.value.trim()})} placeholder="Coordenadas" maxLength={255}/>
+                                </div>
+                                <div className="det-campo det-obs">
+                                  <label>Obs. Back</label>
+                                  <input defaultValue={r.obs_back||''} onBlur={e=>guardarDatosBack(r.id,{obs_back:e.target.value.trim()})} placeholder="Observación para asesor" maxLength={2000}/>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>,
+
+                          /* Fila expandible: Historial */
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
-                            <td colSpan={filtros.verTipVend?15:14}>
+                            <td colSpan={10}>
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {r.historial.length
