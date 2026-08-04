@@ -918,42 +918,51 @@ export default function Backoffice() {
 
   function descargarFormato() {
     const wb = XLSX.utils.book_new()
-    // Hoja 1: plantilla en blanco con solo cabeceras
-    const hdr = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
-    const ws1 = XLSX.utils.aoa_to_sheet([hdr])
-    ws1['!cols'] = hdr.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
+    const HDR = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
+    const COLS = HDR.map((_,i)=>({ wch: i===3||i===2?15 : i>=8?13 : i===7?10 : 18 }))
+    // Hoja 1: plantilla vacía — solo encabezados
+    const ws1 = XLSX.utils.aoa_to_sheet([HDR])
+    ws1['!cols'] = COLS
+    ws1['!freeze'] = { xSplit: 0, ySplit: 1 }
+    ws1['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(HDR.length-1)}1` }
     XLSX.utils.book_append_sheet(wb, ws1, 'CARGA SISTEMA ANTIGUO')
-    // Hoja 2: ejemplo con datos ficticios
-    const ej = [
-      hdr,
+    // Hoja 2: datos de ejemplo ficticios
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      HDR,
       ['CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','CONTESTA','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
       ['CAMP ADMI','MIRAFLORES','','912345678','NO CONTESTA','','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
-    ]
-    const ws2 = XLSX.utils.aoa_to_sheet(ej)
-    ws2['!cols'] = hdr.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
+      ['NKT FIBRA','SURCO','976543211','976543210','BUZON DE VOZ','Sin respuesta','NO CONTESTA','11:45','CARLOS VEGA','PEDRO LUNA','','','',''],
+    ])
+    ws2['!cols'] = COLS
+    ws2['!freeze'] = { xSplit: 0, ySplit: 1 }
     XLSX.utils.book_append_sheet(wb, ws2, 'EJEMPLO')
     // Hoja 3: instrucciones
-    const instr = [
-      ['INSTRUCCIONES — CARGA SISTEMA ANTIGUO'],[''],
+    const INSTR = [
+      ['INSTRUCCIONES — CARGA SISTEMA ANTIGUO'],
+      [''],
+      ['IMPORTANTE: No modifique el nombre ni el orden de las columnas.'],
+      [''],
       ['Columna','Descripción','Obligatorio','Notas'],
       ['CAMPAÑA','Nombre de campaña','Sí','Texto libre'],
       ['DISTRITO','Distrito del contacto','No','Texto libre'],
-      ['N2','Número secundario','No','Formato texto — conservar ceros iniciales'],
-      ['N1','Número principal','SÍ','Formato texto — conservar ceros iniciales'],
-      ['TIPIF. BACK','Tipificación Back Data','No','NC / BUZON DE VOZ / NO CONTESTA / DERIVADO'],
-      ['COMENTARIO','Comentario','No','No se importa al sistema'],
-      ['TIPIFICACIÓN','Tipificación del vendedor','No','CONTESTA / VENTA CERRADA / etc.'],
-      ['HORA','Hora de asignación','No','Formato HH:MM (ej: 17:11)'],
-      ['ASESOR 1..6','Historial de asesores','No','Nombre completo tal como aparece en el sistema'],[''],
-      ['NOTAS IMPORTANTES'],
-      ['— Copie sus datos en la hoja "CARGA SISTEMA ANTIGUO". No cambie el orden de las columnas.'],
-      ['— N1 es el único campo obligatorio. Las filas sin N1 se ignoran.'],
-      ['— Los teléfonos deben estar en formato TEXTO para no perder el 0 inicial.'],
+      ['N2','Número secundario','No','Guardar como texto para conservar ceros iniciales'],
+      ['N1','Número principal (teléfono)','SÍ','Guardar como texto para conservar ceros iniciales'],
+      ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO'],
+      ['COMENTARIO','Comentario libre','No','No se importa al sistema, solo referencia'],
+      ['TIPIFICACIÓN','Tipificación del asesor/vendedor','No','CONTESTA · VENTA CERRADA · NC · etc.'],
+      ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
+      ['ASESOR 1 … ASESOR 6','Historial de asesores','No','Nombre completo tal como aparece en el sistema'],
+      [''],
+      ['NOTAS ADICIONALES'],
+      ['— Use la hoja "CARGA SISTEMA ANTIGUO" para pegar sus datos.'],
+      ['— Use la hoja "EJEMPLO" como referencia del formato correcto.'],
+      ['— N1 es el único campo obligatorio. Filas sin N1 se ignoran automáticamente.'],
       ['— Si un N1 ya existe para la fecha destino, la fila se omite como duplicado.'],
-      ['— Consulte la hoja "EJEMPLO" para ver el formato correcto.'],
+      ['— Formatos de archivo aceptados: .xlsx · .csv (comas o punto y coma) · .txt'],
     ]
-    const ws3 = XLSX.utils.aoa_to_sheet(instr)
-    ws3['!cols'] = [{ wch:22 },{ wch:42 },{ wch:14 },{ wch:48 }]
+    const ws3 = XLSX.utils.aoa_to_sheet(INSTR)
+    ws3['!cols'] = [{ wch:24 },{ wch:40 },{ wch:14 },{ wch:50 }]
+    ws3['!rows'] = [{ hpt:18 }]
     XLSX.utils.book_append_sheet(wb, ws3, 'INSTRUCCIONES')
     XLSX.writeFile(wb, 'FORMATO_CARGA_SISTEMA_ANTIGUO.xlsx')
   }
@@ -1443,14 +1452,6 @@ export default function Backoffice() {
                 <h2>Carga Masiva de Base</h2>
                 <p className="bo-sub">Pega números directamente · importa CSV/TXT/XLSX · o usa tu sistema antiguo</p>
               </div>
-              <button
-                onClick={descargarFormato}
-                style={{display:'flex',alignItems:'center',gap:7,padding:'9px 16px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}
-                title="Descargar plantilla Excel con el formato de importación"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Descargar formato Excel
-              </button>
             </div>
 
             {/* Date nav carga masiva */}
@@ -1610,75 +1611,117 @@ export default function Backoffice() {
               {/* TAB: Legacy */}
               {cargaTab === 'legacy' && (
                 <div>
-                  <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:14,marginBottom:14}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'#c2410c',marginBottom:4}}>Importación de sistema antiguo</div>
-                    <div style={{fontSize:11,color:'#92400e',lineHeight:1.6}}>
-                      Formato: <strong>CAMPAÑA · DISTRITO · N2 · N1 · TIPIF.BACK · COMENTARIO · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
+                  {/* Título */}
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:14,fontWeight:700,color:'#1f2937',marginBottom:2}}>Carga masiva desde Excel</div>
+                    <div style={{fontSize:12,color:'#6b7280'}}>Importa tu base en formato Excel (.xlsx), CSV o TXT. Un registro por fila.</div>
+                  </div>
+
+                  {/* Selectores de fecha */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                    <div className="bo-input-group" style={{margin:0}}>
+                      <label>Fecha destino</label>
+                      <select value={legacyFecha} onChange={e=>setLegacyFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
+                        {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)}</option>)}
+                      </select>
+                    </div>
+                    <div className="bo-input-group" style={{margin:0}}>
+                      <label>Asignación de fecha</label>
+                      <select value={legacyUsarFecha} onChange={e=>setLegacyUsarFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
+                        <option value="no">Usar fecha seleccionada</option>
+                        <option value="si">Leer fecha de la fila</option>
+                      </select>
                     </div>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 180px',gap:12,marginBottom:12}}>
-                    <div
-                      onClick={()=>legacyInputRef.current?.click()}
-                      onDragOver={e=>{ e.preventDefault(); setLegacyDragOver(true) }}
-                      onDragLeave={()=>setLegacyDragOver(false)}
-                      onDrop={e=>{ e.preventDefault(); setLegacyDragOver(false); if(e.dataTransfer.files.length) procesarLegacy(e.dataTransfer.files[0]) }}
-                      style={{border:`2px dashed ${legacyDragOver?'#c2410c':'#fed7aa'}`,borderRadius:10,padding:28,textAlign:'center',cursor:'pointer',background:legacyDragOver?'#fff7ed':'#fff'}}
-                    >
-                      <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:3}}>Arrastra tu base o haz clic</div>
-                      <div style={{fontSize:11,color:'#9ca3af'}}>CSV exportado desde tu sistema anterior</div>
-                      <input ref={legacyInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
-                    </div>
-                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                      <div className="bo-input-group" style={{margin:0}}><label>Fecha destino</label>
-                        <select value={legacyFecha} onChange={e=>setLegacyFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
-                          {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)}</option>)}
-                        </select>
-                      </div>
-                      <div className="bo-input-group" style={{margin:0}}><label>Fecha de la fila</label>
-                        <select value={legacyUsarFecha} onChange={e=>setLegacyUsarFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
-                          <option value="no">Usar fecha seleccionada</option>
-                          <option value="si">Leer fecha de la fila</option>
-                        </select>
-                      </div>
-                    </div>
+
+                  {/* Selector de archivo */}
+                  <div
+                    onClick={()=>legacyInputRef.current?.click()}
+                    onDragOver={e=>{ e.preventDefault(); setLegacyDragOver(true) }}
+                    onDragLeave={()=>setLegacyDragOver(false)}
+                    onDrop={e=>{ e.preventDefault(); setLegacyDragOver(false); if(e.dataTransfer.files.length) procesarLegacy(e.dataTransfer.files[0]) }}
+                    style={{border:`2px dashed ${legacyDragOver?'#1d4ed8':'#d1d5db'}`,borderRadius:10,padding:'28px 24px',textAlign:'center',cursor:'pointer',background:legacyDragOver?'#eff6ff':'#fafafa',transition:'all .15s'}}
+                  >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={legacyDragOver?'#1d4ed8':'#9ca3af'} strokeWidth="1.8" style={{marginBottom:8}} aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:3}}>Arrastra tu archivo aquí o haz clic para seleccionar</div>
+                    <div style={{fontSize:11,color:'#9ca3af'}}>Archivo Excel (.xlsx), CSV o TXT con un registro por fila</div>
+                    <input ref={legacyInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
                   </div>
-                  {legacyStatus && <div style={{fontSize:12,color:'#6b7280',marginBottom:8}}>{legacyStatus}</div>}
+                  {legacyStatus && <div style={{fontSize:12,color:'#6b7280',marginTop:8}}>{legacyStatus}</div>}
+
+                  {/* Lista de columnas */}
+                  <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 16px',marginTop:14}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#374151',marginBottom:6,textTransform:'uppercase',letterSpacing:.4}}>Columnas requeridas (en orden):</div>
+                    <div style={{fontSize:11,color:'#374151',lineHeight:1.9,wordBreak:'break-word'}}>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>CAMPAÑA</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>DISTRITO</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>N2</span>
+                      <span style={{background:'#fef3c7',borderRadius:4,padding:'1px 6px',marginRight:4,fontWeight:700,color:'#92400e'}}>N1 *</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>TIPIF. BACK</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>COMENTARIO</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>TIPIFICACIÓN</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>HORA</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>ASESOR 1</span>
+                      <span style={{color:'#9ca3af',fontSize:10,marginRight:4}}>···</span>
+                      <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>ASESOR 6</span>
+                    </div>
+                    <div style={{fontSize:10,color:'#9ca3af',marginTop:6}}>* N1 es el único campo obligatorio. El resto de columnas son opcionales.</div>
+                  </div>
+
+                  {/* Botón descargar plantilla */}
+                  <button
+                    onClick={descargarFormato}
+                    style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px 20px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',marginTop:12,letterSpacing:.2}}
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    DESCARGAR PLANTILLA EXCEL DE EJEMPLO
+                  </button>
+
+                  {/* Vista previa + botones de importación */}
                   {legacyRows.length > 0 && (
-                    <div>
-                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
-                        <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{legacyInfo} — Destino: <strong>{legacyUsarFecha==='si' ? 'fecha de la fila' : formatFecha(legacyFecha)}</strong></span>
-                        <div style={{display:'flex',gap:6}}>
+                    <div style={{marginTop:16,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:14}}>
+                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:'#92400e',marginBottom:4}}>Vista previa — {legacyInfo}</div>
+                          <div style={{fontSize:11,color:'#92400e'}}>
+                            Fecha destino: <strong>{legacyUsarFecha==='si' ? 'fecha de la fila' : formatFecha(legacyFecha)}</strong>
+                            <span style={{margin:'0 8px',color:'#fed7aa'}}>·</span>
+                            {legacyRows.length} registros válidos encontrados
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:6,flexShrink:0}}>
                           <button className="btn-masiva-preview" onClick={()=>{ setLegacyRows([]); setLegacyError(''); setImportResult(null) }} disabled={cargandoLegacy}>Cancelar</button>
                           <button className="btn-masiva-go" onClick={ejecutarCargaLegacy} style={{background:'#c2410c'}} disabled={cargandoLegacy}>
                             {cargandoLegacy ? 'Importando...' : `Importar ${legacyRows.length} registros`}
                           </button>
                         </div>
                       </div>
-                      <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
+                      <div style={{maxHeight:220,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,whiteSpace:'nowrap'}}>
                           <thead><tr style={{background:'#f9fafb',position:'sticky',top:0}}>
-                            {['#','Camp.','Dist.','N1','N2','Tipif. Back','Tipif.','Hora','Asesores','Fecha'].map(h=>(
-                              <th key={h} style={{padding:'5px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>{h}</th>
+                            {['#','Campaña','Distrito','N1','N2','Tipif. Back','Tipif. Vend.','Hora','Asesores','Fecha'].map(h=>(
+                              <th key={h} style={{padding:'5px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase',fontWeight:700,borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
                             {legacyRows.slice(0,60).map((r,i)=>(
                               <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
                                 <td style={{padding:'4px 10px',color:'#9ca3af'}}>{i+1}</td>
-                                <td style={{padding:'4px 10px',fontWeight:600}}>{r.campana}</td>
-                                <td style={{padding:'4px 10px'}}>{r.distrito}</td>
-                                <td style={{padding:'4px 10px',fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{r.n1}</td>
+                                <td style={{padding:'4px 10px',fontWeight:600,color:'#1f2937'}}>{r.campana}</td>
+                                <td style={{padding:'4px 10px',color:'#374151'}}>{r.distrito}</td>
+                                <td style={{padding:'4px 10px',fontFamily:'monospace',fontWeight:700,color:'#1d4ed8'}}>{r.n1}</td>
                                 <td style={{padding:'4px 10px',fontFamily:'monospace',color:'#6b7280'}}>{r.n2||'—'}</td>
-                                <td style={{padding:'4px 10px'}}>{r.tipifBack||'—'}</td>
-                                <td style={{padding:'4px 10px'}}>{r.tipifVend||'—'}</td>
+                                <td style={{padding:'4px 10px',color:'#374151'}}>{r.tipifBack||'—'}</td>
+                                <td style={{padding:'4px 10px',color:'#374151'}}>{r.tipifVend||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#185FA5',fontWeight:600}}>{r.hora||'—'}</td>
-                                <td style={{padding:'4px 10px',color:'#6b7280'}}>{r.asesores.join(' → ')||'—'}</td>
+                                <td style={{padding:'4px 10px',color:'#6b7280',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis'}}>{r.asesores.join(' → ')||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#374151'}}>{formatFecha(r.fecha)}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
+                      {legacyRows.length > 60 && <div style={{fontSize:10,color:'#9ca3af',textAlign:'center',marginTop:6}}>Mostrando 60 de {legacyRows.length} registros</div>}
                     </div>
                   )}
                 </div>
