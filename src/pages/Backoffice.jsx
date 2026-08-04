@@ -330,7 +330,7 @@ export default function Backoffice() {
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
 
-  const cargarLeads = useCallback(async () => {
+const cargarLeads = useCallback(async () => {
     try {
       const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
       const data = await res.json()
@@ -365,10 +365,27 @@ export default function Backoffice() {
       })
       const hoy = fechaHoy()
       if (!nuevasFechas.includes(hoy)) nuevasFechas.push(hoy)
-      nuevasFechas.sort().reverse()
-      setBaseData(nuevoBase)
-      setFechaPestanas(nuevasFechas)
-      setFechaActiva(prev => nuevasFechas.includes(prev) ? prev : nuevasFechas[0])
+
+      // Conserva pestañas de fecha agregadas manualmente por el usuario que aún
+      // no tienen leads en el backend (p.ej. mientras prepara una carga masiva),
+      // en vez de que el polling las borre al no encontrar registros ahí.
+      setFechaPestanas(prevFechas => {
+        const combinado = Array.from(new Set([...prevFechas, ...nuevasFechas]))
+        return combinado.sort().reverse()
+      })
+      setBaseData(prevBase => {
+        const merged = { ...nuevoBase }
+        for (const f in prevBase) {
+          if (!merged[f]) merged[f] = prevBase[f]
+        }
+        return merged
+      })
+      // fechaActiva ya no se resetea agresivamente: solo cambia si la fecha
+      // activa actual ya no existe en ningún lado (ni en backend ni manual).
+      setFechaActiva(prev => {
+        const todasLasFechas = Array.from(new Set([...nuevasFechas, prev]))
+        return todasLasFechas.includes(prev) ? prev : (nuevasFechas[0] || hoy)
+      })
     } catch(e) { console.error('Error cargando leads:', e) }
   }, [])
 
