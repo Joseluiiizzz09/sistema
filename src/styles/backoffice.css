@@ -360,35 +360,15 @@ body{
 .bo-root .base-filtro-toggle input{width:13px;height:13px;margin:0;accent-color:var(--brand);}
 .bo-root .base-filtro-limpiar{flex:0 0 auto;height:33px;font-size:11px;padding:5px 11px;}
 .bo-root .base-tabla-wrap{
-  overflow-x:hidden; /* oculta scrollbar horizontal nativo; el flotante lo reemplaza */
+  overflow-x:auto;
   overflow-y:auto;
   max-height:calc(100vh - 260px);min-height:380px;
   scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;
 }
-.bo-root .base-tabla-wrap::-webkit-scrollbar{width:6px;}
+.bo-root .base-tabla-wrap::-webkit-scrollbar{width:6px;height:6px;}
 .bo-root .base-tabla-wrap::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
 .bo-root .base-tabla-wrap::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}
 .bo-root .base-tabla-wrap::-webkit-scrollbar-thumb:hover{background:var(--brand-dark);}
-/* ── Scrollbar horizontal flotante ── */
-.base-tabla-float-scroll{
-  position:fixed;
-  bottom:8px;
-  height:16px;
-  overflow-x:scroll;
-  overflow-y:hidden;
-  background:var(--brand-soft);
-  border:1px solid rgba(229,62,62,.25);
-  border-radius:99px;
-  box-shadow:0 2px 12px rgba(229,62,62,.15),0 1px 4px rgba(0,0,0,.06);
-  z-index:200;
-  scrollbar-width:thin;
-  scrollbar-color:var(--brand) var(--brand-soft);
-  pointer-events:auto;
-}
-.base-tabla-float-scroll::-webkit-scrollbar{height:16px;}
-.base-tabla-float-scroll::-webkit-scrollbar-track{background:var(--brand-soft);border-radius:99px;}
-.base-tabla-float-scroll::-webkit-scrollbar-thumb{background:var(--brand);border-radius:99px;border:3px solid var(--brand-soft);}
-.base-tabla-float-scroll::-webkit-scrollbar-thumb:hover{background:var(--brand-dark);}
 .bo-root .base-tabla{width:max-content;min-width:100%;}
 .bo-root .base-tabla thead tr{position:sticky;top:0;z-index:8;}
 .bo-root .base-tabla thead th{background:#0f172a;}

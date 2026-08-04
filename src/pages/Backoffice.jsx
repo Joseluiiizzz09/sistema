@@ -130,109 +130,6 @@ function CopyIcon() {
   )
 }
 
-// ── Floating horizontal scrollbar hook ───────────────────────────────────
-function useFloatingHScroll(containerRef) {
-  const floatRef      = useRef(null)
-  const floatInnerRef = useRef(null)
-  const [show, setShow] = useState(false)
-  const [geom, setGeom] = useState({ left: 0, width: 0 })
-  const syncing = useRef(false)
-  const raf     = useRef(null)
-
-  const recalc = useCallback(() => {
-    const wrap  = containerRef.current
-    const float = floatRef.current
-    const inner = floatInnerRef.current
-    if (!wrap || !float || !inner) return
-    const rect = wrap.getBoundingClientRect()
-    const vh   = window.innerHeight
-    const hasX = wrap.scrollWidth > wrap.clientWidth + 1
-    const vis  = rect.top < vh && rect.bottom > 0
-    if (!hasX || !vis) { setShow(false); return }
-    inner.style.width = wrap.scrollWidth + 'px'
-    const left  = Math.max(0, rect.left)
-    const right = Math.min(window.innerWidth, rect.right)
-    setShow(true)
-    setGeom({ left, width: right - left })
-    if (!syncing.current) float.scrollLeft = wrap.scrollLeft
-  }, [containerRef])
-
-  // table → float
-  useEffect(() => {
-    const wrap = containerRef.current
-    if (!wrap) return
-    const onWrap = () => {
-      if (syncing.current) return
-      const float = floatRef.current
-      if (!float) return
-      syncing.current = true
-      float.scrollLeft = wrap.scrollLeft
-      raf.current = requestAnimationFrame(() => { syncing.current = false })
-    }
-    wrap.addEventListener('scroll', onWrap, { passive: true })
-    return () => wrap.removeEventListener('scroll', onWrap)
-  }, [containerRef])
-
-  // float → table
-  const onFloatScroll = useCallback(() => {
-    if (syncing.current) return
-    const wrap  = containerRef.current
-    const float = floatRef.current
-    if (!wrap || !float) return
-    syncing.current = true
-    wrap.scrollLeft = float.scrollLeft
-    raf.current = requestAnimationFrame(() => { syncing.current = false })
-  }, [containerRef])
-
-  // ResizeObserver: recalculate when container or table content changes size
-  useEffect(() => {
-    const wrap = containerRef.current
-    if (!wrap) return
-    const ro = new ResizeObserver(() => {
-      if (raf.current) cancelAnimationFrame(raf.current)
-      raf.current = requestAnimationFrame(recalc)
-    })
-    ro.observe(wrap)
-    const tbl = wrap.querySelector('table')
-    if (tbl) ro.observe(tbl)
-    return () => ro.disconnect()
-  }, [containerRef, recalc])
-
-  // IntersectionObserver: detect when container enters/leaves viewport
-  useEffect(() => {
-    const wrap = containerRef.current
-    if (!wrap) return
-    const io = new IntersectionObserver(() => {
-      if (raf.current) cancelAnimationFrame(raf.current)
-      raf.current = requestAnimationFrame(recalc)
-    }, { threshold: 0, rootMargin: '0px' })
-    io.observe(wrap)
-    return () => io.disconnect()
-  }, [containerRef, recalc])
-
-  // bo-main scroll + window resize for position updates
-  useEffect(() => {
-    const wrap = containerRef.current
-    if (!wrap) return
-    const scrollParent = wrap.closest('.bo-main') || window
-    const handler = () => {
-      if (raf.current) cancelAnimationFrame(raf.current)
-      raf.current = requestAnimationFrame(recalc)
-    }
-    scrollParent.addEventListener('scroll', handler, { passive: true })
-    window.addEventListener('resize',  handler, { passive: true })
-    return () => {
-      scrollParent.removeEventListener('scroll', handler)
-      window.removeEventListener('resize', handler)
-    }
-  }, [containerRef, recalc])
-
-  useEffect(() => { recalc() }, [recalc])
-  useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current) }, [])
-
-  return { floatRef, floatInnerRef, show, geom, onFloatScroll }
-}
-
 // ── Component ─────────────────────────────────────────────────────────────
 export default function Backoffice() {
   const navigate    = useNavigate()
@@ -242,8 +139,6 @@ export default function Backoffice() {
   const archivoInputRef   = useRef(null)
   const legacyInputRef    = useRef(null)
   const fechaSistemaRef   = useRef(fechaHoy())
-  const tableScrollRef    = useRef(null)
-
   // ── Section ──
   const [seccion, setSeccion] = useState(() => {
     const guardada = sessionStorage.getItem('nc_backoffice_apartado')
@@ -331,9 +226,6 @@ export default function Backoffice() {
 
   // ── Toast ──
   const [toast, setToast] = useState('')
-
-  // ── Floating horizontal scrollbar ──
-  const { floatRef, floatInnerRef, show: showFloatScroll, geom: floatGeom, onFloatScroll } = useFloatingHScroll(tableScrollRef)
 
   // Mantiene el panel alineado con el calendario de Lima aunque quede abierto
   // durante el cambio de día. Conserva una fecha histórica elegida a mano.
@@ -1545,7 +1437,7 @@ const cargarLeads = useCallback(async () => {
 
             {/* TABLA BASE */}
             <div className="tabla-desliza-aviso">← Desliza horizontalmente para ver todas las columnas →</div>
-            <div className="base-tabla-wrap" ref={tableScrollRef}>
+            <div className="base-tabla-wrap">
               <table className="base-tabla table table-sm table-hover">
                 <thead>
                   <tr>
@@ -2284,16 +2176,6 @@ const cargarLeads = useCallback(async () => {
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
 
-      {/* ══ FLOATING HORIZONTAL SCROLLBAR ════════════════════════════════════ */}
-      <div
-        ref={floatRef}
-        className="base-tabla-float-scroll"
-        style={{ display: showFloatScroll ? 'block' : 'none', left: floatGeom.left, width: floatGeom.width }}
-        onScroll={onFloatScroll}
-        aria-hidden="true"
-      >
-        <div ref={floatInnerRef} style={{ height: 1 }} />
-      </div>
     </div>
   )
 }
