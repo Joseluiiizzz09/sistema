@@ -207,6 +207,7 @@ export default function Backoffice() {
   const [cargandoMasiva, setCargandoMasiva] = useState(false)
   const [cargandoLegacy, setCargandoLegacy] = useState(false)
   const [importResult,   setImportResult]   = useState(null)
+  const [legacyError,    setLegacyError]    = useState('')
 
   // ── Rendimiento ──
   const [rendFiltroTipo,  setRendFiltroTipo]  = useState('mes')
@@ -710,11 +711,16 @@ export default function Backoffice() {
     const ids = []
     for (let i = 0; i < leads.length; i += LOTE) {
       const batch = leads.slice(i, i + LOTE)
+      let data
       try {
-        const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(batch) })
-        const data = await res.json()
-        if (data.ok) { creados += data.creados || 0; if (data.ids) ids.push(...data.ids) }
-      } catch(e) {}
+        const res = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(batch) })
+        data = await res.json()
+      } catch(e) {
+        throw new Error(`Error de red al enviar lote ${Math.floor(i/LOTE)+1}: ${e.message}`)
+      }
+      if (!data.ok) throw new Error(data.mensaje || 'El servidor rechazó el lote de leads')
+      creados += data.creados || 0
+      if (data.ids) ids.push(...data.ids)
     }
     return { creados, ids }
   }
@@ -745,17 +751,19 @@ export default function Backoffice() {
     if (nuevosRegs.length) {
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevosRegs] }))
       setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
-      const { ids } = await enviarLeadsEnLotes(leadsParaBackend)
-      if (ids.length) {
-        setBaseData(prev => {
-          const next = { ...prev }
-          const arr  = [...(next[fecha]||[])]
-          const off  = arr.length - nuevosRegs.length
-          ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
-          next[fecha] = arr
-          return next
-        })
-      }
+      try {
+        const { ids } = await enviarLeadsEnLotes(leadsParaBackend)
+        if (ids.length) {
+          setBaseData(prev => {
+            const next = { ...prev }
+            const arr  = [...(next[fecha]||[])]
+            const off  = arr.length - nuevosRegs.length
+            ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
+            next[fecha] = arr
+            return next
+          })
+        }
+      } catch(e) { mostrarToast(`Advertencia: ${e.message}`) }
     }
     const importados = filaResult.filter(f=>f.resultado==='IMPORTADO').length
     const duplicados = filaResult.filter(f=>f.resultado==='DUPLICADO').length
@@ -832,7 +840,8 @@ export default function Backoffice() {
     if (nuevos.length) {
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevos] }))
       setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
-      await enviarLeadsEnLotes(leadsBackend)
+      try { await enviarLeadsEnLotes(leadsBackend) }
+      catch(e) { mostrarToast(`Advertencia: ${e.message}`) }
     }
     const importados = filaResult.filter(f=>f.resultado==='IMPORTADO').length
     const duplicados = filaResult.filter(f=>f.resultado==='DUPLICADO').length
@@ -844,6 +853,8 @@ export default function Backoffice() {
 
   async function procesarLegacy(file) {
     setLegacyStatus(`Leyendo ${file.name}...`)
+    setLegacyError('')
+    setImportResult(null)
     let text
     try { text = await leerArchivoComoTexto(file) }
     catch(e) { setLegacyStatus('Error leyendo el archivo'); return }
@@ -874,95 +885,77 @@ export default function Backoffice() {
     if (!legacyRows.length || cargandoLegacy) { if(!legacyRows.length) mostrarToast('No hay datos'); return }
     setCargandoLegacy(true)
     setImportResult(null)
+    setLegacyError('')
     let importados=0, omitidos=0
     const leadsBackend = []
-    const updates = {}
-    const nuevasFechasLocal = []
     const filaResult = []
+    const n1Vistos = new Set((baseData[legacyFecha]||[]).map(r=>r.n1))
     legacyRows.forEach(r => {
-      const fecha = r.fecha
-      if (!fechaPestanas.includes(fecha)&&!nuevasFechasLocal.includes(fecha)) nuevasFechasLocal.push(fecha)
-      if (!updates[fecha]) updates[fecha] = []
-      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)||updates[fecha].find(x=>x.n1===r.n1)) {
+      if (n1Vistos.has(r.n1)) {
         omitidos++
         filaResult.push({ n1:r.n1, campana:r.campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
         return
       }
-      const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
-      updates[fecha].push({ id:-idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
-      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
+      n1Vistos.add(r.n1)
+      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha:r.fecha, hora_asig:r.hora })
       filaResult.push({ n1:r.n1, campana:r.campana, resultado:'IMPORTADO', motivo:'' })
       importados++
     })
-    setBaseData(prev => { const n={...prev}; for(const f in updates) n[f]=[...(prev[f]||[]),...updates[f]]; return n })
-    setFechaPestanas(prev => [...prev, ...nuevasFechasLocal.filter(f=>!prev.includes(f))].sort().reverse())
-    if (leadsBackend.length) { await enviarLeadsEnLotes(leadsBackend) }
     const fechaPrincipal = legacyUsarFecha==='si' ? (legacyRows[0]?.fecha || legacyFecha) : legacyFecha
-    setImportResult({ metodo:'legacy', fecha:fechaPrincipal, total:legacyRows.length, importados, duplicados:omitidos, errores:0, filas:filaResult })
-    setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
-    if (legacyInputRef.current) legacyInputRef.current.value = ''
-    setCargandoLegacy(false)
+    try {
+      if (leadsBackend.length) { await enviarLeadsEnLotes(leadsBackend) }
+      await cargarLeads()
+      setFechaActiva(fechaPrincipal)
+      setImportResult({ metodo:'legacy', fecha:fechaPrincipal, total:legacyRows.length, importados, duplicados:omitidos, errores:0, filas:filaResult })
+      setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
+      if (legacyInputRef.current) legacyInputRef.current.value = ''
+    } catch(e) {
+      setLegacyError(e.message || 'Error al importar. Intente de nuevo.')
+    } finally {
+      setCargandoLegacy(false)
+    }
   }
 
   function descargarFormato() {
     const wb = XLSX.utils.book_new()
-    // Hoja 1: Sistema Antiguo
-    const hdrLegacy = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
-    const ejLegacy  = ['CAMP ADMI','SAN BORJA','','955956432','NC','Comentario ejemplo','CONTESTA','17:11','DERWIN','LUCAS','','','','']
-    const wsLegacy  = XLSX.utils.aoa_to_sheet([hdrLegacy, ejLegacy])
-    wsLegacy['!cols'] = hdrLegacy.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
-    XLSX.utils.book_append_sheet(wb, wsLegacy, 'SISTEMA ANTIGUO')
-    // Hoja 2: CSV/TXT
-    const hdrCsv = ['N1','N2','CAMPAÑA','DISTRITO','TIPIF. BACK']
-    const ejCsv  = ['955956432','','CAMP ADMI','SAN BORJA','NC']
-    const wsCsv  = XLSX.utils.aoa_to_sheet([hdrCsv, ejCsv])
-    wsCsv['!cols'] = [{ wch:14 },{ wch:12 },{ wch:16 },{ wch:16 },{ wch:16 }]
-    XLSX.utils.book_append_sheet(wb, wsCsv, 'CSV-TXT')
-    // Hoja 3: Instrucciones
+    // Hoja 1: plantilla en blanco con solo cabeceras
+    const hdr = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
+    const ws1 = XLSX.utils.aoa_to_sheet([hdr])
+    ws1['!cols'] = hdr.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
+    XLSX.utils.book_append_sheet(wb, ws1, 'CARGA SISTEMA ANTIGUO')
+    // Hoja 2: ejemplo con datos ficticios
+    const ej = [
+      hdr,
+      ['CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','CONTESTA','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
+      ['CAMP ADMI','MIRAFLORES','','912345678','NO CONTESTA','','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
+    ]
+    const ws2 = XLSX.utils.aoa_to_sheet(ej)
+    ws2['!cols'] = hdr.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
+    XLSX.utils.book_append_sheet(wb, ws2, 'EJEMPLO')
+    // Hoja 3: instrucciones
     const instr = [
-      ['INSTRUCCIONES DE USO — FORMATO BACKDATA NETCONTACT'],[''],
-      ['SISTEMA ANTIGUO (use la hoja "SISTEMA ANTIGUO")'],
+      ['INSTRUCCIONES — CARGA SISTEMA ANTIGUO'],[''],
       ['Columna','Descripción','Obligatorio','Notas'],
       ['CAMPAÑA','Nombre de campaña','Sí','Texto libre'],
       ['DISTRITO','Distrito del contacto','No','Texto libre'],
       ['N2','Número secundario','No','Formato texto — conservar ceros iniciales'],
       ['N1','Número principal','SÍ','Formato texto — conservar ceros iniciales'],
       ['TIPIF. BACK','Tipificación Back Data','No','NC / BUZON DE VOZ / NO CONTESTA / DERIVADO'],
-      ['COMENTARIO','Comentario (no se importa)','No','—'],
+      ['COMENTARIO','Comentario','No','No se importa al sistema'],
       ['TIPIFICACIÓN','Tipificación del vendedor','No','CONTESTA / VENTA CERRADA / etc.'],
       ['HORA','Hora de asignación','No','Formato HH:MM (ej: 17:11)'],
-      ['ASESOR 1..6','Historial de asesores','No','Nombre completo como aparece en el sistema'],[''],
-      ['CSV/TXT (use la hoja "CSV-TXT")'],
-      ['Columna','Descripción','Obligatorio','Notas'],
-      ['N1','Número principal','SÍ','Obligatorio'],
-      ['N2','Número secundario','No','Opcional'],
-      ['CAMPAÑA','Nombre de campaña','No','Texto libre'],
-      ['DISTRITO','Distrito','No','Texto libre'],
-      ['TIPIF. BACK','Tipificación','No','Texto libre'],[''],
+      ['ASESOR 1..6','Historial de asesores','No','Nombre completo tal como aparece en el sistema'],[''],
       ['NOTAS IMPORTANTES'],
-      ['— No cambie el nombre ni el orden de las columnas.'],
+      ['— Copie sus datos en la hoja "CARGA SISTEMA ANTIGUO". No cambie el orden de las columnas.'],
+      ['— N1 es el único campo obligatorio. Las filas sin N1 se ignoran.'],
       ['— Los teléfonos deben estar en formato TEXTO para no perder el 0 inicial.'],
-      ['— El sistema acepta CSV (,), CSV (;) y TSV (tabulador) automáticamente.'],
-      ['— El sistema también acepta archivos .xlsx directamente.'],
-      ['— Al exportar CSV desde Excel: use "CSV UTF-8 (delimitado por comas)".'],
-      ['— Filas completamente vacías son ignoradas.'],
-      ['— N1 es el único campo obligatorio para importar.'],
+      ['— Si un N1 ya existe para la fecha destino, la fila se omite como duplicado.'],
+      ['— Consulte la hoja "EJEMPLO" para ver el formato correcto.'],
     ]
-    const wsInstr = XLSX.utils.aoa_to_sheet(instr)
-    wsInstr['!cols'] = [{ wch:20 },{ wch:40 },{ wch:14 },{ wch:45 }]
-    XLSX.utils.book_append_sheet(wb, wsInstr, 'INSTRUCCIONES')
-    XLSX.writeFile(wb, 'FORMATO_CARGA_BACKDATA.xlsx')
-  }
-
-  function descargarResultado(result) {
-    if (!result) return
-    const wb = XLSX.utils.book_new()
-    const headers = ['#','N1','CAMPAÑA','FECHA DESTINO','RESULTADO','MOTIVO']
-    const rows = result.filas.map((f,i) => [i+1, f.n1, f.campana||'—', formatFecha(result.fecha), f.resultado, f.motivo||''])
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
-    ws['!cols'] = [{ wch:5 },{ wch:14 },{ wch:16 },{ wch:14 },{ wch:12 },{ wch:35 }]
-    XLSX.utils.book_append_sheet(wb, ws, 'RESULTADO')
-    XLSX.writeFile(wb, 'RESULTADO_IMPORTACION_BACKDATA.xlsx')
+    const ws3 = XLSX.utils.aoa_to_sheet(instr)
+    ws3['!cols'] = [{ wch:22 },{ wch:42 },{ wch:14 },{ wch:48 }]
+    XLSX.utils.book_append_sheet(wb, ws3, 'INSTRUCCIONES')
+    XLSX.writeFile(wb, 'FORMATO_CARGA_SISTEMA_ANTIGUO.xlsx')
   }
 
   // ── BL Modal ──────────────────────────────────────────────────────────────
@@ -1655,7 +1648,7 @@ export default function Backoffice() {
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
                         <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{legacyInfo} — Destino: <strong>{legacyUsarFecha==='si' ? 'fecha de la fila' : formatFecha(legacyFecha)}</strong></span>
                         <div style={{display:'flex',gap:6}}>
-                          <button className="btn-masiva-preview" onClick={()=>setLegacyRows([])} disabled={cargandoLegacy}>Cancelar</button>
+                          <button className="btn-masiva-preview" onClick={()=>{ setLegacyRows([]); setLegacyError(''); setImportResult(null) }} disabled={cargandoLegacy}>Cancelar</button>
                           <button className="btn-masiva-go" onClick={ejecutarCargaLegacy} style={{background:'#c2410c'}} disabled={cargandoLegacy}>
                             {cargandoLegacy ? 'Importando...' : `Importar ${legacyRows.length} registros`}
                           </button>
@@ -1692,6 +1685,16 @@ export default function Backoffice() {
               )}
             </div>
 
+            {/* Error de importación */}
+            {legacyError && (
+              <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:14,marginTop:4,display:'flex',alignItems:'flex-start',gap:10}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.2" style={{flexShrink:0,marginTop:1}} aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:'#dc2626',marginBottom:2}}>Error al importar</div>
+                  <div style={{fontSize:11,color:'#7f1d1d'}}>{legacyError}</div>
+                </div>
+              </div>
+            )}
             {/* Resultado de importación */}
             {importResult && (
               <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:18,marginTop:4}}>
@@ -1700,11 +1703,11 @@ export default function Backoffice() {
                     Importación completada · Fecha destino: {formatFecha(importResult.fecha)}
                   </div>
                   <button
-                    onClick={()=>descargarResultado(importResult)}
-                    style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#16a34a',color:'#fff',border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:'pointer'}}
+                    onClick={()=>{ irSeccion('base'); setFechaActiva(importResult.fecha) }}
+                    style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:'pointer'}}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descargar resultado Excel
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    Ver registros importados
                   </button>
                 </div>
                 <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
