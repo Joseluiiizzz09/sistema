@@ -911,12 +911,15 @@ const cargarLeads = useCallback(async () => {
       let n1, campana, distrito, n2, tipifBack, tipifVend, hora, asesoresHist
       if (usarFF) {
         // Nuevo formato: FECHA(0) CAMPAÑA(1) DISTRITO(2) N2(3) N1(4) TIPIFB(5) COM(6) TIPIFV(7) HORA(8) ASE(9-14)
-        n1=c[4]||''; campana=c[1]||'—'; distrito=c[2]||'—'; n2=c[3]||''
+        n1=c[4]||''; campana=c[1]||'—'; distrito=c[2]||'—'
+        const n2rawF=c[3]||''; n2=(n2rawF.includes('///')?n2rawF.split('///')[0]:n2rawF).trim().substring(0,20)
         tipifBack=c[5]||''; tipifVend=c[7]||''; hora=c[8]||''
         asesoresHist=[]; for(let i=9;i<=14;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       } else {
         // Formato original: CAMPAÑA(0) DISTRITO(1) N2(2) N1(3) TIPIFB(4) COM(5) TIPIFV(6) HORA(7) ASE(8-13)
-        n1=c[3]||''; campana=c[0]||'—'; distrito=c[1]||'—'; n2=c[2]||''
+        n1=c[3]||''; campana=c[0]||'—'; distrito=c[1]||'—'
+        // Limpiar n2: sistemas legacy a veces concatenan GPS con '///' (ej: '970316718/// -12.01')
+        const n2raw=c[2]||''; n2=(n2raw.includes('///')?n2raw.split('///')[0]:n2raw).trim().substring(0,20)
         tipifBack=c[4]||''; tipifVend=c[6]||''; hora=c[7]||''
         asesoresHist=[]; for(let i=8;i<=13;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       }
@@ -936,6 +939,29 @@ const cargarLeads = useCallback(async () => {
     setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
   }
 
+  async function importarLegadoEnLotes(registros) {
+    const LOTE = 200
+    let creados=0, actualizados=0, existentes=0, errores=0
+    const erroresDetalle = []
+    for (let i=0; i<registros.length; i+=LOTE) {
+      const batch = registros.slice(i, i+LOTE)
+      let data
+      try {
+        const res = await fetch(`${API}/leads/import-legacy`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(batch) })
+        data = await res.json()
+      } catch(e) {
+        throw new Error(`Error de red (lote ${Math.floor(i/LOTE)+1}): ${e.message}`)
+      }
+      if (!data.ok) throw new Error(data.detalle || data.mensaje || 'El servidor rechazó el lote')
+      creados    += data.creados    || 0
+      actualizados += data.actualizados || 0
+      existentes += data.existentes || 0
+      errores    += data.errores    || 0
+      if (data.erroresDetalle) erroresDetalle.push(...data.erroresDetalle)
+    }
+    return { creados, actualizados, existentes, errores, erroresDetalle }
+  }
+
   async function ejecutarCargaLegacy() {
     if (!legacyRows.length || cargandoLegacy) { if(!legacyRows.length) mostrarToast('No hay datos'); return }
     if (legacyUsarFecha === 'no' && legacyFecha > fechaHoy()) {
@@ -945,39 +971,50 @@ const cargarLeads = useCallback(async () => {
     setCargandoLegacy(true)
     setImportResult(null)
     setLegacyError('')
-    let importados=0, omitidos=0, errores=0
     const leadsBackend = []
-    const filaResult = []
-    const distribImportados = {}
-    // Deduplicación por fecha: inicializar con registros ya existentes en baseData
-    const n1PorFecha = new Map()
-    for (const f in baseData) { n1PorFecha.set(f, new Set((baseData[f]||[]).map(r=>r.n1))) }
+    const distribFechas = {}
+    let erroresFecha = 0
     legacyRows.forEach(r => {
-      if (r._fechaError) {
-        errores++
-        filaResult.push({ n1:r.n1, campana:r.campana, fecha:r.fecha||'—', resultado:'ERROR', motivo:r._fechaErrorMsg||'Fecha inválida' })
-        return
-      }
+      if (r._fechaError) { erroresFecha++; return }
       const f = r.fecha
-      if (!n1PorFecha.has(f)) n1PorFecha.set(f, new Set())
-      if (n1PorFecha.get(f).has(r.n1)) {
-        omitidos++
-        filaResult.push({ n1:r.n1, campana:r.campana, fecha:f, resultado:'DUPLICADO', motivo:'Ya existe en esta fecha' })
-        return
-      }
-      n1PorFecha.get(f).add(r.n1)
-      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha:f, hora_asig:r.hora })
-      filaResult.push({ n1:r.n1, campana:r.campana, fecha:f, resultado:'IMPORTADO', motivo:'' })
-      distribImportados[f] = (distribImportados[f]||0) + 1
-      importados++
+      leadsBackend.push({
+        campana:   r.campana,
+        distrito:  r.distrito,
+        n1:        r.n1,
+        n2:        r.n2,
+        tipif_back: r.tipifBack,
+        tipif_vend: r.tipifVend,
+        asesores:  r.asesores,
+        fecha:     f,
+        hora:      r.hora,
+      })
+      distribFechas[f] = (distribFechas[f]||0) + 1
     })
-    const fechasImportadas = Object.keys(distribImportados).sort()
+    const fechasImportadas = Object.keys(distribFechas).sort()
     const fechaNav = fechasImportadas[0] || legacyFecha
     try {
-      if (leadsBackend.length) { await enviarLeadsEnLotes(leadsBackend) }
+      let resultado = { creados:0, actualizados:0, existentes:0, errores:erroresFecha, erroresDetalle:[] }
+      if (leadsBackend.length) {
+        const r = await importarLegadoEnLotes(leadsBackend)
+        resultado = { ...r, errores: r.errores + erroresFecha }
+      }
       await cargarLeads()
       if (fechasImportadas.length) setFechaActiva(fechaNav)
-      setImportResult({ metodo:'legacy', fecha:fechaNav, fechas:fechasImportadas, distribucion:distribImportados, total:legacyRows.length, importados, duplicados:omitidos, errores, filas:filaResult })
+      setImportResult({
+        metodo:'legacy',
+        fecha:fechaNav,
+        fechas:fechasImportadas,
+        distribucion:distribFechas,
+        total:legacyRows.length,
+        importados: resultado.creados + resultado.actualizados,
+        creados: resultado.creados,
+        actualizados: resultado.actualizados,
+        existentes: resultado.existentes,
+        duplicados: resultado.existentes,
+        errores: resultado.errores,
+        erroresDetalle: resultado.erroresDetalle,
+        filas:[],
+      })
       setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
       if (legacyInputRef.current) legacyInputRef.current.value = ''
     } catch(e) {
@@ -1888,7 +1925,7 @@ const cargarLeads = useCallback(async () => {
             )}
             {/* Resultado de importación */}
             {importResult && (() => {
-              const { total, importados, duplicados, errores, fecha, fechas, distribucion } = importResult
+              const { total, importados, creados, actualizados, existentes, duplicados, errores, erroresDetalle, fecha, fechas, distribucion } = importResult
               const fechasSorted = (fechas||[]).slice().sort()
               const esMultifecha = fechasSorted.length > 1
               const titulo = esMultifecha
@@ -1908,17 +1945,26 @@ const cargarLeads = useCallback(async () => {
                 </div>
                 <div style={{display:'flex',gap:20,flexWrap:'wrap',marginBottom: distribucion && Object.keys(distribucion).length ? 14 : 0}}>
                   {[
-                    ['Procesados', total,      '#374151'],
-                    ['Importados', importados, '#15803d'],
-                    ['Duplicados', duplicados, '#b45309'],
-                    ['Con error',  errores,    '#dc2626'],
+                    ['Procesados',  total,                      '#374151'],
+                    ['Creados',     creados    ?? importados,   '#15803d'],
+                    ['Actualizados',actualizados ?? 0,          '#1d4ed8'],
+                    ['Existentes',  existentes ?? duplicados ?? 0, '#b45309'],
+                    ['Con error',   errores,                    '#dc2626'],
                   ].map(([label,val,color])=>(
-                    <div key={label} style={{textAlign:'center',minWidth:70}}>
+                    <div key={label} style={{textAlign:'center',minWidth:60}}>
                       <div style={{fontSize:22,fontWeight:800,color}}>{val}</div>
                       <div style={{fontSize:10,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4}}>{label}</div>
                     </div>
                   ))}
                 </div>
+                {erroresDetalle && erroresDetalle.length > 0 && (
+                  <div style={{borderTop:'1px solid #bbf7d0',paddingTop:10,marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#dc2626',marginBottom:6}}>Registros con error ({erroresDetalle.length}):</div>
+                    <div style={{maxHeight:100,overflowY:'auto',fontSize:10,color:'#7f1d1d'}}>
+                      {erroresDetalle.map((e,i)=><div key={i} style={{padding:'2px 0'}}>Fila {e.fila} · N1: {e.n1} · {e.motivo}</div>)}
+                    </div>
+                  </div>
+                )}
                 {distribucion && Object.keys(distribucion).length > 0 && (
                   <div style={{borderTop:'1px solid #bbf7d0',paddingTop:12}}>
                     <div style={{fontSize:11,fontWeight:700,color:'#15803d',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Distribución final por fecha:</div>

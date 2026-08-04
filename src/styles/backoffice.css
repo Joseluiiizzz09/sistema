@@ -360,15 +360,18 @@ body{
 .bo-root .base-filtro-toggle input{width:13px;height:13px;margin:0;accent-color:var(--brand);}
 .bo-root .base-filtro-limpiar{flex:0 0 auto;height:33px;font-size:11px;padding:5px 11px;}
 .bo-root .base-tabla-wrap{
-  overflow-x:auto;overflow-y:visible;
+  overflow-x:auto;overflow-y:auto;
+  max-height:calc(100vh - 260px);min-height:380px;
   scrollbar-width:auto;scrollbar-color:var(--brand) #e2e8f0;
 }
-.bo-root .base-tabla-wrap::-webkit-scrollbar{height:12px;}
+.bo-root .base-tabla-wrap::-webkit-scrollbar{height:10px;width:6px;}
 .bo-root .base-tabla-wrap::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
-.bo-root .base-tabla-wrap::-webkit-scrollbar-thumb{background:var(--brand);border:3px solid #e2e8f0;border-radius:99px;}
+.bo-root .base-tabla-wrap::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}
 .bo-root .base-tabla{width:max-content;min-width:100%;}
+.bo-root .base-tabla thead tr{position:sticky;top:0;z-index:8;}
+.bo-root .base-tabla thead th{background:#0f172a;}
 .bo-root .base-tabla thead th:last-child{
-  position:sticky;right:0;z-index:5;background:#0f172a;
+  position:sticky;right:0;z-index:9;background:#0f172a;
   box-shadow:-8px 0 12px rgba(15,23,42,.12);
 }
 .bo-root .base-tabla tbody tr:not(.historial-row)>td:last-child{
