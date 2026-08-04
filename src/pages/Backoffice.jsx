@@ -201,7 +201,9 @@ export default function Backoffice() {
   const [legacyStatus, setLegacyStatus] = useState('')
   const [legacyInfo,   setLegacyInfo]   = useState('')
   const [legacyFecha,  setLegacyFecha]  = useState(fechaHoy())
-  const [legacyUsarFecha, setLegacyUsarFecha] = useState('no')
+  const [legacyUsarFecha, setLegacyUsarFecha] = useState('si')
+  const [legacyDesde,  setLegacyDesde]  = useState('')
+  const [legacyHasta,  setLegacyHasta]  = useState(fechaHoy())
   const [dragOver,     setDragOver]     = useState(false)
   const [legacyDragOver, setLegacyDragOver] = useState(false)
   const [cargandoMasiva, setCargandoMasiva] = useState(false)
@@ -779,7 +781,7 @@ export default function Backoffice() {
         const reader = new FileReader()
         reader.onload = e => {
           try {
-            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', raw:true })
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true })
             const ws = wb.Sheets[wb.SheetNames[0]]
             resolve(XLSX.utils.sheet_to_csv(ws))
           } catch(err) { reject(err) }
@@ -859,25 +861,61 @@ export default function Backoffice() {
     try { text = await leerArchivoComoTexto(file) }
     catch(e) { setLegacyStatus('Error leyendo el archivo'); return }
     const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
-    if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
-    const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
-    const prim  = lineas[0].split(sep)
-    const cab   = isNaN((prim[3]||'').replace(/\s/g,''))||(prim[3]||'').length<6
-    const datos = cab ? lineas.slice(1) : lineas
-    const fechaDest = legacyFecha || fechaActiva
+    if (!lineas.length) { setLegacyStatus('Archivo vacío'); return }
+    const sep = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
+    const prim = lineas[0].split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
     const usarFF = legacyUsarFecha === 'si'
-    const rows   = []
+    // Column positions: 'si' = new format (FECHA first, N1 at c[4]); 'no' = old format (N1 at c[3])
+    const N1_COL = usarFF ? 4 : 3
+    const p = (prim[N1_COL]||'').replace(/\D/g,'')
+    const cab = isNaN(p) || p.length < 6
+    const datos = cab ? lineas.slice(1) : lineas
+
+    function parseFechaFila(raw) {
+      if (!raw) return { fecha:'', error:true, msg:'Sin fecha' }
+      const s = String(raw).trim()
+      const mDMY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+      if (mDMY) return { fecha:`${mDMY[3]}-${mDMY[2].padStart(2,'0')}-${mDMY[1].padStart(2,'0')}`, error:false, msg:'' }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { fecha:s, error:false, msg:'' }
+      const mDash = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+      if (mDash) return { fecha:`${mDash[3]}-${mDash[2].padStart(2,'0')}-${mDash[1].padStart(2,'0')}`, error:false, msg:'' }
+      // Número serial de Excel (p.ej. 46034 = 01/08/2026)
+      const n = Number(s)
+      if (!isNaN(n) && n > 40000 && n < 60000) {
+        const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000)
+        return { fecha:`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`, error:false, msg:'' }
+      }
+      return { fecha:'', error:true, msg:`Formato no reconocido: "${s.slice(0,20)}"` }
+    }
+
+    const rows = []
     datos.forEach(linea => {
-      const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
-      const n1 = c[3]||c[0]||''
+      const c = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
+      let n1, campana, distrito, n2, tipifBack, tipifVend, hora, asesoresHist
+      if (usarFF) {
+        // Nuevo formato: FECHA(0) CAMPAÑA(1) DISTRITO(2) N2(3) N1(4) TIPIFB(5) COM(6) TIPIFV(7) HORA(8) ASE(9-14)
+        n1=c[4]||''; campana=c[1]||'—'; distrito=c[2]||'—'; n2=c[3]||''
+        tipifBack=c[5]||''; tipifVend=c[7]||''; hora=c[8]||''
+        asesoresHist=[]; for(let i=9;i<=14;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
+      } else {
+        // Formato original: CAMPAÑA(0) DISTRITO(1) N2(2) N1(3) TIPIFB(4) COM(5) TIPIFV(6) HORA(7) ASE(8-13)
+        n1=c[3]||''; campana=c[0]||'—'; distrito=c[1]||'—'; n2=c[2]||''
+        tipifBack=c[4]||''; tipifVend=c[6]||''; hora=c[7]||''
+        asesoresHist=[]; for(let i=8;i<=13;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
+      }
       if (!n1||n1.length<6) return
-      const asesoresHist = []
-      for (let i=8;i<=13;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
-      let fechaFila = fechaDest
-      if (usarFF) { for(let i=0;i<c.length;i++) { const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
-      rows.push({ campana:c[0]||'—', distrito:c[1]||'—', n2:c[2]||'', n1, tipifBack:c[4]||'', tipifVend:c[6]||'', hora:c[7]||'', asesores:asesoresHist, fecha:fechaFila })
+      let fechaFila=legacyFecha, fechaError=false, fechaErrorMsg=''
+      if (usarFF) {
+        const r = parseFechaFila(c[0])
+        fechaFila=r.fecha; fechaError=r.error; fechaErrorMsg=r.msg
+        if (!fechaError) {
+          if (legacyDesde && fechaFila < legacyDesde) { fechaError=true; fechaErrorMsg=`Antes del rango (${formatFecha(legacyDesde)})` }
+          else if (legacyHasta && fechaFila > legacyHasta) { fechaError=true; fechaErrorMsg=`Después del rango (${formatFecha(legacyHasta)})` }
+        }
+      }
+      rows.push({ fecha:fechaFila, _fechaError:fechaError, _fechaErrorMsg:fechaErrorMsg, campana, distrito, n2, n1, tipifBack, tipifVend, hora, asesores:asesoresHist })
     })
-    if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
+    if (!rows.length) { setLegacyStatus('No se encontraron filas válidas'); return }
     setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
   }
 
@@ -886,27 +924,39 @@ export default function Backoffice() {
     setCargandoLegacy(true)
     setImportResult(null)
     setLegacyError('')
-    let importados=0, omitidos=0
+    let importados=0, omitidos=0, errores=0
     const leadsBackend = []
     const filaResult = []
-    const n1Vistos = new Set((baseData[legacyFecha]||[]).map(r=>r.n1))
+    const distribImportados = {}
+    // Deduplicación por fecha: inicializar con registros ya existentes en baseData
+    const n1PorFecha = new Map()
+    for (const f in baseData) { n1PorFecha.set(f, new Set((baseData[f]||[]).map(r=>r.n1))) }
     legacyRows.forEach(r => {
-      if (n1Vistos.has(r.n1)) {
-        omitidos++
-        filaResult.push({ n1:r.n1, campana:r.campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+      if (r._fechaError) {
+        errores++
+        filaResult.push({ n1:r.n1, campana:r.campana, fecha:r.fecha||'—', resultado:'ERROR', motivo:r._fechaErrorMsg||'Fecha inválida' })
         return
       }
-      n1Vistos.add(r.n1)
-      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha:r.fecha, hora_asig:r.hora })
-      filaResult.push({ n1:r.n1, campana:r.campana, resultado:'IMPORTADO', motivo:'' })
+      const f = r.fecha
+      if (!n1PorFecha.has(f)) n1PorFecha.set(f, new Set())
+      if (n1PorFecha.get(f).has(r.n1)) {
+        omitidos++
+        filaResult.push({ n1:r.n1, campana:r.campana, fecha:f, resultado:'DUPLICADO', motivo:'Ya existe en esta fecha' })
+        return
+      }
+      n1PorFecha.get(f).add(r.n1)
+      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha:f, hora_asig:r.hora })
+      filaResult.push({ n1:r.n1, campana:r.campana, fecha:f, resultado:'IMPORTADO', motivo:'' })
+      distribImportados[f] = (distribImportados[f]||0) + 1
       importados++
     })
-    const fechaPrincipal = legacyUsarFecha==='si' ? (legacyRows[0]?.fecha || legacyFecha) : legacyFecha
+    const fechasImportadas = Object.keys(distribImportados).sort()
+    const fechaNav = fechasImportadas[0] || legacyFecha
     try {
       if (leadsBackend.length) { await enviarLeadsEnLotes(leadsBackend) }
       await cargarLeads()
-      setFechaActiva(fechaPrincipal)
-      setImportResult({ metodo:'legacy', fecha:fechaPrincipal, total:legacyRows.length, importados, duplicados:omitidos, errores:0, filas:filaResult })
+      if (fechasImportadas.length) setFechaActiva(fechaNav)
+      setImportResult({ metodo:'legacy', fecha:fechaNav, fechas:fechasImportadas, distribucion:distribImportados, total:legacyRows.length, importados, duplicados:omitidos, errores, filas:filaResult })
       setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
       if (legacyInputRef.current) legacyInputRef.current.value = ''
     } catch(e) {
@@ -918,20 +968,21 @@ export default function Backoffice() {
 
   function descargarFormato() {
     const wb = XLSX.utils.book_new()
-    const HDR = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
-    const COLS = HDR.map((_,i)=>({ wch: i===3||i===2?15 : i>=8?13 : i===7?10 : 18 }))
+    const HDR = ['FECHA','CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
+    const COLS = HDR.map((_,i)=>({ wch: i===0?13 : i===4||i===3?15 : i>=9?13 : i===8?10 : 18 }))
     // Hoja 1: plantilla vacía — solo encabezados
     const ws1 = XLSX.utils.aoa_to_sheet([HDR])
     ws1['!cols'] = COLS
     ws1['!freeze'] = { xSplit: 0, ySplit: 1 }
     ws1['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(HDR.length-1)}1` }
     XLSX.utils.book_append_sheet(wb, ws1, 'CARGA SISTEMA ANTIGUO')
-    // Hoja 2: datos de ejemplo ficticios
+    // Hoja 2: datos de ejemplo ficticios con 4 fechas distintas
     const ws2 = XLSX.utils.aoa_to_sheet([
       HDR,
-      ['CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','CONTESTA','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
-      ['CAMP ADMI','MIRAFLORES','','912345678','NO CONTESTA','','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
-      ['NKT FIBRA','SURCO','976543211','976543210','BUZON DE VOZ','Sin respuesta','NO CONTESTA','11:45','CARLOS VEGA','PEDRO LUNA','','','',''],
+      ['01/08/2026','CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','CONTESTA','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
+      ['02/08/2026','CAMP ADMI','MIRAFLORES','','912345678','NO CONTESTA','','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
+      ['03/08/2026','NKT FIBRA','SURCO','976543211','976543210','BUZON DE VOZ','Sin respuesta','NO CONTESTA','11:45','CARLOS VEGA','PEDRO LUNA','','','',''],
+      ['04/08/2026','NKT FIBRA','LA MOLINA','','945612378','NC','','CONTESTA','14:00','ANA TORRES','','','','',''],
     ])
     ws2['!cols'] = COLS
     ws2['!freeze'] = { xSplit: 0, ySplit: 1 }
@@ -943,7 +994,8 @@ export default function Backoffice() {
       ['IMPORTANTE: No modifique el nombre ni el orden de las columnas.'],
       [''],
       ['Columna','Descripción','Obligatorio','Notas'],
-      ['CAMPAÑA','Nombre de campaña','Sí','Texto libre'],
+      ['FECHA','Fecha del registro','SÍ (modo histórico)','Formato recomendado: DD/MM/YYYY — ej: 01/08/2026. También acepta YYYY-MM-DD.'],
+      ['CAMPAÑA','Nombre de campaña','No','Texto libre'],
       ['DISTRITO','Distrito del contacto','No','Texto libre'],
       ['N2','Número secundario','No','Guardar como texto para conservar ceros iniciales'],
       ['N1','Número principal (teléfono)','SÍ','Guardar como texto para conservar ceros iniciales'],
@@ -954,14 +1006,17 @@ export default function Backoffice() {
       ['ASESOR 1 … ASESOR 6','Historial de asesores','No','Nombre completo tal como aparece en el sistema'],
       [''],
       ['NOTAS ADICIONALES'],
+      ['— FECHA es obligatoria cuando se usa el modo "Usar fecha del archivo" (modo predeterminado).'],
+      ['— En modo "Usar una sola fecha para todo el archivo", la columna FECHA es ignorada.'],
       ['— Use la hoja "CARGA SISTEMA ANTIGUO" para pegar sus datos.'],
-      ['— Use la hoja "EJEMPLO" como referencia del formato correcto.'],
-      ['— N1 es el único campo obligatorio. Filas sin N1 se ignoran automáticamente.'],
-      ['— Si un N1 ya existe para la fecha destino, la fila se omite como duplicado.'],
+      ['— Use la hoja "EJEMPLO" como referencia: 4 registros en 4 fechas distintas.'],
+      ['— N1 es el campo de teléfono principal y es siempre obligatorio.'],
+      ['— Si un N1 ya existe en la misma fecha, la fila se omite como duplicado.'],
+      ['— Un mismo N1 puede aparecer en fechas diferentes (no se considera duplicado).'],
       ['— Formatos de archivo aceptados: .xlsx · .csv (comas o punto y coma) · .txt'],
     ]
     const ws3 = XLSX.utils.aoa_to_sheet(INSTR)
-    ws3['!cols'] = [{ wch:24 },{ wch:40 },{ wch:14 },{ wch:50 }]
+    ws3['!cols'] = [{ wch:26 },{ wch:36 },{ wch:20 },{ wch:60 }]
     ws3['!rows'] = [{ hpt:18 }]
     XLSX.utils.book_append_sheet(wb, ws3, 'INSTRUCCIONES')
     XLSX.writeFile(wb, 'FORMATO_CARGA_SISTEMA_ANTIGUO.xlsx')
@@ -1617,22 +1672,43 @@ export default function Backoffice() {
                     <div style={{fontSize:12,color:'#6b7280'}}>Importa tu base en formato Excel (.xlsx), CSV o TXT. Un registro por fila.</div>
                   </div>
 
-                  {/* Selectores de fecha */}
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
-                    <div className="bo-input-group" style={{margin:0}}>
+                  {/* Selector de modo */}
+                  <div className="bo-input-group" style={{margin:'0 0 12px'}}>
+                    <label>Modo de fecha</label>
+                    <select
+                      value={legacyUsarFecha}
+                      onChange={e=>{ setLegacyUsarFecha(e.target.value); setLegacyRows([]); setLegacyInfo(''); setLegacyStatus(''); setLegacyError(''); setImportResult(null); if(legacyInputRef.current) legacyInputRef.current.value='' }}
+                      style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}
+                    >
+                      <option value="si">Usar fecha del archivo — cada fila tiene su propia fecha</option>
+                      <option value="no">Usar una sola fecha para todo el archivo</option>
+                    </select>
+                  </div>
+
+                  {/* Controles de fecha condicionales */}
+                  {legacyUsarFecha === 'si' ? (
+                    <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'12px 14px',marginBottom:14}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#1e40af',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Rango permitido (para validación)</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <div className="bo-input-group" style={{margin:0}}>
+                          <label>Desde</label>
+                          <input type="date" value={legacyDesde} onChange={e=>{ setLegacyDesde(e.target.value); setLegacyRows([]); setLegacyInfo(''); if(legacyInputRef.current) legacyInputRef.current.value='' }} style={{fontSize:12,padding:'6px 10px',border:'1px solid #bfdbfe',borderRadius:8,fontFamily:'inherit',background:'#fff'}} />
+                        </div>
+                        <div className="bo-input-group" style={{margin:0}}>
+                          <label>Hasta</label>
+                          <input type="date" value={legacyHasta} max={fechaHoy()} onChange={e=>{ setLegacyHasta(e.target.value); setLegacyRows([]); setLegacyInfo(''); if(legacyInputRef.current) legacyInputRef.current.value='' }} style={{fontSize:12,padding:'6px 10px',border:'1px solid #bfdbfe',borderRadius:8,fontFamily:'inherit',background:'#fff'}} />
+                        </div>
+                      </div>
+                      <div style={{fontSize:10,color:'#1e40af',marginTop:6}}>Cada fila debe tener la columna FECHA. Las filas fuera del rango se marcan como error.</div>
+                    </div>
+                  ) : (
+                    <div className="bo-input-group" style={{margin:'0 0 14px'}}>
                       <label>Fecha destino</label>
                       <select value={legacyFecha} onChange={e=>setLegacyFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
                         {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)}</option>)}
                       </select>
                     </div>
-                    <div className="bo-input-group" style={{margin:0}}>
-                      <label>Asignación de fecha</label>
-                      <select value={legacyUsarFecha} onChange={e=>setLegacyUsarFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
-                        <option value="no">Usar fecha seleccionada</option>
-                        <option value="si">Leer fecha de la fila</option>
-                      </select>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Selector de archivo */}
                   <div
@@ -1644,15 +1720,16 @@ export default function Backoffice() {
                   >
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={legacyDragOver?'#1d4ed8':'#9ca3af'} strokeWidth="1.8" style={{marginBottom:8}} aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:3}}>Arrastra tu archivo aquí o haz clic para seleccionar</div>
-                    <div style={{fontSize:11,color:'#9ca3af'}}>Archivo Excel (.xlsx), CSV o TXT con un registro por fila</div>
+                    <div style={{fontSize:11,color:'#9ca3af'}}>Archivo Excel (.xlsx), CSV o TXT · Un registro por fila</div>
                     <input ref={legacyInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
                   </div>
                   {legacyStatus && <div style={{fontSize:12,color:'#6b7280',marginTop:8}}>{legacyStatus}</div>}
 
                   {/* Lista de columnas */}
                   <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 16px',marginTop:14}}>
-                    <div style={{fontSize:11,fontWeight:700,color:'#374151',marginBottom:6,textTransform:'uppercase',letterSpacing:.4}}>Columnas requeridas (en orden):</div>
-                    <div style={{fontSize:11,color:'#374151',lineHeight:1.9,wordBreak:'break-word'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#374151',marginBottom:6,textTransform:'uppercase',letterSpacing:.4}}>Columnas del archivo (en orden):</div>
+                    <div style={{fontSize:11,color:'#374151',lineHeight:2,wordBreak:'break-word'}}>
+                      {legacyUsarFecha==='si' && <><span style={{background:'#dbeafe',borderRadius:4,padding:'1px 6px',marginRight:4,fontWeight:700,color:'#1e40af'}}>FECHA *</span></>}
                       <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>CAMPAÑA</span>
                       <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>DISTRITO</span>
                       <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>N2</span>
@@ -1665,7 +1742,11 @@ export default function Backoffice() {
                       <span style={{color:'#9ca3af',fontSize:10,marginRight:4}}>···</span>
                       <span style={{background:'#f3f4f6',borderRadius:4,padding:'1px 6px',marginRight:4}}>ASESOR 6</span>
                     </div>
-                    <div style={{fontSize:10,color:'#9ca3af',marginTop:6}}>* N1 es el único campo obligatorio. El resto de columnas son opcionales.</div>
+                    <div style={{fontSize:10,color:'#9ca3af',marginTop:6}}>
+                      {legacyUsarFecha==='si'
+                        ? '* FECHA y N1 son obligatorios. Formatos de fecha aceptados: DD/MM/YYYY o YYYY-MM-DD.'
+                        : '* N1 es el único campo obligatorio. El resto son opcionales.'}
+                    </div>
                   </div>
 
                   {/* Botón descargar plantilla */}
@@ -1678,52 +1759,93 @@ export default function Backoffice() {
                   </button>
 
                   {/* Vista previa + botones de importación */}
-                  {legacyRows.length > 0 && (
+                  {legacyRows.length > 0 && (() => {
+                    const validRows  = legacyRows.filter(r=>!r._fechaError)
+                    const errorRows  = legacyRows.filter(r=>r._fechaError)
+                    const distribPrev = {}
+                    validRows.forEach(r=>{ distribPrev[r.fecha]=(distribPrev[r.fecha]||0)+1 })
+                    const fechasDetectadas = Object.keys(distribPrev).sort()
+                    return (
                     <div style={{marginTop:16,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:14}}>
                       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
                         <div>
                           <div style={{fontSize:12,fontWeight:700,color:'#92400e',marginBottom:4}}>Vista previa — {legacyInfo}</div>
-                          <div style={{fontSize:11,color:'#92400e'}}>
-                            Fecha destino: <strong>{legacyUsarFecha==='si' ? 'fecha de la fila' : formatFecha(legacyFecha)}</strong>
-                            <span style={{margin:'0 8px',color:'#fed7aa'}}>·</span>
-                            {legacyRows.length} registros válidos encontrados
-                          </div>
+                          {legacyUsarFecha==='si' && fechasDetectadas.length > 1 ? (
+                            <div style={{fontSize:11,color:'#92400e'}}>
+                              Rango detectado: <strong>{formatFecha(fechasDetectadas[0])} – {formatFecha(fechasDetectadas[fechasDetectadas.length-1])}</strong>
+                              <span style={{margin:'0 8px',color:'#fed7aa'}}>·</span>
+                              {fechasDetectadas.length} fechas distintas
+                              {errorRows.length > 0 && <span style={{marginLeft:8,color:'#dc2626',fontWeight:700}}> · {errorRows.length} con error de fecha</span>}
+                            </div>
+                          ) : (
+                            <div style={{fontSize:11,color:'#92400e'}}>
+                              Fecha destino: <strong>{legacyUsarFecha==='si' ? formatFecha(legacyRows.find(r=>!r._fechaError)?.fecha||'') : formatFecha(legacyFecha)}</strong>
+                              <span style={{margin:'0 8px',color:'#fed7aa'}}>·</span>
+                              {validRows.length} válidos{errorRows.length>0&&<span style={{color:'#dc2626',fontWeight:700}}> · {errorRows.length} con error</span>}
+                            </div>
+                          )}
                         </div>
                         <div style={{display:'flex',gap:6,flexShrink:0}}>
                           <button className="btn-masiva-preview" onClick={()=>{ setLegacyRows([]); setLegacyError(''); setImportResult(null) }} disabled={cargandoLegacy}>Cancelar</button>
                           <button className="btn-masiva-go" onClick={ejecutarCargaLegacy} style={{background:'#c2410c'}} disabled={cargandoLegacy}>
-                            {cargandoLegacy ? 'Importando...' : `Importar ${legacyRows.length} registros`}
+                            {cargandoLegacy ? 'Importando...' : `Importar ${validRows.length} registros`}
                           </button>
                         </div>
                       </div>
+                      {/* Distribución por fecha (modo archivo) */}
+                      {legacyUsarFecha==='si' && fechasDetectadas.length > 0 && (
+                        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:10}}>
+                          {fechasDetectadas.map(f=>(
+                            <div key={f} style={{background:'#fff',border:'1px solid #fed7aa',borderRadius:6,padding:'4px 10px',fontSize:11}}>
+                              <span style={{fontWeight:700,color:'#c2410c'}}>{formatFecha(f)}</span>
+                              <span style={{color:'#92400e',marginLeft:6}}>{distribPrev[f]} reg.</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div style={{maxHeight:220,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,whiteSpace:'nowrap'}}>
                           <thead><tr style={{background:'#f9fafb',position:'sticky',top:0}}>
-                            {['#','Campaña','Distrito','N1','N2','Tipif. Back','Tipif. Vend.','Hora','Asesores','Fecha'].map(h=>(
+                            {(legacyUsarFecha==='si'
+                              ? ['#','Fecha','Campaña','Distrito','N1','N2','Tipif. Back','Hora','Asesores','Estado']
+                              : ['#','Campaña','Distrito','N1','N2','Tipif. Back','Tipif. Vend.','Hora','Asesores']
+                            ).map(h=>(
                               <th key={h} style={{padding:'5px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase',fontWeight:700,borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
-                            {legacyRows.slice(0,60).map((r,i)=>(
-                              <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
+                            {legacyRows.slice(0,80).map((r,i)=>(
+                              <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:r._fechaError?'#fef2f2':''}}>
                                 <td style={{padding:'4px 10px',color:'#9ca3af'}}>{i+1}</td>
+                                {legacyUsarFecha==='si' && (
+                                  <td style={{padding:'4px 10px',fontWeight:700,color:r._fechaError?'#dc2626':'#1d4ed8',minWidth:85}}>
+                                    {r._fechaError ? <span title={r._fechaErrorMsg} style={{cursor:'help'}}>⚠ {r._fechaErrorMsg?.slice(0,18)}</span> : formatFecha(r.fecha)}
+                                  </td>
+                                )}
                                 <td style={{padding:'4px 10px',fontWeight:600,color:'#1f2937'}}>{r.campana}</td>
                                 <td style={{padding:'4px 10px',color:'#374151'}}>{r.distrito}</td>
                                 <td style={{padding:'4px 10px',fontFamily:'monospace',fontWeight:700,color:'#1d4ed8'}}>{r.n1}</td>
                                 <td style={{padding:'4px 10px',fontFamily:'monospace',color:'#6b7280'}}>{r.n2||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#374151'}}>{r.tipifBack||'—'}</td>
-                                <td style={{padding:'4px 10px',color:'#374151'}}>{r.tipifVend||'—'}</td>
+                                {legacyUsarFecha!=='si' && <td style={{padding:'4px 10px',color:'#374151'}}>{r.tipifVend||'—'}</td>}
                                 <td style={{padding:'4px 10px',color:'#185FA5',fontWeight:600}}>{r.hora||'—'}</td>
-                                <td style={{padding:'4px 10px',color:'#6b7280',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis'}}>{r.asesores.join(' → ')||'—'}</td>
-                                <td style={{padding:'4px 10px',color:'#374151'}}>{formatFecha(r.fecha)}</td>
+                                <td style={{padding:'4px 10px',color:'#6b7280',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis'}}>{r.asesores.join(' → ')||'—'}</td>
+                                {legacyUsarFecha==='si' && (
+                                  <td style={{padding:'4px 10px'}}>
+                                    {r._fechaError
+                                      ? <span style={{background:'#fee2e2',color:'#991b1b',fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:99}}>ERROR</span>
+                                      : <span style={{background:'#dcfce7',color:'#15803d',fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:99}}>OK</span>}
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      {legacyRows.length > 60 && <div style={{fontSize:10,color:'#9ca3af',textAlign:'center',marginTop:6}}>Mostrando 60 de {legacyRows.length} registros</div>}
+                      {legacyRows.length > 80 && <div style={{fontSize:10,color:'#9ca3af',textAlign:'center',marginTop:6}}>Mostrando 80 de {legacyRows.length} registros</div>}
                     </div>
-                  )}
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -1739,26 +1861,31 @@ export default function Backoffice() {
               </div>
             )}
             {/* Resultado de importación */}
-            {importResult && (
+            {importResult && (() => {
+              const { total, importados, duplicados, errores, fecha, fechas, distribucion } = importResult
+              const fechasSorted = (fechas||[]).slice().sort()
+              const esMultifecha = fechasSorted.length > 1
+              const titulo = esMultifecha
+                ? `IMPORTACIÓN COMPLETADA · Rango: ${formatFecha(fechasSorted[0])} al ${formatFecha(fechasSorted[fechasSorted.length-1])}`
+                : `IMPORTACIÓN COMPLETADA · Fecha: ${formatFecha(fecha)}`
+              return (
               <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:18,marginTop:4}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
-                  <div style={{fontSize:13,fontWeight:700,color:'#15803d'}}>
-                    Importación completada · Fecha destino: {formatFecha(importResult.fecha)}
-                  </div>
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                  <div style={{fontSize:13,fontWeight:700,color:'#15803d'}}>{titulo}</div>
                   <button
-                    onClick={()=>{ irSeccion('base'); setFechaActiva(importResult.fecha) }}
-                    style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:'pointer'}}
+                    onClick={()=>{ irSeccion('base'); setFechaActiva(fecha) }}
+                    style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    Ver registros importados
+                    VER REGISTROS EN BASE
                   </button>
                 </div>
-                <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+                <div style={{display:'flex',gap:20,flexWrap:'wrap',marginBottom: distribucion && Object.keys(distribucion).length ? 14 : 0}}>
                   {[
-                    ['Procesados', importResult.total, '#374151'],
-                    ['Importados', importResult.importados, '#15803d'],
-                    ['Duplicados', importResult.duplicados, '#b45309'],
-                    ['Con error',  importResult.errores,    '#dc2626'],
+                    ['Procesados', total,      '#374151'],
+                    ['Importados', importados, '#15803d'],
+                    ['Duplicados', duplicados, '#b45309'],
+                    ['Con error',  errores,    '#dc2626'],
                   ].map(([label,val,color])=>(
                     <div key={label} style={{textAlign:'center',minWidth:70}}>
                       <div style={{fontSize:22,fontWeight:800,color}}>{val}</div>
@@ -1766,8 +1893,22 @@ export default function Backoffice() {
                     </div>
                   ))}
                 </div>
+                {distribucion && Object.keys(distribucion).length > 0 && (
+                  <div style={{borderTop:'1px solid #bbf7d0',paddingTop:12}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#15803d',marginBottom:8,textTransform:'uppercase',letterSpacing:.3}}>Distribución final por fecha:</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                      {Object.entries(distribucion).sort(([a],[b])=>a.localeCompare(b)).map(([f,n])=>(
+                        <div key={f} style={{background:'#fff',border:'1px solid #bbf7d0',borderRadius:7,padding:'5px 12px',fontSize:11}}>
+                          <span style={{fontWeight:700,color:'#15803d'}}>{formatFecha(f)}</span>
+                          <span style={{color:'#374151',marginLeft:8,fontWeight:600}}>{n} importados</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              )
+            })()}
           </section>
 
           {/* ══ SECCIÓN: RENDIMIENTO ═══════════════════════════════════════════ */}
