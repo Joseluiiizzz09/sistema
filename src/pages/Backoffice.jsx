@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
@@ -203,6 +204,9 @@ export default function Backoffice() {
   const [legacyUsarFecha, setLegacyUsarFecha] = useState('no')
   const [dragOver,     setDragOver]     = useState(false)
   const [legacyDragOver, setLegacyDragOver] = useState(false)
+  const [cargandoMasiva, setCargandoMasiva] = useState(false)
+  const [cargandoLegacy, setCargandoLegacy] = useState(false)
+  const [importResult,   setImportResult]   = useState(null)
 
   // ── Rendimiento ──
   const [rendFiltroTipo,  setRendFiltroTipo]  = useState('mes')
@@ -419,6 +423,7 @@ export default function Backoffice() {
     setFechaPestanas(prev => [...prev, f].sort().reverse())
     setBaseData(prev => prev[f] ? prev : { ...prev, [f]: [] })
     setFechaActiva(f)
+    setLegacyFecha(f)
     setCmCalPicker('')
   }
 
@@ -699,139 +704,265 @@ export default function Backoffice() {
     setInclDup(false)
   }
 
+  async function enviarLeadsEnLotes(leads) {
+    const LOTE = 499
+    let creados = 0
+    const ids = []
+    for (let i = 0; i < leads.length; i += LOTE) {
+      const batch = leads.slice(i, i + LOTE)
+      try {
+        const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(batch) })
+        const data = await res.json()
+        if (data.ok) { creados += data.creados || 0; if (data.ids) ids.push(...data.ids) }
+      } catch(e) {}
+    }
+    return { creados, ids }
+  }
+
   async function ejecutarCargaMasiva() {
+    if (cargandoMasiva) return
     const lista = (inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)).map(f=>f.n1)
     if (!lista.length) { mostrarToast('No hay numeros para cargar'); return }
+    setCargandoMasiva(true)
+    setImportResult(null)
     const campana = masivaCamp.trim() || '—'
     const asesor  = masivaAsesor
     const hora    = asesor ? horaAhora() : ''
     const fecha   = fechaActiva
     const leadsParaBackend = []
     const nuevosRegs = []
+    const filaResult = []
     lista.forEach(n1 => {
-      if ((baseData[fecha]||[]).find(r=>r.n1===n1)) return
+      if ((baseData[fecha]||[]).find(r=>r.n1===n1)) {
+        filaResult.push({ n1, campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+        return
+      }
       const reg = { id:-idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
       nuevosRegs.push(reg)
       leadsParaBackend.push({ campana, distrito:'—', n1, n2:'', tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora })
+      filaResult.push({ n1, campana, resultado:'IMPORTADO', motivo:'' })
     })
     if (nuevosRegs.length) {
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevosRegs] }))
       setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
-      try {
-        const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsParaBackend) })
-        const data = await res.json()
-        if (data.ok && data.ids) {
-          setBaseData(prev => {
-            const next = { ...prev }
-            const arr  = [...(next[fecha]||[])]
-            const off  = arr.length - nuevosRegs.length
-            data.ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
-            next[fecha] = arr
-            return next
-          })
-        }
-      } catch(e) {}
+      const { ids } = await enviarLeadsEnLotes(leadsParaBackend)
+      if (ids.length) {
+        setBaseData(prev => {
+          const next = { ...prev }
+          const arr  = [...(next[fecha]||[])]
+          const off  = arr.length - nuevosRegs.length
+          ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
+          next[fecha] = arr
+          return next
+        })
+      }
     }
+    const importados = filaResult.filter(f=>f.resultado==='IMPORTADO').length
+    const duplicados = filaResult.filter(f=>f.resultado==='DUPLICADO').length
+    setImportResult({ metodo:'pegar', fecha, total:lista.length, importados, duplicados, errores:0, filas:filaResult })
     setMasivaNums(''); setMasivaFilas([]); setInclDup(false)
+    setCargandoMasiva(false)
   }
 
-  function procesarArchivo(file) {
-    setArchivoStatus(`Leyendo ${file.name}...`)
-    const reader = new FileReader()
-    reader.onload = e => {
-      const text   = e.target.result
-      const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
-      if (!lineas.length) { setArchivoStatus('Archivo vacio'); return }
-      const sep  = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
-      const p0   = lineas[0].split(sep)[0].trim()
-      const cab  = (isNaN(p0.replace(/\s/g,''))&&p0.length>0&&!/^\d{7,}$/.test(p0)) ? lineas[0].split(sep).map(c=>c.trim().toLowerCase()) : null
-      const datos= cab ? lineas.slice(1) : lineas
-      const iN1  = cab ? (cab.findIndex(c=>c.includes('n1')||c.includes('numero')||c.includes('telefono'))) : 0
-      const iN2  = cab ? cab.findIndex(c=>c.includes('n2')) : -1
-      const iCamp= cab ? cab.findIndex(c=>c.includes('camp')||c.includes('zona')) : -1
-      const iDist= cab ? cab.findIndex(c=>c.includes('dist')) : -1
-      const iTip = cab ? cab.findIndex(c=>c.includes('tipif')||c.includes('estado')) : -1
-      const rows = datos.map(linea => {
-        const cols = linea.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''))
-        const n1   = cols[iN1>=0?iN1:0]||''
-        if (!n1||n1.length<6) return null
-        return { n1, n2:iN2>=0?(cols[iN2]||''):'', camp:iCamp>=0?(cols[iCamp]||'—'):'—', dist:iDist>=0?(cols[iDist]||'—'):'—', tipif:iTip>=0?(cols[iTip]||''):'' }
-      }).filter(Boolean)
-      if (!rows.length) { setArchivoStatus('No se encontraron registros validos'); return }
-      setArchivoRows(rows); setArchivoInfo(`${rows.length} registros en "${file.name}"`); setArchivoStatus('')
+  async function leerArchivoComoTexto(file) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (ext === 'xlsx' || ext === 'xls') {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = e => {
+          try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', raw:true })
+            const ws = wb.Sheets[wb.SheetNames[0]]
+            resolve(XLSX.utils.sheet_to_csv(ws))
+          } catch(err) { reject(err) }
+        }
+        reader.onerror = reject
+        reader.readAsArrayBuffer(file)
+      })
     }
-    reader.readAsText(file, 'UTF-8')
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = e => resolve(e.target.result)
+      reader.onerror = reject
+      reader.readAsText(file, 'UTF-8')
+    })
+  }
+
+  async function procesarArchivo(file) {
+    setArchivoStatus(`Leyendo ${file.name}...`)
+    let text
+    try { text = await leerArchivoComoTexto(file) }
+    catch(e) { setArchivoStatus('Error leyendo el archivo'); return }
+    const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
+    if (!lineas.length) { setArchivoStatus('Archivo vacio'); return }
+    const sep  = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
+    const p0   = lineas[0].split(sep)[0].trim()
+    const cab  = (isNaN(p0.replace(/\s/g,''))&&p0.length>0&&!/^\d{7,}$/.test(p0)) ? lineas[0].split(sep).map(c=>c.trim().toLowerCase()) : null
+    const datos= cab ? lineas.slice(1) : lineas
+    const iN1  = cab ? (cab.findIndex(c=>c.includes('n1')||c.includes('numero')||c.includes('telefono'))) : 0
+    const iN2  = cab ? cab.findIndex(c=>c.includes('n2')) : -1
+    const iCamp= cab ? cab.findIndex(c=>c.includes('camp')||c.includes('zona')) : -1
+    const iDist= cab ? cab.findIndex(c=>c.includes('dist')) : -1
+    const iTip = cab ? cab.findIndex(c=>c.includes('tipif')||c.includes('estado')) : -1
+    const rows = datos.map(linea => {
+      const cols = linea.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''))
+      const n1   = cols[iN1>=0?iN1:0]||''
+      if (!n1||n1.length<6) return null
+      return { n1, n2:iN2>=0?(cols[iN2]||''):'', camp:iCamp>=0?(cols[iCamp]||'—'):'—', dist:iDist>=0?(cols[iDist]||'—'):'—', tipif:iTip>=0?(cols[iTip]||''):'' }
+    }).filter(Boolean)
+    if (!rows.length) { setArchivoStatus('No se encontraron registros validos'); return }
+    setArchivoRows(rows); setArchivoInfo(`${rows.length} registros en "${file.name}"`); setArchivoStatus('')
   }
 
   async function ejecutarCargaArchivo() {
-    if (!archivoRows.length) { mostrarToast('No hay datos'); return }
+    if (!archivoRows.length || cargandoMasiva) { if(!archivoRows.length) mostrarToast('No hay datos'); return }
+    setCargandoMasiva(true)
+    setImportResult(null)
     const fecha = fechaActiva
-    const nuevos = []; const leadsBackend = []
+    const nuevos = []; const leadsBackend = []; const filaResult = []
     archivoRows.forEach(r => {
-      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)) return
+      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)) {
+        filaResult.push({ n1:r.n1, campana:r.camp, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+        return
+      }
       nuevos.push({ id:-idCntRef.current++, _backendId:null, campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipifBack:r.tipif, asesor:'', horaAsig:'', sinAsignar:true, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:[] })
       leadsBackend.push({ campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipif_back:r.tipif, asesor_nombre:'', fecha, hora_asig:'' })
+      filaResult.push({ n1:r.n1, campana:r.camp, resultado:'IMPORTADO', motivo:'' })
     })
-    const omitidos = archivoRows.length - nuevos.length
     if (nuevos.length) {
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevos] }))
-      try { await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsBackend) }) } catch(e) {}
+      setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
+      await enviarLeadsEnLotes(leadsBackend)
     }
+    const importados = filaResult.filter(f=>f.resultado==='IMPORTADO').length
+    const duplicados = filaResult.filter(f=>f.resultado==='DUPLICADO').length
+    setImportResult({ metodo:'archivo', fecha, total:archivoRows.length, importados, duplicados, errores:0, filas:filaResult })
     setArchivoRows([]); setArchivoInfo(''); setArchivoStatus('')
     if (archivoInputRef.current) archivoInputRef.current.value = ''
+    setCargandoMasiva(false)
   }
 
-  function procesarLegacy(file) {
+  async function procesarLegacy(file) {
     setLegacyStatus(`Leyendo ${file.name}...`)
-    const reader = new FileReader()
-    reader.onload = e => {
-      const text   = e.target.result
-      const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
-      if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
-      const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
-      const prim  = lineas[0].split(sep)
-      const cab   = isNaN((prim[3]||'').replace(/\s/g,''))||(prim[3]||'').length<6
-      const datos = cab ? lineas.slice(1) : lineas
-      const fechaDest = legacyFecha || fechaActiva
-      const usarFF = legacyUsarFecha === 'si'
-      const rows   = []
-      datos.forEach(linea => {
-        const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
-        const n1 = c[3]||c[0]||''
-        if (!n1||n1.length<6) return
-        const asesoresHist = []
-        for (let i=8;i<=13;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
-        let fechaFila = fechaDest
-        if (usarFF) { for(let i=0;i<c.length;i++) { const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
-        rows.push({ campana:c[0]||'—', distrito:c[1]||'—', n2:c[2]||'', n1, tipifBack:c[4]||'', tipifVend:c[6]||'', hora:c[7]||'', asesores:asesoresHist, fecha:fechaFila })
-      })
-      if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
-      setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
-    }
-    reader.readAsText(file, 'UTF-8')
+    let text
+    try { text = await leerArchivoComoTexto(file) }
+    catch(e) { setLegacyStatus('Error leyendo el archivo'); return }
+    const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
+    if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
+    const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
+    const prim  = lineas[0].split(sep)
+    const cab   = isNaN((prim[3]||'').replace(/\s/g,''))||(prim[3]||'').length<6
+    const datos = cab ? lineas.slice(1) : lineas
+    const fechaDest = legacyFecha || fechaActiva
+    const usarFF = legacyUsarFecha === 'si'
+    const rows   = []
+    datos.forEach(linea => {
+      const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
+      const n1 = c[3]||c[0]||''
+      if (!n1||n1.length<6) return
+      const asesoresHist = []
+      for (let i=8;i<=13;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
+      let fechaFila = fechaDest
+      if (usarFF) { for(let i=0;i<c.length;i++) { const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
+      rows.push({ campana:c[0]||'—', distrito:c[1]||'—', n2:c[2]||'', n1, tipifBack:c[4]||'', tipifVend:c[6]||'', hora:c[7]||'', asesores:asesoresHist, fecha:fechaFila })
+    })
+    if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
+    setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
   }
 
   async function ejecutarCargaLegacy() {
-    if (!legacyRows.length) { mostrarToast('No hay datos'); return }
+    if (!legacyRows.length || cargandoLegacy) { if(!legacyRows.length) mostrarToast('No hay datos'); return }
+    setCargandoLegacy(true)
+    setImportResult(null)
     let importados=0, omitidos=0
     const leadsBackend = []
     const updates = {}
     const nuevasFechasLocal = []
+    const filaResult = []
     legacyRows.forEach(r => {
       const fecha = r.fecha
       if (!fechaPestanas.includes(fecha)&&!nuevasFechasLocal.includes(fecha)) nuevasFechasLocal.push(fecha)
       if (!updates[fecha]) updates[fecha] = []
-      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)||updates[fecha].find(x=>x.n1===r.n1)) { omitidos++; return }
+      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)||updates[fecha].find(x=>x.n1===r.n1)) {
+        omitidos++
+        filaResult.push({ n1:r.n1, campana:r.campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+        return
+      }
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
       updates[fecha].push({ id:-idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
       leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
+      filaResult.push({ n1:r.n1, campana:r.campana, resultado:'IMPORTADO', motivo:'' })
       importados++
     })
     setBaseData(prev => { const n={...prev}; for(const f in updates) n[f]=[...(prev[f]||[]),...updates[f]]; return n })
     setFechaPestanas(prev => [...prev, ...nuevasFechasLocal.filter(f=>!prev.includes(f))].sort().reverse())
-    if (leadsBackend.length) { try { await fetch(`${API}/leads`,{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)}) } catch(e){} }
+    if (leadsBackend.length) { await enviarLeadsEnLotes(leadsBackend) }
+    const fechaPrincipal = legacyUsarFecha==='si' ? (legacyRows[0]?.fecha || legacyFecha) : legacyFecha
+    setImportResult({ metodo:'legacy', fecha:fechaPrincipal, total:legacyRows.length, importados, duplicados:omitidos, errores:0, filas:filaResult })
     setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
     if (legacyInputRef.current) legacyInputRef.current.value = ''
+    setCargandoLegacy(false)
+  }
+
+  function descargarFormato() {
+    const wb = XLSX.utils.book_new()
+    // Hoja 1: Sistema Antiguo
+    const hdrLegacy = ['CAMPAÑA','DISTRITO','N2','N1','TIPIF. BACK','COMENTARIO','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
+    const ejLegacy  = ['CAMP ADMI','SAN BORJA','','955956432','NC','Comentario ejemplo','CONTESTA','17:11','DERWIN','LUCAS','','','','']
+    const wsLegacy  = XLSX.utils.aoa_to_sheet([hdrLegacy, ejLegacy])
+    wsLegacy['!cols'] = hdrLegacy.map((_,i)=>({ wch: i===3?14:i>=8?12:16 }))
+    XLSX.utils.book_append_sheet(wb, wsLegacy, 'SISTEMA ANTIGUO')
+    // Hoja 2: CSV/TXT
+    const hdrCsv = ['N1','N2','CAMPAÑA','DISTRITO','TIPIF. BACK']
+    const ejCsv  = ['955956432','','CAMP ADMI','SAN BORJA','NC']
+    const wsCsv  = XLSX.utils.aoa_to_sheet([hdrCsv, ejCsv])
+    wsCsv['!cols'] = [{ wch:14 },{ wch:12 },{ wch:16 },{ wch:16 },{ wch:16 }]
+    XLSX.utils.book_append_sheet(wb, wsCsv, 'CSV-TXT')
+    // Hoja 3: Instrucciones
+    const instr = [
+      ['INSTRUCCIONES DE USO — FORMATO BACKDATA NETCONTACT'],[''],
+      ['SISTEMA ANTIGUO (use la hoja "SISTEMA ANTIGUO")'],
+      ['Columna','Descripción','Obligatorio','Notas'],
+      ['CAMPAÑA','Nombre de campaña','Sí','Texto libre'],
+      ['DISTRITO','Distrito del contacto','No','Texto libre'],
+      ['N2','Número secundario','No','Formato texto — conservar ceros iniciales'],
+      ['N1','Número principal','SÍ','Formato texto — conservar ceros iniciales'],
+      ['TIPIF. BACK','Tipificación Back Data','No','NC / BUZON DE VOZ / NO CONTESTA / DERIVADO'],
+      ['COMENTARIO','Comentario (no se importa)','No','—'],
+      ['TIPIFICACIÓN','Tipificación del vendedor','No','CONTESTA / VENTA CERRADA / etc.'],
+      ['HORA','Hora de asignación','No','Formato HH:MM (ej: 17:11)'],
+      ['ASESOR 1..6','Historial de asesores','No','Nombre completo como aparece en el sistema'],[''],
+      ['CSV/TXT (use la hoja "CSV-TXT")'],
+      ['Columna','Descripción','Obligatorio','Notas'],
+      ['N1','Número principal','SÍ','Obligatorio'],
+      ['N2','Número secundario','No','Opcional'],
+      ['CAMPAÑA','Nombre de campaña','No','Texto libre'],
+      ['DISTRITO','Distrito','No','Texto libre'],
+      ['TIPIF. BACK','Tipificación','No','Texto libre'],[''],
+      ['NOTAS IMPORTANTES'],
+      ['— No cambie el nombre ni el orden de las columnas.'],
+      ['— Los teléfonos deben estar en formato TEXTO para no perder el 0 inicial.'],
+      ['— El sistema acepta CSV (,), CSV (;) y TSV (tabulador) automáticamente.'],
+      ['— El sistema también acepta archivos .xlsx directamente.'],
+      ['— Al exportar CSV desde Excel: use "CSV UTF-8 (delimitado por comas)".'],
+      ['— Filas completamente vacías son ignoradas.'],
+      ['— N1 es el único campo obligatorio para importar.'],
+    ]
+    const wsInstr = XLSX.utils.aoa_to_sheet(instr)
+    wsInstr['!cols'] = [{ wch:20 },{ wch:40 },{ wch:14 },{ wch:45 }]
+    XLSX.utils.book_append_sheet(wb, wsInstr, 'INSTRUCCIONES')
+    XLSX.writeFile(wb, 'FORMATO_CARGA_BACKDATA.xlsx')
+  }
+
+  function descargarResultado(result) {
+    if (!result) return
+    const wb = XLSX.utils.book_new()
+    const headers = ['#','N1','CAMPAÑA','FECHA DESTINO','RESULTADO','MOTIVO']
+    const rows = result.filas.map((f,i) => [i+1, f.n1, f.campana||'—', formatFecha(result.fecha), f.resultado, f.motivo||''])
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch:5 },{ wch:14 },{ wch:16 },{ wch:14 },{ wch:12 },{ wch:35 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'RESULTADO')
+    XLSX.writeFile(wb, 'RESULTADO_IMPORTACION_BACKDATA.xlsx')
   }
 
   // ── BL Modal ──────────────────────────────────────────────────────────────
@@ -1317,13 +1448,21 @@ export default function Backoffice() {
             <div className="bo-seccion-header">
               <div>
                 <h2>Carga Masiva de Base</h2>
-                <p className="bo-sub">Pega números directamente · importa CSV/TXT · o usa tu sistema antiguo</p>
+                <p className="bo-sub">Pega números directamente · importa CSV/TXT/XLSX · o usa tu sistema antiguo</p>
               </div>
+              <button
+                onClick={descargarFormato}
+                style={{display:'flex',alignItems:'center',gap:7,padding:'9px 16px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}
+                title="Descargar plantilla Excel con el formato de importación"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Descargar formato Excel
+              </button>
             </div>
 
             {/* Date nav carga masiva */}
             <div className="fecha-nav-row" style={{marginBottom:16}}>
-              <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha activa:</span>
+              <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha destino:</span>
               <div className="fecha-nav-ctrl">
                 <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
                 <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
@@ -1376,8 +1515,11 @@ export default function Backoffice() {
                     </div>
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <button className="btn-masiva-preview" onClick={previsualizarMasiva}>Vista previa</button>
-                    <button className="btn-masiva-go" onClick={ejecutarCargaMasiva} disabled={masivaFilasParaCargar.length===0}>Cargar {masivaFilasParaCargar.length} registros</button>
+                    <button className="btn-masiva-preview" onClick={previsualizarMasiva} disabled={cargandoMasiva}>Vista previa</button>
+                    <button className="btn-masiva-go" onClick={ejecutarCargaMasiva} disabled={masivaFilasParaCargar.length===0||cargandoMasiva}>
+                      {cargandoMasiva ? 'Importando...' : `Cargar ${masivaFilasParaCargar.length} registros`}
+                    </button>
+                    <span style={{fontSize:11,color:'#6b7280'}}>Destino: <strong>{formatFecha(fechaActiva)}</strong></span>
                   </div>
                   {masivaFilas.length > 0 && (
                     <>
@@ -1433,15 +1575,17 @@ export default function Backoffice() {
                     style={{border:`2px dashed ${dragOver?'#111827':'#d1d5db'}`,borderRadius:10,padding:36,textAlign:'center',cursor:'pointer',background:dragOver?'#f9fafb':'#fff',transition:'all .18s'}}
                   >
                     <div style={{fontSize:14,fontWeight:600,color:'#374151',marginBottom:4}}>Arrastra tu archivo aquí o haz clic</div>
-                    <div style={{fontSize:12,color:'#9ca3af'}}>Acepta CSV · TXT — columnas: N1, N2, Campaña, Distrito, Tipif</div>
-                    <input ref={archivoInputRef} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarArchivo(e.target.files[0]) }} />
+                    <div style={{fontSize:12,color:'#9ca3af'}}>Acepta CSV · TXT · XLSX — columnas: N1, N2, Campaña, Distrito, Tipif</div>
+                    <input ref={archivoInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarArchivo(e.target.files[0]) }} />
                   </div>
                   {archivoStatus && <div style={{marginTop:10,fontSize:12,color:'#6b7280'}}>{archivoStatus}</div>}
                   {archivoRows.length > 0 && (
                     <div style={{marginTop:10}}>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                        <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{archivoInfo}</span>
-                        <button className="btn-masiva-go" onClick={ejecutarCargaArchivo}>Cargar {archivoRows.length} registros</button>
+                        <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{archivoInfo} — Destino: <strong>{formatFecha(fechaActiva)}</strong></span>
+                        <button className="btn-masiva-go" onClick={ejecutarCargaArchivo} disabled={cargandoMasiva}>
+                          {cargandoMasiva ? 'Importando...' : `Cargar ${archivoRows.length} registros`}
+                        </button>
                       </div>
                       <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
@@ -1489,7 +1633,7 @@ export default function Backoffice() {
                     >
                       <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:3}}>Arrastra tu base o haz clic</div>
                       <div style={{fontSize:11,color:'#9ca3af'}}>CSV exportado desde tu sistema anterior</div>
-                      <input ref={legacyInputRef} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
+                      <input ref={legacyInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:8}}>
                       <div className="bo-input-group" style={{margin:0}}><label>Fecha destino</label>
@@ -1509,10 +1653,12 @@ export default function Backoffice() {
                   {legacyRows.length > 0 && (
                     <div>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
-                        <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{legacyInfo}</span>
+                        <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{legacyInfo} — Destino: <strong>{legacyUsarFecha==='si' ? 'fecha de la fila' : formatFecha(legacyFecha)}</strong></span>
                         <div style={{display:'flex',gap:6}}>
-                          <button className="btn-masiva-preview" onClick={()=>setLegacyRows([])}>Cancelar</button>
-                          <button className="btn-masiva-go" onClick={ejecutarCargaLegacy} style={{background:'#c2410c'}}>Importar {legacyRows.length} registros</button>
+                          <button className="btn-masiva-preview" onClick={()=>setLegacyRows([])} disabled={cargandoLegacy}>Cancelar</button>
+                          <button className="btn-masiva-go" onClick={ejecutarCargaLegacy} style={{background:'#c2410c'}} disabled={cargandoLegacy}>
+                            {cargandoLegacy ? 'Importando...' : `Importar ${legacyRows.length} registros`}
+                          </button>
                         </div>
                       </div>
                       <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
@@ -1545,6 +1691,37 @@ export default function Backoffice() {
                 </div>
               )}
             </div>
+
+            {/* Resultado de importación */}
+            {importResult && (
+              <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:18,marginTop:4}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                  <div style={{fontSize:13,fontWeight:700,color:'#15803d'}}>
+                    Importación completada · Fecha destino: {formatFecha(importResult.fecha)}
+                  </div>
+                  <button
+                    onClick={()=>descargarResultado(importResult)}
+                    style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#16a34a',color:'#fff',border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:'pointer'}}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar resultado Excel
+                  </button>
+                </div>
+                <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+                  {[
+                    ['Procesados', importResult.total, '#374151'],
+                    ['Importados', importResult.importados, '#15803d'],
+                    ['Duplicados', importResult.duplicados, '#b45309'],
+                    ['Con error',  importResult.errores,    '#dc2626'],
+                  ].map(([label,val,color])=>(
+                    <div key={label} style={{textAlign:'center',minWidth:70}}>
+                      <div style={{fontSize:22,fontWeight:800,color}}>{val}</div>
+                      <div style={{fontSize:10,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4}}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ══ SECCIÓN: RENDIMIENTO ═══════════════════════════════════════════ */}
