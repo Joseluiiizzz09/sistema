@@ -201,7 +201,7 @@ export default function Backoffice() {
   const [legacyStatus, setLegacyStatus] = useState('')
   const [legacyInfo,   setLegacyInfo]   = useState('')
   const [legacyFecha,  setLegacyFecha]  = useState(fechaHoy())
-  const [legacyUsarFecha, setLegacyUsarFecha] = useState('si')
+  const [legacyUsarFecha, setLegacyUsarFecha] = useState('no')
   const [legacyDesde,  setLegacyDesde]  = useState('')
   const [legacyHasta,  setLegacyHasta]  = useState(fechaHoy())
   const [dragOver,     setDragOver]     = useState(false)
@@ -921,6 +921,10 @@ export default function Backoffice() {
 
   async function ejecutarCargaLegacy() {
     if (!legacyRows.length || cargandoLegacy) { if(!legacyRows.length) mostrarToast('No hay datos'); return }
+    if (legacyUsarFecha === 'no' && legacyFecha > fechaHoy()) {
+      setLegacyError('No se permiten fechas futuras. Selecciona una fecha igual o anterior a hoy.')
+      return
+    }
     setCargandoLegacy(true)
     setImportResult(null)
     setLegacyError('')
@@ -1680,8 +1684,8 @@ export default function Backoffice() {
                       onChange={e=>{ setLegacyUsarFecha(e.target.value); setLegacyRows([]); setLegacyInfo(''); setLegacyStatus(''); setLegacyError(''); setImportResult(null); if(legacyInputRef.current) legacyInputRef.current.value='' }}
                       style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}
                     >
+                      <option value="no">Usar fecha seleccionada — una fecha para todo el archivo</option>
                       <option value="si">Usar fecha del archivo — cada fila tiene su propia fecha</option>
-                      <option value="no">Usar una sola fecha para todo el archivo</option>
                     </select>
                   </div>
 
@@ -1704,9 +1708,14 @@ export default function Backoffice() {
                   ) : (
                     <div className="bo-input-group" style={{margin:'0 0 14px'}}>
                       <label>Fecha destino</label>
-                      <select value={legacyFecha} onChange={e=>setLegacyFecha(e.target.value)} style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff'}}>
-                        {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)}</option>)}
-                      </select>
+                      <input
+                        type="date"
+                        value={legacyFecha}
+                        max={fechaHoy()}
+                        onChange={e=>{ setLegacyFecha(e.target.value); setLegacyRows([]); setLegacyInfo(''); if(legacyInputRef.current) legacyInputRef.current.value='' }}
+                        style={{fontSize:12,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'inherit',background:'#fff',width:'100%',boxSizing:'border-box'}}
+                      />
+                      {legacyFecha > fechaHoy() && <div style={{fontSize:11,color:'#dc2626',marginTop:4}}>No se permiten fechas futuras.</div>}
                     </div>
                   )}
 
