@@ -542,8 +542,8 @@ const cargarLeads = useCallback(async () => {
       if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
       return
     }
-    const newHist = [...reg.historial, { asesor:nuevoAsesor, hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
 
@@ -1651,7 +1651,7 @@ const cargarLeads = useCallback(async () => {
                                         <div className="hist-dot" style={{background:DOT_COLORS[hi%DOT_COLORS.length]}} />
                                         <div className="hist-content">
                                           <div className="hist-title">
-                                            {h.tipo==='ROTACION'
+                                            {(h.tipo==='ROTACION' || h.asesorAnterior)
                                               ? <><strong>{h.asesorAnterior||'?'}</strong><span className="hist-arrow"> → </span><strong>{h.asesor}</strong></>
                                               : <strong>{h.asesor||'—'}</strong>
                                             }
@@ -1660,6 +1660,7 @@ const cargarLeads = useCallback(async () => {
                                           {h.motivo && <div className="hist-sub">{h.motivo}</div>}
                                           {h.tipif_vend && <div className="hist-sub" style={{color:'#065f46',fontWeight:700}}>{h.tipif_vend}</div>}
                                           {h.rotadoPor && <div className="hist-sub">Rotado por: {h.rotadoPor}</div>}
+                                          {h.reasignadoPor && <div className="hist-sub">Reasignado por: {h.reasignadoPor}</div>}
                                           {h.tipo==='ROTACION'&&h.tipifBackAntes && <div className="hist-sub">Estado anterior: {h.tipifBackAntes}</div>}
                                           {h.tipo==='TIPIF_BACK' && <div className="hist-sub">{h.tipifBackAntes||'—'} → {h.tipifBackNueva||'—'}</div>}
                                           {h.tipo==='DERIVADO'&&h.derivadoPor && <div className="hist-sub">Por: {h.derivadoPor}</div>}
