@@ -1340,7 +1340,7 @@ const cargarLeads = useCallback(async () => {
                       </div>
                       <div className="bo-panel" style={{padding:'14px 16px',display:'flex',flexDirection:'column',height:'420px',minHeight:0,overflow:'hidden'}}>
                         <div className="bo-panel-title" style={{flexShrink:0}}>Disponibilidad de asesores</div>
-                        <div className="rot-asesor-lista" style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',scrollbarWidth:'thin'}}>
+                        <div className="rot-asesor-lista" style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',overscrollBehavior:'contain'}}>
                           <div className="rot-asesor-col-hdr" aria-hidden="true">
                             <span>Asesor</span><span>Registros</span>
                           </div>

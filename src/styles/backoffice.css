@@ -660,12 +660,12 @@ body{
 .rot-asesor-row:last-child{border-bottom:none;}
 .rot-asesor-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;padding-right:8px;}
 .rot-asesor-badge{flex-shrink:0;font-weight:600;color:var(--ink-3);font-size:11px;}
-.rot-asesor-lista{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;}
-.rot-asesor-lista::-webkit-scrollbar{width:5px;}
-.rot-asesor-lista::-webkit-scrollbar-track{background:transparent;}
-.rot-asesor-lista::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px;}
-.rot-asesor-lista::-webkit-scrollbar-thumb:hover{background:#9ca3af;}
-.rot-asesor-col-hdr{position:sticky;top:0;z-index:2;background:#f9fafb;display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;padding:4px 0 5px;border-bottom:1px solid var(--line);margin-bottom:2px;}
+.bo-root .rot-asesor-lista{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
+.bo-root .rot-asesor-lista::-webkit-scrollbar{width:6px;height:6px;}
+.bo-root .rot-asesor-lista::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
+.bo-root .rot-asesor-lista::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}
+.bo-root .rot-asesor-lista::-webkit-scrollbar-thumb:hover{background:var(--brand-dark);}
+.bo-root .rot-asesor-col-hdr{position:sticky;top:0;z-index:2;background:var(--surf-0);display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 5px;border-bottom:1px solid var(--line);margin-bottom:2px;}
 .btn-rot-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .18s var(--sp);box-shadow:0 2px 8px rgba(229,62,62,.3);}
 .btn-rot-toggle:hover{transform:scale(1.02);box-shadow:0 4px 14px rgba(229,62,62,.4);}
 .btn-rot-toggle.abierto{background:var(--ink-2);box-shadow:none;}
