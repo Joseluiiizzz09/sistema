@@ -1390,7 +1390,7 @@ const cargarLeads = useCallback(async () => {
                           <button onClick={()=>{ setRotFiltroFecha(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
-                      <div style={{overflowX:'auto'}} className="rot-table">
+                      <div className="rot-table">
                         <table>
                           <thead><tr>
                             <th>

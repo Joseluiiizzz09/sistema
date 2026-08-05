@@ -650,6 +650,12 @@ body{
 .rot-table-wrap{background:var(--surf-0);border-radius:var(--r);border:1px solid var(--line);overflow:hidden;box-shadow:var(--sh);}
 .rot-table-header{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700;}
 .tag-aptos{background:#ecfdf5;color:#065f46;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;}
+.bo-root .rot-table{max-height:360px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
+.bo-root .rot-table::-webkit-scrollbar{width:6px;height:6px;}
+.bo-root .rot-table::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
+.bo-root .rot-table::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}
+.bo-root .rot-table::-webkit-scrollbar-thumb:hover{background:var(--brand-dark);}
+.bo-root .rot-table thead tr{position:sticky;top:0;z-index:8;}
 .rot-table table{width:100%;border-collapse:collapse;font-size:12px;}
 .rot-table th{text-align:left;padding:7px 11px;border-bottom:1px solid var(--line);font-size:9px;color:var(--ink-4);text-transform:uppercase;background:var(--surf-1);}
 .rot-table td{padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:middle;}
@@ -660,7 +666,7 @@ body{
 .rot-asesor-row:last-child{border-bottom:none;}
 .rot-asesor-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;padding-right:8px;}
 .rot-asesor-badge{flex-shrink:0;font-weight:600;color:var(--ink-3);font-size:11px;}
-.bo-root .rot-asesor-panel{height:420px;max-height:420px;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.bo-root .rot-asesor-panel{height:340px;max-height:340px;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 .bo-root .rot-asesor-panel>.bo-panel-title{flex:0 0 auto;background:#fff;z-index:2;}
 .bo-root .rot-asesor-lista{flex:1 1 0;height:0;min-height:0;overflow-y:scroll;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
 .bo-root .rot-asesor-lista::-webkit-scrollbar{width:9px;}
