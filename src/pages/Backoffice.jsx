@@ -147,6 +147,17 @@ function NotebookIcon() {
   )
 }
 
+function SortIcon({ active, direction }) {
+  const up   = active && direction === 'up'   ? '#fff' : 'rgba(255,255,255,0.32)'
+  const down = active && direction === 'down' ? '#fff' : 'rgba(255,255,255,0.32)'
+  return (
+    <svg width="9" height="13" viewBox="0 0 9 13" fill="none" aria-hidden="true" style={{flexShrink:0,marginLeft:3}}>
+      <path d="M4.5 1L1.5 5h6L4.5 1z" fill={up}/>
+      <path d="M4.5 12L1.5 8h6L4.5 12z" fill={down}/>
+    </svg>
+  )
+}
+
 // Extrae número de teléfono válido del campo N2 (elimina GPS, texto, etc.)
 function limpiarN2Legacy(raw) {
   if (!raw) return ''
@@ -203,7 +214,17 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, sortHora:'' })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
+  const [tableSort, setTableSort] = useState({ col: null, dir: null })
+  function cycleSort(col) {
+    setTableSort(prev => {
+      const firstDir = { tipif:'az', hora:'desc', rots:'asc' }[col]
+      if (prev.col !== col) return { col, dir: firstDir }
+      const seq = { tipif:['az',null], hora:['desc','asc',null], rots:['asc','desc',null] }[col]
+      const next = seq[(seq.indexOf(prev.dir) + 1) % seq.length]
+      return next ? { col, dir: next } : { col: null, dir: null }
+    })
+  }
 
   // ── Historial / Detalles expandibles ──
   const [histOpen, setHistOpen] = useState({})
@@ -1147,14 +1168,30 @@ const cargarLeads = useCallback(async () => {
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
       return true
     })
-    if (!filtros.sortHora) return filtered
+    if (!tableSort.col) return filtered
     return [...filtered].sort((a, b) => {
-      const ma = horaAMinutos(a.horaAsig)
-      const mb = horaAMinutos(b.horaAsig)
-      if (ma === -1 && mb === -1) return 0
-      if (ma === -1) return 1
-      if (mb === -1) return -1
-      return filtros.sortHora === 'desc' ? mb - ma : ma - mb
+      if (tableSort.col === 'tipif') {
+        const ta = (a._tipifVend || '').trim()
+        const tb = (b._tipifVend || '').trim()
+        if (!ta && !tb) return 0
+        if (!ta) return 1
+        if (!tb) return -1
+        return ta.localeCompare(tb, 'es')
+      }
+      if (tableSort.col === 'hora') {
+        const ma = horaAMinutos(a.horaAsig)
+        const mb = horaAMinutos(b.horaAsig)
+        if (ma === -1 && mb === -1) return 0
+        if (ma === -1) return 1
+        if (mb === -1) return -1
+        return tableSort.dir === 'desc' ? mb - ma : ma - mb
+      }
+      if (tableSort.col === 'rots') {
+        const ra = parseInt(String(a.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
+        const rb = parseInt(String(b.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
+        return tableSort.dir === 'asc' ? ra - rb : rb - ra
+      }
+      return 0
     })
   })()
 
@@ -1440,14 +1477,7 @@ const cargarLeads = useCallback(async () => {
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <div className="bo-input-group"><label>Ordenar hora</label>
-                <select className="form-select" value={filtros.sortHora} onChange={e=>setFiltros(p=>({...p,sortHora:e.target.value}))}>
-                  <option value="">Sin ordenar</option>
-                  <option value="desc">Mayor a menor ↓</option>
-                  <option value="asc">Menor a mayor ↑</option>
-                </select>
-              </div>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,sortHora:''})}>Limpiar filtros</button>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
             </div>
 
             {/* FORMULARIO AGREGAR INDIVIDUAL */}
@@ -1525,8 +1555,29 @@ const cargarLeads = useCallback(async () => {
                   <tr>
                     <th>#</th><th>Campaña</th><th>N1 / N2</th>
                     <th>Contacto</th><th>Tipif. Back</th>
-                    <th>Asesor asignado</th><th>Tipif. Vendedor</th>
-                    <th>Hora</th><th>Rots.</th><th>Acciones</th>
+                    <th>Asesor asignado</th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='tipif'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('tipif')} title="Ordenar tipificación" aria-label="Ordenar tipificación alfabéticamente"
+                        aria-sort={tableSort.col==='tipif'?'ascending':'none'}>
+                        Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'&&tableSort.dir==='az'?'down':null}/>
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='hora'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('hora')} title="Ordenar por hora" aria-label="Ordenar por hora"
+                        aria-sort={tableSort.col==='hora'?(tableSort.dir==='asc'?'ascending':'descending'):'none'}>
+                        Hora<SortIcon active={tableSort.col==='hora'} direction={tableSort.col==='hora'?(tableSort.dir==='desc'?'down':'up'):null}/>
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='rots'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('rots')} title="Ordenar por rotaciones" aria-label="Ordenar por cantidad de rotaciones"
+                        aria-sort={tableSort.col==='rots'?(tableSort.dir==='asc'?'ascending':'descending'):'none'}>
+                        Rots.<SortIcon active={tableSort.col==='rots'} direction={tableSort.col==='rots'?(tableSort.dir==='asc'?'up':'down'):null}/>
+                      </button>
+                    </th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>

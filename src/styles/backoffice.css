@@ -1071,3 +1071,9 @@ body{
 .hist-arrow{color:#94a3b8;font-weight:400;}
 .hist-meta{font-size:10px;color:#94a3b8;}
 .hist-sub{font-size:10px;color:#64748b;font-style:italic;}
+
+/* ━━ SORT HEADERS ━━ */
+.th-sort-btn{display:inline-flex;align-items:center;gap:0;background:none;border:none;color:inherit;font:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;padding:0;cursor:pointer;white-space:nowrap;border-radius:3px;transition:opacity .15s;}
+.th-sort-btn:hover{opacity:.8;}
+.th-sort-btn:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;}
+.th-sort-active{opacity:1;}
