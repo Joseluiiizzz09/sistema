@@ -100,8 +100,8 @@ body{
 
 /* Encabezado compacto de Back Office, como la referencia del usuario. */
 .bo-root .brand{gap:9px;}
-.bo-root .logo-circle{width:46px!important;height:46px!important;animation:none;box-shadow:0 3px 11px rgba(229,62,62,.16),0 0 0 1px rgba(229,62,62,.12);}
-.bo-root .logo-circle img{width:34px!important;height:34px!important;}
+.bo-root .logo-circle{width:64px!important;height:64px!important;animation:none;box-shadow:0 3px 11px rgba(229,62,62,.16),0 0 0 1px rgba(229,62,62,.12);}
+.bo-root .logo-circle img{width:50px!important;height:50px!important;}
 .bo-root .brand-text h1{font-family:'Archivo Black',sans-serif!important;font-size:15px!important;font-weight:400!important;letter-spacing:-.35px!important;white-space:nowrap;}
 .bo-root .brand-text h1 .red{font:inherit!important;color:var(--brand)!important;}
 .bo-root .brand-text h1 .dot{width:4px;height:4px;margin-left:1px;margin-right:1px;}
