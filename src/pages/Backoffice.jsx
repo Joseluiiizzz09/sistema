@@ -1340,9 +1340,15 @@ const cargarLeads = useCallback(async () => {
                       </div>
                       <div className="bo-panel" style={{padding:'14px 16px'}}>
                         <div className="bo-panel-title">Disponibilidad de asesores</div>
-                        <div style={{maxHeight:380,overflowY:'auto',overflowX:'hidden'}}>
+                        <div className="rot-asesor-lista">
+                          <div className="rot-asesor-col-hdr" aria-hidden="true">
+                            <span>Asesor</span><span>Registros</span>
+                          </div>
                           {rotAsesoresDisp.map(a=>(
-                            <div key={a.nombre} className="rot-asesor-row"><span>{a.nombre}</span><span className="rot-asesor-badge">{a.cnt} registros</span></div>
+                            <div key={a.nombre} className="rot-asesor-row">
+                              <span className="rot-asesor-nombre" title={a.nombre}>{a.nombre}</span>
+                              <span className="rot-asesor-badge">{a.cnt} registros</span>
+                            </div>
                           ))}
                         </div>
                       </div>
