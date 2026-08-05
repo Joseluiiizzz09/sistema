@@ -76,6 +76,8 @@ function tipifBadgeClass(t) {
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','DERIVADO','NC','NO TOCAR','FRAUDE','INSTALADO']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
+const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ'])
 function esLeadProhibido(reg) {
   const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
@@ -682,7 +684,9 @@ const cargarLeads = useCallback(async () => {
         let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
         const histAsesores = reg.historial.filter(h=>!h.tipo||h.tipo==='ASIGNACION'||h.tipo==='ROTACION').map(h=>h.asesor)
-        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg.tipifBack||'Nuevo', tipifVend:reg._tipifVend||'', prohibido:esLeadProhibido(reg), asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
+        const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
+        if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual)) return
+        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
       })
     })
     return list
@@ -690,19 +694,18 @@ const cargarLeads = useCallback(async () => {
 
   function rotApto(lead, asesor) {
     const ahora = new Date()
-    const prohibido = !!lead.prohibido
-    if (prohibido) return { apto:false, prohibido:true, sinRepetir:false, tiempo:false, estadoOk:false }
     if (!asesor) return { apto:false, prohibido:false }
     const sinRepetir = !lead.histAsesores.includes(asesor)
     const mins = Math.floor((ahora - lead.ultimaAsig)/60000)
     const tiempo = mins >= 120
-    const estadoOk = ['Buzon','No contesta','Nuevo','BUZON','NO CONTESTA',''].includes(lead.estado)
+    const estadoOk = TIPIF_ROTABLES_ROTACION.has((lead.tipifVend||'').trim().toUpperCase())
     if (!lead.asesor) return { apto:sinRepetir, prohibido:false, sinRepetir, tiempo:true, estadoOk:true }
     return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk }
   }
 
   function rotMins(f) { return Math.floor((new Date() - f)/60000) }
   function rotTxt(f) { const m=rotMins(f); if(m<60) return m+' min'; const h=Math.floor(m/60),r=m%60; return h+'h'+(r>0?' '+r+'min':'') }
+  function rotFaltanTxt(mins) { const r=120-mins; if(r<=0) return ''; const h=Math.floor(r/60),m=r%60; return h>0?`Faltan ${h}h${m>0?' '+m+' min':''}`:`Faltan ${r} min` }
 
   async function rotFinalizarWith(selToUse, asesorActual) {
     const hora     = horaAhora()
@@ -1337,9 +1340,11 @@ const cargarLeads = useCallback(async () => {
                       </div>
                       <div className="bo-panel" style={{padding:'14px 16px'}}>
                         <div className="bo-panel-title">Disponibilidad de asesores</div>
-                        {rotAsesoresDisp.map(a=>(
-                          <div key={a.nombre} className="rot-asesor-row"><span>{a.nombre}</span><span className="rot-asesor-badge">{a.cnt} registros</span></div>
-                        ))}
+                        <div style={{maxHeight:380,overflowY:'auto',overflowX:'hidden'}}>
+                          {rotAsesoresDisp.map(a=>(
+                            <div key={a.nombre} className="rot-asesor-row"><span>{a.nombre}</span><span className="rot-asesor-badge">{a.cnt} registros</span></div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <div className="rot-form" style={{marginBottom:12}}>
@@ -1401,12 +1406,12 @@ const cargarLeads = useCallback(async () => {
                                       <td><input type="checkbox" checked={!!rotSel[l.id]} disabled={prohibido||(!apto&&!!rotAsesor)} onChange={e=>rotToggleSel(l.id,e.target.checked)} /></td>
                                       <td><div style={{fontFamily:'monospace',fontWeight:700,color:'#111827',fontSize:12}}>{l.tel}</div><div style={{fontSize:10,color:'#9ca3af',marginTop:1}}>{l.campana} · {l.n2||'—'}</div></td>
                                       <td>{esFechaHoy ? <span style={{background:'#dcfce7',color:'#166534',fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99}}>HOY</span> : <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:9,padding:'1px 6px',borderRadius:99}}>{formatFecha(l.fecha)}</span>}</td>
-                                      <td><span className={`tipif-badge ${tipifBadgeClass(prohibido?l.tipifVend:l.estado)}`} style={prohibido?{background:'#fee2e2',color:'#991b1b',fontWeight:800}:{}}>{prohibido?l.tipifVend:(l.estado||'Sin tipif.')}</span></td>
+                                      <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'NUEVO'}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor}</td>
                                       <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
-                                      <td className={tiempo?'timer-ok':'timer-fail'}>{rotTxt(l.ultimaAsig)} {tiempo?'OK':'falta '+(120-mins)+'min'}</td>
+                                      <td className={!rotAsesor?'':tiempo?'timer-ok':'timer-fail'}>{tiempo!==false?`Hace ${rotTxt(l.ultimaAsig)}`:rotFaltanTxt(mins)}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
-                                      <td>{prohibido?<span className="badge-noapto">Prohibido</span>:!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
+                                      <td>{!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
                                     </tr>
                                   )
                                 })
