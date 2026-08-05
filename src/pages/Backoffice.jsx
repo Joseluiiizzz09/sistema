@@ -1553,9 +1553,12 @@ const cargarLeads = useCallback(async () => {
                                 title={esExclusiva?`Prohibido: ${r._tipifVend}`:''}
                                 onChange={e=>reasignarReg(r.id,e.target.value)}>
                                 <option value="">— Sin asignar —</option>
+                                {/* Asesor histórico importado que ya no es usuario activo */}
+                                {r.asesor&&!asesores.some(a=>a.nombre===r.asesor)&&<option value={r.asesor}>{r.asesor}</option>}
                                 {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                               </select>
-                              {r.sinAsignar&&<span style={{display:'block',fontSize:9,color:'#c2410c',fontWeight:700,marginTop:1}}>sin asig.</span>}
+                              {r.sinAsignar&&r.asesor&&<span style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:600,marginTop:1}}>histórico</span>}
+                              {r.sinAsignar&&!r.asesor&&<span style={{display:'block',fontSize:9,color:'#c2410c',fontWeight:700,marginTop:1}}>sin asig.</span>}
                             </td>
 
                             {/* Tipif. Vendedor */}
