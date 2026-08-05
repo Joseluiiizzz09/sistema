@@ -1,0 +1,34 @@
+// ── Lista central de campañas ────────────────────────────────────────────
+// Para agregar una campaña nueva en el futuro, solo añade su nombre a este
+// array (respeta el orden que quieras que aparezca en el desplegable).
+// Se usa en el formulario de registro individual y en la carga masiva.
+export const CAMPANAS = [
+  'A - SCW',
+  'CAMP ADRI',
+  'CAMP KEV',
+  'CAMP YOPI',
+  'FABIAN',
+  'GOOGLE',
+  'GUSTAVO',
+  'H1',
+  'H4',
+  'H5',
+  'H7',
+  'K1',
+  'K2',
+  'K3',
+  'K8',
+  'K9',
+  'LEAD CRM',
+  'MACETA',
+  'MATEO',
+  'MESSENGER',
+  'NICOLE',
+  'NX03',
+  'NX04',
+  'NX7',
+  'RAHI',
+  'REFERIDO',
+  'REFUERZO',
+  'YURI',
+]

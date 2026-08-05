@@ -7,7 +7,31 @@ import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
+import { CAMPANAS } from '../utils/campanas'
 import '../styles/backoffice.css'
+
+// ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
+function CampanaSelect({ value, onChange, plain }) {
+  const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
+  if (manual) {
+    return (
+      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+        <input className={plain?undefined:'form-control'} value={value} autoFocus placeholder="Escribe la campaña"
+          onChange={e=>onChange(e.target.value)} style={{flex:1,minWidth:0}} />
+        <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); onChange('') }}
+          style={{border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
+      </div>
+    )
+  }
+  return (
+    <select className={plain?undefined:'form-control'} value={CAMPANAS.includes(value)?value:''}
+      onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); onChange('') } else onChange(v) }}>
+      <option value="">— Selecciona —</option>
+      {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
+      <option value="__OTRO__">Otro (escribir a mano)…</option>
+    </select>
+  )
+}
 
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
@@ -1015,7 +1039,7 @@ const cargarLeads = useCallback(async () => {
       const batch = registros.slice(i, i+LOTE)
       let data
       try {
-        const res = await fetch(`${API}/leads/import-legacy`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(batch) })
+        const res = await fetch(`${API}/leads/import-legacy`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ registros: batch, permitirDuplicados: true }) })
         data = await res.json()
       } catch(e) {
         throw new Error(`Error de red (lote ${Math.floor(i/LOTE)+1}): ${e.message}`)
@@ -1498,7 +1522,7 @@ const cargarLeads = useCallback(async () => {
                 <span style={{fontSize:10,color:'#374151',fontWeight:600,textTransform:'none',letterSpacing:0}}>{formatFecha(fechaActiva)}</span>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:10}}>
-                <div className="bo-input-group"><label>Campaña</label><input className="form-control" value={form.campana} onChange={e=>setForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
                 <div className="bo-input-group"><label>Departamento</label>
                   <select className="form-select" value={form.dpto} onChange={e=>setForm(p=>({...p,dpto:e.target.value,prov:'',distrito:''}))}>
                     <option value="">— Seleccionar —</option>
@@ -1821,7 +1845,7 @@ const cargarLeads = useCallback(async () => {
                       <textarea value={masivaNums} onChange={e=>setMasivaNums(e.target.value)} rows={8} placeholder={'987654321\n976543210\n965432109'} />
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:160}}>
-                      <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><input value={masivaCamp} onChange={e=>setMasivaCamp(e.target.value)} placeholder="NKT" /></div>
+                      <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><CampanaSelect value={masivaCamp} onChange={setMasivaCamp} plain /></div>
                       <div className="bo-input-group" style={{margin:0}}><label>Asesor (opcional)</label>
                         <select value={masivaAsesor} onChange={e=>setMasivaAsesor(e.target.value)}>
                           <option value="">— Sin asignar —</option>
