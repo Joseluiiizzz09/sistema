@@ -943,20 +943,24 @@ const cargarLeads = useCallback(async () => {
     const rows = []
     datos.forEach(linea => {
       const c = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
-      let n1, campana, distrito, n2, tipifBack, tipifVend, hora, asesoresHist
+      let n1, campana, distrito, n2, tipifBack, tipifVend, hora, comentario, asesoresHist
       if (usarFF) {
         // Nuevo formato: FECHA(0) CAMPAÑA(1) DISTRITO(2) N2(3) N1(4) TIPIFB(5) COM(6) TIPIFV(7) HORA(8) ASE(9-14)
         n1=(c[4]||'').replace(/[^0-9]/g,''); campana=c[1]||'—'; distrito=c[2]||'—'
         n2=limpiarN2Legacy(c[3]||'')
-        tipifBack=c[5]||''; tipifVend=c[7]||''; hora=c[8]||''
+        tipifBack=c[5]||''; comentario=c[6]||''; tipifVend=c[7]||''; hora=c[8]||''
         asesoresHist=[]; for(let i=9;i<=14;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       } else {
         // Formato original: CAMPAÑA(0) DISTRITO(1) N2(2) N1(3) TIPIFB(4) COM(5) TIPIFV(6) HORA(7) ASE(8-13)
         n1=(c[3]||'').replace(/[^0-9]/g,''); campana=c[0]||'—'; distrito=c[1]||'—'
         n2=limpiarN2Legacy(c[2]||'')
-        tipifBack=c[4]||''; tipifVend=c[6]||''; hora=c[7]||''
+        tipifBack=c[4]||''; comentario=c[5]||''; tipifVend=c[6]||''; hora=c[7]||''
         asesoresHist=[]; for(let i=8;i<=13;i++){const a=(c[i]||'').trim();if(a&&a.length>1)asesoresHist.push(a)}
       }
+      // Normalizar tipifVend: alias del sistema antiguo
+      const tipNorm=(tipifVend||'').trim().toUpperCase()
+      if(tipNorm==='SH NO ROTAR') tipifVend='NO TOCAR'
+      else if(tipNorm==='SH INSTALADO') tipifVend='INSTALADO'
       if (!n1||n1.length<6) return
       let fechaFila=legacyFecha, fechaError=false, fechaErrorMsg=''
       if (usarFF) {
@@ -967,7 +971,7 @@ const cargarLeads = useCallback(async () => {
           else if (legacyHasta && fechaFila > legacyHasta) { fechaError=true; fechaErrorMsg=`Después del rango (${formatFecha(legacyHasta)})` }
         }
       }
-      rows.push({ fecha:fechaFila, _fechaError:fechaError, _fechaErrorMsg:fechaErrorMsg, campana, distrito, n2, n1, tipifBack, tipifVend, hora, asesores:asesoresHist })
+      rows.push({ fecha:fechaFila, _fechaError:fechaError, _fechaErrorMsg:fechaErrorMsg, campana, distrito, n2, n1, tipifBack, tipifVend, hora, comentario, asesores:asesoresHist })
     })
     if (!rows.length) { setLegacyStatus('No se encontraron filas válidas'); return }
     setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
@@ -1012,15 +1016,16 @@ const cargarLeads = useCallback(async () => {
       if (r._fechaError) { erroresFecha++; return }
       const f = r.fecha
       leadsBackend.push({
-        campana:   r.campana,
-        distrito:  r.distrito,
-        n1:        r.n1,
-        n2:        r.n2,
+        campana:    r.campana,
+        distrito:   r.distrito,
+        n1:         r.n1,
+        n2:         r.n2,
         tipif_back: r.tipifBack,
         tipif_vend: r.tipifVend,
-        asesores:  r.asesores,
-        fecha:     f,
-        hora:      r.hora,
+        asesores:   r.asesores,
+        fecha:      f,
+        hora:       r.hora,
+        comentario: r.comentario || '',
       })
       distribFechas[f] = (distribFechas[f]||0) + 1
     })
@@ -1650,6 +1655,7 @@ const cargarLeads = useCallback(async () => {
                                           </div>
                                           <div className="hist-meta">{h.hora}{h.hora&&h.fecha?' · ':''}{h.fecha}</div>
                                           {h.motivo && <div className="hist-sub">{h.motivo}</div>}
+                                          {h.tipif_vend && <div className="hist-sub" style={{color:'#065f46',fontWeight:700}}>{h.tipif_vend}</div>}
                                           {h.rotadoPor && <div className="hist-sub">Rotado por: {h.rotadoPor}</div>}
                                           {h.tipo==='ROTACION'&&h.tipifBackAntes && <div className="hist-sub">Estado anterior: {h.tipifBackAntes}</div>}
                                           {h.tipo==='TIPIF_BACK' && <div className="hist-sub">{h.tipifBackAntes||'—'} → {h.tipifBackNueva||'—'}</div>}
