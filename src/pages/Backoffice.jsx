@@ -1129,7 +1129,13 @@ const cargarLeads = useCallback(async () => {
   const registrosActivos = baseData[fechaActiva] || []
   const registrosFiltrados = registrosActivos.filter(r => {
     if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
-    if (filtros.tipVend&& (r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase())  return false
+    if (filtros.tipVend) {
+      if (filtros.tipVend === '__pendiente__') {
+        if ((r._tipifVend||'').trim() !== '') return false
+      } else {
+        if ((r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
+      }
+    }
     if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
     if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
     return true
@@ -1400,7 +1406,8 @@ const cargarLeads = useCallback(async () => {
               <div className="bo-input-group"><label>Tipif. vendedor</label>
                 <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
                   <option value="">Todas</option>
-                  <option>CONTESTA</option><option>NC</option><option>SIN COBERTURA</option><option>DERIVADO</option>
+                  <option value="__pendiente__">Pendiente</option>
+                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="bo-input-group"><label>Asesor</label>
