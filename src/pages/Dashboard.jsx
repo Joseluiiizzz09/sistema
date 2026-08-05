@@ -26,6 +26,7 @@ const TIPS = [
   { label: 'EDIFICIO NO LIBERADO',    cls: 'tip-edificio' },
   { label: 'DESEA MOVIL',             cls: 'tip-movil' },
   { label: 'SERVICIO ACTIVO',         cls: 'tip-servicio' },
+  { label: 'INSTALADO',               cls: 'tip-instalado' },
 ]
 
 const PAQUETES_POR_PLAN = {

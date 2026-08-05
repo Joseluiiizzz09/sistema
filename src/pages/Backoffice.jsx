@@ -68,7 +68,7 @@ function tipifBadgeClass(t) {
 }
 
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','DERIVADO','NC','NO TOCAR','FRAUDE']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','DERIVADO','NC','NO TOCAR','FRAUDE','INSTALADO']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE'])
 function esLeadProhibido(reg) {
   const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
@@ -81,11 +81,12 @@ const TIPIF_VEND_STYLES = {
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
   'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
+  'INSTALADO':['#dcfce7','#14532d'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
   'CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2',
-  'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b',
+  'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
 }
 
 function TipifVendBadge({ tipif, hora }) {
@@ -130,6 +131,16 @@ function CopyIcon() {
   )
 }
 
+function NotebookIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/>
+    </svg>
+  )
+}
+
 // Extrae número de teléfono válido del campo N2 (elimina GPS, texto, etc.)
 function limpiarN2Legacy(raw) {
   if (!raw) return ''
@@ -143,6 +154,13 @@ function limpiarN2Legacy(raw) {
   const m2 = s.match(/\b\d{7,9}\b/)
   if (m2) return m2[0]
   return ''
+}
+
+// Extrae DNI de 8 dígitos de obs_asesor (ej: "DNI: 60975222", "DNI 60975222")
+function extraerDni(obs) {
+  if (!obs) return null
+  const m = String(obs).match(/\bDNI[:\s]+(\d{8})\b/i)
+  return m ? m[1] : null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -184,6 +202,7 @@ export default function Backoffice() {
   // ── Historial / Detalles expandibles ──
   const [histOpen, setHistOpen] = useState({})
   const [detOpen,  setDetOpen]  = useState({})
+  const [dniModal, setDniModal] = useState(null) // { dni, top, left }
 
   // ── Rotación panel ──
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
@@ -375,6 +394,7 @@ const cargarLeads = useCallback(async () => {
           rotaciones: l.rotaciones || 0,
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
+          obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
         })
       })
@@ -1535,11 +1555,23 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Tipif. Vendedor */}
                             <td>
-                              <select className="bo-sel-compact sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                style={{border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
-                                <option value="">— Pendiente —</option>
-                                {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
-                              </select>
+                              <div style={{display:'flex',alignItems:'center',gap:2}}>
+                                <select className="bo-sel-compact sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                  style={{flex:1,minWidth:0,border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
+                                  <option value="">— Pendiente —</option>
+                                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                                </select>
+                                {r._tipifVend==='VENTA CERRADA'&&extraerDni(r.obsAsesor)&&(
+                                  <button type="button" className="btn-dni-cuaderno"
+                                    title="Ver DNI de cierre"
+                                    onClick={e=>{
+                                      const rect=e.currentTarget.getBoundingClientRect()
+                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
+                                    }}>
+                                    <NotebookIcon/>
+                                  </button>
+                                )}
+                              </div>
                               {r._tipifHora&&<span style={{display:'block',fontSize:9,color:'#9ca3af',marginTop:1}}>{r._tipifHora}</span>}
                             </td>
 
@@ -2256,6 +2288,20 @@ const cargarLeads = useCallback(async () => {
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
+
+      {/* ══ POPOVER DNI ══════════════════════════════════════════════════════ */}
+      {dniModal&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={()=>setDniModal(null)}/>
+          <div className="dni-popover" style={{top:dniModal.top,left:dniModal.left}}
+            onKeyDown={e=>e.key==='Escape'&&setDniModal(null)}>
+            <button type="button" className="dni-popover-close" onClick={()=>setDniModal(null)} aria-label="Cerrar">×</button>
+            <div className="dni-popover-label">DNI DE LA VENTA</div>
+            <div className="dni-popover-value">{dniModal.dni}</div>
+            <button type="button" className="dni-copy-btn" onClick={()=>{ copiarNumero(dniModal.dni); setDniModal(null) }}>Copiar</button>
+          </div>
+        </>
+      )}
 
     </div>
   )
