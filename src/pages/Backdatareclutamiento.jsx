@@ -5,7 +5,31 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { usuarioTieneCargo } from '../utils/roles'
+import { CAMPANAS } from '../utils/campanas'
 import '../styles/Backdatareclutamiento.css'
+
+// ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
+function CampanaSelect({ value, onChange, plain }) {
+  const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
+  if (manual) {
+    return (
+      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+        <input className={plain?undefined:'form-control'} value={value} autoFocus placeholder="Escribe la campaña"
+          onChange={e=>onChange(e.target.value)} style={{flex:1,minWidth:0}} />
+        <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); onChange('') }}
+          style={{border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
+      </div>
+    )
+  }
+  return (
+    <select className={plain?undefined:'form-control'} value={CAMPANAS.includes(value)?value:''}
+      onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); onChange('') } else onChange(v) }}>
+      <option value="">— Selecciona —</option>
+      {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
+      <option value="__OTRO__">Otro (escribir a mano)…</option>
+    </select>
+  )
+}
 
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
@@ -793,7 +817,7 @@ export default function Backdatareclutamiento() {
       const fecha = r.fecha
       if (!fechaPestanas.includes(fecha)&&!nuevasFechasLocal.includes(fecha)) nuevasFechasLocal.push(fecha)
       if (!updates[fecha]) updates[fecha] = []
-      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)||updates[fecha].find(x=>x.n1===r.n1)) { omitidos++; return }
+      // Permitir duplicados: no se descartan números repetidos en la carga del sistema antiguo.
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
       updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
       leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
@@ -1096,7 +1120,7 @@ export default function Backdatareclutamiento() {
                 <span style={{fontSize:10,color:'#374151',fontWeight:600,textTransform:'none',letterSpacing:0}}>{formatFecha(fechaActiva)}</span>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:10}}>
-                <div className="bo-input-group"><label>Campaña</label><input className="form-control" value={form.campana} onChange={e=>setForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
                 <div className="bo-input-group"><label>Distrito</label>
                   <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
                     <option value="">— Seleccionar —</option>
@@ -1305,7 +1329,7 @@ export default function Backdatareclutamiento() {
                       <textarea value={masivaNums} onChange={e=>setMasivaNums(e.target.value)} rows={8} placeholder={'987654321\n976543210\n965432109'} />
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:160}}>
-                      <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><input value={masivaCamp} onChange={e=>setMasivaCamp(e.target.value)} placeholder="NKT" /></div>
+                      <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><CampanaSelect value={masivaCamp} onChange={setMasivaCamp} plain /></div>
                       <div className="bo-input-group" style={{margin:0}}><label>Asesor (opcional)</label>
                         <select value={masivaAsesor} onChange={e=>setMasivaAsesor(e.target.value)}>
                           <option value="">— Sin asignar —</option>
