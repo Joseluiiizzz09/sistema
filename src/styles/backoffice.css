@@ -660,8 +660,10 @@ body{
 .rot-asesor-row:last-child{border-bottom:none;}
 .rot-asesor-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;padding-right:8px;}
 .rot-asesor-badge{flex-shrink:0;font-weight:600;color:var(--ink-3);font-size:11px;}
-.bo-root .rot-asesor-lista{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
-.bo-root .rot-asesor-lista::-webkit-scrollbar{width:6px;height:6px;}
+.bo-root .rot-asesor-panel{height:420px;max-height:420px;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.bo-root .rot-asesor-panel>.bo-panel-title{flex:0 0 auto;background:#fff;z-index:2;}
+.bo-root .rot-asesor-lista{flex:1 1 0;height:0;min-height:0;overflow-y:scroll;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
+.bo-root .rot-asesor-lista::-webkit-scrollbar{width:9px;}
 .bo-root .rot-asesor-lista::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
 .bo-root .rot-asesor-lista::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}
 .bo-root .rot-asesor-lista::-webkit-scrollbar-thumb:hover{background:var(--brand-dark);}
