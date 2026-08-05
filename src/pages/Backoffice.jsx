@@ -543,7 +543,7 @@ const cargarLeads = useCallback(async () => {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
 
