@@ -57,6 +57,12 @@ function formatFecha(f) {
 }
 function colorAv(n)   { let s=0; for (const c of n) s+=c.charCodeAt(0); return COLORES_AV[s % COLORES_AV.length] }
 function iniciales(n) { return n.trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
+function horaAMinutos(hora) {
+  const m = String(hora || '').match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return -1
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+}
+
 function tipifBadgeClass(t) {
   if (!t) return 'b-default'
   const u = t.toUpperCase()
@@ -197,7 +203,7 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, sortHora:'' })
 
   // ── Historial / Detalles expandibles ──
   const [histOpen, setHistOpen] = useState({})
@@ -1127,19 +1133,30 @@ const cargarLeads = useCallback(async () => {
 
   // ── Computed values ───────────────────────────────────────────────────────
   const registrosActivos = baseData[fechaActiva] || []
-  const registrosFiltrados = registrosActivos.filter(r => {
-    if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
-    if (filtros.tipVend) {
-      if (filtros.tipVend === '__pendiente__') {
-        if ((r._tipifVend||'').trim() !== '') return false
-      } else {
-        if ((r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
+  const registrosFiltrados = (() => {
+    const filtered = registrosActivos.filter(r => {
+      if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
+      if (filtros.tipVend) {
+        if (filtros.tipVend === '__pendiente__') {
+          if ((r._tipifVend||'').trim() !== '') return false
+        } else {
+          if ((r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
+        }
       }
-    }
-    if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
-    if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
-    return true
-  })
+      if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
+      if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
+      return true
+    })
+    if (!filtros.sortHora) return filtered
+    return [...filtered].sort((a, b) => {
+      const ma = horaAMinutos(a.horaAsig)
+      const mb = horaAMinutos(b.horaAsig)
+      if (ma === -1 && mb === -1) return 0
+      if (ma === -1) return 1
+      if (mb === -1) return -1
+      return filtros.sortHora === 'desc' ? mb - ma : ma - mb
+    })
+  })()
 
   const statsBase = {
     total:      registrosActivos.length,
@@ -1423,7 +1440,14 @@ const cargarLeads = useCallback(async () => {
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
+              <div className="bo-input-group"><label>Ordenar hora</label>
+                <select className="form-select" value={filtros.sortHora} onChange={e=>setFiltros(p=>({...p,sortHora:e.target.value}))}>
+                  <option value="">Sin ordenar</option>
+                  <option value="desc">Mayor a menor ↓</option>
+                  <option value="asc">Menor a mayor ↑</option>
+                </select>
+              </div>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,sortHora:''})}>Limpiar filtros</button>
             </div>
 
             {/* FORMULARIO AGREGAR INDIVIDUAL */}
