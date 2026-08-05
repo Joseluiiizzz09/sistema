@@ -1338,9 +1338,9 @@ const cargarLeads = useCallback(async () => {
                         <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>
                       </div>
-                      <div className="bo-panel" style={{padding:'14px 16px'}}>
-                        <div className="bo-panel-title">Disponibilidad de asesores</div>
-                        <div className="rot-asesor-lista">
+                      <div className="bo-panel" style={{padding:'14px 16px',display:'flex',flexDirection:'column',height:'420px',minHeight:0,overflow:'hidden'}}>
+                        <div className="bo-panel-title" style={{flexShrink:0}}>Disponibilidad de asesores</div>
+                        <div className="rot-asesor-lista" style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',scrollbarWidth:'thin'}}>
                           <div className="rot-asesor-col-hdr" aria-hidden="true">
                             <span>Asesor</span><span>Registros</span>
                           </div>

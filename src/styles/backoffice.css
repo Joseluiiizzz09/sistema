@@ -660,7 +660,7 @@ body{
 .rot-asesor-row:last-child{border-bottom:none;}
 .rot-asesor-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;padding-right:8px;}
 .rot-asesor-badge{flex-shrink:0;font-weight:600;color:var(--ink-3);font-size:11px;}
-.rot-asesor-lista{max-height:360px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;}
+.rot-asesor-lista{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;}
 .rot-asesor-lista::-webkit-scrollbar{width:5px;}
 .rot-asesor-lista::-webkit-scrollbar-track{background:transparent;}
 .rot-asesor-lista::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px;}
