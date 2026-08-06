@@ -573,12 +573,12 @@ const cargarLeads = useCallback(async () => {
 
   // ── Form (agregar registro individual) ───────────────────────────────────
   async function agregarRegistro() {
-    const n1 = form.n1.trim()
+    const n1 = form.n1.replace(/\D/g, '')   // formato único: solo dígitos (999999999)
     if (!n1) { setN1Error(true); mostrarToast('El campo N1 es obligatorio'); return }
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
     const distrito = form.distrito || '—'
-    const n2       = form.n2.trim()
+    const n2       = form.n2.replace(/\D/g, '')
     const tipo_contacto = form.tipoContacto || 'LLAMADA'
     const direccion = form.direccion.trim()
     const coordenadas = form.coordenadas.trim()
