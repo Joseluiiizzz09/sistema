@@ -448,7 +448,17 @@ export default function Backoffice() {
     return null
   }
 
+  // Cambios locales recientes por lead: el polling los respeta hasta que el
+  // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
+  const pendingRef = useRef({})
+  function marcarPendiente(id, campos) {
+    if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
+    const prev = pendingRef.current[id]?.campos || {}
+    pendingRef.current[id] = { campos: { ...prev, ...campos }, ts: Date.now() }
+  }
+
   function updateReg(id, updater) {
+    if (updater && typeof updater === 'object' && !Array.isArray(updater)) marcarPendiente(id, updater)
     setBaseData(prev => {
       const next = {}
       for (const f in prev) {
@@ -485,7 +495,7 @@ const cargarLeads = useCallback(async () => {
         const fecha = normalizarFecha(l.fecha) || fechaHoy()
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
         if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha)
-        nuevoBase[fecha].push({
+        const reg = {
           id:         l.id,
           _backendId: l.id,
           campana:    l.campana || '—',
@@ -506,7 +516,20 @@ const cargarLeads = useCallback(async () => {
           _tipifHora: l.tipif_hora || '',
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
-        })
+        }
+        // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
+        const pend = pendingRef.current[l.id]
+        if (pend) {
+          const edad = Date.now() - pend.ts
+          let quedan = 0
+          for (const k in pend.campos) {
+            const exp = pend.campos[k]
+            if (exp && typeof exp === 'object') continue
+            if (reg[k] !== exp) { if (edad < 8000) { reg[k] = exp; quedan++ } }
+          }
+          if (quedan === 0 || edad >= 8000) delete pendingRef.current[l.id]
+        }
+        nuevoBase[fecha].push(reg)
       })
       const hoy = fechaHoy()
       if (!nuevasFechas.includes(hoy)) nuevasFechas.push(hoy)
