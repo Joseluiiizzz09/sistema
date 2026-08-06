@@ -144,16 +144,16 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
   useEffect(() => { setVal(value || '') }, [value])
   function commit(raw) {
     const t = (raw || '').trim()
-    if (t === '') { onChange(''); return }
+    if (t === '') { if ((value || '') !== '') onChange(''); return }
     const m = asesores.find(a => (a.nombre || '').toLowerCase() === t.toLowerCase())
-    if (m) { onChange(m.nombre); setVal(m.nombre) }
+    if (m) { setVal(m.nombre); if (m.nombre !== (value || '')) onChange(m.nombre) }
     else setVal(value || '')
   }
   return (
     <input list="asesores-datalist" value={val} disabled={disabled} title={title}
       className={plain ? undefined : 'bo-sel-compact sel-asesor-tabla'}
       placeholder="Buscar asesor…"
-      onChange={e => { setVal(e.target.value); const m = asesores.find(a => a.nombre === e.target.value); if (m) onChange(m.nombre) }}
+      onChange={e => setVal(e.target.value)}
       onBlur={e => commit(e.target.value)} />
   )
 }
@@ -665,6 +665,7 @@ const cargarLeads = useCallback(async () => {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
+    if ((nuevoAsesor || '') === (reg.asesor || '')) return  // mismo asesor: evita reasignacion fantasma en el historial
     const hora = horaAhora()
     if (nuevoAsesor && esLeadProhibido(reg)) {
       mostrarToast(`N1 ${reg.n1} bloqueado: ${reg._tipifVend}`)
