@@ -203,7 +203,7 @@ export default function Validacion() {
 
   // ── Polling compartido: todos los validadores ven el mismo estado ──
   useEffect(() => {
-    const interval = setInterval(cargarVentas, 5000)
+    const interval = setInterval(cargarVentas, 2000)
     return () => clearInterval(interval)
   }, [cargarVentas])
 

@@ -402,9 +402,9 @@ export default function Dashboard() {
     cargarLeadsAsesor()
     cargarVentasSubidas()
     cargarFrasesSuper()
-    const t1 = setInterval(cargarLeadsAsesor,    3000)
+    const t1 = setInterval(cargarLeadsAsesor,    1000)
     const t2 = setInterval(cargarFrasesSuper,   30000)
-    const t3 = setInterval(cargarVentasSubidas,  3000)
+    const t3 = setInterval(cargarVentasSubidas,  1000)
     const sincronizarAlVolver = () => {
       if (document.visibilityState === 'visible') {
         cargarLeadsAsesor()

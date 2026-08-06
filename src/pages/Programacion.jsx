@@ -137,7 +137,7 @@ export default function Programacion() {
 
   useEffect(() => {
     cargarVentas()
-    const timer = setInterval(cargarVentas, 3000)
+    const timer = setInterval(cargarVentas, 1000)
     return () => clearInterval(timer)
   }, [cargarVentas])
 

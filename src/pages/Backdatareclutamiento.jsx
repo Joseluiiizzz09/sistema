@@ -444,7 +444,7 @@ export default function Backdatareclutamiento() {
     cargarAsesores()
     cargarLeads()
     cargarReclutados()
-    const t = setInterval(cargarLeads, 3000)
+    const t = setInterval(cargarLeads, 1000)
     return () => clearInterval(t)
   }, [cargarAsesores, cargarLeads, cargarReclutados])
 

@@ -81,7 +81,7 @@ export default function Login() {
     setWelcome({ primerNombre, femenino: fem, cargo: CARGO_LABELS[user.cargo] || user.cargo });
 
     const ruta = RUTAS[user.cargo] || "/dashboard";
-    setTimeout(() => navigate(ruta, { replace: true }), 2200);
+    navigate(ruta, { replace: true });
   };
 
   const completarLogin = (data) => {
