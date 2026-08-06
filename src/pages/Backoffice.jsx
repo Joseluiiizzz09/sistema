@@ -578,7 +578,11 @@ const cargarLeads = useCallback(async () => {
       setBaseData(prevBase => {
         const merged = { ...nuevoBase }
         for (const f in prevBase) {
-          if (!merged[f]) merged[f] = prevBase[f]
+          if (!merged[f]) { merged[f] = prevBase[f]; continue }
+          // Conserva filas locales aún no guardadas (sin _backendId) que el polling
+          // todavía no ve, para que no parpadeen (aparecen y desaparecen).
+          const locales = prevBase[f].filter(r => !r._backendId)
+          if (locales.length) merged[f] = [...merged[f], ...locales]
         }
         return merged
       })
@@ -711,7 +715,7 @@ const cargarLeads = useCallback(async () => {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
 
@@ -801,8 +805,6 @@ const cargarLeads = useCallback(async () => {
         derivadoPor:'',
         historial:  data.historial || reg.historial,
         rotaciones: (reg.rotaciones || 0) + 1,
-        _tipifVend: '',
-        _tipifHora: '',
       })
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       mostrarToast(data.mensaje || `Registro rotado a ${rotModalAsesor}`)
@@ -1904,6 +1906,13 @@ const cargarLeads = useCallback(async () => {
                                     )
                                   })
                                 })()}
+                                <div style={{marginTop:10, textAlign:'right'}}>
+                                  <button type="button"
+                                    onClick={()=>{ if(window.confirm(`¿Eliminar el número ${r.n1}? Se borrará por completo y no se puede deshacer.`)) eliminarReg(r.id) }}
+                                    style={{fontSize:11, padding:'4px 12px', border:'1px solid #ef4444', color:'#ef4444', background:'#fff', borderRadius:6, cursor:'pointer', fontWeight:600}}>
+                                    Eliminar número
+                                  </button>
+                                </div>
                               </div>
                             </td>
                           </tr>
