@@ -121,6 +121,23 @@ const BL_TIPIF_COLORS = {
   'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
 }
 
+// Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
+const TIPIF_VEND_FUERTE = {
+  'VENTA CERRADA':'#16a34a', 'INSTALADO':'#15803d', 'CONTESTA':'#22c55e',
+  'CONTACTO CON TERCEROS':'#0d9488', 'SERVICIO ACTIVO':'#1d4ed8', 'PREVENTA':'#2563eb',
+  'CORTA LLAMADA':'#0284c7', 'AGENDADO':'#ea580c', 'BUZON DE VOZ':'#f97316',
+  'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
+  'EN EJECUCION':'#92400e', 'DESEA MOVIL':'#b45309', 'DERIVADO':'#7c3aed',
+  'NO CALIFICA':'#f43f5e', 'SIN COBERTURA':'#dc2626', 'EDIFICIO NO LIBERADO':'#b91c1c',
+  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b',
+}
+function estiloTipifVend(v) {
+  const c = TIPIF_VEND_FUERTE[v]
+  return c
+    ? { flex:1, minWidth:0, background:c, color:'#fff', fontWeight:700, border:`1px solid ${c}`, borderRadius:6 }
+    : { flex:1, minWidth:0, background:'#fff', color:'inherit', fontWeight:'inherit', border:'1px solid #e5e7eb' }
+}
+
 function TipifVendBadge({ tipif, hora }) {
   if (!tipif) return <span className="tipif-empty">— Pendiente —</span>
   const [bg, color] = TIPIF_VEND_STYLES[tipif] || ['#f3f4f6','#374151']
@@ -1702,9 +1719,9 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
                                 <select className="bo-sel-compact sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                  style={{flex:1,minWidth:0,border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
-                                  <option value="">— Pendiente —</option>
-                                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                                  style={estiloTipifVend(r._tipifVend)}>
+                                  <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
+                                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                 </select>
                                 {r._tipifVend==='VENTA CERRADA'&&extraerDni(r.obsAsesor)&&(
                                   <button type="button" className="btn-dni-cuaderno"
