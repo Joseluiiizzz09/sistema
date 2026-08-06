@@ -323,7 +323,9 @@ export default function Dashboard() {
   }, [tab])
 
   // ── API: Leads ───────────────────────────────────────────────────────────
+  const ultEditRef = useRef(0)
   const cargarLeadsAsesor = useCallback(async () => {
+    if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
     try {
       const res  = await fetch(`${API}/leads${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
@@ -588,6 +590,7 @@ export default function Dashboard() {
   function cerrarModales() { setModalTip(false); setModalVenta(false); setTipSearch('') }
 
   async function tipificar(tipo) {
+    ultEditRef.current = Date.now()
     if (tipo === 'VENTA CERRADA') {
       const sel = seleccionado
       cerrarModales()
@@ -619,6 +622,7 @@ export default function Dashboard() {
   }
 
   function guardarObs(i, valor) {
+    ultEditRef.current = Date.now()
     setClientes(prev => {
       const u = [...prev]; u[i] = { ...u[i], obs:valor }; return u
     })
