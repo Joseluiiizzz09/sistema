@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -140,21 +141,54 @@ function estiloTipifVend(v) {
 
 // Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
 function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
-  const [val, setVal] = useState(value || '')
-  useEffect(() => { setVal(value || '') }, [value])
-  function commit(raw) {
-    const t = (raw || '').trim()
-    if (t === '') { if ((value || '') !== '') onChange(''); return }
-    const m = asesores.find(a => (a.nombre || '').toLowerCase() === t.toLowerCase())
-    if (m) { setVal(m.nombre); if (m.nombre !== (value || '')) onChange(m.nombre) }
-    else setVal(value || '')
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 220 })
+  const btnRef = useRef(null)
+  const boxRef = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    function onDoc(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target) && btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  function abrir() {
+    if (disabled) return
+    const r = btnRef.current.getBoundingClientRect()
+    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 230) })
+    setQ(''); setOpen(true)
   }
+  function elegir(nombre) {
+    if ((nombre || '') !== (value || '')) onChange(nombre)
+    setOpen(false)
+  }
+  const lista = asesores.filter(a => (a.nombre || '').toLowerCase().includes(q.trim().toLowerCase()))
   return (
-    <input list="asesores-datalist" value={val} disabled={disabled} title={title}
-      className={plain ? undefined : 'bo-sel-compact sel-asesor-tabla'}
-      placeholder="Buscar asesor…"
-      onChange={e => setVal(e.target.value)}
-      onBlur={e => commit(e.target.value)} />
+    <>
+      <button ref={btnRef} type="button" disabled={disabled} onClick={abrir} title={title}
+        className={plain ? undefined : 'bo-sel-compact sel-asesor-tabla'}
+        style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        {value || '— Asignar asesor —'}
+      </button>
+      {open && createPortal(
+        <div ref={boxRef} style={{ position:'fixed', top:pos.top, left:pos.left, width:pos.width, zIndex:9999, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.16)', padding:8 }}>
+          <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar asesor…"
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
+            style={{ width:'100%', padding:'6px 8px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, marginBottom:6, boxSizing:'border-box' }} />
+          <div style={{ maxHeight:210, overflowY:'auto' }}>
+            <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>— Sin asignar —</div>
+            {lista.map(a=>(
+              <div key={a.id} onMouseDown={e=>e.preventDefault()} onClick={()=>elegir(a.nombre)}
+                style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, borderRadius:6, fontWeight: a.nombre===value?700:400, background: a.nombre===value?'#fef2f2':'transparent' }}>
+                {a.nombre}
+              </div>
+            ))}
+            {lista.length===0 && <div style={{ padding:'6px 8px', fontSize:11, color:'#9ca3af' }}>Sin resultados</div>}
+          </div>
+        </div>, document.body)}
+    </>
   )
 }
 
@@ -676,7 +710,7 @@ const cargarLeads = useCallback(async () => {
       if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
       return
     }
-    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
+    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
@@ -1846,30 +1880,30 @@ const cargarLeads = useCallback(async () => {
                             <td colSpan={10}>
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
-                                {r.historial.length
-                                  ? r.historial.map((h,hi)=>(
-                                      <div key={hi} className="hist-item">
-                                        <div className="hist-dot" style={{background:DOT_COLORS[hi%DOT_COLORS.length]}} />
+                                {(() => {
+                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO')
+                                  if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
+                                  return cola.map((h,ci)=>{
+                                    const sig = cola[ci+1]
+                                    const tipif = ci===cola.length-1
+                                      ? (r._tipifVend || '')
+                                      : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
+                                    const asignadoPor = h.tipo==='ROTACION'
+                                      ? (h.rotadoPor || '—')
+                                      : (h.reasignadoPor || h.motivo || '—')
+                                    return (
+                                      <div key={ci} className="hist-item">
+                                        <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length]}} />
                                         <div className="hist-content">
-                                          <div className="hist-title">
-                                            {(h.tipo==='ROTACION' || h.asesorAnterior)
-                                              ? <><strong>{h.asesorAnterior||'?'}</strong><span className="hist-arrow"> → </span><strong>{h.asesor}</strong></>
-                                              : <strong>{h.asesor||'—'}</strong>
-                                            }
-                                          </div>
-                                          <div className="hist-meta">{h.hora}{h.hora&&h.fecha?' · ':''}{h.fecha}</div>
-                                          {h.motivo && <div className="hist-sub">{h.motivo}</div>}
-                                          {h.tipif_vend && <div className="hist-sub" style={{color:'#065f46',fontWeight:700}}>{h.tipif_vend}</div>}
-                                          {h.rotadoPor && <div className="hist-sub">Rotado por: {h.rotadoPor}</div>}
-                                          {h.reasignadoPor && <div className="hist-sub">Reasignado por: {h.reasignadoPor}</div>}
-                                          {h.tipo==='ROTACION'&&h.tipifBackAntes && <div className="hist-sub">Estado anterior: {h.tipifBackAntes}</div>}
-                                          {h.tipo==='TIPIF_BACK' && <div className="hist-sub">{h.tipifBackAntes||'—'} → {h.tipifBackNueva||'—'}</div>}
-                                          {h.tipo==='DERIVADO'&&h.derivadoPor && <div className="hist-sub">Por: {h.derivadoPor}</div>}
+                                          <div className="hist-title"><strong>{h.asesor||'—'}</strong></div>
+                                          <div className="hist-meta">Asignado: {h.hora||'—'}{h.hora&&h.fecha?' · ':''}{h.fecha||''}</div>
+                                          <div className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></div>
+                                          <div className="hist-sub">Asignado por: {asignadoPor}</div>
                                         </div>
                                       </div>
-                                    ))
-                                  : <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
-                                }
+                                    )
+                                  })
+                                })()}
                               </div>
                             </td>
                           </tr>
