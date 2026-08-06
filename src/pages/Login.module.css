@@ -107,20 +107,17 @@
 
 /* ===== LOGO ===== */
 .logoCircle {
-  width: 80px; height: 80px;
-  background: #fff;
-  border-radius: 50%;
+  width: 96px; height: 96px;
   position: absolute;
-  top: -40px; left: 50%;
+  top: -48px; left: 50%;
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,.12);
   animation: floatLogo 4s ease-in-out infinite;
 }
-.logoCircle img { width: 60px; height: 60px; object-fit: contain; }
+.logoCircle img { width: 90px; height: 90px; object-fit: contain; }
 @keyframes floatLogo {
   0%,100% { transform: translateX(-50%) translateY(0) }
   50% { transform: translateX(-50%) translateY(-6px) }
