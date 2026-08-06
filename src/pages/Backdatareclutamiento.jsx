@@ -356,7 +356,20 @@ export default function Backdatareclutamiento() {
     return null
   }
 
+  // Cambios locales recientes por lead (clave = _backendId estable). El polling
+  // los respeta hasta que el backend los confirme o pasen 8s, evitando parpadeo.
+  const pendingRef = useRef({})
+  function marcarPendiente(id, campos) {
+    if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
+    let key = null
+    for (const f in baseData) { const r = (baseData[f]||[]).find(x => x.id === id); if (r) { key = r._backendId; break } }
+    if (!key) return
+    const prev = pendingRef.current[key]?.campos || {}
+    pendingRef.current[key] = { campos: { ...prev, ...campos }, ts: Date.now() }
+  }
+
   function updateReg(id, updater) {
+    if (updater && typeof updater === 'object' && !Array.isArray(updater)) marcarPendiente(id, updater)
     setBaseData(prev => {
       const next = {}
       for (const f in prev) {
@@ -393,7 +406,7 @@ export default function Backdatareclutamiento() {
         const fecha = normalizarFecha(l.fecha) || fechaHoy()
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
         if (!nuevasFechas.includes(fecha)) nuevasFechas.push(fecha)
-        nuevoBase[fecha].push({
+        const reg = {
           id:         idCntRef.current++,
           _backendId: l.id,
           campana:    l.campana || '—',
@@ -412,7 +425,20 @@ export default function Backdatareclutamiento() {
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
-        })
+        }
+        // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
+        const pend = pendingRef.current[l.id]
+        if (pend) {
+          const edad = Date.now() - pend.ts
+          let quedan = 0
+          for (const k in pend.campos) {
+            const exp = pend.campos[k]
+            if (exp && typeof exp === 'object') continue
+            if (reg[k] !== exp) { if (edad < 8000) { reg[k] = exp; quedan++ } }
+          }
+          if (quedan === 0 || edad >= 8000) delete pendingRef.current[l.id]
+        }
+        nuevoBase[fecha].push(reg)
       })
       const hoy = fechaHoy()
       if (!nuevasFechas.includes(hoy)) nuevasFechas.push(hoy)
