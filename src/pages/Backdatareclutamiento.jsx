@@ -1317,6 +1317,13 @@ export default function Backdatareclutamiento() {
                                     )
                                   })
                                 })()}
+                                <div style={{marginTop:10, textAlign:'right'}}>
+                                  <button type="button"
+                                    onClick={()=>{ if(window.confirm(`¿Eliminar el número ${r.n1}? Se borrará por completo y no se puede deshacer.`)) eliminarReg(r.id) }}
+                                    style={{fontSize:11, padding:'4px 12px', border:'1px solid #ef4444', color:'#ef4444', background:'#fff', borderRadius:6, cursor:'pointer', fontWeight:600}}>
+                                    Eliminar número
+                                  </button>
+                                </div>
                               </div>
                             </td>
                           </tr>
