@@ -299,6 +299,7 @@ export default function Backoffice() {
   const [rotCant,       setRotCant]       = useState(4)
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
+  const [rotFiltroTipif,setRotFiltroTipif]= useState('')
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
   const [rotRotados,    setRotRotados]    = useState(0)
@@ -1296,7 +1297,9 @@ const cargarLeads = useCallback(async () => {
   const rendTotConv   = rendTotLeads ? Math.round(rendTotVentas/rendTotLeads*100) : 0
   const rendMaxVentas = Math.max(...rendData.map(r=>r.ventas), 1)
 
-  const allRotLeads    = rotPanelOpen ? buildRotLeads() : []
+  const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
+  const rotTipifsDisp  = [...new Set(allRotLeadsRaw.map(l=>l.estado||'NUEVO'))].sort()
+  const allRotLeads    = rotFiltroTipif ? allRotLeadsRaw.filter(l=>(l.estado||'NUEVO')===rotFiltroTipif) : allRotLeadsRaw
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
   const rotStatNoAptos = allRotLeads.length - rotStatAptos
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
@@ -1448,7 +1451,12 @@ const cargarLeads = useCallback(async () => {
                             <option value="">Todas las fechas</option>
                             {rotFechasDisp.map(f=><option key={f} value={f}>{formatFecha(f)} ({(baseData[f]||[]).length})</option>)}
                           </select>
-                          <button onClick={()=>{ setRotFiltroFecha(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
+                          <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Tipificación:</label>
+                          <select value={rotFiltroTipif} onChange={e=>{ setRotFiltroTipif(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
+                            <option value="">Todas</option>
+                            {rotTipifsDisp.map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
                       <div className="rot-table">
@@ -1474,7 +1482,7 @@ const cargarLeads = useCallback(async () => {
                                       <td><div style={{fontFamily:'monospace',fontWeight:700,color:'#111827',fontSize:12}}>{l.tel}</div><div style={{fontSize:10,color:'#9ca3af',marginTop:1}}>{l.campana} · {l.n2||'—'}</div></td>
                                       <td>{esFechaHoy ? <span style={{background:'#dcfce7',color:'#166534',fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99}}>HOY</span> : <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:9,padding:'1px 6px',borderRadius:99}}>{formatFecha(l.fecha)}</span>}</td>
                                       <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'NUEVO'}</span></td>
-                                      <td style={{fontSize:12}}>{l.asesor}</td>
+                                      <td style={{fontSize:12}}>{l.asesor||'—'}{l.histAsesores.length>0&&<div style={{fontSize:9,color:'#9ca3af',marginTop:1}} title={l.histAsesores.join(' → ')}>Tuvo: {l.histAsesores.join(', ')}</div>}</td>
                                       <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
                                       <td className={!rotAsesor?'':tiempo?'timer-ok':'timer-fail'}>{tiempo!==false?`Hace ${rotTxt(l.ultimaAsig)}`:rotFaltanTxt(mins)}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
@@ -1776,7 +1784,7 @@ const cargarLeads = useCallback(async () => {
                               <div className="detalles-inner">
                                 <div className="det-campo det-distrito">
                                   <label>Distrito</label>
-                                  <span>{r.distrito||'—'}</span>
+                                  <input defaultValue={r.distrito||''} onBlur={e=>guardarDatosBack(r.id,{distrito:e.target.value.trim()})} placeholder="Distrito" maxLength={100}/>
                                 </div>
                                 <div className="det-campo">
                                   <label>Dirección</label>
