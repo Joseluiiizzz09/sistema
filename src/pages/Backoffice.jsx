@@ -138,6 +138,26 @@ function estiloTipifVend(v) {
     : { flex:1, minWidth:0, background:'#fff', color:'inherit', fontWeight:'inherit', border:'1px solid #e5e7eb' }
 }
 
+// Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
+function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
+  const [val, setVal] = useState(value || '')
+  useEffect(() => { setVal(value || '') }, [value])
+  function commit(raw) {
+    const t = (raw || '').trim()
+    if (t === '') { onChange(''); return }
+    const m = asesores.find(a => (a.nombre || '').toLowerCase() === t.toLowerCase())
+    if (m) { onChange(m.nombre); setVal(m.nombre) }
+    else setVal(value || '')
+  }
+  return (
+    <input list="asesores-datalist" value={val} disabled={disabled} title={title}
+      className={plain ? undefined : 'bo-sel-compact sel-asesor-tabla'}
+      placeholder="Buscar asesor…"
+      onChange={e => { setVal(e.target.value); const m = asesores.find(a => a.nombre === e.target.value); if (m) onChange(m.nombre) }}
+      onBlur={e => commit(e.target.value)} />
+  )
+}
+
 function TipifVendBadge({ tipif, hora }) {
   if (!tipif) return <span className="tipif-empty">— Pendiente —</span>
   const [bg, color] = TIPIF_VEND_STYLES[tipif] || ['#f3f4f6','#374151']
@@ -1711,14 +1731,9 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Asesor asignado */}
                             <td>
-                              <select className="bo-sel-compact sel-asesor-tabla" value={r.asesor} disabled={esExclusiva}
+                              <AsesorBuscador value={r.asesor} asesores={asesores} disabled={esExclusiva}
                                 title={esExclusiva?`Prohibido: ${r._tipifVend}`:''}
-                                onChange={e=>reasignarReg(r.id,e.target.value)}>
-                                <option value="">— Sin asignar —</option>
-                                {/* Asesor histórico importado que ya no es usuario activo */}
-                                {r.asesor&&!asesores.some(a=>a.nombre===r.asesor)&&<option value={r.asesor}>{r.asesor}</option>}
-                                {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                              </select>
+                                onChange={v=>reasignarReg(r.id,v)} />
                               {r.sinAsignar&&r.asesor&&<span style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:600,marginTop:1}}>histórico</span>}
                               {r.sinAsignar&&!r.asesor&&<span style={{display:'block',fontSize:9,color:'#c2410c',fontWeight:700,marginTop:1}}>sin asig.</span>}
                             </td>
@@ -2460,6 +2475,11 @@ const cargarLeads = useCallback(async () => {
       )}
 
       {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
+
+      {/* Lista compartida de asesores para el buscador de asignación */}
+      <datalist id="asesores-datalist">
+        {asesores.map(a=><option key={a.id} value={a.nombre} />)}
+      </datalist>
 
       {/* ══ POPOVER DNI ══════════════════════════════════════════════════════ */}
       {dniModal&&(

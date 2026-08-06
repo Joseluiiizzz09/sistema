@@ -31,6 +31,25 @@ function CampanaSelect({ value, onChange, plain }) {
   )
 }
 
+// Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
+function AsesorBuscador({ value, asesores, disabled, onChange, title }) {
+  const [val, setVal] = useState(value || '')
+  useEffect(() => { setVal(value || '') }, [value])
+  function commit(raw) {
+    const t = (raw || '').trim()
+    if (t === '') { onChange(''); return }
+    const m = asesores.find(a => (a.nombre || '').toLowerCase() === t.toLowerCase())
+    if (m) { onChange(m.nombre); setVal(m.nombre) }
+    else setVal(value || '')
+  }
+  return (
+    <input list="asesores-datalist" value={val} disabled={disabled} title={title}
+      className="sel-asesor-tabla" placeholder="Buscar asesor…"
+      onChange={e => { setVal(e.target.value); const m = asesores.find(a => a.nombre === e.target.value); if (m) onChange(m.nombre) }}
+      onBlur={e => commit(e.target.value)} />
+  )
+}
+
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
@@ -1143,6 +1162,9 @@ export default function Backdatareclutamiento() {
             </div>
 
             {/* TABLA BASE */}
+            <datalist id="asesores-datalist">
+              {asesores.map(a=><option key={a.id} value={a.nombre} />)}
+            </datalist>
             <div className="tabla-desliza-aviso">← Desliza horizontalmente para ver todas las columnas →</div>
             <div className="base-tabla-wrap">
               <table className="base-tabla table table-sm table-hover">
@@ -1168,10 +1190,9 @@ export default function Backdatareclutamiento() {
                             <td><div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div></td>
                             <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
                             <td>
-                              <select className="sel-asesor-tabla" value={r.asesor} disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''} onChange={e=>reasignarReg(r.id,e.target.value)}>
-                                <option value="">— Sin asignar —</option>
-                                {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                              </select>
+                              <AsesorBuscador value={r.asesor} asesores={asesores} disabled={esExclusiva}
+                                title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''}
+                                onChange={v=>reasignarReg(r.id,v)} />
                             </td>
                             <td>{r.horaAsig ? <><span className="hora-cell">{r.horaAsig}</span> <span className="hora-date">{formatFecha(fechaActiva)}</span></> : <span className="hora-empty">—</span>}</td>
                             {filtros.verTipVend && (
