@@ -393,3 +393,11 @@ body {
   .media-viewer-audio audio { min-width: 0; }
   .media-viewer-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
+
+/* Logo del topbar en todos los modulos: sin circulo blanco ni aro, solo la esfera */
+.module-topbar-standard .logo-circle,
+.logo-circle {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
