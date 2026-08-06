@@ -321,7 +321,9 @@ export default function DashboardReclutamiento() {
   }, [tab])
 
   // ── API: Leads ───────────────────────────────────────────────────────────
+  const ultEditRef = useRef(0)
   const cargarLeadsAsesor = useCallback(async () => {
+    if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
     try {
       const res  = await fetch(`${API}/leads-reclutamiento${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
@@ -575,6 +577,7 @@ export default function DashboardReclutamiento() {
   function cerrarModales() { setModalTip(false); setModalVenta(false); setTipSearch('') }
 
   async function tipificar(tipo) {
+    ultEditRef.current = Date.now()
     if (tipo === 'VENTA CERRADA') {
       const sel = seleccionado
       cerrarModales()
@@ -606,6 +609,7 @@ export default function DashboardReclutamiento() {
   }
 
   function guardarObs(i, valor) {
+    ultEditRef.current = Date.now()
     setClientes(prev => {
       const u = [...prev]; u[i] = { ...u[i], obs:valor }; return u
     })
