@@ -202,8 +202,11 @@ function limpiarN2Legacy(raw) {
 // Extrae DNI de 8 dígitos de obs_asesor (ej: "DNI: 60975222", "DNI 60975222")
 function extraerDni(obs) {
   if (!obs) return null
-  const m = String(obs).match(/\bDNI[:\s]+(\d{8})\b/i)
-  return m ? m[1] : null
+  const s = String(obs).trim()
+  const m = s.match(/\bDNI[:\s]+(\d{6,12})\b/i)
+  if (m) return m[1]
+  const m2 = s.match(/^(\d{6,12})$/)   // comentario que es solo el número de documento
+  return m2 ? m2[1] : null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -255,7 +258,23 @@ export default function Backoffice() {
   // ── Historial / Detalles expandibles ──
   const [histOpen, setHistOpen] = useState({})
   const [detOpen,  setDetOpen]  = useState({})
-  const [dniModal, setDniModal] = useState(null) // { dni, top, left }
+  const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
+
+  // Guardar (editar) el DNI/comentario de una venta cerrada desde el popover del libro verde
+  async function guardarDni() {
+    const id  = dniModal?.id
+    const bid = dniModal?.bid
+    const val = String(dniModal?.editVal || '').replace(/\D/g, '')
+    if (!id) return
+    setBaseData(prev => {
+      const next = { ...prev }
+      for (const f in next) next[f] = (next[f] || []).map(r => r.id === id ? { ...r, obsAsesor: val } : r)
+      return next
+    })
+    if (bid) { try { await fetch(`${API}/leads/${bid}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs: val }) }) } catch(e) {} }
+    setDniModal(p => p ? { ...p, dni: val, editing: false } : null)
+    mostrarToast('DNI actualizado')
+  }
 
   // ── Rotación panel ──
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
@@ -1692,7 +1711,7 @@ const cargarLeads = useCallback(async () => {
                                     title="Ver DNI de cierre"
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
-                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
+                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
                                     }}>
                                     <NotebookIcon/>
                                   </button>
@@ -2425,8 +2444,24 @@ const cargarLeads = useCallback(async () => {
             onKeyDown={e=>e.key==='Escape'&&setDniModal(null)}>
             <button type="button" className="dni-popover-close" onClick={()=>setDniModal(null)} aria-label="Cerrar">×</button>
             <div className="dni-popover-label">DNI DE LA VENTA</div>
-            <div className="dni-popover-value">{dniModal.dni}</div>
-            <button type="button" className="dni-copy-btn" onClick={()=>{ copiarNumero(dniModal.dni); setDniModal(null) }}>Copiar</button>
+            {dniModal.editing ? (
+              <>
+                <input className="dni-popover-value" style={{width:'100%',textAlign:'center',border:'1px solid #bbf7d0',borderRadius:6,padding:'4px 6px',outline:'none'}}
+                  value={dniModal.editVal||''} autoFocus maxLength={12}
+                  onChange={e=>setDniModal(p=>({...p,editVal:e.target.value.replace(/\D/g,'')}))}
+                  onKeyDown={e=>{ if(e.key==='Enter') guardarDni() }} />
+                <button type="button" className="dni-copy-btn" onClick={guardarDni}>Guardar</button>
+              </>
+            ) : (
+              <>
+                <div className="dni-popover-value" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                  <span>{dniModal.dni||'—'}</span>
+                  <button type="button" title="Editar DNI" onClick={()=>setDniModal(p=>({...p,editing:true,editVal:p.dni||''}))}
+                    style={{border:'none',background:'transparent',cursor:'pointer',fontSize:14,padding:0,lineHeight:1}}>✏️</button>
+                </div>
+                <button type="button" className="dni-copy-btn" onClick={()=>{ copiarNumero(dniModal.dni); setDniModal(null) }}>Copiar</button>
+              </>
+            )}
           </div>
         </>
       )}
