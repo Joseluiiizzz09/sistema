@@ -324,7 +324,7 @@ export default function Validacion() {
             <img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='NC'}} />
           </div>
           <div className="brand-text">
-            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
+            <h1>KRONO</h1>
             <span className="brand-sub">Validación de Ventas</span>
           </div>
         </div>

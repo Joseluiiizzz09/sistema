@@ -781,10 +781,10 @@ export default function DashboardReclutamiento() {
       <div className="topbar">
         <div className="brand">
           <div className="logo-circle">
-            <img src="/assets/logo3.png" alt="Netcontact" />
+            <img src="/assets/logo3.png" alt="KRONO" />
           </div>
           <div className="brand-text">
-            <h1>Netcontact</h1>
+            <h1>KRONO</h1>
             <span className="brand-sub">Sistema de llamadas Reclutamiento</span>
           </div>
         </div>

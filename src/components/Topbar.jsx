@@ -16,11 +16,11 @@ export default function Topbar({ subtitulo, children }) {
     <div className={styles.topbar}>
       <div className={styles.brand}>
         <div className={styles.logoCircle}>
-          <img src="/assets/logo3.png" alt="Netcontact" />
+          <img src="/assets/logo3.png" alt="KRONO" />
         </div>
         <div className={styles.brandText}>
           <h1>
-            NET<span className={styles.dot} /><span className={styles.red}>CONTACT</span>
+            KRONO
           </h1>
           {subtitulo && <span className={styles.brandSub}>{subtitulo}</span>}
         </div>
