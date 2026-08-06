@@ -246,7 +246,7 @@ export default function Backoffice() {
     setTableSort(prev => {
       const firstDir = { tipif:'az', hora:'desc', rots:'asc' }[col]
       if (prev.col !== col) return { col, dir: firstDir }
-      const seq = { tipif:['az',null], hora:['desc','asc',null], rots:['asc','desc',null] }[col]
+      const seq = { tipif:['az','za',null], hora:['desc','asc',null], rots:['asc','desc',null] }[col]
       const next = seq[(seq.indexOf(prev.dir) + 1) % seq.length]
       return next ? { col, dir: next } : { col: null, dir: null }
     })
@@ -1203,7 +1203,8 @@ const cargarLeads = useCallback(async () => {
         if (!ta && !tb) return 0
         if (!ta) return 1
         if (!tb) return -1
-        return ta.localeCompare(tb, 'es')
+        const cmp = ta.localeCompare(tb, 'es')
+        return tableSort.dir === 'za' ? -cmp : cmp
       }
       if (tableSort.col === 'hora') {
         const ma = horaAMinutos(a.horaAsig)
@@ -1594,8 +1595,8 @@ const cargarLeads = useCallback(async () => {
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='tipif'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('tipif')} title="Ordenar tipificación" aria-label="Ordenar tipificación alfabéticamente"
-                        aria-sort={tableSort.col==='tipif'?'ascending':'none'}>
-                        Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'&&tableSort.dir==='az'?'down':null}/>
+                        aria-sort={tableSort.col==='tipif'?(tableSort.dir==='az'?'ascending':tableSort.dir==='za'?'descending':'none'):'none'}>
+                        Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'?(tableSort.dir==='az'?'down':tableSort.dir==='za'?'up':null):null}/>
                       </button>
                     </th>
                     <th>
