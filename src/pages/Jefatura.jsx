@@ -925,7 +925,7 @@ export default function Jefatura() {
           <div className="brand">
           <div className="logo-circle"><img src="/assets/logo3.png" alt="NC" onError={e=>{e.target.parentNode.textContent='NC'}} /></div>
           <div className="brand-text">
-            <h1>KRONO</h1>
+            <img src="/assets/krono-wordmark.png" alt="KRONO" style={{height:22,width:"auto",display:"block"}} />
             <span className="brand-sub">Panel de Jefatura</span>
           </div>
           </div>
