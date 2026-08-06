@@ -346,8 +346,19 @@ export default function Dashboard() {
       setClientes(prev => {
         const ea = {}
         prev.forEach(c => { ea[c.id] = { estado: c.estado, obs: c.obs } })
+        const miNombre = (sesion?.nombre || '').trim()
         return leadsAsignados.map(l => {
           const p = ea[l.id] || {}
+          // ¿Soy el asesor actual del número o solo lo trabajé antes (registro)?
+          const soyActual = !miNombre || (l.asesor_nombre || '').trim() === miNombre
+          let miTipif = ''
+          if (soyActual) {
+            miTipif = l.tipif_vend || ''
+          } else {
+            const hist = Array.isArray(l.historial) ? l.historial : []
+            const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
+            miTipif = ent?.tipifVendAntes || ''
+          }
           return {
             id:       l.id,
             telefono: l.n1,
@@ -358,9 +369,10 @@ export default function Dashboard() {
             obsBack: l.obs_back || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
-            estado:   l.tipif_vend && l.tipif_vend !== '' ? l.tipif_vend : (l.tipif_back || p.estado || 'NUEVO'),
+            estado:   miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO'),
             derivadoPor: l.derivado_por_nombre || '',
-            obs:      l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || ''),
+            obs:      soyActual ? (l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')) : (l.obs_asesor || ''),
+            _soloLectura: !soyActual,   // ya no es su número: registro de lo trabajado
           }
         })
       })
@@ -591,6 +603,11 @@ export default function Dashboard() {
 
   async function tipificar(tipo) {
     ultEditRef.current = Date.now()
+    if (seleccionado !== null && clientes[seleccionado]?._soloLectura) {
+      mostrarToast('Este número ya no está asignado a ti — es tu registro de lo trabajado')
+      cerrarModales()
+      return
+    }
     if (tipo === 'VENTA CERRADA') {
       const sel = seleccionado
       cerrarModales()
