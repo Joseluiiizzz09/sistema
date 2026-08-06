@@ -440,7 +440,7 @@ export default function Grabaciones() {
             <img src="/assets/logo3.png" alt="NC" onError={e=>{ e.target.parentNode.textContent='NC' }} />
           </div>
           <div className="brand-text">
-            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
+            <h1>KRONO</h1>
             <span className="brand-sub">Grabaciones</span>
           </div>
         </div>

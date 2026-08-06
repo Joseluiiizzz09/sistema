@@ -460,7 +460,7 @@ export default function Supervisor() {
             <img src="/assets/logo3.png" alt="NC" style={{width:26,height:26,objectFit:'contain'}} />
           </div>
           <div className="topbar-brand-text">
-            <h1>NET<span className="dot" /><span className="red">CONTACT</span></h1>
+            <h1>KRONO</h1>
             <span className="brand-sub">Supervisor</span>
           </div>
           <button

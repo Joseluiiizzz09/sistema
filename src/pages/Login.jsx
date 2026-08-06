@@ -52,7 +52,7 @@ export default function Login() {
   /* ===== SALUDO DINÁMICO ===== */
   const valUpper = usuario.trim().toUpperCase();
   const femenino = valUpper.endsWith("A");
-  const saludoTxt = femenino ? "Bienvenida a Netcontact" : "Bienvenido a Netcontact";
+  const saludoTxt = femenino ? "Bienvenida a KRONO" : "Bienvenido a KRONO";
   const nombreTxt = usuario.trim().length < 2 ? "..." : valUpper;
 
   /* ===== Si ya hay sesión activa → redirigir ===== */
@@ -199,7 +199,7 @@ export default function Login() {
         <div className={styles.frost} />
 
         <div className={styles.logoCircle}>
-          <img src={logo} alt="Netcontact" />
+          <img src={logo} alt="KRONO" />
         </div>
 
         <div className={styles.content}>
