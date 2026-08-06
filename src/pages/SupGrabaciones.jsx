@@ -144,7 +144,7 @@ export default function SupGrabaciones() {
     cargarVentas()
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
-    const fc = setInterval(cargarVentas, 3000)
+    const fc = setInterval(cargarVentas, 1000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
 

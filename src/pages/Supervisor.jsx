@@ -439,7 +439,7 @@ export default function Supervisor() {
   useEffect(() => {
     cargarDatos()
     if (seccion === 'frases') cargarFrases()
-    const t = setInterval(cargarDatos, 3000)
+    const t = setInterval(cargarDatos, 1000)
     return () => clearInterval(t)
   }, [cargarDatos])
 
