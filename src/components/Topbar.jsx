@@ -19,9 +19,7 @@ export default function Topbar({ subtitulo, children }) {
           <img src="/assets/logo3.png" alt="KRONO" />
         </div>
         <div className={styles.brandText}>
-          <h1>
-            KRONO
-          </h1>
+          <img src="/assets/krono-wordmark.png" alt="KRONO" style={{ height: 22, width: 'auto', display: 'block' }} />
           {subtitulo && <span className={styles.brandSub}>{subtitulo}</span>}
         </div>
       </div>

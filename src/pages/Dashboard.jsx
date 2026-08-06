@@ -894,7 +894,7 @@ export default function Dashboard() {
             <img src="/assets/logo3.png" alt="KRONO" />
           </div>
           <div className="brand-text">
-            <h1>KRONO</h1>
+            <img src="/assets/krono-wordmark.png" alt="KRONO" style={{height:22,width:'auto',display:'block'}} />
             <span className="brand-sub">Sistema de llamadas</span>
           </div>
         </div>

@@ -276,7 +276,7 @@ export default function Programacion() {
             <img src="/assets/logo3.png" alt="" onError={e => { e.target.parentNode.textContent = '' }} />
           </div>
           <div className="brand-text">
-            <h1>KRONO</h1>
+            <img src="/assets/krono-wordmark.png" alt="KRONO" style={{height:22,width:'auto',display:'block'}} />
             <span className="brand-sub">Programación</span>
           </div>
         </div>
