@@ -1358,7 +1358,7 @@ export default function Backdatareclutamiento() {
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
-                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO')
+                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
                                   return cola.map((h,ci)=>{
                                     const sig = cola[ci+1]
