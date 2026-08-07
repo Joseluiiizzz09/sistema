@@ -581,13 +581,29 @@ const cargarLeads = useCallback(async () => {
         const pend = pendingRef.current[l.id]
         if (pend) {
           const edad = Date.now() - pend.ts
-          let quedan = 0
-          for (const k in pend.campos) {
-            const exp = pend.campos[k]
-            if (exp && typeof exp === 'object') continue
-            if (reg[k] !== exp) { if (edad < 8000) { reg[k] = exp; quedan++ } }
+          // Si la reasignación/rotación ya se confirmó en el servidor (mismo asesor),
+          // libera TODO el pending para no bloquear la tipificación nueva del asesor
+          // (por eso antes demoraba en llegar a la base principal).
+          const asesorConfirmado = pend.campos.asesor !== undefined && reg.asesor === pend.campos.asesor
+          if (asesorConfirmado || edad >= 8000) {
+            delete pendingRef.current[l.id]
+          } else {
+            let quedan = 0
+            for (const k in pend.campos) {
+              const exp = pend.campos[k]
+              if (k === 'historial' && Array.isArray(exp)) {
+                // Mantiene el historial optimista (con tipifVendAntes) hasta que el
+                // servidor lo confirme (su historial crece). Evita que la tipificación
+                // derivada parpadee a "pendiente".
+                const serverHist = Array.isArray(reg.historial) ? reg.historial : []
+                if (serverHist.length < exp.length) { reg.historial = exp; quedan++ }
+                continue
+              }
+              if (exp && typeof exp === 'object') continue
+              if (reg[k] !== exp) { reg[k] = exp; quedan++ }
+            }
+            if (quedan === 0) delete pendingRef.current[l.id]
           }
-          if (quedan === 0 || edad >= 8000) delete pendingRef.current[l.id]
         }
         nuevoBase[fecha].push(reg)
       })
