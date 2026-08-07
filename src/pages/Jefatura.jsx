@@ -196,6 +196,7 @@ function etiquetaTipoEliminacion(tipo) {
     POSTULANTE: 'Postulante',
     NUMERO_BACKDATA: 'Número Back Data',
     NUMERO_RECLUTAMIENTO: 'Número Reclutamiento',
+    ASIGNACION_BACKDATA: 'Asignación quitada',
   })[tipo] || tipo || 'Registro'
 }
 
@@ -337,12 +338,16 @@ export default function Jefatura() {
     }
   }, [])
 
+  const cargandoVentasRef = useRef(false)
   const cargarVentasCache = useCallback(async () => {
+    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) setVentasCache(data.data.map(v => ({ ...v, _fecha: (v.created_at || '').split(' ')[0] })))
     } catch { console.error('Error cargando ventas') }
+    finally { cargandoVentasRef.current = false }
   }, [])
 
   const cargarSeguimiento = useCallback(async () => {

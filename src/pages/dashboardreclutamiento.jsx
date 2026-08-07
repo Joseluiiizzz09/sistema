@@ -322,8 +322,11 @@ export default function DashboardReclutamiento() {
 
   // ── API: Leads ───────────────────────────────────────────────────────────
   const ultEditRef = useRef(0)
+  const cargandoLeadsRef = useRef(false)
   const cargarLeadsAsesor = useCallback(async () => {
     if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
+    if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden)
+    cargandoLeadsRef.current = true
     try {
       const res  = await fetch(`${API}/leads-reclutamiento${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
@@ -363,6 +366,7 @@ export default function DashboardReclutamiento() {
       })
       setLlamadas(leadsAsignados.length)
     } catch(e) { console.error('Error cargando leads:', e) }
+    finally { cargandoLeadsRef.current = false }
   }, [filtroAsesor])
 
   // ── API: Ventas ──────────────────────────────────────────────────────────

@@ -430,7 +430,10 @@ export default function Backdatareclutamiento() {
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
 
+  const cargandoLeadsRef = useRef(false)
   const cargarLeads = useCallback(async () => {
+    if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoLeadsRef.current = true
     try {
       const res  = await fetch(`${API}/leads-reclutamiento`, { headers: ncHeaders() })
       const data = await res.json()
@@ -482,6 +485,7 @@ export default function Backdatareclutamiento() {
       setFechaPestanas(nuevasFechas)
       setFechaActiva(prev => nuevasFechas.includes(prev) ? prev : nuevasFechas[0])
     } catch(e) { console.error('Error cargando leads:', e) }
+    finally { cargandoLeadsRef.current = false }
   }, [])
 
   const cargarReclutados = useCallback(async () => {

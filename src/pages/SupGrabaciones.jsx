@@ -102,7 +102,10 @@ export default function SupGrabaciones() {
     setFechaLabel(`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} - ${hora}`)
   }
 
+  const cargandoVentasRef = useRef(false)
   const cargarVentas = useCallback(async () => {
+    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
@@ -138,6 +141,7 @@ export default function SupGrabaciones() {
         )
       }
     } catch (e) { console.error(e) }
+    finally { cargandoVentasRef.current = false }
   }, [])
 
   useEffect(() => {

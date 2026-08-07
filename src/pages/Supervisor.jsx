@@ -239,7 +239,10 @@ export default function Supervisor() {
   [dashVentas, asesoresSala])
 
   // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const cargandoDatosRef = useRef(false)
   const cargarDatos = useCallback(async () => {
+    if (cargandoDatosRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoDatosRef.current = true
     try {
       const [rU, rV] = await Promise.all([
         fetch(`${API}/usuarios`, { headers: ncHeaders() }),
@@ -259,6 +262,7 @@ export default function Supervisor() {
         _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab, v.estado_grab),
       })))
     } catch(e) { console.error(e) }
+    finally { cargandoDatosRef.current = false }
   }, [])
 
   const cargarFrases = useCallback(async () => {
