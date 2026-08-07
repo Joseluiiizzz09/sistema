@@ -623,8 +623,10 @@ export default function Dashboard() {
 
   async function tipificar(tipo) {
     ultEditRef.current = Date.now()
-    if (seleccionado !== null && clientes[seleccionado]?._soloLectura) {
-      mostrarToast('Este número ya no está asignado a ti — es tu registro de lo trabajado')
+    // Si el número ya no es tuyo (rotado), podés ACTUALIZAR tu tipificación (p.ej.
+    // recontactaste al cliente), pero NO finalizarlo con VENTA CERRADA / SIN COBERTURA.
+    if (seleccionado !== null && clientes[seleccionado]?._soloLectura && (tipo === 'VENTA CERRADA' || tipo === 'SIN COBERTURA')) {
+      mostrarToast('Este número ya no está asignado a ti: solo podés actualizar tu tipificación, no finalizarla.')
       cerrarModales()
       return
     }
@@ -649,11 +651,15 @@ export default function Dashboard() {
         const u = [...prev]; u[sel] = { ...u[sel], estado: tipo }; return u
       })
       if (clientes[sel]?.id) {
-        pendTipRef.current[clientes[sel].id] = { ...(pendTipRef.current[clientes[sel].id]||{}), estado: tipo, ts: Date.now() }
+        const lid = clientes[sel].id
+        pendTipRef.current[lid] = { ...(pendTipRef.current[lid]||{}), estado: tipo, ts: Date.now() }
         try {
-          await fetch(`${API}/leads/${clientes[sel].id}/tipif`, {
+          const r = await fetch(`${API}/leads/${lid}/tipif`, {
             method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:tipo }),
           })
+          const d = await r.json().catch(() => ({}))
+          if (!r.ok || !d.ok) { delete pendTipRef.current[lid]; mostrarToast(d.mensaje || 'No se pudo tipificar') }
+          else if (d.mensaje) mostrarToast(d.mensaje)
         } catch(e) {}
       }
     }
