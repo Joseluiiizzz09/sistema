@@ -503,6 +503,7 @@ export default function Backoffice() {
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
   const cargandoLeadsRef = useRef(false)
+  const mutGenRef = useRef(0)   // se incrementa en cada acción local; descarta respuestas de polls viejos
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
     const prev = pendingRef.current[id]?.campos || {}
@@ -510,6 +511,7 @@ export default function Backoffice() {
   }
 
   function updateReg(id, updater) {
+    mutGenRef.current++
     if (updater && typeof updater === 'object' && !Array.isArray(updater)) marcarPendiente(id, updater)
     setBaseData(prev => {
       const next = {}
@@ -539,10 +541,14 @@ export default function Backoffice() {
 const cargarLeads = useCallback(async () => {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoLeadsRef.current = true
+    const gen = mutGenRef.current
     try {
       const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
+      // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
+      // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
+      if (mutGenRef.current !== gen) return
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {
@@ -742,6 +748,7 @@ const cargarLeads = useCallback(async () => {
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   async function eliminarReg(id) {
+    mutGenRef.current++
     const found = findReg(id)
     if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
