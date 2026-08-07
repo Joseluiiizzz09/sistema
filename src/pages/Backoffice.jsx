@@ -2029,6 +2029,22 @@ const cargarLeads = useCallback(async () => {
                                     )
                                   })
                                 })()}
+                                {(() => {
+                                  const tips = (r.historial||[]).filter(h => h?.tipo==='TIPIF_VEND').sort((a,b)=>(a.ts||0)-(b.ts||0))
+                                  if (!tips.length) return null
+                                  return (
+                                    <div style={{marginTop:12, borderTop:'1px dashed #e5e7eb', paddingTop:10}}>
+                                      <div className="hist-label" style={{marginBottom:6}}>Historial de tipificaciones</div>
+                                      {tips.map((t,ti)=>(
+                                        <div key={ti} style={{display:'flex', alignItems:'center', gap:8, fontSize:11, padding:'3px 0'}}>
+                                          <span style={{color:'#9ca3af', fontFamily:'monospace', minWidth:92}}>{t.hora||'—'} {t.fecha||''}</span>
+                                          <strong style={{minWidth:130}}>{t.asesor||'—'}</strong>
+                                          <span style={{color:'#065f46', fontWeight:700}}>{t.tipif||'—'}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
                                 <div style={{marginTop:10, textAlign:'right'}}>
                                   <button type="button"
                                     onClick={()=>{ if(window.confirm(`¿Eliminar el número ${r.n1}? Se borrará por completo y no se puede deshacer.`)) eliminarReg(r.id) }}

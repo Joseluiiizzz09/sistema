@@ -623,13 +623,8 @@ export default function Dashboard() {
 
   async function tipificar(tipo) {
     ultEditRef.current = Date.now()
-    // Si el número ya no es tuyo (rotado), podés ACTUALIZAR tu tipificación (p.ej.
-    // recontactaste al cliente), pero NO finalizarlo con VENTA CERRADA / SIN COBERTURA.
-    if (seleccionado !== null && clientes[seleccionado]?._soloLectura && (tipo === 'VENTA CERRADA' || tipo === 'SIN COBERTURA')) {
-      mostrarToast('Este número ya no está asignado a ti: solo podés actualizar tu tipificación, no finalizarla.')
-      cerrarModales()
-      return
-    }
+    // Si el número ya no es tuyo (rotado), igual podés actualizar tu tipificación e
+    // incluso finalizarla (recontactaste al cliente); la base tomará la más reciente.
     if (tipo === 'VENTA CERRADA') {
       const sel = seleccionado
       cerrarModales()
