@@ -324,6 +324,7 @@ export default function Dashboard() {
 
   // ── API: Leads ───────────────────────────────────────────────────────────
   const ultEditRef = useRef(0)
+  const pendTipRef = useRef({})   // {id: {estado?, obs?, ts}} — mantiene lo recién editado hasta que el server lo confirme
   const cargarLeadsAsesor = useCallback(async () => {
     if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
     try {
@@ -359,6 +360,21 @@ export default function Dashboard() {
             const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
             miTipif = ent?.tipifVendAntes || ''
           }
+          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO')
+          let obs    = soyActual ? (l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')) : (l.obs_asesor || '')
+          // Stickiness: conserva lo recién tipificado/observado hasta que el server lo
+          // confirme (evita el parpadeo estado→pendiente→estado tras tipificar).
+          const pend = pendTipRef.current[l.id]
+          if (pend) {
+            const edad = Date.now() - pend.ts
+            if (edad < 8000) {
+              const estadoOk = pend.estado == null || estado === pend.estado
+              const obsOk     = pend.obs == null || obs === pend.obs
+              if (!estadoOk) estado = pend.estado
+              if (!obsOk)    obs = pend.obs
+              if (estadoOk && obsOk) delete pendTipRef.current[l.id]
+            } else { delete pendTipRef.current[l.id] }
+          }
           return {
             id:       l.id,
             telefono: l.n1,
@@ -369,9 +385,9 @@ export default function Dashboard() {
             obsBack: l.obs_back || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
-            estado:   miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO'),
+            estado,
             derivadoPor: l.derivado_por_nombre || '',
-            obs:      soyActual ? (l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')) : (l.obs_asesor || ''),
+            obs,
             _soloLectura: !soyActual,   // ya no es su número: registro de lo trabajado
           }
         })
@@ -614,6 +630,7 @@ export default function Dashboard() {
       setMvDni(''); setMvTipoDoc('DNI'); setMvDniError(false)
       setModalVenta(true)
       if (sel !== null && clientes[sel]?.id) {
+        pendTipRef.current[clientes[sel].id] = { ...(pendTipRef.current[clientes[sel].id]||{}), estado: tipo, ts: Date.now() }
         try {
           await fetch(`${API}/leads/${clientes[sel].id}/tipif`, {
             method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:tipo }),
@@ -628,6 +645,7 @@ export default function Dashboard() {
         const u = [...prev]; u[sel] = { ...u[sel], estado: tipo }; return u
       })
       if (clientes[sel]?.id) {
+        pendTipRef.current[clientes[sel].id] = { ...(pendTipRef.current[clientes[sel].id]||{}), estado: tipo, ts: Date.now() }
         try {
           await fetch(`${API}/leads/${clientes[sel].id}/tipif`, {
             method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:tipo }),
@@ -644,6 +662,7 @@ export default function Dashboard() {
       const u = [...prev]; u[i] = { ...u[i], obs:valor }; return u
     })
     if (clientes[i]?.id) {
+      pendTipRef.current[clientes[i].id] = { ...(pendTipRef.current[clientes[i].id]||{}), obs: valor, ts: Date.now() }
       fetch(`${API}/leads/${clientes[i].id}/obs`, {
         method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:valor }),
       }).catch(e => console.error('Error guardando obs:', e))
@@ -953,9 +972,9 @@ export default function Dashboard() {
         <table className="tabla-crm tabla-leads-asesor">
           <thead>
             <tr>
-              <th>Teléfono</th><th>Teléfono 2</th><th>Contacto</th><th>Zona</th>
+              <th>Teléfono</th><th>Teléfono 2</th><th>Contacto</th><th>Tipificación</th><th>Zona</th>
               <th>Dirección / Coord.</th><th>Obs. Back</th><th>Hora asig.</th>
-              <th>Estado</th><th>Observación asesor</th><th>Acción</th>
+              <th>Estado</th><th>Observación asesor</th>
             </tr>
           </thead>
           <tbody>
@@ -971,6 +990,16 @@ export default function Dashboard() {
                 <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
                 <td><span className={`dash-contacto ${c.tipoContacto==='WHATSAPP'?'wsp':'llamada'}`}>{c.tipoContacto==='WHATSAPP'?'WhatsApp':'Llamada'}</span></td>
+                <td>
+                  <button className="btn-accion" onClick={() => abrirModalTip(i)} title="Tipificar">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="rgba(255,255,255,0.25)" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M14 2v4h4" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M9 17l1.5-1.5 3-3-1.5-1.5-3 3L9 17z" fill="#fff"/>
+                      <path d="M13.5 12.5l1-1a1 1 0 0 0-1.5-1.5l-1 1 1.5 1.5z" fill="#fff"/>
+                    </svg>
+                  </button>
+                </td>
                 <td>{c.zona}</td>
                 <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
                 <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
@@ -984,16 +1013,6 @@ export default function Dashboard() {
                     maxLength={200}
                     onBlur={e => guardarObs(i, e.target.value)}
                   />
-                </td>
-                <td>
-                  <button className="btn-accion" onClick={() => abrirModalTip(i)} title="Tipificar">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="rgba(255,255,255,0.25)" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M14 2v4h4" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M9 17l1.5-1.5 3-3-1.5-1.5-3 3L9 17z" fill="#fff"/>
-                      <path d="M13.5 12.5l1-1a1 1 0 0 0-1.5-1.5l-1 1 1.5 1.5z" fill="#fff"/>
-                    </svg>
-                  </button>
                 </td>
               </tr>
             ))}
