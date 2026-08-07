@@ -503,6 +503,7 @@ export default function Backoffice() {
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
   const cargandoLeadsRef = useRef(false)
+  const mutGenRef = useRef(0)   // se incrementa en cada acción local; descarta respuestas de polls viejos
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
     const prev = pendingRef.current[id]?.campos || {}
@@ -510,6 +511,7 @@ export default function Backoffice() {
   }
 
   function updateReg(id, updater) {
+    mutGenRef.current++
     if (updater && typeof updater === 'object' && !Array.isArray(updater)) marcarPendiente(id, updater)
     setBaseData(prev => {
       const next = {}
@@ -539,10 +541,14 @@ export default function Backoffice() {
 const cargarLeads = useCallback(async () => {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoLeadsRef.current = true
+    const gen = mutGenRef.current
     try {
       const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
+      // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
+      // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
+      if (mutGenRef.current !== gen) return
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {
@@ -575,13 +581,29 @@ const cargarLeads = useCallback(async () => {
         const pend = pendingRef.current[l.id]
         if (pend) {
           const edad = Date.now() - pend.ts
-          let quedan = 0
-          for (const k in pend.campos) {
-            const exp = pend.campos[k]
-            if (exp && typeof exp === 'object') continue
-            if (reg[k] !== exp) { if (edad < 8000) { reg[k] = exp; quedan++ } }
+          // Si la reasignación/rotación ya se confirmó en el servidor (mismo asesor),
+          // libera TODO el pending para no bloquear la tipificación nueva del asesor
+          // (por eso antes demoraba en llegar a la base principal).
+          const asesorConfirmado = pend.campos.asesor !== undefined && reg.asesor === pend.campos.asesor
+          if (asesorConfirmado || edad >= 8000) {
+            delete pendingRef.current[l.id]
+          } else {
+            let quedan = 0
+            for (const k in pend.campos) {
+              const exp = pend.campos[k]
+              if (k === 'historial' && Array.isArray(exp)) {
+                // Mantiene el historial optimista (con tipifVendAntes) hasta que el
+                // servidor lo confirme (su historial crece). Evita que la tipificación
+                // derivada parpadee a "pendiente".
+                const serverHist = Array.isArray(reg.historial) ? reg.historial : []
+                if (serverHist.length < exp.length) { reg.historial = exp; quedan++ }
+                continue
+              }
+              if (exp && typeof exp === 'object') continue
+              if (reg[k] !== exp) { reg[k] = exp; quedan++ }
+            }
+            if (quedan === 0) delete pendingRef.current[l.id]
           }
-          if (quedan === 0 || edad >= 8000) delete pendingRef.current[l.id]
         }
         nuevoBase[fecha].push(reg)
       })
@@ -742,6 +764,7 @@ const cargarLeads = useCallback(async () => {
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   async function eliminarReg(id) {
+    mutGenRef.current++
     const found = findReg(id)
     if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
