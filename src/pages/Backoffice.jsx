@@ -107,6 +107,22 @@ function esLeadProhibido(reg) {
   const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
 }
+// Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
+// La base principal la muestra mientras el asesor actual todavía no coloca la suya.
+function tipifPrevioHistorial(historial) {
+  if (!Array.isArray(historial)) return ''
+  for (let i = historial.length - 1; i >= 0; i--) {
+    const h = historial[i]
+    if (h && h.tipifVendAntes != null && String(h.tipifVendAntes).trim() !== '') return String(h.tipifVendAntes)
+  }
+  return ''
+}
+// Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
+// tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
+function tipifEfectiva(reg) {
+  const propia = (reg?._tipifVend || '').trim()
+  return propia !== '' ? reg._tipifVend : tipifPrevioHistorial(reg?.historial)
+}
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
   'NO CONTESTA':['#fefce8','#854d0e'],'BUZON DE VOZ':['#e0f2fe','#0c4a6e'],'CORTA LLAMADA':['#f8fafc','#334155'],
@@ -714,8 +730,8 @@ const cargarLeads = useCallback(async () => {
       if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
       return
     }
-    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:reg._tipifVend||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
 
@@ -725,6 +741,29 @@ const cargarLeads = useCallback(async () => {
     if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
     setHistOpen(prev => { const n={...prev}; delete n[id]; return n })
+  }
+
+  // Elimina una asignación individual del historial: el número desaparece de la base
+  // del asesor eliminado. Si era el titular actual, vuelve al asesor anterior (con su
+  // tipificación) o queda sin asignar si no hay anterior.
+  async function eliminarAsignacion(id, entry) {
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    if (!reg._backendId) { mostrarToast('Espera a que el registro termine de guardarse.'); return }
+    if (!window.confirm(`¿Eliminar la asignación de ${entry.asesor}? El número desaparecerá de su base.`)) return
+    try {
+      const res  = await fetch(`${API}/leads/${reg._backendId}/eliminar-asignacion`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor:entry.asesor, hora:entry.hora||'', fecha:entry.fecha||'' }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar la asignación')
+      updateReg(id, {
+        historial:  Array.isArray(data.historial) ? data.historial : reg.historial,
+        asesor:     data.asesor || '',
+        sinAsignar: !data.asesor,
+        _tipifVend: data.tipif_vend ?? '',
+      })
+      mostrarToast('Asignación eliminada')
+    } catch (e) { mostrarToast(e.message || 'Error al eliminar la asignación') }
   }
 
   // ── Tipif vendedor ────────────────────────────────────────────────────────
@@ -805,6 +844,8 @@ const cargarLeads = useCallback(async () => {
         derivadoPor:'',
         historial:  data.historial || reg.historial,
         rotaciones: (reg.rotaciones || 0) + 1,
+        _tipifVend: '',
+        _tipifHora: '',
       })
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       mostrarToast(data.mensaje || `Registro rotado a ${rotModalAsesor}`)
@@ -1801,8 +1842,8 @@ const cargarLeads = useCallback(async () => {
                             {/* Tipif. Vendedor */}
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
-                                <select className="bo-sel-compact sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                  style={estiloTipifVend(r._tipifVend)}>
+                                <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                  style={estiloTipifVend(tipifEfectiva(r))}>
                                   <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                   {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                 </select>
@@ -1897,7 +1938,13 @@ const cargarLeads = useCallback(async () => {
                                       <div key={ci} className="hist-item">
                                         <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length]}} />
                                         <div className="hist-content">
-                                          <div className="hist-title"><strong>{h.asesor||'—'}</strong></div>
+                                          <div className="hist-title" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                                            <strong>{h.asesor||'—'}</strong>
+                                            <button type="button" title="Eliminar esta asignación" onClick={()=>eliminarAsignacion(r.id, h)}
+                                              style={{fontSize:10,padding:'2px 8px',border:'1px solid #ef4444',color:'#ef4444',background:'#fff',borderRadius:5,cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
+                                              Quitar
+                                            </button>
+                                          </div>
                                           <div className="hist-meta">Asignado: {h.hora||'—'}{h.hora&&h.fecha?' · ':''}{h.fecha||''}</div>
                                           <div className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></div>
                                           <div className="hist-sub">Asignado por: {asignadoPor}</div>
