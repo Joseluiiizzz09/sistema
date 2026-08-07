@@ -267,6 +267,7 @@ export default function Backdatareclutamiento() {
   // ── Rotación panel ──
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
   const [rotAsesor,     setRotAsesor]     = useState('')
+  const [rotSort,       setRotSort]       = useState({ col:null, dir:'asc' })
   const [rotCant,       setRotCant]       = useState(4)
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
@@ -989,6 +990,43 @@ export default function Backdatareclutamiento() {
   const rendMaxVentas = Math.max(...rendData.map(r=>r.ventas), 1)
 
   const allRotLeads    = rotPanelOpen ? buildRotLeads() : []
+  function rotSortVal(l, col) {
+    switch (col) {
+      case 'n1':     return l.tel || ''
+      case 'fecha':  return l.fecha || ''
+      case 'tipif':  return l.estado || 'NUEVO'
+      case 'asesor': return l.asesor || ''
+      case 'rotac':  return Math.max(l._reg?.rotaciones || 0, Math.max(0, (l.histAsesores?.length || 0) - 1))
+      case 'hora':
+      case 'tiempo': return l.ultimaAsig instanceof Date ? l.ultimaAsig.getTime() : 0
+      case 'sinrepetir': return rotApto(l, rotAsesor).sinRepetir ? 1 : 0
+      case 'aptitud':    return rotApto(l, rotAsesor).apto ? 1 : 0
+      default: return 0
+    }
+  }
+  const allRotLeadsSorted = rotSort.col
+    ? [...allRotLeads].sort((a, b) => {
+        const va = rotSortVal(a, rotSort.col), vb = rotSortVal(b, rotSort.col)
+        const cmp = (typeof va === 'number' && typeof vb === 'number')
+          ? va - vb
+          : String(va).localeCompare(String(vb), 'es', { numeric:true })
+        return rotSort.dir === 'desc' ? -cmp : cmp
+      })
+    : allRotLeads
+  function toggleRotSort(col) {
+    setRotSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir:'asc' })
+  }
+  function rotTh(col, label, thStyle) {
+    const activo = rotSort.col === col
+    return (
+      <th onClick={()=>toggleRotSort(col)} style={{ cursor:'pointer', userSelect:'none', whiteSpace:'nowrap', ...thStyle }} title="Ordenar">
+        <span style={{ display:'inline-flex', alignItems:'center', gap:3 }}>
+          {label}
+          <span style={{ fontSize:9, lineHeight:1, color: activo ? '#6d28d9' : '#cbd5e1' }}>{activo ? (rotSort.dir==='asc'?'▲':'▼') : '⇅'}</span>
+        </span>
+      </th>
+    )
+  }
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
   const rotStatNoAptos = allRotLeads.length - rotStatAptos
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
@@ -1140,14 +1178,14 @@ export default function Backdatareclutamiento() {
                             <th>
                               <input type="checkbox" checked={allAptosSelected} onChange={e=>{ if(e.target.checked){const ns={};rotAptos.slice(0,rotCant).forEach(l=>{ns[l.id]=true});setRotSel(ns);}else setRotSel({}) }} />
                             </th>
-                            <th>N1 / Campaña</th><th>Fecha</th><th>Tipificación</th>
-                            <th>Asesor actual</th><th>Rotac.</th><th>Hora asig.</th><th>Tiempo</th>
-                            <th>Sin repetir</th><th>Aptitud</th>
+                            {rotTh('n1','N1 / Campaña')}{rotTh('fecha','Fecha')}{rotTh('tipif','Tipificación')}
+                            {rotTh('asesor','Asesor actual')}{rotTh('rotac','Rotac.')}{rotTh('hora','Hora asig.')}{rotTh('tiempo','Tiempo')}
+                            {rotTh('sinrepetir','Sin repetir')}{rotTh('aptitud','Aptitud')}
                           </tr></thead>
                           <tbody>
-                            {allRotLeads.length === 0
+                            {allRotLeadsSorted.length === 0
                               ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
-                              : allRotLeads.map(l => {
+                              : allRotLeadsSorted.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
