@@ -377,6 +377,7 @@ export default function Backoffice() {
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
+  const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
   const [rotandoManual, setRotandoManual] = useState(false)
 
@@ -501,6 +502,7 @@ export default function Backoffice() {
   // Cambios locales recientes por lead: el polling los respeta hasta que el
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
+  const cargandoLeadsRef = useRef(false)
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
     const prev = pendingRef.current[id]?.campos || {}
@@ -535,6 +537,8 @@ export default function Backoffice() {
   }, [])
 
 const cargarLeads = useCallback(async () => {
+    if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoLeadsRef.current = true
     try {
       const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
       const data = await res.json()
@@ -609,6 +613,7 @@ const cargarLeads = useCallback(async () => {
         return todasLasFechas.includes(prev) ? prev : (nuevasFechas[0] || hoy)
       })
     } catch(e) { console.error('Error cargando leads:', e) }
+    finally { cargandoLeadsRef.current = false }
   }, [])
 
   useEffect(() => {
@@ -808,6 +813,7 @@ const cargarLeads = useCallback(async () => {
     }
     setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
     setRotModalAsesor('')
+    setRotBusqueda('')
     setRotModalMotivo('')
   }
 
@@ -2511,12 +2517,29 @@ const cargarLeads = useCallback(async () => {
           <div className="modal-box">
             <h3>Rotar lead manualmente</h3>
             <p>{modalRotar.desc}</p>
-            <select value={rotModalAsesor} onChange={e=>setRotModalAsesor(e.target.value)} style={!rotModalAsesor?{borderColor:'#ef4444'}:{}}>
-              <option value="">-- Seleccionar nuevo asesor --</option>
-              {asesores.map(a=>(
-                <option key={a.id} value={a.nombre} disabled={a.nombre===modalRotar.asesorActual}>{a.nombre}</option>
-              ))}
-            </select>
+            {(() => {
+              const disponibles = asesores.filter(a => a.nombre !== modalRotar.asesorActual)
+              const filtrados = disponibles.filter(a => (a.nombre||'').toLowerCase().includes(rotBusqueda.trim().toLowerCase()))
+              return (
+                <div style={{border:`1px solid ${rotModalAsesor?'#e5e7eb':'#ef4444'}`, borderRadius:10, padding:8, marginBottom:10}}>
+                  <div style={{display:'flex', alignItems:'center', gap:6, border:'1px solid #e5e7eb', borderRadius:8, padding:'6px 8px'}}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input autoFocus value={rotBusqueda} onChange={e=>setRotBusqueda(e.target.value)} placeholder="Buscar asesor…"
+                      onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(filtrados[0]) setRotModalAsesor(filtrados[0].nombre) } }}
+                      style={{border:'none', outline:'none', flex:1, fontSize:13, background:'transparent'}} />
+                  </div>
+                  <div style={{maxHeight:170, overflowY:'auto', marginTop:6}}>
+                    {filtrados.map(a=>(
+                      <div key={a.id} onClick={()=>setRotModalAsesor(a.nombre)}
+                        style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
+                        {a.nombre}
+                      </div>
+                    ))}
+                    {filtrados.length===0 && <div style={{padding:'8px 9px', fontSize:12, color:'#9ca3af'}}>Sin resultados</div>}
+                  </div>
+                </div>
+              )
+            })()}
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
