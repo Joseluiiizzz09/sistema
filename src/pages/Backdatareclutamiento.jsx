@@ -1141,16 +1141,17 @@ export default function Backdatareclutamiento() {
                               <input type="checkbox" checked={allAptosSelected} onChange={e=>{ if(e.target.checked){const ns={};rotAptos.slice(0,rotCant).forEach(l=>{ns[l.id]=true});setRotSel(ns);}else setRotSel({}) }} />
                             </th>
                             <th>N1 / Campaña</th><th>Fecha</th><th>Tipificación</th>
-                            <th>Asesor actual</th><th>Hora asig.</th><th>Tiempo</th>
+                            <th>Asesor actual</th><th>Rotac.</th><th>Hora asig.</th><th>Tiempo</th>
                             <th>Sin repetir</th><th>Aptitud</th>
                           </tr></thead>
                           <tbody>
                             {allRotLeads.length === 0
-                              ? <tr><td colSpan={9} className="bo-empty">Sin leads.</td></tr>
+                              ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
                               : allRotLeads.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
+                                  const nRot = Math.max(l._reg?.rotaciones || 0, Math.max(0, (l.histAsesores?.length || 0) - 1))
                                   return (
                                     <tr key={l.id} className={(prohibido||(!apto&&rotAsesor))?'row-noapto':''}>
                                       <td><input type="checkbox" checked={!!rotSel[l.id]} disabled={prohibido||(!apto&&!!rotAsesor)} onChange={e=>rotToggleSel(l.id,e.target.checked)} /></td>
@@ -1158,6 +1159,7 @@ export default function Backdatareclutamiento() {
                                       <td>{esFechaHoy ? <span style={{background:'#dcfce7',color:'#166534',fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99}}>HOY</span> : <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:9,padding:'1px 6px',borderRadius:99}}>{formatFecha(l.fecha)}</span>}</td>
                                       <td><span className={`tipif-badge ${tipifBadgeClass(prohibido?l.tipifVend:l.estado)}`} style={prohibido?{background:'#fee2e2',color:'#991b1b',fontWeight:800}:{}}>{prohibido?l.tipifVend:(l.estado||'Sin tipif.')}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor}</td>
+                                      <td style={{textAlign:'center'}}><span style={{display:'inline-block',minWidth:22,padding:'1px 7px',borderRadius:99,fontSize:11,fontWeight:700,background:nRot>0?'#fef3c7':'#f3f4f6',color:nRot>0?'#92400e':'#9ca3af'}} title={`${nRot} rotación(es)`}>{nRot}</span></td>
                                       <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
                                       <td className={tiempo?'timer-ok':'timer-fail'}>{rotTxt(l.ultimaAsig)} {tiempo?'OK':'falta '+(120-mins)+'min'}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
