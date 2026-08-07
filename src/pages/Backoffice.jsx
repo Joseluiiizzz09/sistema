@@ -120,6 +120,14 @@ function tipifPrevioHistorial(historial) {
 // Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
+  // "La más reciente gana": si hay eventos de tipificación con marca de tiempo,
+  // la base muestra el del ts más reciente (sea del titular o de un asesor previo).
+  const hist = Array.isArray(reg?.historial) ? reg.historial : []
+  const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
+  if (eventos.length) {
+    const ult = eventos.reduce((a, b) => (b.ts > a.ts ? b : a))
+    return ult.tipif || ''
+  }
   const propia = (reg?._tipifVend || '').trim()
   return propia !== '' ? reg._tipifVend : tipifPrevioHistorial(reg?.historial)
 }
@@ -1992,7 +2000,7 @@ const cargarLeads = useCallback(async () => {
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
-                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO')
+                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
                                   return cola.map((h,ci)=>{
                                     const sig = cola[ci+1]

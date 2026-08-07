@@ -337,7 +337,7 @@ export default function Dashboard() {
       const hoy = fechaHoy()
       const leadsAsignados = data.data.filter(l => {
         const historial = Array.isArray(l.historial) ? l.historial : []
-        const asignaciones = historial.filter(h => h?.fecha && h?.asesor)
+        const asignaciones = historial.filter(h => h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND')
         const ultimaAsignacion = asignaciones[asignaciones.length - 1]
 
         // La fecha del lead identifica la base de origen. Para el asesor
