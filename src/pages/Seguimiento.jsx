@@ -142,7 +142,10 @@ export default function Seguimiento() {
     toastRef.current = setTimeout(() => setToastMsg(''), 3000)
   }
 
+  const cargandoVentasRef = useRef(false)
   const cargarVentas = useCallback(async () => {
+    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
@@ -170,6 +173,7 @@ export default function Seguimiento() {
         )
       }
     } catch (e) { console.error(e) }
+    finally { cargandoVentasRef.current = false }
   }, [])
 
   useEffect(() => {

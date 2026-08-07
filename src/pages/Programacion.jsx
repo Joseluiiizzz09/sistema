@@ -123,7 +123,10 @@ export default function Programacion() {
     toastRef.current = setTimeout(() => setToastMsg(''), 3200)
   }
 
+  const cargandoVentasRef = useRef(false)
   const cargarVentas = useCallback(async () => {
+    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas?programacion=1`, { headers: ncHeaders() })
       const data = await res.json()
@@ -133,6 +136,7 @@ export default function Programacion() {
         return e !== 'VENTA' && e !== ''
       }))
     } catch (e) { mostrarToast('Error conectando al servidor') }
+    finally { cargandoVentasRef.current = false }
   }, [])
 
   useEffect(() => {

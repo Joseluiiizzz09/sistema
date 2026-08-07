@@ -191,12 +191,16 @@ export default function Validacion() {
   }
 
   // ── API ──────────────────────────────────────────────────────────────────
+  const cargandoVentasRef = useRef(false)
   const cargarVentas = useCallback(async () => {
+    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) setVentas(data.data.map(mapVenta))
     } catch(e) { console.error('Error cargando ventas:', e) }
+    finally { cargandoVentasRef.current = false }
   }, [])
 
   useEffect(() => { cargarVentas() }, [cargarVentas])
