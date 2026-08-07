@@ -33,7 +33,7 @@ function CampanaSelect({ value, onChange, plain }) {
 }
 
 // Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
-function AsesorBuscador({ value, asesores, disabled, onChange, title }) {
+function AsesorBuscador({ value, asesores, disabled, onChange, title, className, placeholderText, emptyLabel }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [pos, setPos] = useState({ top: 0, left: 0, width: 220 })
@@ -61,9 +61,9 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title }) {
   return (
     <>
       <button ref={btnRef} type="button" disabled={disabled} onClick={abrir} title={title}
-        className="sel-asesor-tabla"
+        className={className !== undefined ? className : 'sel-asesor-tabla'}
         style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-        {value || '— Asignar asesor —'}
+        {value || placeholderText || '— Asignar asesor —'}
       </button>
       {open && createPortal(
         <div ref={boxRef} style={{ position:'fixed', top:pos.top, left:pos.left, width:pos.width, zIndex:9999, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.16)', padding:8 }}>
@@ -71,7 +71,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title }) {
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
             style={{ width:'100%', padding:'6px 8px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, marginBottom:6, boxSizing:'border-box' }} />
           <div style={{ maxHeight:210, overflowY:'auto' }}>
-            <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>— Sin asignar —</div>
+            <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>{emptyLabel || '— Sin asignar —'}</div>
             {lista.map(a=>(
               <div key={a.id} onMouseDown={e=>e.preventDefault()} onClick={()=>elegir(a.nombre)}
                 style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, borderRadius:6, fontWeight: a.nombre===value?700:400, background: a.nombre===value?'#fef2f2':'transparent' }}>
@@ -277,6 +277,7 @@ export default function Backdatareclutamiento() {
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
+  const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
 
   // ── Carga masiva ──
@@ -667,6 +668,7 @@ export default function Backdatareclutamiento() {
     }
     setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
     setRotModalAsesor('')
+    setRotBusqueda('')
     setRotModalMotivo('')
   }
 
@@ -1097,10 +1099,11 @@ export default function Backdatareclutamiento() {
                     <div className="rot-form" style={{marginBottom:12}}>
                       <div className="rot-form-title">Rotar leads a un asesor</div>
                       <div className="rot-form-row">
-                        <select value={rotAsesor} onChange={e=>{ setRotAsesor(e.target.value); setRotSel({}) }}>
-                          <option value="">-- Seleccionar asesor destino --</option>
-                          {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                        </select>
+                        <div style={{ width:260 }}>
+                          <AsesorBuscador value={rotAsesor} asesores={asesores}
+                            onChange={v=>{ setRotAsesor(v); setRotSel({}) }}
+                            className="form-select" placeholderText="— Seleccionar asesor destino —" emptyLabel="— Ninguno —" />
+                        </div>
                         <input type="number" value={rotCant} min={1} max={4} onChange={e=>setRotCant(parseInt(e.target.value)||4)} style={{width:60}} />
                         <span style={{fontSize:12,color:'#888'}}>leads máx.</span>
                         <button className="btn-rotar-masivo" onClick={rotEjecutar} disabled={!rotAsesor || rotProgress>0}>
@@ -1201,10 +1204,9 @@ export default function Backdatareclutamiento() {
                 </select>
               </div>
               <div className="bo-input-group"><label>Asesor</label>
-                <select className="form-select" value={filtros.asesor} onChange={e=>setFiltros(p=>({...p,asesor:e.target.value}))}>
-                  <option value="">Todos</option>
-                  {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                </select>
+                <AsesorBuscador value={filtros.asesor} asesores={asesores}
+                  onChange={v=>setFiltros(p=>({...p,asesor:v}))}
+                  className="form-select" placeholderText="Todos" emptyLabel="Todos" />
               </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
@@ -1233,10 +1235,9 @@ export default function Backdatareclutamiento() {
                 <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>Asesor</label>
-                  <select className="form-select" value={form.asesor} onChange={e=>setForm(p=>({...p,asesor:e.target.value}))}>
-                    <option value="">— Sin asignar —</option>
-                    {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                  </select>
+                  <AsesorBuscador value={form.asesor} asesores={asesores}
+                    onChange={v=>setForm(p=>({...p,asesor:v}))}
+                    className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
                 </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
@@ -1454,10 +1455,9 @@ export default function Backdatareclutamiento() {
                     <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:160}}>
                       <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><CampanaSelect value={masivaCamp} onChange={setMasivaCamp} plain /></div>
                       <div className="bo-input-group" style={{margin:0}}><label>Asesor (opcional)</label>
-                        <select value={masivaAsesor} onChange={e=>setMasivaAsesor(e.target.value)}>
-                          <option value="">— Sin asignar —</option>
-                          {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                        </select>
+                        <AsesorBuscador value={masivaAsesor} asesores={asesores}
+                          onChange={v=>setMasivaAsesor(v)}
+                          className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
                       </div>
                       <div className="bo-input-group" style={{margin:0}}><label>Lote máx.</label>
                         <select value={masivaLote} onChange={e=>{ setMasivaLote(e.target.value); if(masivaFilas.length) previsualizarMasiva() }}>
@@ -1649,12 +1649,29 @@ export default function Backdatareclutamiento() {
           <div className="modal-box">
             <h3>Rotar lead manualmente</h3>
             <p>{modalRotar.desc}</p>
-            <select value={rotModalAsesor} onChange={e=>setRotModalAsesor(e.target.value)} style={!rotModalAsesor?{borderColor:'#ef4444'}:{}}>
-              <option value="">-- Seleccionar nuevo asesor --</option>
-              {asesores.map(a=>(
-                <option key={a.id} value={a.nombre} disabled={a.nombre===modalRotar.asesorActual}>{a.nombre}</option>
-              ))}
-            </select>
+            {(() => {
+              const disponibles = asesores.filter(a => a.nombre !== modalRotar.asesorActual)
+              const filtrados = disponibles.filter(a => (a.nombre||'').toLowerCase().includes(rotBusqueda.trim().toLowerCase()))
+              return (
+                <div style={{border:`1px solid ${rotModalAsesor?'#e5e7eb':'#ef4444'}`, borderRadius:10, padding:8, marginBottom:10}}>
+                  <div style={{display:'flex', alignItems:'center', gap:6, border:'1px solid #e5e7eb', borderRadius:8, padding:'6px 8px'}}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input autoFocus value={rotBusqueda} onChange={e=>setRotBusqueda(e.target.value)} placeholder="Buscar asesor…"
+                      onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(filtrados[0]) setRotModalAsesor(filtrados[0].nombre) } }}
+                      style={{border:'none', outline:'none', flex:1, fontSize:13, background:'transparent'}} />
+                  </div>
+                  <div style={{maxHeight:170, overflowY:'auto', marginTop:6}}>
+                    {filtrados.map(a=>(
+                      <div key={a.id} onClick={()=>setRotModalAsesor(a.nombre)}
+                        style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
+                        {a.nombre}
+                      </div>
+                    ))}
+                    {filtrados.length===0 && <div style={{padding:'8px 9px', fontSize:12, color:'#9ca3af'}}>Sin resultados</div>}
+                  </div>
+                </div>
+              )
+            })()}
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>

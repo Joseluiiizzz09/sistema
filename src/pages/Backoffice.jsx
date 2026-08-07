@@ -156,7 +156,7 @@ function estiloTipifVend(v) {
 }
 
 // Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
-function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
+function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, className, placeholderText, emptyLabel }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [pos, setPos] = useState({ top: 0, left: 0, width: 220 })
@@ -184,9 +184,9 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
   return (
     <>
       <button ref={btnRef} type="button" disabled={disabled} onClick={abrir} title={title}
-        className={plain ? undefined : 'bo-sel-compact sel-asesor-tabla'}
+        className={className !== undefined ? className : (plain ? undefined : 'bo-sel-compact sel-asesor-tabla')}
         style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-        {value || '— Asignar asesor —'}
+        {value || placeholderText || '— Asignar asesor —'}
       </button>
       {open && createPortal(
         <div ref={boxRef} style={{ position:'fixed', top:pos.top, left:pos.left, width:pos.width, zIndex:9999, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.16)', padding:8 }}>
@@ -194,7 +194,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain }) {
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
             style={{ width:'100%', padding:'6px 8px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, marginBottom:6, boxSizing:'border-box' }} />
           <div style={{ maxHeight:210, overflowY:'auto' }}>
-            <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>— Sin asignar —</div>
+            <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>{emptyLabel || '— Sin asignar —'}</div>
             {lista.map(a=>(
               <div key={a.id} onMouseDown={e=>e.preventDefault()} onClick={()=>elegir(a.nombre)}
                 style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, borderRadius:6, fontWeight: a.nombre===value?700:400, background: a.nombre===value?'#fef2f2':'transparent' }}>
@@ -1570,10 +1570,11 @@ const cargarLeads = useCallback(async () => {
                     <div className="rot-form" style={{marginBottom:12}}>
                       <div className="rot-form-title">Rotar leads a un asesor</div>
                       <div className="rot-form-row">
-                        <select value={rotAsesor} onChange={e=>{ setRotAsesor(e.target.value); setRotSel({}) }}>
-                          <option value="">-- Seleccionar asesor destino --</option>
-                          {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                        </select>
+                        <div style={{ width:260 }}>
+                          <AsesorBuscador value={rotAsesor} asesores={asesores}
+                            onChange={v=>{ setRotAsesor(v); setRotSel({}) }}
+                            className="form-select" placeholderText="— Seleccionar asesor destino —" emptyLabel="— Ninguno —" />
+                        </div>
                         <input type="number" value={rotCant} min={1} max={4} onChange={e=>setRotCant(parseInt(e.target.value)||4)} style={{width:60}} />
                         <span style={{fontSize:12,color:'#888'}}>leads máx.</span>
                         <button className="btn-rotar-masivo" onClick={rotEjecutar} disabled={!rotAsesor || rotProgress>0}>
@@ -1695,10 +1696,9 @@ const cargarLeads = useCallback(async () => {
                 </select>
               </div>
               <div className="bo-input-group"><label>Asesor</label>
-                <select className="form-select" value={filtros.asesor} onChange={e=>setFiltros(p=>({...p,asesor:e.target.value}))}>
-                  <option value="">Todos</option>
-                  {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                </select>
+                <AsesorBuscador value={filtros.asesor} asesores={asesores}
+                  onChange={v=>setFiltros(p=>({...p,asesor:v}))}
+                  className="form-select" placeholderText="Todos" emptyLabel="Todos" />
               </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
@@ -1754,10 +1754,9 @@ const cargarLeads = useCallback(async () => {
                   </select>
                 </div>
                 <div className="bo-input-group"><label>Asesor</label>
-                  <select className="form-select" value={form.asesor} onChange={e=>setForm(p=>({...p,asesor:e.target.value}))}>
-                    <option value="">— Sin asignar —</option>
-                    {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                  </select>
+                  <AsesorBuscador value={form.asesor} asesores={asesores}
+                    onChange={v=>setForm(p=>({...p,asesor:v}))}
+                    className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
                 </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
@@ -2050,10 +2049,9 @@ const cargarLeads = useCallback(async () => {
                     <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:160}}>
                       <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><CampanaSelect value={masivaCamp} onChange={setMasivaCamp} plain /></div>
                       <div className="bo-input-group" style={{margin:0}}><label>Asesor (opcional)</label>
-                        <select value={masivaAsesor} onChange={e=>setMasivaAsesor(e.target.value)}>
-                          <option value="">— Sin asignar —</option>
-                          {asesores.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
-                        </select>
+                        <AsesorBuscador value={masivaAsesor} asesores={asesores}
+                          onChange={v=>setMasivaAsesor(v)}
+                          className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
                       </div>
                       <div className="bo-input-group" style={{margin:0}}><label>Lote máx.</label>
                         <select value={masivaLote} onChange={e=>{ setMasivaLote(e.target.value); if(masivaFilas.length) previsualizarMasiva() }}>
