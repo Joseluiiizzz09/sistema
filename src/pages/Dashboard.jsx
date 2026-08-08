@@ -625,23 +625,10 @@ export default function Dashboard() {
       cerrarModales()
       if (sel !== null && clientes[sel]?.id) {
         const lead = clientes[sel]
-        pendTipRef.current[lead.id] = { ...(pendTipRef.current[lead.id]||{}), estado: tipo, ts: Date.now() }
-        try {
-          const r = await fetch(`${API}/leads/${lead.id}/tipif`, {
-            method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:tipo }),
-          })
-          const d = await r.json().catch(() => ({}))
-          if (!r.ok || !d.ok) {
-            delete pendTipRef.current[lead.id]
-            mostrarToast(d.mensaje || 'No se pudo registrar la venta cerrada')
-            return
-          }
-          setClientes(prev => prev.map((c, i) => i === sel ? { ...c, estado:tipo } : c))
-          abrirNuevaVenta(lead)
-        } catch(e) {
-          delete pendTipRef.current[lead.id]
-          mostrarToast('Error conectando al servidor')
-        }
+        // VENTA CERRADA se confirma en el backend solo cuando el formulario
+        // completo logra crear la venta. Abrir o cancelar el formulario no
+        // altera la tipificación actual (por ejemplo, SIN COBERTURA).
+        abrirNuevaVenta(lead)
       }
       return
     }
@@ -791,6 +778,7 @@ export default function Dashboard() {
     if (nvForm.lugarNac.trim() && !reNombre.test(nvForm.lugarNac.trim()))
       return mostrarToast('El lugar de nacimiento solo puede contener letras, tildes, espacios y guiones')
     const body = {
+      ...(!nvEditId && nvLeadId ? { leadId:nvLeadId } : {}),
       tipoDoc:nvForm.tipoDoc, dni:nvForm.dni.trim(), nombre:nvForm.nombre.trim(),
       telefono1:nvForm.tel1.trim(), telefono2:nvForm.tel2.trim(),
       departamento:nvForm.dpto, provincia:nvForm.prov, distrito:nvForm.dist,
@@ -819,17 +807,8 @@ export default function Dashboard() {
         if (leadId) {
           const cliente = clientes.find(c => c.id === leadId)
           const docObs = conservarObsConDocumento(cliente?.obs, `${nvForm.tipoDoc}: ${nvForm.dni.trim()}`)
-          try {
-            const obsRes = await fetch(`${API}/leads/${leadId}/obs`, {
-              method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:docObs }),
-            })
-            const obsData = await obsRes.json().catch(() => ({}))
-            if (!obsRes.ok || !obsData.ok) throw new Error(obsData.mensaje || 'No se pudo guardar la observación')
-            pendTipRef.current[leadId] = { estado:'VENTA CERRADA', obs:docObs, ts:Date.now() }
-            setClientes(prev => prev.map(c => c.id === leadId ? { ...c, estado:'VENTA CERRADA', obs:docObs } : c))
-          } catch (_) {
-            mostrarToast('La venta se guardó, pero no se pudo registrar el DNI en observaciones')
-          }
+          pendTipRef.current[leadId] = { estado:'VENTA CERRADA', obs:docObs, ts:Date.now() }
+          setClientes(prev => prev.map(c => c.id === leadId ? { ...c, estado:'VENTA CERRADA', obs:docObs } : c))
         }
       }
       cerrarNuevaVenta()
