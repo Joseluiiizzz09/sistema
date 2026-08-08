@@ -228,15 +228,10 @@ export default function Dashboard() {
   const [modalTip,     setModalTip]     = useState(false)
   const [tipSearch,    setTipSearch]    = useState('')
 
-  // Modal venta (registrar DNI)
-  const [modalVenta, setModalVenta] = useState(false)
-  const [mvTipoDoc,  setMvTipoDoc]  = useState('DNI')
-  const [mvDni,      setMvDni]      = useState('')
-  const [mvDniError, setMvDniError] = useState(false)
-
   // Panel nueva / editar venta
   const [panelNV,     setPanelNV]     = useState(false)
   const [nvEditId,    setNvEditId]    = useState(null)
+  const [nvLeadId,    setNvLeadId]    = useState(null)
   const [nvForm,      setNvForm]      = useState(NV_DEFAULT)
   const [nvProvs,     setNvProvs]     = useState([])
   const [nvDists,     setNvDists]     = useState([])
@@ -619,7 +614,7 @@ export default function Dashboard() {
   // ── Tipificación ─────────────────────────────────────────────────────────
   function abrirModalTip(i) { setSeleccionado(i); setTipSearch(''); setModalTip(true) }
 
-  function cerrarModales() { setModalTip(false); setModalVenta(false); setTipSearch('') }
+  function cerrarModales() { setModalTip(false); setTipSearch('') }
 
   async function tipificar(tipo) {
     ultEditRef.current = Date.now()
@@ -628,15 +623,25 @@ export default function Dashboard() {
     if (tipo === 'VENTA CERRADA') {
       const sel = seleccionado
       cerrarModales()
-      setMvDni(''); setMvTipoDoc('DNI'); setMvDniError(false)
-      setModalVenta(true)
       if (sel !== null && clientes[sel]?.id) {
-        pendTipRef.current[clientes[sel].id] = { ...(pendTipRef.current[clientes[sel].id]||{}), estado: tipo, ts: Date.now() }
+        const lead = clientes[sel]
+        pendTipRef.current[lead.id] = { ...(pendTipRef.current[lead.id]||{}), estado: tipo, ts: Date.now() }
         try {
-          await fetch(`${API}/leads/${clientes[sel].id}/tipif`, {
+          const r = await fetch(`${API}/leads/${lead.id}/tipif`, {
             method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:tipo }),
           })
-        } catch(e) {}
+          const d = await r.json().catch(() => ({}))
+          if (!r.ok || !d.ok) {
+            delete pendTipRef.current[lead.id]
+            mostrarToast(d.mensaje || 'No se pudo registrar la venta cerrada')
+            return
+          }
+          setClientes(prev => prev.map((c, i) => i === sel ? { ...c, estado:tipo } : c))
+          abrirNuevaVenta(lead)
+        } catch(e) {
+          delete pendTipRef.current[lead.id]
+          mostrarToast('Error conectando al servidor')
+        }
       }
       return
     }
@@ -684,34 +689,18 @@ export default function Dashboard() {
   }
 
   // ── Modal venta (registrar DNI) ──────────────────────────────────────────
-  function irANuevaVentaDesdeModal() {
-    if (!mvDni.trim()) { setMvDniError(true); return }
-    const docObs = `${mvTipoDoc}: ${mvDni.trim()}`
-    const sel = seleccionado
-    if (sel !== null) {
-      const obsVal = conservarObsConDocumento(clientes[sel]?.obs, docObs)
-      setClientes(prev => {
-        const u = [...prev]; u[sel] = { ...u[sel], estado:'VENTA CERRADA', obs:obsVal }; return u
-      })
-      if (clientes[sel]?.id) {
-        fetch(`${API}/leads/${clientes[sel].id}/obs`, {
-          method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:obsVal }),
-        }).catch(e => console.error('Error guardando obs:', e))
-      }
-    }
-    cerrarModales()
-  }
-
   // ── Panel nueva / editar venta ───────────────────────────────────────────
-  function abrirNuevaVenta() {
-    setNvEditId(null); setNvForm(NV_DEFAULT)
+  function abrirNuevaVenta(leadInicial = null) {
+    const lead = leadInicial?.id && leadInicial?.telefono ? leadInicial : null
+    setNvEditId(null); setNvLeadId(lead?.id || null)
+    setNvForm(lead ? { ...NV_DEFAULT, tel1:lead.telefono } : NV_DEFAULT)
     setNvProvs([]); setNvDists([]); setNvPaquetes([])
-    setNvVentasCerradas([]); setNvCargandoVC(true)
+    setNvVentasCerradas(lead ? [{ n1:lead.telefono }] : []); setNvCargandoVC(true)
     setNvTelSearch(''); setNvTelOpen(false)
     setPanelNV(true); document.body.style.overflow = 'hidden'
     fetch(`${API}/leads/ventas-cerradas`, { headers: ncHeaders() })
       .then(r => r.json())
-      .then(d => { if (d.ok) setNvVentasCerradas(d.data || []) })
+      .then(d => { if (d.ok) setNvVentasCerradas(prev => [...new Map([...prev, ...(d.data || [])].map(v => [v.n1, v])).values()]) })
       .catch(() => {})
       .finally(() => setNvCargandoVC(false))
   }
@@ -748,7 +737,7 @@ export default function Dashboard() {
       estado:   (v.estado||'VENTA').toUpperCase() === 'PROGRAMADO' ? 'PROGRAMADO' : 'VENTA',
       obs:      v.observacion || '',
     }
-    setNvEditId(v.id); setNvForm(form)
+    setNvEditId(v.id); setNvLeadId(null); setNvForm(form)
     const provs = form.dpto && UBIGEO[form.dpto] ? Object.keys(UBIGEO[form.dpto]) : []
     const dists = form.dpto && form.prov && UBIGEO[form.dpto]?.[form.prov] ? UBIGEO[form.dpto][form.prov] : []
     setNvProvs(provs); setNvDists(dists)
@@ -824,9 +813,28 @@ export default function Dashboard() {
         data = ct.includes('application/json') ? await res.json() : { ok: false, mensaje: (await res.text()) || `Error HTTP ${res.status}` }
       } catch(_) { data = { ok: false, mensaje: `Error HTTP ${res.status}` } }
       if (!res.ok || !data.ok) { mostrarToast('No se pudo guardar: ' + (data.mensaje || `Error ${res.status}`)); return }
-      if (!nvEditId) setNvVentasCerradas(prev => prev.filter(vc => vc.n1 !== nvForm.tel1))
+      if (!nvEditId) {
+        setNvVentasCerradas(prev => prev.filter(vc => vc.n1 !== nvForm.tel1))
+        const leadId = nvLeadId || clientes.find(c => c.telefono === nvForm.tel1)?.id
+        if (leadId) {
+          const cliente = clientes.find(c => c.id === leadId)
+          const docObs = conservarObsConDocumento(cliente?.obs, `${nvForm.tipoDoc}: ${nvForm.dni.trim()}`)
+          try {
+            const obsRes = await fetch(`${API}/leads/${leadId}/obs`, {
+              method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:docObs }),
+            })
+            const obsData = await obsRes.json().catch(() => ({}))
+            if (!obsRes.ok || !obsData.ok) throw new Error(obsData.mensaje || 'No se pudo guardar la observación')
+            pendTipRef.current[leadId] = { estado:'VENTA CERRADA', obs:docObs, ts:Date.now() }
+            setClientes(prev => prev.map(c => c.id === leadId ? { ...c, estado:'VENTA CERRADA', obs:docObs } : c))
+          } catch (_) {
+            mostrarToast('La venta se guardó, pero no se pudo registrar el DNI en observaciones')
+          }
+        }
+      }
       cerrarNuevaVenta()
       await cargarVentasSubidas()
+      await cargarLeadsAsesor()
     } catch(e) { mostrarToast('Error conectando al servidor') }
     finally { setGuardandoNV(false) }
   }
@@ -1245,44 +1253,6 @@ export default function Dashboard() {
       )}
 
       {/* ── MODAL REGISTRAR VENTA (DNI) ────────────────────────────────── */}
-      {modalVenta && (
-        <div className="modal show">
-          <div className="modal-content" style={{minWidth:'320px',maxWidth:'380px',borderRadius:'16px'}}>
-            <h3 style={{fontSize:'16px',fontWeight:700,color:'#111827',borderBottom:'1px solid #f3f4f6',paddingBottom:'10px',marginBottom:'4px'}}>
-              Venta Cerrada
-            </h3>
-            <p style={{fontSize:'12px',color:'#9ca3af',marginBottom:'16px'}}>Ingresa el documento del cliente para registrar la venta.</p>
-            <div style={{display:'flex',flexDirection:'column',gap:'4px',marginBottom:'12px'}}>
-              <label style={{fontSize:'10px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px'}}>Tipo de documento</label>
-              <select value={mvTipoDoc} onChange={e => setMvTipoDoc(e.target.value)}
-                style={{padding:'9px 11px',border:'1px solid #e5e7eb',borderRadius:'8px',fontSize:'13px',fontFamily:'inherit',outline:'none',background:'#fafafa',color:'#111827'}}>
-                <option value="DNI">DNI</option>
-                <option value="CE">Carnet de Extranjería</option>
-                <option value="RUC">RUC</option>
-              </select>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:'4px',marginBottom:'20px'}}>
-              <label style={{fontSize:'10px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px'}}>
-                {mvTipoDoc === 'DNI' ? 'Número de DNI' : mvTipoDoc === 'CE' ? 'Número de Carnet de Extranjería' : 'Número de RUC'}
-              </label>
-              <input
-                placeholder="" maxLength={15} inputMode="numeric" pattern="[0-9]*"
-                value={mvDni} onChange={e => { setMvDni(e.target.value.replace(/\D/g, '')); setMvDniError(false) }}
-                style={{padding:'10px 12px',border:`1.5px solid ${mvDniError ? '#ef4444':'#e5e7eb'}`,borderRadius:'8px',fontSize:'15px',fontFamily:'monospace',outline:'none',background:'#fafafa',color:'#111827',letterSpacing:'2px',transition:'border .2s'}}
-              />
-            </div>
-            <button onClick={irANuevaVentaDesdeModal}
-              style={{width:'100%',padding:'12px',border:'none',borderRadius:'10px',background:'#22c55e',color:'#fff',fontSize:'14px',fontWeight:700,fontFamily:'inherit',cursor:'pointer',marginBottom:'8px'}}>
-              Confirmar
-            </button>
-            <button onClick={cerrarModales}
-              style={{width:'100%',padding:'10px',border:'none',borderRadius:'10px',background:'#f3f4f6',color:'#6b7280',fontSize:'13px',fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── PANEL NUEVA / EDITAR VENTA ─────────────────────────────────── */}
       <div className={`nv-overlay${panelNV ? ' open' : ''}`}>
         <div className="nv-modal">
