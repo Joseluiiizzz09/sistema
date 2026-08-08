@@ -120,10 +120,17 @@ function tipifPrevioHistorial(historial) {
 // Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
-  // "La más reciente gana": si hay eventos de tipificación con marca de tiempo,
-  // la base muestra el del ts más reciente (sea del titular o de un asesor previo).
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
+  // Una venta realmente creada es la única transición que puede reemplazar
+  // SIN COBERTURA. No basta con haber pulsado la tipificación en el Dashboard.
+  if (Number(reg?.venta_confirmada) === 1 || eventos.some(h => h?.tipif === 'VENTA CERRADA' && h?.ventaCompleta)) {
+    return 'VENTA CERRADA'
+  }
+  const tieneSinCobertura = String(reg?._tipifVend || '').trim().toUpperCase() === 'SIN COBERTURA'
+    || hist.some(h => String(h?.tipif || h?.tipifVendAntes || '').trim().toUpperCase() === 'SIN COBERTURA')
+  if (tieneSinCobertura) return 'SIN COBERTURA'
+  // Fuera de los estados protegidos, la tipificación cronológica más reciente gana.
   if (eventos.length) {
     const ult = eventos.reduce((a, b) => (b.ts > a.ts ? b : a))
     return ult.tipif || ''
@@ -583,6 +590,7 @@ const cargarLeads = useCallback(async () => {
           rotaciones: l.rotaciones || 0,
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
+          venta_confirmada: Number(l.venta_confirmada || 0),
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
         }
