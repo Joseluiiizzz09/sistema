@@ -734,6 +734,9 @@ const cargarLeads = useCallback(async () => {
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
+    // Invalida cualquier poll iniciado antes de insertar el registro optimista.
+    // Así una respuesta que todavía no contiene el nuevo lead no puede ocultarlo.
+    mutGenRef.current++
     setBaseData(prev => ({ ...prev, [fecha]: [reg, ...(prev[fecha] || [])] }))
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
@@ -742,6 +745,9 @@ const cargarLeads = useCallback(async () => {
       if (!res.ok) throw new Error(data.mensaje || 'Error al guardar el registro')
       const bid  = data.ids?.[0] || data.id
       if (bid) {
+        // El POST ya fue confirmado. Descarta también un poll que pudiera haberse
+        // iniciado mientras se guardaba y que aún traiga la lista anterior.
+        mutGenRef.current++
         setBaseData(prev => {
           const next = { ...prev }
           const arr  = [...(next[fecha] || [])]
