@@ -1135,12 +1135,8 @@ export default function Dashboard() {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',flexWrap:'wrap',gap:'10px'}}>
           <div>
             <h2 style={{marginBottom:'4px'}}>Ventas Subidas</h2>
-            <p style={{fontSize:'12px',color:'#9ca3af'}}>Historial de ventas · Registra una nueva desde el botón</p>
+            <p style={{fontSize:'12px',color:'#9ca3af'}}>Historial de ventas</p>
           </div>
-          <button onClick={abrirNuevaVenta}
-            style={{display:'inline-flex',alignItems:'center',gap:'8px',padding:'10px 22px',background:'linear-gradient(135deg,#ff2d2d,#ff6b6b)',color:'#fff',border:'none',borderRadius:'12px',fontSize:'13px',fontWeight:700,fontFamily:'inherit',cursor:'pointer',boxShadow:'0 4px 14px rgba(255,45,45,.35)'}}>
-            Nueva Venta
-          </button>
         </div>
 
         <div className="vs-filtros">
