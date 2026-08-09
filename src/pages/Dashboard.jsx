@@ -116,7 +116,8 @@ function BadgeVS({ e, sup, estadoGrab, grabandoPorNombre }) {
   // seguir tapando el estado real posterior.
   if (estado === 'validado') {
     if (eg === 'grabando' || (eg === 'grabado' && supEstado !== 'aprobado')) {
-      const label = grabandoPorNombre ? `GRABANDO ${grabandoPorNombre.toUpperCase()}` : 'GRABANDO'
+      const primerNombre = String(grabandoPorNombre || '').trim().split(/\s+/)[0]
+      const label = primerNombre ? `GRABANDO ${primerNombre.toUpperCase()}` : 'GRABANDO'
       return <span className="vs-badge vs-badge-grabando">{label}</span>
     }
     if (eg === 'grabado' && supEstado === 'aprobado') {
