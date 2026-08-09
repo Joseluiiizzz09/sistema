@@ -266,6 +266,15 @@ function CopyIcon() {
   )
 }
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+      <path d="m14.5 7.5 3 3" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    </svg>
+  )
+}
+
 function NotebookIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -362,6 +371,30 @@ export default function Backoffice() {
   const [histOpen, setHistOpen] = useState({})
   const [detOpen,  setDetOpen]  = useState({})
   const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
+  const [numeroModal, setNumeroModal] = useState(null) // { id, bid, n1, n2, guardando }
+
+  async function guardarNumeros() {
+    if (!numeroModal || numeroModal.guardando) return
+    const n1 = String(numeroModal.n1 || '').replace(/\D/g, '')
+    const n2 = String(numeroModal.n2 || '').replace(/\D/g, '')
+    if (n1.length < 6) { mostrarToast('N1 debe contener al menos 6 dígitos'); return }
+    if (n2 && (n2.length < 7 || n2.length > 9)) { mostrarToast('N2 debe contener entre 7 y 9 dígitos'); return }
+
+    setNumeroModal(prev => prev ? { ...prev, guardando:true } : prev)
+    try {
+      const res = await fetch(`${API}/leads/${numeroModal.bid}/datos-back`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ n1, n2 })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudieron actualizar los números')
+      updateReg(numeroModal.id, { n1, n2 })
+      setNumeroModal(null)
+      mostrarToast('Números actualizados')
+    } catch(e) {
+      setNumeroModal(prev => prev ? { ...prev, guardando:false } : prev)
+      mostrarToast(e.message || 'No se pudieron actualizar los números')
+    }
+  }
 
   // Guardar (editar) el DNI/comentario de una venta cerrada desde el popover del libro verde
   async function guardarDni() {
@@ -1894,6 +1927,7 @@ const cargarLeads = useCallback(async () => {
                                 <div className="num-primary">
                                   <span>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
+                                  <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
                                 {r.n2 && (
                                   <div className="num-secondary">
@@ -2717,6 +2751,28 @@ const cargarLeads = useCallback(async () => {
       <datalist id="asesores-datalist">
         {asesores.map(a=><option key={a.id} value={a.nombre} />)}
       </datalist>
+
+      {numeroModal&&(
+        <div className="numero-edit-overlay" onMouseDown={e=>{ if(e.target===e.currentTarget&&!numeroModal.guardando) setNumeroModal(null) }}>
+          <div className="numero-edit-modal" role="dialog" aria-modal="true" aria-labelledby="numero-edit-title">
+            <button type="button" className="numero-edit-close" onClick={()=>setNumeroModal(null)} disabled={numeroModal.guardando} aria-label="Cerrar">×</button>
+            <div id="numero-edit-title" className="numero-edit-title">Editar números</div>
+            <div className="numero-edit-sub">Actualiza el número principal y el número secundario del lead.</div>
+            <label>Número 1 <span>*</span></label>
+            <input value={numeroModal.n1} autoFocus inputMode="numeric" maxLength={20}
+              onChange={e=>setNumeroModal(p=>({...p,n1:e.target.value.replace(/\D/g,'')}))}
+              onKeyDown={e=>{ if(e.key==='Enter') guardarNumeros(); if(e.key==='Escape'&&!numeroModal.guardando) setNumeroModal(null) }}/>
+            <label>Número 2 <small>(opcional)</small></label>
+            <input value={numeroModal.n2} inputMode="numeric" maxLength={20}
+              onChange={e=>setNumeroModal(p=>({...p,n2:e.target.value.replace(/\D/g,'')}))}
+              onKeyDown={e=>{ if(e.key==='Enter') guardarNumeros(); if(e.key==='Escape'&&!numeroModal.guardando) setNumeroModal(null) }}/>
+            <div className="numero-edit-actions">
+              <button type="button" className="numero-edit-cancel" onClick={()=>setNumeroModal(null)} disabled={numeroModal.guardando}>Cancelar</button>
+              <button type="button" className="numero-edit-save" onClick={guardarNumeros} disabled={numeroModal.guardando}>{numeroModal.guardando?'Guardando…':'Guardar cambios'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ POPOVER DNI ══════════════════════════════════════════════════════ */}
       {dniModal&&(

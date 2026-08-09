@@ -379,6 +379,24 @@ body{
 .num-copy-btn{width:17px;height:17px;padding:0;border:1px solid #e2e8f0;border-radius:4px;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
 .num-copy-btn:hover{color:var(--brand);border-color:#fca5a5;background:#fff5f5;}
 .num-copy-btn svg{width:10px;height:10px;}
+.num-edit-btn{color:#475569;}
+.num-edit-btn:hover{color:#2563eb;border-color:#93c5fd;background:#eff6ff;}
+.numero-edit-overlay{position:fixed;inset:0;z-index:10020;background:rgba(15,23,42,.38);display:grid;place-items:center;padding:20px;backdrop-filter:blur(2px);}
+.numero-edit-modal{position:relative;width:min(390px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,.24);padding:22px;display:flex;flex-direction:column;gap:8px;}
+.numero-edit-title{font-size:17px;font-weight:800;color:#0f172a;}
+.numero-edit-sub{font-size:11px;color:#64748b;margin-bottom:8px;line-height:1.45;}
+.numero-edit-close{position:absolute;right:12px;top:10px;border:0;background:transparent;color:#94a3b8;font-size:22px;cursor:pointer;padding:2px 5px;line-height:1;}
+.numero-edit-close:hover{color:#334155;}
+.numero-edit-modal label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;}
+.numero-edit-modal label span{color:var(--brand);}
+.numero-edit-modal label small{font-weight:500;text-transform:none;letter-spacing:0;color:#94a3b8;}
+.numero-edit-modal input{height:40px;border:1px solid #dbe2ea;border-radius:8px;padding:0 11px;font:700 13px monospace;color:#0f172a;outline:none;}
+.numero-edit-modal input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.12);}
+.numero-edit-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+.numero-edit-actions button{height:36px;border-radius:8px;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer;}
+.numero-edit-cancel{border:1px solid #e2e8f0;background:#fff;color:#64748b;}
+.numero-edit-save{border:1px solid var(--brand);background:var(--brand);color:#fff;box-shadow:0 5px 14px rgba(229,62,62,.2);}
+.numero-edit-actions button:disabled,.numero-edit-close:disabled{opacity:.55;cursor:not-allowed;}
 /* ── Select compacto ── */
 .bo-root .bo-sel-compact{width:100%;padding:3px 5px;border:1px solid #e5e7eb;border-radius:6px;font-size:10px;font-family:inherit;outline:none;background:#fff;cursor:pointer;color:#334155;min-width:0;}
 .bo-root .bo-sel-compact:focus{border-color:var(--brand);box-shadow:0 0 0 2px rgba(229,62,62,.1);}
