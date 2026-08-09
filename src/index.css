@@ -401,3 +401,25 @@ body {
   box-shadow: none !important;
   border: none !important;
 }
+
+/* El isotipo se muestra limpio en todos los encabezados, como en Back Data. */
+body .module-topbar-standard .logo-circle,
+body .dash-root .logo-circle,
+body .jef-root .logo-circle,
+body .usu-root .logo-circle,
+body .bo-root .logo-circle {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+body .module-topbar-standard .logo-circle:hover,
+body .dash-root .logo-circle:hover,
+body .jef-root .logo-circle:hover,
+body .usu-root .logo-circle:hover,
+body .bo-root .logo-circle:hover {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
