@@ -46,13 +46,13 @@ body::after{
 
 /* LOGO */
 .logo-circle{
-  width:110px;height:110px;background:#fff;border-radius:50%;
-  position:absolute;top:-55px;left:50%;transform:translateX(-50%);
+  width:140px;height:140px;background:#fff;border-radius:50%;
+  position:absolute;top:-70px;left:50%;transform:translateX(-50%);
   display:flex;justify-content:center;align-items:center;
   box-shadow:0 10px 30px rgba(0,0,0,.12);
   animation:floatLogo 4s ease-in-out infinite;
 }
-.logo-circle img{width:85px;height:85px;object-fit:contain;}
+.logo-circle img{width:110px;height:110px;object-fit:contain;}
 @keyframes floatLogo{
   0%,100%{transform:translateX(-50%) translateY(0)}
   50%{transform:translateX(-50%) translateY(-6px)}
