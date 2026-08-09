@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
@@ -431,9 +432,9 @@ export default function Dashboard() {
     cargarLeadsAsesor()
     cargarVentasSubidas()
     cargarFrasesSuper()
-    const t1 = setInterval(cargarLeadsAsesor,    1000)
-    const t2 = setInterval(cargarFrasesSuper,   30000)
-    const t3 = setInterval(cargarVentasSubidas,  1000)
+    const t1 = setVisibleInterval(cargarLeadsAsesor,    1000)
+    const t2 = setVisibleInterval(cargarFrasesSuper,   30000)
+    const t3 = setVisibleInterval(cargarVentasSubidas,  1000)
     const sincronizarAlVolver = () => {
       if (document.visibilityState === 'visible') {
         cargarLeadsAsesor()

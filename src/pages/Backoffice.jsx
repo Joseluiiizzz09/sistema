@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
@@ -658,7 +659,7 @@ const cargarLeads = useCallback(async () => {
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
-    const t = setInterval(cargarLeads, 1000)
+    const t = setVisibleInterval(cargarLeads, 500)
     return () => clearInterval(t)
   }, [cargarAsesores, cargarLeads])
 

@@ -6,6 +6,7 @@ import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import { API, ncHeaders } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import '../styles/seguimiento.css'
 
 const ESTADOS = [
@@ -178,7 +179,7 @@ export default function Seguimiento() {
 
   useEffect(() => {
     cargarVentas()
-    const fc = setInterval(cargarVentas, 1000)
+    const fc = setVisibleInterval(cargarVentas, 1000)
     return () => clearInterval(fc)
   }, [cargarVentas])
 

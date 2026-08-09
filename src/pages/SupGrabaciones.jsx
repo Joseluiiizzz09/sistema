@@ -5,6 +5,7 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
@@ -148,7 +149,7 @@ export default function SupGrabaciones() {
     cargarVentas()
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
-    const fc = setInterval(cargarVentas, 1000)
+    const fc = setVisibleInterval(cargarVentas, 1000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
 

@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
 import '../styles/Backdatareclutamiento.css'
@@ -528,7 +529,7 @@ export default function Backdatareclutamiento() {
     cargarAsesores()
     cargarLeads()
     cargarReclutados()
-    const t = setInterval(cargarLeads, 1000)
+    const t = setVisibleInterval(cargarLeads, 1000)
     return () => clearInterval(t)
   }, [cargarAsesores, cargarLeads, cargarReclutados])
 

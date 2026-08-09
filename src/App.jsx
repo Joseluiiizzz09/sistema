@@ -1,19 +1,28 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 
-import Login        from './pages/Login'
-import Dashboard    from './pages/Dashboard'
-import Backoffice   from './pages/Backoffice'
-import Supervisor   from './pages/Supervisor'
-import Validacion   from './pages/Validacion'
-import Seguimiento  from './pages/Seguimiento'
-import Grabaciones  from './pages/Grabaciones'
-import SupGrabaciones from './pages/SupGrabaciones'
-import Programacion from './pages/Programacion'
-import Jefatura     from './pages/Jefatura'
-import Usuarios     from './pages/Usuarios'
-import Backdatareclutamiento from './pages/Backdatareclutamiento'
-import DashboardReclutamiento from './pages/dashboardreclutamiento'
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Backoffice = lazy(() => import('./pages/Backoffice'))
+const Supervisor = lazy(() => import('./pages/Supervisor'))
+const Validacion = lazy(() => import('./pages/Validacion'))
+const Seguimiento = lazy(() => import('./pages/Seguimiento'))
+const Grabaciones = lazy(() => import('./pages/Grabaciones'))
+const SupGrabaciones = lazy(() => import('./pages/SupGrabaciones'))
+const Programacion = lazy(() => import('./pages/Programacion'))
+const Jefatura = lazy(() => import('./pages/Jefatura'))
+const Usuarios = lazy(() => import('./pages/Usuarios'))
+const Backdatareclutamiento = lazy(() => import('./pages/Backdatareclutamiento'))
+const DashboardReclutamiento = lazy(() => import('./pages/dashboardreclutamiento'))
+
+function RouteLoader() {
+  return (
+    <div style={{ minHeight:'100vh', display:'grid', placeItems:'center', background:'#f5f6fa', color:'#64748b', fontFamily:'Inter, sans-serif' }}>
+      Cargando módulo…
+    </div>
+  )
+}
 
 function PrivateRoute({ children }) {
   const { sesion } = useAuth()
@@ -22,7 +31,7 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   return (
-    <>
+    <Suspense fallback={<RouteLoader />}>
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -42,6 +51,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </>
+    </Suspense>
   )
 }

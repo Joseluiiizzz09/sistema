@@ -7,6 +7,7 @@ import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
+import { setVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
 
@@ -443,7 +444,7 @@ export default function Supervisor() {
   useEffect(() => {
     cargarDatos()
     if (seccion === 'frases') cargarFrases()
-    const t = setInterval(cargarDatos, 1000)
+    const t = setVisibleInterval(cargarDatos, 1000)
     return () => clearInterval(t)
   }, [cargarDatos])
 
