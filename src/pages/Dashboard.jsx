@@ -347,7 +347,9 @@ export default function Dashboard() {
       setClientes(prev => {
         const ea = {}
         prev.forEach(c => { ea[c.id] = { estado: c.estado, obs: c.obs } })
-        const miNombre = (sesion?.nombre || '').trim()
+        // En la vista abierta desde Jefatura, los leads pertenecen al asesor
+        // seleccionado, no al usuario de Jefatura que mantiene la sesión.
+        const miNombre = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
         return leadsAsignados.map(l => {
           const p = ea[l.id] || {}
           // ¿Soy el asesor actual del número o solo lo trabajé antes (registro)?
@@ -395,7 +397,7 @@ export default function Dashboard() {
       setLlamadas(leadsAsignados.length)
     } catch(e) { console.error('Error cargando leads:', e) }
     finally { cargandoLeadsRef.current = false }
-  }, [filtroAsesor])
+  }, [filtroAsesor, vistaJefatura, asesorObjetivo?.nombre, sesion?.nombre])
 
   // ── API: Ventas ──────────────────────────────────────────────────────────
   const cargarVentasSubidas = useCallback(async () => {
