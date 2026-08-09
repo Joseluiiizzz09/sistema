@@ -274,6 +274,11 @@ body{
 .bo-root .bo-nav.active{font-weight:700;color:#fff;}
 .bo-root .numero-copiar.secundario{color:#64748b;font-weight:600;}
 .bo-root .num-primary .num-duplicado{color:var(--purple);font-weight:800;}
+.bo-root .num-primary .num-estado{display:inline-block;padding:2px 5px;border-radius:5px;font-weight:800;}
+.bo-root .num-primary .num-estado-celeste{color:#0369a1;background:#e0f2fe;}
+.bo-root .num-primary .num-estado-rojo{color:#b91c1c;background:#fee2e2;}
+.bo-root .num-primary .num-estado-verde{color:#15803d;background:#dcfce7;}
+.bo-root .num-primary .num-estado-amarillo{color:#92400e;background:#fef3c7;}
 .bo-root .numero-copiar button{
   width:22px;height:22px;padding:0;border:1px solid #e2e8f0;border-radius:6px;
   background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center;
@@ -415,12 +420,18 @@ body{
 /* ── Botón cuaderno DNI ── */
 .btn-dni-cuaderno{width:20px;height:20px;border:1px solid #bbf7d0;border-radius:5px;background:#f0fdf4;color:#15803d;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:all .15s;}
 .btn-dni-cuaderno:hover{background:#dcfce7;border-color:#86efac;}
+.btn-cobertura-cuaderno{border-color:#fecaca;background:#fef2f2;color:#dc2626;}
+.btn-cobertura-cuaderno:hover{background:#fee2e2;border-color:#fca5a5;}
 /* ── Popover DNI de venta cerrada ── */
 .dni-popover{position:fixed;z-index:9999;background:#fff;border:1px solid #d1fae5;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);padding:14px 16px;min-width:180px;max-width:220px;}
 .dni-popover-label{font-size:9px;font-weight:700;letter-spacing:.06em;color:#6b7280;text-transform:uppercase;margin-bottom:6px;}
 .dni-popover-value{font-size:22px;font-weight:800;color:#065f46;letter-spacing:.04em;text-align:center;font-family:monospace;margin-bottom:10px;}
 .dni-popover-close{position:absolute;top:6px;right:8px;background:none;border:none;font-size:16px;color:#9ca3af;cursor:pointer;line-height:1;padding:0;}
 .dni-popover-close:hover{color:#374151;}
+.cobertura-popover{min-width:240px;max-width:300px;border-color:#fecaca;}
+.cobertura-popover-campo{display:flex;flex-direction:column;gap:2px;margin-top:9px;}
+.cobertura-popover-campo strong{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;}
+.cobertura-popover-campo span{font-size:12px;font-weight:700;color:#991b1b;overflow-wrap:anywhere;}
 .dni-copy-btn{width:100%;padding:5px 0;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#15803d;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .dni-copy-btn:hover{background:#dcfce7;}
 /* ── Fila Detalles expandible ── */

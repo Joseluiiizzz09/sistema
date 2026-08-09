@@ -104,6 +104,25 @@ const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ'])
+const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO'])
+const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
+const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
+function normalizarNumero(valor) {
+  return String(valor || '').replace(/\D/g, '')
+}
+function resaltadoPorVenta(venta) {
+  if (!venta) return null
+  const estado = String(venta.estado || '').trim().toUpperCase()
+  const estadoGrab = String(venta.estado_grab || '').trim().toUpperCase()
+  const estadoSupGrab = String(venta.estado_supgrab || '').trim().toUpperCase()
+  if (estado === 'CAIDA')       return { clase:'num-estado-rojo', label:'CAÍDA en Seguimiento' }
+  if (estado === 'INSTALADO')   return { clase:'num-estado-celeste', label:'INSTALADO en Seguimiento' }
+  if (estado === 'EN_EJECUCION') return { clase:'num-estado-verde', label:'EN EJECUCIÓN en Seguimiento' }
+  if (ESTADOS_AMARILLOS_VENTA.has(estado) || ESTADOS_AMARILLOS_GRAB.has(estadoGrab) || ESTADOS_AMARILLOS_SUPGRAB.has(estadoSupGrab)) {
+    return { clase:'num-estado-amarillo', label:'Rechazado en Seguimiento, Validación o Grabaciones' }
+  }
+  return null
+}
 function esLeadProhibido(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
@@ -340,6 +359,7 @@ export default function Backoffice() {
   // ── Data ──
   const [asesores,      setAsesores]      = useState([])
   const [baseData,      setBaseData]      = useState({})
+  const [ventasPorNumero, setVentasPorNumero] = useState({})
   const [fechaPestanas, setFechaPestanas] = useState([fechaHoy()])
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
@@ -371,6 +391,7 @@ export default function Backoffice() {
   const [histOpen, setHistOpen] = useState({})
   const [detOpen,  setDetOpen]  = useState({})
   const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
+  const [coberturaModal, setCoberturaModal] = useState(null)
   const [numeroModal, setNumeroModal] = useState(null) // { id, bid, n1, n2, guardando }
 
   async function guardarNumeros() {
@@ -588,6 +609,20 @@ export default function Backoffice() {
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
 
+  const cargarEstadosVentas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/ventas`, { headers:ncHeaders() })
+      const data = await res.json()
+      if (!data.ok) return
+      const porNumero = {}
+      data.data.forEach(venta => {
+        const numero = normalizarNumero(venta.telefono1)
+        if (numero && !porNumero[numero]) porNumero[numero] = venta
+      })
+      setVentasPorNumero(porNumero)
+    } catch(e) { console.error('Error cargando estados de ventas:', e) }
+  }, [])
+
 const cargarLeads = useCallback(async () => {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoLeadsRef.current = true
@@ -692,9 +727,11 @@ const cargarLeads = useCallback(async () => {
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
+    cargarEstadosVentas()
     const t = setVisibleInterval(cargarLeads, 500)
-    return () => clearInterval(t)
-  }, [cargarAsesores, cargarLeads])
+    const tv = setVisibleInterval(cargarEstadosVentas, 2000)
+    return () => { clearInterval(t); clearInterval(tv) }
+  }, [cargarAsesores, cargarLeads, cargarEstadosVentas])
 
   // BL modal reload on fecha change
   useEffect(() => {
@@ -1429,7 +1466,7 @@ const cargarLeads = useCallback(async () => {
     const vistos = new Set()
     const duplicados = new Set()
     for (let i = registrosActivos.length - 1; i >= 0; i--) {
-      const n1 = String(registrosActivos[i].n1 || '').replace(/\D/g, '')
+      const n1 = normalizarNumero(registrosActivos[i].n1)
       if (!n1) continue
       if (vistos.has(n1)) duplicados.add(registrosActivos[i].id)
       else vistos.add(n1)
@@ -1920,9 +1957,11 @@ const cargarLeads = useCallback(async () => {
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
-                        const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
-                        const detAbierto  = !!detOpen[r.id]
-                        return [
+                         const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
+                         const detAbierto  = !!detOpen[r.id]
+                         const estadoNumero = resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)])
+                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (idsDuplicados.has(r.id) ? 'num-duplicado' : '')
+                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
                             <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{i+1}</td>
@@ -1936,7 +1975,7 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={idsDuplicados.has(r.id) ? 'num-duplicado' : ''}>{r.n1}</span>
+                                  <span className={claseNumero} title={estadoNumero?.label || ''}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
@@ -1989,6 +2028,16 @@ const cargarLeads = useCallback(async () => {
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
                                       setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
+                                    }}>
+                                    <NotebookIcon/>
+                                  </button>
+                                )}
+                                {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distrito||r.coordenadas)&&(
+                                  <button type="button" className="btn-dni-cuaderno btn-cobertura-cuaderno"
+                                    title="Ver distrito y coordenadas"
+                                    onClick={e=>{
+                                      const rect=e.currentTarget.getBoundingClientRect()
+                                      setCoberturaModal(prev=>prev&&prev.id===r.id?null:{id:r.id,distrito:r.distrito||'',coordenadas:r.coordenadas||'',top:rect.bottom+6,left:rect.left})
                                     }}>
                                     <NotebookIcon/>
                                   </button>
@@ -2811,6 +2860,18 @@ const cargarLeads = useCallback(async () => {
                 <button type="button" className="dni-copy-btn" onClick={()=>{ copiarNumero(dniModal.dni); setDniModal(null) }}>Copiar</button>
               </>
             )}
+          </div>
+        </>
+      )}
+
+      {coberturaModal&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={()=>setCoberturaModal(null)}/>
+          <div className="dni-popover cobertura-popover" style={{top:coberturaModal.top,left:coberturaModal.left}}>
+            <button type="button" className="dni-popover-close" onClick={()=>setCoberturaModal(null)} aria-label="Cerrar">×</button>
+            <div className="dni-popover-label">SIN COBERTURA</div>
+            <div className="cobertura-popover-campo"><strong>Distrito</strong><span>{coberturaModal.distrito||'—'}</span></div>
+            <div className="cobertura-popover-campo"><strong>Coordenadas</strong><span>{coberturaModal.coordenadas||'—'}</span></div>
           </div>
         </>
       )}

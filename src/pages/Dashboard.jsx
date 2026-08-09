@@ -228,6 +228,7 @@ export default function Dashboard() {
   const [seleccionado, setSeleccionado] = useState(null)
   const [modalTip,     setModalTip]     = useState(false)
   const [tipSearch,    setTipSearch]    = useState('')
+  const [modalEspecial, setModalEspecial] = useState(null)
 
   // Panel nueva / editar venta
   const [panelNV,     setPanelNV]     = useState(false)
@@ -633,6 +634,16 @@ export default function Dashboard() {
       }
       return
     }
+    if (tipo === 'PREVENTA' || tipo === 'SIN COBERTURA') {
+      const sel = seleccionado
+      const lead = sel !== null ? clientes[sel] : null
+      cerrarModales()
+      if (lead?.id) setModalEspecial({
+        tipo, leadId:lead.id, tipoDoc:'DNI', documento:'',
+        distrito:lead.zona === '--' ? '' : (lead.zona || ''), coordenadas:lead.coordenadas || '', guardando:false,
+      })
+      return
+    }
     const sel = seleccionado
     if (sel !== null) {
       setClientes(prev => {
@@ -652,6 +663,37 @@ export default function Dashboard() {
       }
     }
     cerrarModales()
+  }
+
+  async function guardarTipificacionEspecial() {
+    if (!modalEspecial || modalEspecial.guardando) return
+    const { tipo, tipoDoc, documento, distrito, coordenadas, leadId } = modalEspecial
+    const body = { tipif_vend:tipo }
+    if (tipo === 'PREVENTA') {
+      const longitud = { DNI:8, CE:9, RUC:11 }[tipoDoc]
+      if (!new RegExp(`^\\d{${longitud}}$`).test(documento))
+        return mostrarToast(`${tipoDoc} debe tener exactamente ${longitud} dígitos`)
+      Object.assign(body, { tipo_doc:tipoDoc, documento })
+    } else {
+      if (!distrito.trim()) return mostrarToast('El distrito es obligatorio')
+      if (!coordenadas.trim()) return mostrarToast('Las coordenadas son obligatorias')
+      Object.assign(body, { distrito:distrito.trim(), coordenadas:coordenadas.trim() })
+    }
+    setModalEspecial(p => ({ ...p, guardando:true }))
+    try {
+      const res = await fetch(`${API}/leads/${leadId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify(body) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) return mostrarToast(data.mensaje || 'No se pudo guardar la tipificación')
+      const docTexto = tipo === 'PREVENTA' ? `${tipoDoc}: ${documento}` : ''
+      setClientes(prev => prev.map(c => c.id === leadId ? {
+        ...c, estado:tipo,
+        ...(docTexto ? { obs:conservarObsConDocumento(c.obs, docTexto) } : {}),
+        ...(tipo === 'SIN COBERTURA' ? { zona:distrito.trim(), coordenadas:coordenadas.trim() } : {}),
+      } : c))
+      pendTipRef.current[leadId] = { estado:tipo, ts:Date.now() }
+      setModalEspecial(null)
+    } catch(e) { mostrarToast('Error conectando al servidor') }
+    finally { setModalEspecial(p => p ? ({ ...p, guardando:false }) : p) }
   }
 
   function guardarObs(i, valor) {
@@ -765,9 +807,11 @@ export default function Dashboard() {
     }
     if (nvForm.tel2.trim() && !/^\d+$/.test(nvForm.tel2.trim()))
       return mostrarToast('El teléfono de referencia es opcional, pero si se completa debe contener únicamente números')
-    if (!nvForm.dni.trim()) return mostrarToast('El DNI es obligatorio')
-    if (nvForm.tipoDoc === 'DNI' && !/^\d{8}$/.test(nvForm.dni.trim()))
-      return mostrarToast('El número de DNI debe contener exactamente 8 dígitos')
+    if (nvForm.tel2.trim() && nvForm.tel2.trim() === nvForm.tel1.trim())
+      return mostrarToast('El teléfono de referencia debe ser diferente al teléfono principal')
+    const longitudDoc = { DNI:8, CE:9, RUC:11 }[nvForm.tipoDoc]
+    if (!new RegExp(`^\\d{${longitudDoc}}$`).test(nvForm.dni.trim()))
+      return mostrarToast(`${nvForm.tipoDoc} debe contener exactamente ${longitudDoc} dígitos`)
     if (!nvForm.nombre.trim()) return mostrarToast('El nombre es obligatorio')
     const reNombre = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]+$/
     if (!reNombre.test(nvForm.nombre.trim()))
@@ -778,6 +822,16 @@ export default function Dashboard() {
       return mostrarToast('El nombre de la madre solo puede contener letras, tildes, espacios y guiones')
     if (nvForm.lugarNac.trim() && !reNombre.test(nvForm.lugarNac.trim()))
       return mostrarToast('El lugar de nacimiento solo puede contener letras, tildes, espacios y guiones')
+    const requeridos = [
+      ['Fecha de nacimiento', nvForm.fechaNac], ['Lugar de nacimiento', nvForm.lugarNac],
+      ['Nombre del padre', nvForm.padre], ['Nombre de la madre', nvForm.madre],
+      ['Departamento', nvForm.dpto], ['Provincia', nvForm.prov], ['Distrito', nvForm.dist],
+      ['Coordenadas', nvForm.coord], ['Dirección', nvForm.dir], ['Cuota de instalación', nvForm.cuota],
+      ['Claro Hogar', nvForm.hogar], ['Tecnología', nvForm.tec], ['Paquete Real', nvForm.paquete],
+      ['Full Claro', nvForm.full], ['Plano', nvForm.plano], ['Observación', nvForm.obs],
+    ]
+    const faltante = requeridos.find(([,valor]) => !String(valor || '').trim())
+    if (faltante) return mostrarToast(`${faltante[0]} es obligatorio para cerrar la venta`)
     const body = {
       ...(!nvEditId && nvLeadId ? { leadId:nvLeadId } : {}),
       tipoDoc:nvForm.tipoDoc, dni:nvForm.dni.trim(), nombre:nvForm.nombre.trim(),
@@ -1234,6 +1288,38 @@ export default function Dashboard() {
 
       {/* ── MODAL REGISTRAR VENTA (DNI) ────────────────────────────────── */}
       {/* ── PANEL NUEVA / EDITAR VENTA ─────────────────────────────────── */}
+      {modalEspecial && (
+        <div className="modal show">
+          <div className="modal-content tip-datos-modal">
+            <h3>{modalEspecial.tipo}</h3>
+            {modalEspecial.tipo === 'PREVENTA' ? (
+              <>
+                <label>Tipo de documento</label>
+                <select value={modalEspecial.tipoDoc} onChange={e=>setModalEspecial(p=>({...p,tipoDoc:e.target.value,documento:''}))}>
+                  <option value="DNI">DNI</option>
+                  <option value="CE">CE</option>
+                  <option value="RUC">RUC</option>
+                </select>
+                <label>Número de documento</label>
+                <input value={modalEspecial.documento} inputMode="numeric"
+                  maxLength={{DNI:8,CE:9,RUC:11}[modalEspecial.tipoDoc]}
+                  onChange={e=>setModalEspecial(p=>({...p,documento:e.target.value.replace(/\D/g,'')}))}/>
+              </>
+            ) : (
+              <>
+                <label>Distrito</label>
+                <input value={modalEspecial.distrito} onChange={e=>setModalEspecial(p=>({...p,distrito:e.target.value}))}/>
+                <label>Coordenadas</label>
+                <input value={modalEspecial.coordenadas} placeholder="-12.000000, -77.000000"
+                  onChange={e=>setModalEspecial(p=>({...p,coordenadas:e.target.value}))}/>
+              </>
+            )}
+            <button onClick={guardarTipificacionEspecial} disabled={modalEspecial.guardando}>{modalEspecial.guardando?'Guardando...':'Confirmar'}</button>
+            <button className="btn-cancelar" onClick={()=>setModalEspecial(null)} disabled={modalEspecial.guardando}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
       <div className={`nv-overlay${panelNV ? ' open' : ''}`}>
         <div className="nv-modal">
           <div className="nv-header">
@@ -1271,7 +1357,7 @@ export default function Dashboard() {
                   <label className="nv-label">
                     {nvForm.tipoDoc === 'DNI' ? 'Número DNI' : nvForm.tipoDoc === 'CE' ? 'Número Carnet Extranjería' : 'Número RUC'} <span>*</span>
                   </label>
-                  <input className="nv-input" placeholder="Número de documento" maxLength={15} inputMode="numeric" pattern="[0-9]*" style={{fontFamily:'monospace'}}
+                  <input className="nv-input" placeholder="Número de documento" maxLength={{DNI:8,CE:9,RUC:11}[nvForm.tipoDoc]||15} inputMode="numeric" pattern="[0-9]*" style={{fontFamily:'monospace'}}
                     value={nvForm.dni} onChange={e => nvSet('dni', e.target.value.replace(/\D/g, ''))} />
                 </div>
                 <div className="nv-field">

@@ -282,6 +282,9 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
     font-family:inherit; outline:none; background:#f9fafb; transition:all .2s;
 }
 .modal-content input:focus { border-color:#9ca3af; background:#fff; box-shadow:0 0 0 3px rgba(0,0,0,.05); }
+.tip-datos-modal{width:min(360px,calc(100vw - 32px));}
+.tip-datos-modal label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.tip-datos-modal select{padding:10px 12px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:13px;font-family:inherit;outline:none;background:#f9fafb;}
 .modal-content button {
     padding:11px; border:none; border-radius:11px;
     background:#111827; color:#fff; cursor:pointer;
