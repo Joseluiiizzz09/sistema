@@ -47,6 +47,7 @@ function fechaDesdeAudioPath(path) {
   return m ? fechaPeruDesdeMs(Number(m[1])) : ''
 }
 function estadoGrab(id) { return ESTADOS_GRAB_BADGE.find(e=>e.id===id)||ESTADOS_GRAB_BADGE[0] }
+function primerNombre(nombre) { return String(nombre || '').trim().split(/\s+/)[0] || '' }
 // Extrae la fecha (yyyy-mm-dd) de la última línea "[dd/mm/yyyy ... ] VALIDADO"
 // que Validación escribe en obs_validacion al tipificar. Esa línea es el único
 // registro real de "cuándo esta venta pasó Validación y entró a Grabaciones";
@@ -595,7 +596,7 @@ export default function Grabaciones() {
                               <button className="btn-fotos btn-archivos" onClick={()=>setMediaVenta(v)} title="Ver fotos y documentos">Archivos</button>
                             </div>
                           </td>
-                          <td><span className={`badge-grab ${eg.cls}`}>{eg.id==='grabando' && v.grabando_por_nombre ? `GRABANDO ${v.grabando_por_nombre.toUpperCase()}` : eg.label}</span></td>
+                          <td><span className={`badge-grab ${eg.cls}`}>{eg.id==='grabando' && v.grabando_por_nombre ? `GRABANDO ${primerNombre(v.grabando_por_nombre).toUpperCase()}` : eg.label}</span></td>
                           <td>
                             <span style={{color:'#185FA5',fontWeight:700,fontSize:11}}>{formatF(v.fechaIngreso)}</span>
                             {esAnterior && <span className="badge-anterior">ANTERIOR</span>}
@@ -649,7 +650,7 @@ export default function Grabaciones() {
         <div className="modal-bg open" onClick={e=>{ if(e.target===e.currentTarget) setModalEstado({open:false,id:null}) }}>
           <div className="modal-box" style={{maxWidth:360}}>
             <div className="modal-title">Cambiar estado de grabación</div>
-            <div className="modal-sub">Estado actual: <strong>{vEstado ? (vEstado._estadoGrab==='grabando' && vEstado.grabando_por_nombre ? `GRABANDO ${vEstado.grabando_por_nombre.toUpperCase()}` : estadoGrab(vEstado._estadoGrab).label) : '—'}</strong></div>
+            <div className="modal-sub">Estado actual: <strong>{vEstado ? (vEstado._estadoGrab==='grabando' && vEstado.grabando_por_nombre ? `GRABANDO ${primerNombre(vEstado.grabando_por_nombre).toUpperCase()}` : estadoGrab(vEstado._estadoGrab).label) : '—'}</strong></div>
             <div className="modal-campo">
               <label>Nuevo estado</label>
               <select value={nuevoEstadoSel} onChange={e=>setNuevoEstadoSel(e.target.value)}>
