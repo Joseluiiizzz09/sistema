@@ -273,6 +273,7 @@ body{
 .bo-root .bo-nav-icon{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .bo-root .bo-nav.active{font-weight:700;color:#fff;}
 .bo-root .numero-copiar.secundario{color:#64748b;font-weight:600;}
+.bo-root .num-primary .num-duplicado{color:var(--purple);font-weight:800;}
 .bo-root .numero-copiar button{
   width:22px;height:22px;padding:0;border:1px solid #e2e8f0;border-radius:6px;
   background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center;

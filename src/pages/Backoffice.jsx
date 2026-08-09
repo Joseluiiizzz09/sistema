@@ -100,7 +100,7 @@ function tipifBadgeClass(t) {
 }
 
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO TOCAR','FRAUDE','INSTALADO']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO TOCAR','FRAUDE']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ'])
@@ -1425,6 +1425,17 @@ const cargarLeads = useCallback(async () => {
 
   // ── Computed values ───────────────────────────────────────────────────────
   const registrosActivos = baseData[fechaActiva] || []
+  const idsDuplicados = (() => {
+    const vistos = new Set()
+    const duplicados = new Set()
+    for (let i = registrosActivos.length - 1; i >= 0; i--) {
+      const n1 = String(registrosActivos[i].n1 || '').replace(/\D/g, '')
+      if (!n1) continue
+      if (vistos.has(n1)) duplicados.add(registrosActivos[i].id)
+      else vistos.add(n1)
+    }
+    return duplicados
+  })()
   const registrosFiltrados = (() => {
     const filtered = registrosActivos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
@@ -1925,7 +1936,7 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span>{r.n1}</span>
+                                  <span className={idsDuplicados.has(r.id) ? 'num-duplicado' : ''}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
