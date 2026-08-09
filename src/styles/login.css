@@ -46,13 +46,13 @@ body::after{
 
 /* LOGO */
 .logo-circle{
-  width:80px;height:80px;background:#fff;border-radius:50%;
-  position:absolute;top:-40px;left:50%;transform:translateX(-50%);
+  width:110px;height:110px;background:#fff;border-radius:50%;
+  position:absolute;top:-55px;left:50%;transform:translateX(-50%);
   display:flex;justify-content:center;align-items:center;
   box-shadow:0 10px 30px rgba(0,0,0,.12);
   animation:floatLogo 4s ease-in-out infinite;
 }
-.logo-circle img{width:60px;height:60px;object-fit:contain;}
+.logo-circle img{width:85px;height:85px;object-fit:contain;}
 @keyframes floatLogo{
   0%,100%{transform:translateX(-50%) translateY(0)}
   50%{transform:translateX(-50%) translateY(-6px)}
@@ -128,12 +128,12 @@ button[type="submit"]:disabled{opacity:.65;cursor:not-allowed;transform:none;}
 }
 #welcomeScreen.show{display:flex;}
 .welcome-logo{
-  width:90px;height:90px;background:#fff;border-radius:50%;
+  width:120px;height:120px;background:#fff;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 0 50px rgba(229,62,62,.3);margin-bottom:32px;
   animation:wLogo .6s cubic-bezier(.34,1.56,.64,1) both;
 }
-.welcome-logo img{width:66px;height:66px;object-fit:contain;}
+.welcome-logo img{width:90px;height:90px;object-fit:contain;}
 @keyframes wLogo{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
 .welcome-saludo{font-size:14px;color:rgba(255,255,255,.5);font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;animation:fadeUp .5s .3s both;}
 .welcome-nombre{font-size:42px;font-weight:900;color:#fff;letter-spacing:-1.5px;animation:fadeUp .5s .5s both;}
