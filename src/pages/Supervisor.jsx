@@ -11,32 +11,32 @@ import { setVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
 
-// â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constantes ────────────────────────────────────────────────────────────
 const ESTADOS_VENTA = [
   { id:'venta',         label:'Venta',           cls:'be-venta',      dot:'#2563eb' },
   { id:'validado',      label:'Validado',         cls:'be-validado',   dot:'#7c3aed' },
   { id:'no_validado',   label:'No Validado',      cls:'be-caida',      dot:'#dc2626' },
-  { id:'en_revision',   label:'En RevisiÃ³n',      cls:'be-revision',   dot:'#2563eb' },
+  { id:'en_revision',   label:'En Revisión',      cls:'be-revision',   dot:'#2563eb' },
   { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
   { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
-  { id:'en_ejecucion',  label:'En EjecuciÃ³n',     cls:'be-ejecucion',  dot:'#0891b2' },
+  { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
   { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#2563eb', bg:'#eff6ff', border:'1px solid rgba(96,165,250,.35)' },
-  { id:'caida',         label:'CaÃ­da',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
+  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
-  { id:'tecnico_casa',  label:'TÃ©cnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
+  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
   { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
   { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
   { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
   { id:'no_contesta',    label:'No Contesta',     cls:'be-nocontesta', dot:'#78350f', bg:'#fde68a', border:'1px solid #f59e0b' },
-  { id:'buzon_voz',      label:'BuzÃ³n de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
+  { id:'buzon_voz',      label:'Buzón de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
   { id:'corta_llamada',  label:'Corta Llamada',   cls:'be-corta',      dot:'#1e3a8a', bg:'#bfdbfe', border:'1px solid #3b82f6' },
   { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
   { id:'grabando',       label:'Grabando',        cls:'be-grabando',   dot:'#9a3412', bg:'#fed7aa', border:'1px solid rgba(234,88,12,.45)' },
-  { id:'suplantacion',   label:'SuplantaciÃ³n',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
+  { id:'suplantacion',   label:'Suplantación',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
   { id:'programado',        label:'Programado',        cls:'be-prog-programado',  dot:'#047857', bg:'#dcfce7', border:'1px solid rgba(52,211,153,.45)' },
   { id:'bloqueado',         label:'Bloqueado',         cls:'be-prog-bloqueado',   dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.5)' },
   { id:'sin_agenda',        label:'Sin Agenda',        cls:'be-prog-sinagenda',   dot:'#a16207', bg:'#fef9c3', border:'1px solid rgba(250,204,21,.55)' },
-  { id:'caracter_especial', label:'CarÃ¡cter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
+  { id:'caracter_especial', label:'Carácter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
   { id:'zona_restringida',  label:'Zona Restringida',  cls:'be-prog-zona',        dot:'#c2410c', bg:'#ffedd5', border:'1px solid rgba(251,146,60,.52)' },
 ]
 const TIPIF_COLORS = {
@@ -47,7 +47,7 @@ const TIPIF_COLORS = {
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899','#f59e0b']
 const NV_DEFAULT = { n1:'', n2:'', campana:'', asesor:'', estado:'', fecha:'', obs:'' }
 
-// â”€â”€ Utilidades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Utilidades ────────────────────────────────────────────────────────────
 function colorFor(n) { let s=0; for(const c of (n||'')) s+=c.charCodeAt(0); return COLORES_AV[s%COLORES_AV.length] }
 function iniciales(n) { return (n||'?').trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
 function fechaHoy() {
@@ -57,23 +57,23 @@ function fechaHoy() {
 function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
-function formatF(f) { if(!f)return'â€”'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
 function mapearEstado(e, sup = '', eg = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
   const g=(eg||'').toLowerCase().trim()
-  // Estado de Grabaciones â€” independiente de `estado` (ValidaciÃ³n no cambia).
+  // Estado de Grabaciones — independiente de `estado` (Validación no cambia).
   // Mientras Super de Grabaciones no corrobore, se conserva GRABANDO.
-  // Condicionado a s==='validado': en cuanto ProgramaciÃ³n avanza `estado`
+  // Condicionado a s==='validado': en cuanto Programación avanza `estado`
   // (PROGRAMADO/BLOQUEADO/etc), esa etapa manda sobre el historial de
-  // Grabaciones, que ya quedÃ³ fijo y no debe seguir tapando el estado real.
+  // Grabaciones, que ya quedó fijo y no debe seguir tapando el estado real.
   if (s==='validado') {
     if (g==='grabando' || (g==='grabado' && sr!=='aprobado')) return 'grabando'
     if (g==='grabado' && sr==='aprobado') return 'grabado'
     if (['corta_llamada','suplantacion','no_desea','no_contesta','buzon_voz'].includes(g)) return g
   }
-  // â”€â”€ Comportamiento previo (compatibilidad con filas viejas donde el flujo
-  // de Grabaciones todavÃ­a escribÃ­a en el campo compartido `estado`). â”€â”€
+  // ── Comportamiento previo (compatibilidad con filas viejas donde el flujo
+  // de Grabaciones todavía escribía en el campo compartido `estado`). ──
   if(s==='grabado' && (sr==='sin_revisar' || sr==='en_revision')) return 'en_revision'
   if(s==='grabado' && sr==='aprobado') return 'grabado'
   if(s===''||s==='venta') return 'venta'
@@ -81,8 +81,8 @@ function mapearEstado(e, sup = '', eg = '') {
   if(s==='no_validado'||s==='observado') return 'no_validado'
   if(s==='grabado')       return 'grabado'
   if(s==='pendiente')     return 'no_grabado'
-  // PROGRAMADO (estado real de ProgramaciÃ³n, sin cambios en BD) se muestra
-  // pÃºblicamente como EN EJECUCIÃ“N â€” reutiliza el id/color ya existente.
+  // PROGRAMADO (estado real de Programación, sin cambios en BD) se muestra
+  // públicamente como EN EJECUCIÓN — reutiliza el id/color ya existente.
   if(s==='programado')        return 'en_ejecucion'
   if(s==='bloqueado')         return 'bloqueado'
   if(s==='sin_agenda')        return 'sin_agenda'
@@ -105,20 +105,20 @@ function getUltimos7Dias() {
 
 function BadgeEstado({ id, grabandoPorNombre, fraudeProgramacion }) {
   const e = estadoObj(id)
-  // FRAUDE es ambiguo entre ValidaciÃ³n y ProgramaciÃ³n (mismo valor de
-  // `estado`); solo llega a ProgramaciÃ³n tras estado_supgrab='aprobado',
-  // asÃ­ que ese dato distingue cuÃ¡l lo marcÃ³, sin necesitar campo nuevo.
+  // FRAUDE es ambiguo entre Validación y Programación (mismo valor de
+  // `estado`); solo llega a Programación tras estado_supgrab='aprobado',
+  // así que ese dato distingue cuál lo marcó, sin necesitar campo nuevo.
   const progFraude = id === 'fraude' && fraudeProgramacion
   const bg = progFraude ? '#111827' : (e.bg || `${e.dot}22`)
   const border = progFraude ? '1px solid #111827' : (e.border || `1px solid ${e.dot}44`)
   const color = progFraude ? '#fff' : e.dot
   // El nombre es solo visual (resuelto por el backend desde grabando_por_id);
-  // el estado interno sigue siendo Ãºnicamente "grabando".
+  // el estado interno sigue siendo únicamente "grabando".
   const label = (id === 'grabando' && grabandoPorNombre) ? `${e.label} ${grabandoPorNombre}` : e.label
   return <span style={{display:'inline-flex',padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,background:bg,color:color,border:border}}>{label}</span>
 }
 
-// â”€â”€ Componente principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Componente principal ──────────────────────────────────────────────────
 export default function Supervisor() {
   const navigate   = useNavigate()
   const { sesion, logout } = useAuth()
@@ -128,53 +128,53 @@ export default function Supervisor() {
   const ch1Ref = useRef(null), ch2Ref = useRef(null), ch3Ref = useRef(null), ch4Ref = useRef(null)
   const chartInst = useRef({})
 
-  // â”€â”€ Session â”€â”€
+  // ── Session ──
   const salaActual    = sesion?.sala || 'SALA 1'
   const supervisorNom = sesion?.nombre || 'Supervisor'
 
-  // â”€â”€ Section / period â”€â”€
+  // ── Section / period ──
   const [seccion, setSeccion] = useState(() => sessionStorage.getItem('nc_supervisor_apartado') || 'dashboard')
   const [periodo, setPeriodoState] = useState(() => sessionStorage.getItem('nc_supervisor_periodo') || 'mes')
   const [sidebarAbierto, setSidebarAbierto] = useState(() => sessionStorage.getItem('nc_supervisor_sidebar') !== 'cerrado')
 
-  // â”€â”€ Data â”€â”€
+  // ── Data ──
   const [asesores, setAsesores] = useState([])
   const [ventas,   setVentas]   = useState([])
   const [frases,   setFrases]   = useState([])
 
-  // â”€â”€ Filtros ventas â”€â”€
+  // ── Filtros ventas ──
   const [filtroAsesor,  setFiltroAsesor]  = useState('')
   const [filtroEstado,  setFiltroEstado]  = useState('')
   const [filtroDesde,   setFiltroDesde]   = useState('')
   const [filtroHasta,   setFiltroHasta]   = useState('')
   const [tablaSearch,   setTablaSearch]   = useState('')
 
-  // â”€â”€ Equipo â”€â”€
+  // ── Equipo ──
   const [equipoBuscar,      setEquipoBuscar]      = useState('')
   const [equipoFiltroEstado,setEquipoFiltroEstado] = useState('')
 
-  // â”€â”€ Panel agregar venta â”€â”€
+  // ── Panel agregar venta ──
   const [panelNV, setPanelNV] = useState(false)
   const [nvForm,  setNvForm]  = useState(NV_DEFAULT)
 
-  // â”€â”€ Modal detalle asesor â”€â”€
+  // ── Modal detalle asesor ──
   const [modalAsesor, setModalAsesor] = useState({ open:false, nombre:'' })
 
-  // â”€â”€ Modal base de llamadas â”€â”€
+  // ── Modal base de llamadas ──
   const [blModal,    setBlModal]    = useState({ open:false, nombre:'', asesorId:null })
   const [blLeads,    setBlLeads]    = useState([])
   const [blFecha,    setBlFecha]    = useState(fechaHoy())
   const [blCargando, setBlCargando] = useState(false)
 
-  // â”€â”€ Frases â”€â”€
+  // ── Frases ──
   const [fraseTexto, setFraseTexto] = useState('')
   const [fraseEliminandoId, setFraseEliminandoId] = useState(null)
 
-  // â”€â”€ Toast â”€â”€
+  // ── Toast ──
   const [toast, setToast] = useState('')
   const [ventaReasignar, setVentaReasignar] = useState(null)
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Helpers ──────────────────────────────────────────────────────────────
   function mostrarToast(msg) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast(msg)
@@ -192,7 +192,7 @@ export default function Supervisor() {
     if (id === 'frases') cargarFrases()
   }
 
-  // â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Computed ──────────────────────────────────────────────────────────────
   const asesoresSala = useMemo(() =>
     asesores.filter(a => !salaActual || a.sala === salaActual),
   [asesores, salaActual])
@@ -239,7 +239,7 @@ export default function Supervisor() {
     }).sort((a,b)=>b.total-a.total),
   [dashVentas, asesoresSala])
 
-  // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── API ───────────────────────────────────────────────────────────────────
   const cargandoDatosRef = useRef(false)
   const cargarDatos = useCallback(async () => {
     if (cargandoDatosRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
@@ -309,13 +309,13 @@ export default function Supervisor() {
   }
 
   async function eliminarVenta(id) {
-    if (!confirm('Â¿Seguro que deseas eliminar esta venta?')) return
+    if (!confirm('¿Seguro que deseas eliminar esta venta?')) return
     try {
       const res  = await fetch(`${API}/ventas/${id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json()
       if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
-    } catch(e) { mostrarToast('Error de conexiÃ³n') }
+    } catch(e) { mostrarToast('Error de conexión') }
   }
 
   async function completarReasignacion(data) {
@@ -334,10 +334,10 @@ export default function Supervisor() {
       const data = await res.json()
       if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
-    } catch(e) { mostrarToast('Error de conexiÃ³n') }
+    } catch(e) { mostrarToast('Error de conexión') }
   }
 
-  // â”€â”€ BL Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── BL Modal ──────────────────────────────────────────────────────────────
   function abrirBaseLlamadas(nombre, asesorId) {
     setBlModal({ open:true, nombre, asesorId })
     setBlFecha(fechaHoy())
@@ -354,7 +354,7 @@ export default function Supervisor() {
       .catch(() => { setBlLeads(null); setBlCargando(false) })
   }, [blFecha, blModal.open, blModal.asesorId])
 
-  // â”€â”€ Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Charts ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (seccion !== 'dashboard') return
     let cancelled = false
@@ -379,7 +379,7 @@ export default function Supervisor() {
         })
       }
 
-      // ch2: DistribuciÃ³n por estado (doughnut)
+      // ch2: Distribución por estado (doughnut)
       destroyChart('ch2')
       if (ch2Ref.current) {
         const ed = ESTADOS_VENTA.map(e=>({ label:e.label, cnt:dashVentas.filter(v=>v._estado===e.id).length, color:e.dot }))
@@ -406,7 +406,7 @@ export default function Supervisor() {
         }
       }
 
-      // ch3: Ventas diarias Ãºltimos 7 dÃ­as (line)
+      // ch3: Ventas diarias últimos 7 días (line)
       destroyChart('ch3')
       if (ch3Ref.current) {
         const datasets = asesoresSala.map(a=>({
@@ -422,12 +422,12 @@ export default function Supervisor() {
         })
       }
 
-      // ch4: ConversiÃ³n por asesor (horizontal bar)
+      // ch4: Conversión por asesor (horizontal bar)
       destroyChart('ch4')
       if (ch4Ref.current && dashRendData.length) {
         chartInst.current.ch4 = new Chart(ch4Ref.current, {
           type:'bar',
-          data:{ labels:nombres, datasets:[{ label:'ConversiÃ³n %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
+          data:{ labels:nombres, datasets:[{ label:'Conversión %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
           options:{ indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}} }
         })
       }
@@ -440,7 +440,7 @@ export default function Supervisor() {
     return () => { Object.values(chartInst.current).forEach(c=>c.destroy()) }
   }, [])
 
-  // â”€â”€ Load & poll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load & poll ───────────────────────────────────────────────────────────
   useEffect(() => {
     cargarDatos()
     if (seccion === 'frases') cargarFrases()
@@ -448,14 +448,14 @@ export default function Supervisor() {
     return () => clearInterval(t)
   }, [cargarDatos])
 
-  // â”€â”€ Computed helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Computed helpers ──────────────────────────────────────────────────────
   const cntEst = (id) => dashVentas.filter(v=>v._estado===id).length
   const periodoLabel = () => {
     if(periodo==='dia')return'hoy'; if(periodo==='semana')return'semana'
-    if(periodo==='mes')return'mes actual'; return'histÃ³rico'
+    if(periodo==='mes')return'mes actual'; return'histórico'
   }
 
-  // â”€â”€ JSX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── JSX ───────────────────────────────────────────────────────────────────
   return (
     <div className="sup-root">
       {/* TOPBAR */}
@@ -471,8 +471,8 @@ export default function Supervisor() {
           <button
             type="button"
             className={`sup-sidebar-toggle${sidebarAbierto ? ' abierto' : ''}`}
-            aria-label={sidebarAbierto ? 'Ocultar menÃº' : 'Mostrar menÃº'}
-            title={sidebarAbierto ? 'Ocultar menÃº' : 'Mostrar menÃº'}
+            aria-label={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+            title={sidebarAbierto ? 'Ocultar menú' : 'Mostrar menú'}
             onClick={() => setSidebarAbierto(valor => {
               const nuevo = !valor
               sessionStorage.setItem('nc_supervisor_sidebar', nuevo ? 'abierto' : 'cerrado')
@@ -507,7 +507,7 @@ export default function Supervisor() {
 
         <main className="main">
 
-          {/* â•â• DASHBOARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* ══ DASHBOARD ══════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='dashboard'?' active':''}`}>
             <div className="sec-header">
               <div><h2>Dashboard</h2><p>Resumen general de tu sala</p></div>
@@ -522,12 +522,12 @@ export default function Supervisor() {
             <div className="kpi-grid">
               {[
                 { label:'Total ventas',   val:dashVentas.length,       cls:'k-blue',   sub:periodoLabel() },
-                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validaciÃ³n' },
+                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validación' },
                 { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
                 { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
-                { label:'En EjecuciÃ³n',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
+                { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
                 { label:'Instaladas',     val:cntEst('instalado'),      cls:'k-green',  sub:'completadas' },
-                { label:'CaÃ­das',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
+                { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
                 { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
               ].map(k=>(
                 <div key={k.label} className={`kpi-card ${k.cls}`}>
@@ -552,9 +552,9 @@ export default function Supervisor() {
             {/* Charts */}
             <div className="charts-grid">
               <div className="chart-card"><div className="chart-title">Ventas por asesor</div><div className="chart-wrap"><canvas ref={ch1Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">DistribuciÃ³n por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Ventas diarias â€” Ãºltimos 7 dÃ­as</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">ConversiÃ³n por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Distribución por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Ventas diarias — últimos 7 días</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Conversión por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
             </div>
 
             {/* Ranking */}
@@ -581,10 +581,10 @@ export default function Supervisor() {
 
           </section>
 
-          {/* â•â• VENTAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* ══ VENTAS ═════════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='ventas'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto Â· usa filtros para ver otros periodos</p></div>
+              <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto · usa filtros para ver otros periodos</p></div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 <button className="btn-filtrar" onClick={()=>{ setPanelNV(v=>!v); if(!panelNV) setNvForm({...NV_DEFAULT,fecha:fechaHoy()}) }}>+ Registrar venta</button>
               </div>
@@ -595,24 +595,24 @@ export default function Supervisor() {
               <div style={{background:'#fff',border:'1.5px dashed #e5e7eb',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#ff2d2d',textTransform:'uppercase',letterSpacing:.7,marginBottom:14}}>+ Registrar nueva venta</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:12}}>
-                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="NÃºmero principal" style={{fontFamily:'monospace'}} /></div>
+                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
                   <div className="filtro-group"><label>N2</label><input className="filtro-input" value={nvForm.n2} onChange={e=>setNvForm(p=>({...p,n2:e.target.value}))} placeholder="Secundario" style={{fontFamily:'monospace'}} /></div>
-                  <div className="filtro-group"><label>CampaÃ±a</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                  <div className="filtro-group"><label>Campaña</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
                   <div className="filtro-group"><label>Asesor *</label>
                     <select className="filtro-select" value={nvForm.asesor} onChange={e=>setNvForm(p=>({...p,asesor:e.target.value}))}>
-                      <option value="">â€” Asesor â€”</option>
+                      <option value="">— Asesor —</option>
                       {asesoresSala.map(a=><option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                     </select>
                   </div>
                   <div className="filtro-group"><label>Estado *</label>
                     <select className="filtro-select" value={nvForm.estado} onChange={e=>setNvForm(p=>({...p,estado:e.target.value}))}>
-                      <option value="">â€” Estado â€”</option>
+                      <option value="">— Estado —</option>
                       {ESTADOS_VENTA.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
                     </select>
                   </div>
                   <div className="filtro-group"><label>Fecha</label><input type="date" className="filtro-input" value={nvForm.fecha} onChange={e=>setNvForm(p=>({...p,fecha:e.target.value}))} /></div>
                 </div>
-                <div className="filtro-group" style={{marginBottom:12}}><label>ObservaciÃ³n</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
+                <div className="filtro-group" style={{marginBottom:12}}><label>Observación</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
                 <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
                   <button className="btn-limpiar" onClick={()=>setPanelNV(false)}>Cancelar</button>
                   <button className="btn-filtrar" onClick={agregarVentaManual}>Guardar venta</button>
@@ -666,7 +666,7 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <table className="tabla">
-                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>AcciÃ³n</th></tr></thead>
+                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
                     ? <tr className="tabla-empty"><td colSpan={16}>Sin ventas con esos filtros.</td></tr>
@@ -677,24 +677,24 @@ export default function Supervisor() {
                           <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
                           <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
                           <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
-                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'â€”'}</td>
-                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'â€”'}</td>
-                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'â€”'}</td>
-                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'â€”'}</td>
-                          <td style={{fontSize:11}}>{v.departamento||'â€”'}</td>
-                          <td style={{fontSize:11}}>{v.distrito||'â€”'}</td>
-                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'â€”'}</td>
+                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'—'}</td>
+                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'—'}</td>
+                          <td style={{fontSize:11}}>{v.departamento||'—'}</td>
+                          <td style={{fontSize:11}}>{v.distrito||'—'}</td>
+                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'—'}</td>
                           <td>
                             <div className="asesor-cell">
                               <div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:24,height:24,fontSize:9}}>{iniciales(v.asesor||'?')}</div>
-                              <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'â€”'}</span>
+                              <span style={{fontSize:11,fontWeight:600}}>{v.asesor||'—'}</span>
                             </div>
                           </td>
-                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'â€”'}</td>
-                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'â€”'}</td>
+                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
+                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
                           <td>
                             <div className="venta-actions">
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos â€” ver mÃ³dulo de validaciÃ³n')}>Fotos</button>
+                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>Fotos</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
                             </div>
@@ -707,7 +707,7 @@ export default function Supervisor() {
             </div>
           </section>
 
-          {/* â•â• MI EQUIPO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* ══ MI EQUIPO ══════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='equipo'?' active':''}`}>
 
             {/* Header */}
@@ -791,14 +791,14 @@ export default function Supervisor() {
                           </div>
                           <div className="eq-name-block">
                             <div className="eq-name" title={a.nombre}>{a.nombre}</div>
-                            <div className="eq-username">@{a.usuario||'â€”'}</div>
+                            <div className="eq-username">@{a.usuario||'—'}</div>
                           </div>
                           <span className={`eq-badge-activo${a.activo?' activo':' inactivo'}`}>
                             {a.activo ? 'Activo' : 'Inactivo'}
                           </span>
                         </div>
 
-                        {/* B. MÃ©tricas */}
+                        {/* B. Métricas */}
                         <div className="eq-metrics">
                           {[
                             ['HOY',   hoyV,       '#374151'],
@@ -815,7 +815,7 @@ export default function Supervisor() {
 
                         {/* C. Footer */}
                         <div className="eq-card-footer">
-                          <span className="eq-sala-badge" title={a.sala||'â€”'}>{a.sala||'â€”'}</span>
+                          <span className="eq-sala-badge" title={a.sala||'—'}>{a.sala||'—'}</span>
                           <div className="eq-btns">
                             <button
                               type="button"
@@ -842,7 +842,7 @@ export default function Supervisor() {
             })()}
           </section>
 
-          {/* â•â• RENDIMIENTO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* ══ RENDIMIENTO ═════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='rendimiento'?' active':''}`}>
             <div className="sec-header"><div><h2>Rendimiento de Asesores</h2><p>Productividad individual y comparativo mensual</p></div></div>
             <div className="asesores-cards">
@@ -863,9 +863,9 @@ export default function Supervisor() {
                           <div className="ac-stat"><div className="ac-stat-num">{mis.length}</div><div className="ac-stat-label">Total</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#16a34a'}}>{inst}</div><div className="ac-stat-label">Inst.</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#dc2626'}}>{noVal}</div><div className="ac-stat-label">No Val.</div></div>
-                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">CaÃ­das</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">Caídas</div></div>
                         </div>
-                        <div className="ac-conv"><span className="ac-conv-label">ConversiÃ³n (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
+                        <div className="ac-conv"><span className="ac-conv-label">Conversión (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
                       </div>
                     )
                   })
@@ -879,7 +879,7 @@ export default function Supervisor() {
                 <thead><tr>
                   <th>#</th><th>Asesor</th>
                   {[0,1,2].map(o=><th key={o}>{getMesLabel(o)} (instaladas)</th>)}
-                  <th>Total histÃ³rico</th>
+                  <th>Total histórico</th>
                 </tr></thead>
                 <tbody>
                   {asesoresSala.length === 0
@@ -907,7 +907,7 @@ export default function Supervisor() {
               return (
                 <div className="tabla-wrap" style={{marginTop:16}}>
                   <div className="tabla-header">
-                    <span className="tabla-title">Ventas con problemas â€” No validadas Â· CaÃ­das</span>
+                    <span className="tabla-title">Ventas con problemas — No validadas · Caídas</span>
                     <span className="tabla-count">{problemas.length} registros</span>
                   </div>
                   <table className="tabla">
@@ -918,12 +918,12 @@ export default function Supervisor() {
                         : problemas.map((v,i)=>(
                             <tr key={v.id||i}>
                               <td style={{fontSize:11,color:'#185FA5',fontWeight:700}}>{formatF(v._fecha)}</td>
-                              <td style={{fontWeight:600}}>{v.nombre||'â€”'}</td>
-                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'â€”'}</td>
-                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'â€”'}</td>
-                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'â€”'}</span></div></td>
+                              <td style={{fontWeight:600}}>{v.nombre||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'—'}</td>
+                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}}>{v.asesor||'—'}</span></div></td>
                               <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
-                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'â€”'}</td>
+                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'—'}</td>
                             </tr>
                           ))
                       }
@@ -934,7 +934,7 @@ export default function Supervisor() {
             })()}
           </section>
 
-          {/* â•â• FRASES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* ══ FRASES ═════════════════════════════════════════════════════════ */}
           <section className={`section${seccion==='frases'?' active':''}`}>
             <div className="sec-header"><div><h2>Frases del Día</h2><p>Envía mensajes motivacionales a tu equipo</p></div></div>
             <div className="frases-layout">
@@ -983,7 +983,7 @@ export default function Supervisor() {
         </main>
       </div>
 
-      {/* â•â• MODAL DETALLE ASESOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* ══ MODAL DETALLE ASESOR ═══════════════════════════════════════════════ */}
       {modalAsesor.open && (() => {
         const a    = asesoresSala.find(x=>x.nombre===modalAsesor.nombre)
         if (!a) return null
@@ -1031,7 +1031,7 @@ export default function Supervisor() {
         )
       })()}
 
-      {/* â•â• MODAL BASE DE LLAMADAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* ══ MODAL BASE DE LLAMADAS ═════════════════════════════════════════════ */}
       {blModal.open && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center',padding:16,backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)setBlModal(p=>({...p,open:false}))}}>
           <div style={{background:'#fff',borderRadius:18,width:'100%',maxWidth:960,maxHeight:'92vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.25)'}}>
@@ -1111,7 +1111,7 @@ export default function Supervisor() {
         />
       )}
 
-      {/* â•â• TOAST â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* ══ TOAST ════════════════════════════════════════════════════════════ */}
     </div>
   )
 }

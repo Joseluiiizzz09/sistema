@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
@@ -97,7 +97,7 @@ export default function SupGrabaciones() {
 
   function actualizarFecha() {
     const d = new Date()
-    const dias  = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+    const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const hora  = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
     setFechaLabel(`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} - ${hora}`)
@@ -339,7 +339,7 @@ export default function SupGrabaciones() {
               <input type="date" value={fHasta} onChange={e => { setFHasta(e.target.value); setPagina(1) }} />
             </div>
             <div style={{ alignSelf: 'flex-end' }}>
-              <button className="btn-limpiar" onClick={limpiarFiltros}>âœ• Limpiar</button>
+              <button className="btn-limpiar" onClick={limpiarFiltros}>✕ Limpiar</button>
             </div>
           </div>
         </div>
@@ -351,7 +351,7 @@ export default function SupGrabaciones() {
               <span className="tabla-count">{totalPag} registros</span>
               {totalPag > 0 && (
                 <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 600 }}>
-                  Mostrando {inicio + 1}â€“{fin} de {totalPag}
+                  Mostrando {inicio + 1}–{fin} de {totalPag}
                 </span>
               )}
             </div>
@@ -366,9 +366,9 @@ export default function SupGrabaciones() {
                 onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}
                 style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', outline: 'none' }}
               >
-                <option value="18">18 / pÃ¡g</option>
-                <option value="30">30 / pÃ¡g</option>
-                <option value="50">50 / pÃ¡g</option>
+                <option value="18">18 / pág</option>
+                <option value="30">30 / pág</option>
+                <option value="50">50 / pág</option>
               </select>
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function SupGrabaciones() {
                       <td>
                         {v.audioUrl
                           ? <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '11px' }}>OK {v.audioNombre}</span>
-                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaciÃ³n</span>
+                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabación</span>
                         }
                       </td>
                       <td style={{ fontSize: '10px', color: v.obsProgramacion ? '#c2410c' : '#9ca3af', fontWeight: v.obsProgramacion ? 700 : 400, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.obsProgramacion || ''}>
@@ -436,7 +436,7 @@ export default function SupGrabaciones() {
           </div>
 
           <div className="paginacion">
-            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}â€“${fin} de ${totalPag}` : ''}</span>
+            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}–${fin} de ${totalPag}` : ''}</span>
             <Paginacion total={totalPag} pagina={pagina} porPagina={porPagina} onChange={p => setPagina(p)} />
           </div>
         </div>
@@ -447,7 +447,7 @@ export default function SupGrabaciones() {
         onClose={() => setMediaVenta(null)}
         ventaId={mediaVenta?.id}
         title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
-        subtitle={`DNI: ${mediaVenta?.dni || 'â€”'} Â· Tel: ${mediaVenta?.telefonoContacto || 'â€”'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || '—'} · Tel: ${mediaVenta?.telefonoContacto || '—'}`}
         audioPath={mediaVenta?.audioPath || mediaVenta?.audioUrl}
         audioName={mediaVenta?.audioNombre}
       />
@@ -466,8 +466,8 @@ export default function SupGrabaciones() {
           <div className="modal-box" style={{ maxWidth: '520px' }}>
             <div className="modal-title">Revisar Grabación</div>
             <div className="modal-sub">
-              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> Â·{' '}
-              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> Â·{' '}
+              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> ·{' '}
+              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> ·{' '}
               Fecha: <strong>{formatF(modalRevisar.fechaIngreso)}</strong>
             </div>
 

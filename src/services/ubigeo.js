@@ -1,4 +1,4 @@
-﻿export const UBIGEO = 
+export const UBIGEO =
 {
   "AMAZONAS": {
     "BAGUA": [
@@ -114,7 +114,7 @@
     ],
     "CAJAMARCA": [
       "CAJAMARCA",
-      "LOS BAÃ‘OS DEL INCA"
+      "LOS BAÑOS DEL INCA"
     ],
     "CELENDIN": [
       "CELENDIN"
@@ -204,7 +204,7 @@
     ],
     "ICA": [
       "ICA",
-      "LA TINGUIÃ‘A",
+      "LA TINGUIÑA",
       "PARCONA",
       "SALAS",
       "SAN JUAN BAUTISTA",
@@ -301,8 +301,8 @@
       "REQUE",
       "TUMAN"
     ],
-    "FERREÃ‘AFE": [
-      "FERREÃ‘AFE",
+    "FERREÑAFE": [
+      "FERREÑAFE",
       "PUEBLO NUEVO"
     ],
     "LAMBAYEQUE": [
@@ -328,11 +328,11 @@
       "MI PERU",
       "VENTANILLA"
     ],
-    "CAÃ‘ETE": [
+    "CAÑETE": [
       "CHILCA",
       "IMPERIAL",
       "MALA",
-      "SAN VICENTE DE CAÃ‘ETE"
+      "SAN VICENTE DE CAÑETE"
     ],
     "HUARAL": [
       "CHANCAY",
@@ -349,7 +349,7 @@
       "ANCON",
       "ATE",
       "BARRANCO",
-      "BREÃ‘A",
+      "BREÑA",
       "CARABAYLLO",
       "CERCADO DE LIMA",
       "CHACLACAYO",
@@ -455,7 +455,7 @@
     "TALARA": [
       "LOS ORGANOS",
       "MANCORA",
-      "PARIÃ‘AS"
+      "PARIÑAS"
     ]
   },
   "PUNO": {
