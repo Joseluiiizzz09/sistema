@@ -384,6 +384,7 @@ export default function Dashboard() {
             tipoContacto: l.tipo_contacto || 'LLAMADA',
             direccion: l.direccion || '',
             coordenadas: l.coordenadas || '',
+            coordenadasSinCobertura: l.coordenadas_sin_cobertura || '',
             obsBack: l.obs_back || '',
             zona:     l.distrito || l.campana || '--',
             horaAsig: l.hora_asig || '',
@@ -690,7 +691,7 @@ export default function Dashboard() {
       setClientes(prev => prev.map(c => c.id === leadId ? {
         ...c, estado:tipo,
         ...(docTexto ? { obs:conservarObsConDocumento(c.obs, docTexto) } : {}),
-        ...(tipo === 'SIN COBERTURA' ? { zona:distrito.trim(), coordenadas:coordenadas.trim() } : {}),
+        ...(tipo === 'SIN COBERTURA' ? { zona:distrito.trim(), coordenadas:coordenadas.trim(), coordenadasSinCobertura:coordenadas.trim() } : {}),
       } : c))
       pendTipRef.current[leadId] = { estado:tipo, ts:Date.now() }
       setModalEspecial(null)
@@ -950,6 +951,8 @@ export default function Dashboard() {
   }
 
   // ── KPIs computados ───────────────────────────────────────────────────────
+  const ventaDniMap = {}
+  ventasSubidas.forEach(v => { const n=String(v.telefono1||'').replace(/\D/g,''); if(n) ventaDniMap[n]=`${v.tipo_doc||'DNI'}: ${String(v.dni||'').trim()}` })
   const hoy           = fechaHoy()
   const vHoy          = ventasSubidas.filter(v => normalizarFecha(v.created_at) === hoy)
   const iHoy          = vHoy.filter(esVentaInstalada)
@@ -1055,13 +1058,18 @@ export default function Dashboard() {
                 <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
                 <td><span className={`badge-estado ${colorEstado(c.estado)}`} title={c.estado==='DERIVADO'&&c.derivadoPor?`Derivado por ${c.derivadoPor}`:''}>{c.estado==='DERIVADO'&&c.derivadoPor?`DER. ${c.derivadoPor.trim().split(/\s+/)[0].toUpperCase()}`:c.estado}</span></td>
                 <td>
-                  <input
-                    className="input-obs"
-                    placeholder="Escribe una observación..."
-                    defaultValue={c.obs || ''}
-                    maxLength={200}
-                    onBlur={e => guardarObs(i, e.target.value)}
-                  />
+                  {c.estado === 'SIN COBERTURA'
+                    ? <span style={{fontSize:11,color:'#6b7280',fontFamily:'monospace',display:'block',padding:'2px 0'}}>{c.coordenadasSinCobertura||'—'}</span>
+                    : c.estado === 'VENTA CERRADA'
+                      ? <span style={{fontSize:11,color:'#6b7280',display:'block',padding:'2px 0'}}>{ventaDniMap[String(c.telefono||'').replace(/\D/g,'')]||'—'}</span>
+                      : <input
+                          className="input-obs"
+                          placeholder="Escribe una observación..."
+                          defaultValue={c.obs || ''}
+                          maxLength={200}
+                          onBlur={e => guardarObs(i, e.target.value)}
+                        />
+                  }
                 </td>
               </tr>
             ))}
