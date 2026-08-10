@@ -644,12 +644,14 @@ const cargarLeads = useCallback(async () => {
           id:         l.id,
           _backendId: l.id,
           campana:    l.campana || '—',
-          distrito:   l.distrito || '—',
+          distrito:   ['—', '--'].includes(String(l.distrito || '').trim()) ? '' : (l.distrito || ''),
           n1:         l.n1,
           n2:         l.n2 || '',
           tipo_contacto: l.tipo_contacto || 'LLAMADA',
           direccion:   l.direccion || '',
           coordenadas: l.coordenadas || '',
+          distritoCobertura: l.distrito_sin_cobertura || '',
+          coordenadasCobertura: l.coordenadas_sin_cobertura || '',
           obs_back:    l.obs_back || '',
           tipifBack:  l.tipif_back || '',
           derivadoPor: l.derivado_por_nombre || '',
@@ -790,7 +792,7 @@ const cargarLeads = useCallback(async () => {
     if (!n1) { setN1Error(true); mostrarToast('El campo N1 es obligatorio'); return }
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
-    const distrito = form.distrito || '—'
+    const distrito = form.distrito || ''
     const n2       = form.n2.replace(/\D/g, '')
     const tipo_contacto = form.tipoContacto || 'LLAMADA'
     const direccion = form.direccion.trim()
@@ -2032,12 +2034,12 @@ const cargarLeads = useCallback(async () => {
                                     <NotebookIcon/>
                                   </button>
                                 )}
-                                {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distrito||r.coordenadas)&&(
+                                {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distritoCobertura||r.coordenadasCobertura)&&(
                                   <button type="button" className="btn-dni-cuaderno btn-cobertura-cuaderno"
                                     title="Ver distrito y coordenadas"
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
-                                      setCoberturaModal(prev=>prev&&prev.id===r.id?null:{id:r.id,distrito:r.distrito||'',coordenadas:r.coordenadas||'',top:rect.bottom+6,left:rect.left})
+                                      setCoberturaModal(prev=>prev&&prev.id===r.id?null:{id:r.id,distrito:r.distritoCobertura||'',coordenadas:r.coordenadasCobertura||'',top:rect.bottom+6,left:rect.left})
                                     }}>
                                     <NotebookIcon/>
                                   </button>

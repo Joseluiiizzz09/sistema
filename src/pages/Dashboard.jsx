@@ -215,6 +215,7 @@ export default function Dashboard() {
 
   // Datos
   const [clientes,        setClientes]        = useState([])
+  const [filtroNumero,    setFiltroNumero]    = useState('')
   const [ventasSubidas,   setVentasSubidas]    = useState([])
   const [ventasMostradas, setVentasMostradas]  = useState([])
   const [frases,          setFrases]           = useState([])
@@ -385,7 +386,7 @@ export default function Dashboard() {
             direccion: l.direccion || '',
             coordenadas: l.coordenadas || '',
             obsBack: l.obs_back || '',
-            zona:     l.distrito || l.campana || '--',
+            zona:     l.distrito || '',
             horaAsig: l.hora_asig || '',
             estado,
             derivadoPor: l.derivado_por_nombre || '',
@@ -690,7 +691,7 @@ export default function Dashboard() {
       setClientes(prev => prev.map(c => c.id === leadId ? {
         ...c, estado:tipo,
         ...(docTexto ? { obs:conservarObsConDocumento(c.obs, docTexto) } : {}),
-        ...(tipo === 'SIN COBERTURA' ? { zona:distrito.trim(), coordenadas:coordenadas.trim() } : {}),
+        ...(tipo === 'SIN COBERTURA' ? { obs:c.obs ? `${c.obs} | COORDENADAS: ${coordenadas.trim()}` : `COORDENADAS: ${coordenadas.trim()}` } : {}),
       } : c))
       pendTipRef.current[leadId] = { estado:tipo, ts:Date.now() }
       setModalEspecial(null)
@@ -972,6 +973,10 @@ export default function Dashboard() {
   const tipsFiltrados = tipSearch
     ? TIPS.filter(t => t.label.toLowerCase().includes(tipSearch.toLowerCase()))
     : TIPS
+  const numeroBuscado = filtroNumero.replace(/\D/g, '')
+  const clientesFiltrados = numeroBuscado
+    ? clientes.filter(c => String(c.telefono || '').includes(numeroBuscado) || String(c.telefono2 || '').includes(numeroBuscado))
+    : clientes
 
   // ════════════════════════════════════════════════════════════════════════════
   return (
@@ -1013,9 +1018,14 @@ export default function Dashboard() {
       <div className={`pantalla${tab !== 'llamadas' ? ' hidden' : ''}`}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px',flexWrap:'wrap',gap:'8px'}}>
           <h2 style={{marginBottom:0}}>Base de llamadas</h2>
-          <span style={{fontSize:'12px',color:'#9ca3af',fontWeight:600,background:'#fff',padding:'5px 12px',borderRadius:'20px',border:'1px solid #e5e7eb'}}>
-            {fechaHoyFormateada()}
-          </span>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+            <input type="search" value={filtroNumero} onChange={e=>setFiltroNumero(e.target.value)} placeholder="Buscar número..."
+              aria-label="Filtrar base de llamadas por número"
+              style={{width:'210px',padding:'7px 11px',border:'1px solid #e5e7eb',borderRadius:'9px',fontSize:'12px',fontFamily:'inherit',outline:'none',background:'#fff'}} />
+            <span style={{fontSize:'12px',color:'#9ca3af',fontWeight:600,background:'#fff',padding:'5px 12px',borderRadius:'20px',border:'1px solid #e5e7eb'}}>
+              {fechaHoyFormateada()}
+            </span>
+          </div>
         </div>
         <div className="tabla-crm-wrap">
         <table className="tabla-crm tabla-leads-asesor">
@@ -1027,14 +1037,16 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {clientes.length === 0 ? (
+            {clientesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
                   Esperando asignación de Back Data...<br />
                   <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>Back Data asignará registros a tu usuario.</span>
                 </td>
               </tr>
-            ) : clientes.map((c, i) => (
+            ) : clientesFiltrados.map((c) => {
+              const i = clientes.findIndex(item => item.id === c.id)
+              return (
               <tr key={c.id || i}>
                 <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
@@ -1064,7 +1076,8 @@ export default function Dashboard() {
                   />
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         </div>
