@@ -307,12 +307,12 @@ body{
 .filtros-grid,.filtros-row,.rend-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
 .fg,.filtro-group,.bo-input-group{display:flex;flex-direction:column;gap:3px;min-width:100px;flex:1;}
 .fg label,.filtro-group label,.bo-input-group label{font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px;}
-.fg input,.fg select,.filtro-input,.filtro-select,.bo-input-group input,.bo-input-group select,.bo-input-group textarea{
+.fg input,.fg select,.filtro-input,.filtro-select,.bo-input-group input,.bo-input-group select,.bo-input-group textarea,.bo-input-group button{
   padding:7px 11px;border:1px solid var(--line-2);border-radius:9px;
   font-size:12px;font-family:inherit;outline:none;
   background:var(--surf-1);color:var(--ink);transition:all .18s;width:100%;
 }
-.fg input:focus,.fg select:focus,.filtro-input:focus,.filtro-select:focus,.bo-input-group input:focus,.bo-input-group select:focus{
+.fg input:focus,.fg select:focus,.filtro-input:focus,.filtro-select:focus,.bo-input-group input:focus,.bo-input-group select:focus,.bo-input-group button:focus{
   border-color:var(--brand);background:var(--surf-0);box-shadow:0 0 0 3px rgba(229,62,62,.1);
 }
 .filtros-acciones{display:flex;gap:6px;align-items:flex-end;}

@@ -1473,6 +1473,19 @@ const cargarLeads = useCallback(async () => {
     }
     return duplicados
   })()
+  const idsReingresados = (() => {
+    const vistos = new Set()
+    const reingresados = new Set()
+    Object.keys(baseData).sort().forEach(fecha => {
+      ;(baseData[fecha] || []).forEach(reg => {
+        const n1 = normalizarNumero(reg.n1)
+        if (!n1) return
+        if (vistos.has(n1)) reingresados.add(reg.id)
+        else vistos.add(n1)
+      })
+    })
+    return reingresados
+  })()
   const registrosFiltrados = (() => {
     const filtered = registrosActivos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
@@ -1959,8 +1972,10 @@ const cargarLeads = useCallback(async () => {
                     : registrosFiltrados.map((r,i) => {
                          const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                          const detAbierto  = !!detOpen[r.id]
-                         const estadoNumero = resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)])
-                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (idsDuplicados.has(r.id) ? 'num-duplicado' : '')
+                         const esDuplicadoDia = idsDuplicados.has(r.id)
+                         const esReingreso = idsReingresados.has(r.id)
+                         const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
+                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (esDuplicadoDia ? 'num-duplicado' : '')
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
