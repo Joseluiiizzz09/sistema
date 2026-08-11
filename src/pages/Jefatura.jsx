@@ -306,6 +306,55 @@ export default function Jefatura() {
     toastRef.current = setTimeout(() => setToastMsg(''), 3200)
   }
 
+  /* ── Etiquetado masivo (solo Jefatura) ── */
+  const [etFecha, setEtFecha]     = useState('')
+  const [etLeads, setEtLeads]     = useState([])
+  const [etCargando, setEtCargando] = useState(false)
+  const [etSel, setEtSel]         = useState({})
+  const [etTipifInc, setEtTipifInc]   = useState('')
+  const [etTipifExcl, setEtTipifExcl] = useState('')
+  const [etRotMin, setEtRotMin]   = useState('')
+  const [etRotMax, setEtRotMax]   = useState('')
+  const [etCant, setEtCant]       = useState('')
+  const [etTexto, setEtTexto]     = useState('MASIVO')
+
+  const cargarEtLeads = useCallback(async () => {
+    if (!etFecha) { setEtLeads([]); return }
+    setEtCargando(true)
+    try {
+      const res  = await fetch(`${API}/leads?fecha=${etFecha}`, { headers: ncHeaders() })
+      const data = await res.json()
+      setEtLeads(data.ok ? data.data : [])
+      setEtSel({})
+    } catch { setEtLeads([]) }
+    finally { setEtCargando(false) }
+  }, [etFecha])
+
+  function etTipifDe(l) {
+    const hist = Array.isArray(l.historial) ? l.historial : []
+    const evs = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
+    if (evs.length) return (evs.reduce((a, b) => (b.ts > a.ts ? b : a)).tipif) || 'NUEVO'
+    return l.tipif_vend || l.tipif_back || 'NUEVO'
+  }
+  function etRotDe(l) {
+    const hist = Array.isArray(l.historial) ? l.historial : []
+    const asigs = hist.filter(h => h?.asesor && h.tipo !== 'TIPIF_BACK' && h.tipo !== 'DERIVADO' && h.tipo !== 'TIPIF_VEND')
+    return Math.max(l.rotaciones || 0, Math.max(0, asigs.length - 1))
+  }
+  async function etEtiquetar() {
+    const ids = Object.keys(etSel).filter(id => etSel[id]).map(Number)
+    if (!ids.length) { mostrarToast('Selecciona al menos un número'); return }
+    try {
+      const res  = await fetch(`${API}/leads/etiquetar`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ ids, etiqueta: etTexto.trim() }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo etiquetar')
+      const idset = new Set(ids)
+      setEtLeads(prev => prev.map(l => idset.has(l.id) ? { ...l, etiqueta: etTexto.trim() } : l))
+      setEtSel({})
+      mostrarToast(`${data.actualizados} número(s) etiquetados como "${etTexto.trim() || '—'}"`)
+    } catch (e) { mostrarToast(e.message || 'Error al etiquetar') }
+  }
+
   function agregarLog(accion, detalle = '') {
     const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`, fecha: fechaHoy(), hora: horaAhora(), usuario: usuarioNombre, accion, detalle, color: '#7C3AED' }
     setLogs(prev => {
@@ -462,6 +511,10 @@ export default function Jefatura() {
     if (seccion === 'reclutados-generales') cargarReclutados()
     if (seccion === 'eliminaciones') cargarEliminaciones()
   }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones])
+
+  useEffect(() => {
+    if (seccion === 'etiquetado') cargarEtLeads()
+  }, [seccion, cargarEtLeads])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -959,6 +1012,7 @@ export default function Jefatura() {
           <div className="sidebar-sep">Sistema</div>
           <button className={`nav-btn${seccion==='logs'?'       active':''}`} onClick={()=>irSeccion('logs')}><span className="nav-dot"></span> Logs de actividad</button>
           <button className={`nav-btn${seccion==='eliminaciones'?' active':''}`} onClick={()=>irSeccion('eliminaciones')}><span className="nav-dot"></span> Eliminaciones generales</button>
+          <button className={`nav-btn${seccion==='etiquetado'?' active':''}`} onClick={()=>irSeccion('etiquetado')}><span className="nav-dot"></span> Etiquetado masivo</button>
         </aside>
 
         {menuMovilAbierto && (
@@ -1561,6 +1615,89 @@ export default function Jefatura() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </section>
+
+          {/* ===== ETIQUETADO MASIVO ===== */}
+          <section className={`section${seccion==='etiquetado'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Etiquetado masivo</h2><p>Selecciona números por fecha y márcalos con una etiqueta (ej. MASIVO) para identificar los que ya copiaste</p></div>
+            </div>
+            <div className="tabla-wrap">
+              <div className="tabla-header" style={{flexWrap:'wrap',gap:8}}>
+                <span className="tabla-title">Números</span>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'}}>
+                  <label style={{fontSize:11,fontWeight:600,color:'#6b7280'}}>Fecha:</label>
+                  <input type="date" value={etFecha} onChange={e=>setEtFecha(e.target.value)} style={{padding:'5px 8px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none'}} />
+                  <button className="btn-nuevo" onClick={cargarEtLeads} disabled={etCargando}>{etCargando?'Cargando...':'Cargar'}</button>
+                </div>
+              </div>
+              {(() => {
+                const tipifs = [...new Set(etLeads.map(etTipifDe))].filter(Boolean).sort()
+                const visibles = etLeads.filter(l => {
+                  const est = etTipifDe(l)
+                  if (etTipifInc && est !== etTipifInc) return false
+                  if (etTipifExcl && est === etTipifExcl) return false
+                  const nr = etRotDe(l)
+                  if (etRotMin !== '' && nr < Number(etRotMin)) return false
+                  if (etRotMax !== '' && nr > Number(etRotMax)) return false
+                  return true
+                })
+                const selCount = Object.values(etSel).filter(Boolean).length
+                const selCantidad = () => { const n=parseInt(etCant); const tomar=(Number.isInteger(n)&&n>0)?visibles.slice(0,n):visibles; const ns={}; tomar.forEach(l=>ns[l.id]=true); setEtSel(ns) }
+                const selTodos = () => { const ns={}; visibles.forEach(l=>ns[l.id]=true); setEtSel(ns) }
+                const copiar = () => { const idset=new Set(Object.keys(etSel).filter(id=>etSel[id]).map(Number)); const nums=visibles.filter(l=>idset.has(l.id)).map(l=>l.n1).join('\n'); if(!nums){mostrarToast('Selecciona al menos un número');return} navigator.clipboard?.writeText(nums).then(()=>mostrarToast(`${idset.size} número(s) copiados`)).catch(()=>mostrarToast('No se pudo copiar')) }
+                const sInput = {padding:'5px 8px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none'}
+                return (
+                  <>
+                    <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 14px',borderBottom:'1px solid #f0f0f0'}}>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6b7280'}}>Tipif:</label>
+                      <select value={etTipifInc} onChange={e=>setEtTipifInc(e.target.value)} style={{...sInput,cursor:'pointer'}}><option value="">Todas</option>{tipifs.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6b7280'}}>Excluir:</label>
+                      <select value={etTipifExcl} onChange={e=>setEtTipifExcl(e.target.value)} style={{...sInput,cursor:'pointer'}}><option value="">Ninguna</option>{tipifs.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6b7280'}}>Rotaciones:</label>
+                      <input type="number" min={0} value={etRotMin} onChange={e=>setEtRotMin(e.target.value)} placeholder="mín" style={{...sInput,width:56}} />
+                      <span style={{color:'#9ca3af',fontSize:11}}>a</span>
+                      <input type="number" min={0} value={etRotMax} onChange={e=>setEtRotMax(e.target.value)} placeholder="máx" style={{...sInput,width:56}} />
+                      <button className="btn-nuevo" onClick={()=>{setEtTipifInc('');setEtTipifExcl('');setEtRotMin('');setEtRotMax('')}}>Limpiar filtros</button>
+                    </div>
+                    <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 14px',borderBottom:'1px solid #f0f0f0'}}>
+                      <span style={{fontSize:12,fontWeight:700,color:'#374151'}}>{selCount} seleccionados de {visibles.length}</span>
+                      <input type="number" min={1} value={etCant} onChange={e=>setEtCant(e.target.value)} placeholder="cuántos" style={{...sInput,width:80}} />
+                      <button className="btn-nuevo" onClick={selCantidad}>Seleccionar</button>
+                      <button className="btn-nuevo" onClick={selTodos}>Todos ({visibles.length})</button>
+                      <button className="btn-nuevo" onClick={()=>setEtSel({})}>Limpiar sel.</button>
+                      <input value={etTexto} onChange={e=>setEtTexto(e.target.value)} placeholder="Etiqueta (ej. MASIVO)" maxLength={120} style={{...sInput,width:170}} />
+                      <button className="btn-nuevo" style={{background:'#7c3aed',color:'#fff',border:'none'}} onClick={etEtiquetar}>Etiquetar seleccionados</button>
+                      <button className="btn-nuevo" onClick={copiar}>Copiar números</button>
+                    </div>
+                    <div className="tabla-scroll">
+                      <table className="tabla">
+                        <thead><tr>
+                          <th style={{width:32}}><input type="checkbox" checked={visibles.length>0 && visibles.every(l=>etSel[l.id])} onChange={e=>{ if(e.target.checked) selTodos(); else setEtSel({}) }} /></th>
+                          <th>N1</th><th>Campaña</th><th>Tipificación</th><th>Asesor actual</th><th>Rotac.</th><th>Etiqueta</th>
+                        </tr></thead>
+                        <tbody>
+                          {etCargando ? <tr className="tabla-empty"><td colSpan="7">Cargando...</td></tr>
+                            : !etFecha ? <tr className="tabla-empty"><td colSpan="7">Elegí una fecha y presioná Cargar.</td></tr>
+                            : visibles.length === 0 ? <tr className="tabla-empty"><td colSpan="7">Sin números para esos filtros.</td></tr>
+                            : visibles.map(l => (
+                              <tr key={l.id}>
+                                <td><input type="checkbox" checked={!!etSel[l.id]} onChange={e=>setEtSel(p=>({...p,[l.id]:e.target.checked}))} /></td>
+                                <td style={{fontFamily:'monospace',fontWeight:700}}>{l.n1}</td>
+                                <td>{l.campana||'—'}</td>
+                                <td>{etTipifDe(l)}</td>
+                                <td>{l.asesor_nombre||'—'}</td>
+                                <td style={{textAlign:'center'}}>{etRotDe(l)}</td>
+                                <td>{l.etiqueta ? <span className="flujo-warn">{l.etiqueta}</span> : '—'}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </section>
 
