@@ -190,11 +190,12 @@ export default function Grabaciones() {
           .filter(v => {
             const e  = (v.estado||'').toLowerCase()
             const eg = (v.estado_grab||'').toLowerCase()
+            const grabadoSinAudio = eg === 'grabado' && !v.audio_path
             // Ya no depende de que `estado` cambie a 'grabado' (eso pisaría
             // Validación). Una vez Back marca GRABADO, estado_grab='grabado'
             // saca la venta de esta cola porque pasa a Super de Grabaciones;
-            // si Super la observa (estado_grab='observado') vuelve a aparecer.
-            return (e==='validado'||e==='venta') && eg!=='grabado'
+            // si no existe el MP3 se mantiene visible para poder recuperarla.
+            return grabadoSinAudio || ((e==='validado'||e==='venta') && eg!=='grabado')
           })
           .map(mapVenta)
         )

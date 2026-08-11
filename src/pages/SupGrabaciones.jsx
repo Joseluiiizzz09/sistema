@@ -119,7 +119,7 @@ export default function SupGrabaciones() {
           .filter(v => {
             const grab = (v.estado_grab || '').toLowerCase()
             const revision = (v.estado_supgrab || 'sin_revisar').toLowerCase()
-            return grab === 'grabado' && !!v.audio_path && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
+            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
           })
           .map(v => ({
             ...v,
