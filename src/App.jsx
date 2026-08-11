@@ -2,11 +2,29 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 
+function lazyConRecuperacion(importador, clave) {
+  return lazy(async () => {
+    try {
+      const modulo = await importador()
+      sessionStorage.removeItem(clave)
+      return modulo
+    } catch (error) {
+      if (!sessionStorage.getItem(clave)) {
+        sessionStorage.setItem(clave, '1')
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      sessionStorage.removeItem(clave)
+      throw error
+    }
+  })
+}
+
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Backoffice = lazy(() => import('./pages/Backoffice'))
 const Supervisor = lazy(() => import('./pages/Supervisor'))
-const Validacion = lazy(() => import('./pages/Validacion'))
+const Validacion = lazyConRecuperacion(() => import('./pages/Validacion'), 'nc_recarga_validacion')
 const Seguimiento = lazy(() => import('./pages/Seguimiento'))
 const Grabaciones = lazy(() => import('./pages/Grabaciones'))
 const SupGrabaciones = lazy(() => import('./pages/SupGrabaciones'))
