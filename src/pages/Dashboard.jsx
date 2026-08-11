@@ -691,7 +691,7 @@ export default function Dashboard() {
       setClientes(prev => prev.map(c => c.id === leadId ? {
         ...c, estado:tipo,
         ...(docTexto ? { obs:conservarObsConDocumento(c.obs, docTexto) } : {}),
-        ...(tipo === 'SIN COBERTURA' ? { obs:c.obs ? `${c.obs} | COORDENADAS: ${coordenadas.trim()}` : `COORDENADAS: ${coordenadas.trim()}` } : {}),
+        ...(tipo === 'SIN COBERTURA' ? { obs:coordenadas.trim() } : {}),
       } : c))
       pendTipRef.current[leadId] = { estado:tipo, ts:Date.now() }
       setModalEspecial(null)
@@ -863,8 +863,7 @@ export default function Dashboard() {
         setNvVentasCerradas(prev => prev.filter(vc => vc.n1 !== nvForm.tel1))
         const leadId = nvLeadId || clientes.find(c => c.telefono === nvForm.tel1)?.id
         if (leadId) {
-          const cliente = clientes.find(c => c.id === leadId)
-          const docObs = conservarObsConDocumento(cliente?.obs, `${nvForm.tipoDoc}: ${nvForm.dni.trim()}`)
+          const docObs = `${nvForm.tipoDoc}: ${nvForm.dni.trim()}`
           pendTipRef.current[leadId] = { estado:'VENTA CERRADA', obs:docObs, ts:Date.now() }
           setClientes(prev => prev.map(c => c.id === leadId ? { ...c, estado:'VENTA CERRADA', obs:docObs } : c))
         }
