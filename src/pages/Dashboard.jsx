@@ -5,7 +5,6 @@ import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { setVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
-import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboard.css'
 
@@ -63,6 +62,13 @@ function fechaISO(d) { return d.toISOString().split('T')[0] }
 function normalizarFecha(f) {
   const match = String(f || '').match(/^(\d{4}-\d{2}-\d{2})/)
   return match ? match[1] : ''
+}
+
+function fechaProgramadaVisible(f) {
+  const fecha = normalizarFecha(f)
+  if (!fecha) return '—'
+  const [year, month, day] = fecha.split('-')
+  return `${day}/${month}/${year}`
 }
 
 function esVentaInstalada(venta) {
@@ -1215,7 +1221,7 @@ export default function Dashboard() {
                 <tr key={v.id || i}>
                   <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} estadoGrab={v.estado_grab} grabandoPorNombre={v.grabando_por_nombre} /></td>
                   <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
-                  <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
+                  <td style={{fontSize:'10px',color:'#475569'}}>{fechaProgramadaVisible(v.fecha_programada)}</td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>
