@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
+import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import MediaViewer from '../components/MediaViewer'
 import { API, ncHeaders } from '../services/api'
 import { setVisibleInterval } from '../utils/polling'
@@ -347,6 +348,7 @@ export default function Validacion() {
             <span className="topbar-badge">VALIDACIÓN</span>
             <span className="topbar-user">{sesion?.nombre || 'Validador'}</span>
           </JefaturaViewControls>
+          <CambiarAreaMenu />
           <button className="topbar-salir" onClick={()=>{ logout(); navigate('/') }}>Salir</button>
         </div>
       </div>
