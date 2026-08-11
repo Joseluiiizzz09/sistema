@@ -2049,9 +2049,9 @@ const cargarLeads = useCallback(async () => {
                                   <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                   {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                 </select>
-                                {r._tipifVend==='VENTA CERRADA'&&extraerDni(r.obsAsesor)&&(
+                                {['PREVENTA','VENTA CERRADA'].includes(tipifEfectiva(r))&&extraerDni(r.obsAsesor)&&(
                                   <button type="button" className="btn-dni-cuaderno"
-                                    title="Ver DNI de cierre"
+                                    title="Ver documento del asesor"
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
                                       setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
