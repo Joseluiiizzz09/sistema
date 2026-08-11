@@ -442,6 +442,10 @@ export default function Backoffice() {
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
+  const [rotFiltroTipifExcl,setRotFiltroTipifExcl]= useState('')
+  const [rotFiltroRotMin,setRotFiltroRotMin]= useState('')
+  const [rotFiltroRotMax,setRotFiltroRotMax]= useState('')
+  const [cantSeleccion, setCantSeleccion]  = useState('')
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
   const [rotRotados,    setRotRotados]    = useState(0)
@@ -951,6 +955,13 @@ const cargarLeads = useCallback(async () => {
   function seleccionarTodosRot() {
     const ns = {}
     allRotLeadsSorted.forEach(l => { ns[l.id] = true })
+    setRotSel(ns)
+  }
+  function seleccionarCantidad() {
+    const n = parseInt(cantSeleccion)
+    const tomar = (Number.isInteger(n) && n > 0) ? allRotLeadsSorted.slice(0, n) : allRotLeadsSorted
+    const ns = {}
+    tomar.forEach(l => { ns[l.id] = true })
     setRotSel(ns)
   }
 
@@ -1610,7 +1621,16 @@ const cargarLeads = useCallback(async () => {
 
   const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
   const rotTipifsDisp  = [...new Set(allRotLeadsRaw.map(l=>l.estado||'NUEVO'))].sort()
-  const allRotLeads    = rotFiltroTipif ? allRotLeadsRaw.filter(l=>(l.estado||'NUEVO')===rotFiltroTipif) : allRotLeadsRaw
+  const rotCountOf = (l) => Math.max(l._reg?.rotaciones || 0, Math.max(0, (l.histAsesores?.length || 0) - 1))
+  const allRotLeads    = allRotLeadsRaw.filter(l => {
+    const est = l.estado || 'NUEVO'
+    if (rotFiltroTipif && est !== rotFiltroTipif) return false
+    if (rotFiltroTipifExcl && est === rotFiltroTipifExcl) return false
+    const nr = rotCountOf(l)
+    if (rotFiltroRotMin !== '' && nr < Number(rotFiltroRotMin)) return false
+    if (rotFiltroRotMax !== '' && nr > Number(rotFiltroRotMax)) return false
+    return true
+  })
   function rotSortVal(l, col) {
     switch (col) {
       case 'n1':     return l.tel || ''
@@ -1786,8 +1806,10 @@ const cargarLeads = useCallback(async () => {
                     <div className="rot-form" style={{marginBottom:12}}>
                       <div className="rot-form-title">Etiquetado masivo</div>
                       <div className="rot-form-row" style={{flexWrap:'wrap',gap:8,alignItems:'center'}}>
-                        <span style={{fontSize:12,color:'#6b7280',fontWeight:600}}>{Object.values(rotSel).filter(Boolean).length} seleccionados</span>
-                        <button type="button" onClick={seleccionarTodosRot} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Seleccionar todos ({allRotLeadsSorted.length})</button>
+                        <span style={{fontSize:12,color:'#6b7280',fontWeight:600}}>{Object.values(rotSel).filter(Boolean).length} seleccionados de {allRotLeadsSorted.length}</span>
+                        <input type="number" min={1} value={cantSeleccion} onChange={e=>setCantSeleccion(e.target.value)} placeholder="cuántos" style={{width:80,padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none'}} />
+                        <button type="button" onClick={seleccionarCantidad} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Seleccionar</button>
+                        <button type="button" onClick={seleccionarTodosRot} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Todos ({allRotLeadsSorted.length})</button>
                         <button type="button" onClick={()=>setRotSel({})} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,color:'#6b7280',cursor:'pointer'}}>Limpiar</button>
                         <input value={etiquetaTexto} onChange={e=>setEtiquetaTexto(e.target.value)} placeholder="Etiqueta (ej. MASIVO)" maxLength={120} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,width:180,fontFamily:'inherit'}} />
                         <button type="button" onClick={etiquetarSeleccionados} style={{padding:'6px 14px',border:'none',borderRadius:8,background:'#7c3aed',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>Etiquetar seleccionados</button>
@@ -1807,7 +1829,7 @@ const cargarLeads = useCallback(async () => {
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
                           Leads disponibles <span className="tag-aptos">{rotStatAptos} aptos</span>
                         </div>
-                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Fecha:</label>
                           <select value={rotFiltroFecha} onChange={e=>{ setRotFiltroFecha(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
                             <option value="">Todas las fechas</option>
@@ -1818,7 +1840,16 @@ const cargarLeads = useCallback(async () => {
                             <option value="">Todas</option>
                             {rotTipifsDisp.map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
-                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
+                          <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Excluir:</label>
+                          <select value={rotFiltroTipifExcl} onChange={e=>{ setRotFiltroTipifExcl(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
+                            <option value="">Ninguna</option>
+                            {rotTipifsDisp.map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                          <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Rotaciones:</label>
+                          <input type="number" min={0} value={rotFiltroRotMin} onChange={e=>{ setRotFiltroRotMin(e.target.value); setRotSel({}) }} placeholder="mín" style={{width:58,padding:'5px 8px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none'}} />
+                          <span style={{fontSize:11,color:'#9ca3af'}}>a</span>
+                          <input type="number" min={0} value={rotFiltroRotMax} onChange={e=>{ setRotFiltroRotMax(e.target.value); setRotSel({}) }} placeholder="máx" style={{width:58,padding:'5px 8px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none'}} />
+                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotFiltroTipifExcl(''); setRotFiltroRotMin(''); setRotFiltroRotMax(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
                       <div className="rot-table">
