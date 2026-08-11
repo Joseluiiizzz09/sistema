@@ -69,9 +69,18 @@ function derivarTipifVal(obsValidacion) {
   return ''
 }
 
+function corregirTextoGeografico(valor) {
+  return String(valor || '')
+    .replaceAll('Ã‘', 'Ñ')
+    .replaceAll('Ã±', 'ñ')
+}
+
 function mapVenta(v) {
   return {
     ...v,
+    departamento:       corregirTextoGeografico(v.departamento),
+    provincia:          corregirTextoGeografico(v.provincia),
+    distrito:           corregirTextoGeografico(v.distrito),
     estado:             (v.estado||'venta').toLowerCase(),
     fechaIngreso:       (v.created_at||'').split(' ')[0],
     horaIngreso:        (v.created_at||'').split(' ')[1]||'',
