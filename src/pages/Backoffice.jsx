@@ -437,6 +437,7 @@ export default function Backoffice() {
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
   const [rotAsesor,     setRotAsesor]     = useState('')
   const [rotSort,       setRotSort]       = useState({ col:null, dir:'asc' })
+  const [etiquetaTexto, setEtiquetaTexto] = useState('MASIVO')
   const [rotCant,       setRotCant]       = useState(4)
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
@@ -663,6 +664,7 @@ const cargarLeads = useCallback(async () => {
           _tipifHora: l.tipif_hora || '',
           venta_confirmada: Number(l.venta_confirmada || 0),
           obsAsesor:  l.obs_asesor || '',
+          etiqueta:   l.etiqueta || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
         }
         // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
@@ -922,6 +924,36 @@ const cargarLeads = useCallback(async () => {
   }
 
   // ── Modal rotación manual ─────────────────────────────────────────────────
+  // ── Etiquetado masivo (gerencia): marca N leads seleccionados con una etiqueta ──
+  async function etiquetarSeleccionados() {
+    const ids = Object.keys(rotSel).filter(id => rotSel[id]).map(Number)
+    if (!ids.length) { mostrarToast('Selecciona al menos un número'); return }
+    const et = etiquetaTexto.trim()
+    try {
+      const res  = await fetch(`${API}/leads/etiquetar`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ ids, etiqueta:et }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo etiquetar')
+      mutGenRef.current++
+      const idset = new Set(ids)
+      setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].map(r => idset.has(r._backendId) ? { ...r, etiqueta:et } : r); return n })
+      setRotSel({})
+      mostrarToast(`${data.actualizados} número(s) etiquetados como "${et || '—'}"`)
+    } catch (e) { mostrarToast(e.message || 'Error al etiquetar') }
+  }
+  function copiarSeleccionados() {
+    const idset = new Set(Object.keys(rotSel).filter(id => rotSel[id]).map(Number))
+    const nums = allRotLeadsSorted.filter(l => idset.has(l.id)).map(l => l.tel).join('\n')
+    if (!nums) { mostrarToast('Selecciona al menos un número'); return }
+    navigator.clipboard?.writeText(nums)
+      .then(() => mostrarToast(`${idset.size} número(s) copiados al portapapeles`))
+      .catch(() => mostrarToast('No se pudo copiar'))
+  }
+  function seleccionarTodosRot() {
+    const ns = {}
+    allRotLeadsSorted.forEach(l => { ns[l.id] = true })
+    setRotSel(ns)
+  }
+
   function abrirModalRotar(id) {
     const found = findReg(id)
     if (!found) return
@@ -1585,6 +1617,7 @@ const cargarLeads = useCallback(async () => {
       case 'fecha':  return l.fecha || ''
       case 'tipif':  return l.estado || 'NUEVO'
       case 'asesor': return l.asesor || ''
+      case 'etiqueta': return l._reg?.etiqueta || ''
       case 'rotac':  return Math.max(l._reg?.rotaciones || 0, Math.max(0, (l.histAsesores?.length || 0) - 1))
       case 'hora':
       case 'tiempo': return l.ultimaAsig instanceof Date ? l.ultimaAsig.getTime() : 0
@@ -1750,6 +1783,17 @@ const cargarLeads = useCallback(async () => {
                       </div>
                       <div className="rot-progress"><div className="rot-progress-fill" style={{width:`${rotProgress}%`}} /></div>
                     </div>
+                    <div className="rot-form" style={{marginBottom:12}}>
+                      <div className="rot-form-title">Etiquetado masivo</div>
+                      <div className="rot-form-row" style={{flexWrap:'wrap',gap:8,alignItems:'center'}}>
+                        <span style={{fontSize:12,color:'#6b7280',fontWeight:600}}>{Object.values(rotSel).filter(Boolean).length} seleccionados</span>
+                        <button type="button" onClick={seleccionarTodosRot} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Seleccionar todos ({allRotLeadsSorted.length})</button>
+                        <button type="button" onClick={()=>setRotSel({})} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',fontSize:12,color:'#6b7280',cursor:'pointer'}}>Limpiar</button>
+                        <input value={etiquetaTexto} onChange={e=>setEtiquetaTexto(e.target.value)} placeholder="Etiqueta (ej. MASIVO)" maxLength={120} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,width:180,fontFamily:'inherit'}} />
+                        <button type="button" onClick={etiquetarSeleccionados} style={{padding:'6px 14px',border:'none',borderRadius:8,background:'#7c3aed',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>Etiquetar seleccionados</button>
+                        <button type="button" onClick={copiarSeleccionados} style={{padding:'6px 12px',border:'1px solid #7c3aed',borderRadius:8,background:'#fff',color:'#7c3aed',fontSize:12,fontWeight:600,cursor:'pointer'}}>Copiar números</button>
+                      </div>
+                    </div>
                     {rotResultado.length > 0 && (
                       <div className="rot-resultado show" style={{marginBottom:12}}>
                         <div className="rot-resultado-title">Rotación ejecutada</div>
@@ -1784,12 +1828,12 @@ const cargarLeads = useCallback(async () => {
                               <input type="checkbox" checked={allAptosSelected} onChange={e=>{ if(e.target.checked){const ns={};rotAptos.slice(0,rotCant).forEach(l=>{ns[l.id]=true});setRotSel(ns);}else setRotSel({}) }} />
                             </th>
                             {rotTh('n1','N1 / Campaña')}{rotTh('fecha','Fecha')}{rotTh('tipif','Tipificación')}
-                            {rotTh('asesor','Asesor actual')}{rotTh('rotac','Rotac.')}{rotTh('hora','Hora asig.')}{rotTh('tiempo','Tiempo')}
+                            {rotTh('asesor','Asesor actual')}{rotTh('etiqueta','Etiqueta')}{rotTh('rotac','Rotac.')}{rotTh('hora','Hora asig.')}{rotTh('tiempo','Tiempo')}
                             {rotTh('sinrepetir','Sin repetir')}{rotTh('aptitud','Aptitud')}
                           </tr></thead>
                           <tbody>
                             {allRotLeadsSorted.length === 0
-                              ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
+                              ? <tr><td colSpan={11} className="bo-empty">Sin leads.</td></tr>
                               : allRotLeadsSorted.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
@@ -1802,6 +1846,7 @@ const cargarLeads = useCallback(async () => {
                                       <td>{esFechaHoy ? <span style={{background:'#dcfce7',color:'#166534',fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99}}>HOY</span> : <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:9,padding:'1px 6px',borderRadius:99}}>{formatFecha(l.fecha)}</span>}</td>
                                       <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'NUEVO'}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor||'—'}{l.histAsesores.length>0&&<div style={{fontSize:9,color:'#9ca3af',marginTop:1}} title={l.histAsesores.join(' → ')}>Tuvo: {l.histAsesores.join(', ')}</div>}</td>
+                                      <td>{l._reg?.etiqueta ? <span style={{background:'#ede9fe',color:'#5b21b6',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:99}}>{l._reg.etiqueta}</span> : <span style={{color:'#d1d5db'}}>—</span>}</td>
                                       <td style={{textAlign:'center'}}><span style={{display:'inline-block',minWidth:22,padding:'1px 7px',borderRadius:99,fontSize:11,fontWeight:700,background:nRot>0?'#fef3c7':'#f3f4f6',color:nRot>0?'#92400e':'#9ca3af'}} title={`${nRot} rotación(es)`}>{nRot}</span></td>
                                       <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
                                       <td className={!rotAsesor?'':tiempo?'timer-ok':'timer-fail'}>{tiempo!==false?`Hace ${rotTxt(l.ultimaAsig)}`:rotFaltanTxt(mins)}</td>
