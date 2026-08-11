@@ -2134,9 +2134,11 @@ const cargarLeads = useCallback(async () => {
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
                             <td colSpan={10}>
                               <div className="historial-inner">
-                                <div className="historial-columns">
-                                <div className="hist-asignaciones-col">
-                                <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
+                                <div className="historial-matriz">
+                                <div className="historial-matriz-cabecera">
+                                  <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
+                                  <div className="hist-label">Historial de tipificaciones</div>
+                                </div>
                                 {(() => {
                                   const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
@@ -2150,7 +2152,8 @@ const cargarLeads = useCallback(async () => {
                                       ? (h.rotadoPor || '—')
                                       : (h.reasignadoPor || h.motivo || '—')
                                     return (
-                                      <div key={ci} className="hist-item">
+                                      <div key={ci} className="hist-asesor-fila">
+                                      <div className="hist-item">
                                         <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length]}} />
                                         <div className="hist-content">
                                           <div className="hist-title" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
@@ -2165,27 +2168,17 @@ const cargarLeads = useCallback(async () => {
                                           <div className="hist-sub">Asignado por: {asignadoPor}</div>
                                         </div>
                                       </div>
+                                      <div className="hist-tipificaciones-lista">
+                                        {tipsAsesor.length ? tipsAsesor.sort((a,b)=>(a.ts||0)-(b.ts||0)).map((t,ti)=>(
+                                          <div key={ti} className="hist-tipificacion-item">
+                                            <span>{t.hora||'—'} {t.fecha||''}</span>
+                                            <b>{t.tipif||'—'}</b>
+                                          </div>
+                                        )) : <span className="hist-sin-tipificaciones">Sin tipificaciones</span>}
+                                      </div>
+                                      </div>
                                     )
                                   })
-                                })()}
-                                </div>
-                                {(() => {
-                                  const tips = (r.historial||[]).filter(h => h?.tipo==='TIPIF_VEND').sort((a,b)=>(a.ts||0)-(b.ts||0))
-                                  if (!tips.length) return null
-                                  return (
-                                    <div className="hist-tipificaciones-col">
-                                      <div className="hist-label">Historial de tipificaciones</div>
-                                      <div className="hist-tipificaciones-lista">
-                                      {tips.map((t,ti)=>(
-                                        <div key={ti} className="hist-tipificacion-item">
-                                          <span>{t.hora||'—'} {t.fecha||''}</span>
-                                          <strong>{t.asesor||'—'}</strong>
-                                          <b>{t.tipif||'—'}</b>
-                                        </div>
-                                      ))}
-                                      </div>
-                                    </div>
-                                  )
                                 })()}
                                 </div>
                                 <div style={{marginTop:10, textAlign:'right'}}>
