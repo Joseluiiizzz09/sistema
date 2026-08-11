@@ -102,8 +102,8 @@ function tipifBadgeClass(t) {
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
-const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','INSTALADO'])
+const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
@@ -987,12 +987,21 @@ const cargarLeads = useCallback(async () => {
     const list  = []
     const fechas = rotFiltroFecha ? [rotFiltroFecha] : Object.keys(baseData).sort().reverse()
     fechas.forEach(fecha => {
-      (baseData[fecha]||[]).forEach(reg => {
+      const regsDate = baseData[fecha] || []
+      // Detectar duplicados dentro de esta fecha (lógica MORADO)
+      const cuentaFecha = {}
+      regsDate.forEach(r => { const n = normalizarNumero(r.n1); if (n) cuentaFecha[n] = (cuentaFecha[n]||0)+1 })
+      regsDate.forEach(reg => {
         let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
         const histAsesores = reg.historial.filter(h=>!h.tipo||h.tipo==='ASIGNACION'||h.tipo==='ROTACION').map(h=>h.asesor)
         const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual)) return
+        // Protección MORADO: duplicado en la misma fecha → no rota
+        const nNorm = normalizarNumero(reg.n1)
+        if (nNorm && cuentaFecha[nNorm] > 1) return
+        // Protección VERDE/AZUL/AMARILLO: reingresado con venta activa o rechazada → no rota
+        if (idsReingresados.has(reg.id) && resaltadoPorVenta(ventasPorNumero[nNorm])) return
         list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
       })
     })
@@ -1475,6 +1484,19 @@ const cargarLeads = useCallback(async () => {
     }
     return duplicados
   })()
+  const idsReingresados = (() => {
+    const vistos = new Set()
+    const reingresados = new Set()
+    Object.keys(baseData).sort().forEach(fecha => {
+      ;(baseData[fecha] || []).forEach(reg => {
+        const n1 = normalizarNumero(reg.n1)
+        if (!n1) return
+        if (vistos.has(n1)) reingresados.add(reg.id)
+        else vistos.add(n1)
+      })
+    })
+    return reingresados
+  })()
   const registrosFiltrados = (() => {
     const filtered = registrosActivos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
@@ -1692,8 +1714,9 @@ const cargarLeads = useCallback(async () => {
                         <div className="bo-panel-title">Reglas de rotación</div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Sin repetir:</strong> el lead no puede ir a un asesor que ya lo tuvo</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-blue">T</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta o Nuevo</div></div>
+                        <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta, Nuevo o Sin cobertura</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
+                        <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Números protegidos:</strong> duplicados del día y reingresados con seguimiento activo o rechazado nunca rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>
                       </div>
                       <div className="bo-panel rot-asesor-panel">
@@ -1961,8 +1984,10 @@ const cargarLeads = useCallback(async () => {
                     : registrosFiltrados.map((r,i) => {
                          const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                          const detAbierto  = !!detOpen[r.id]
-                         const estadoNumero = resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)])
-                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (idsDuplicados.has(r.id) ? 'num-duplicado' : '')
+                         const esDuplicadoDia = idsDuplicados.has(r.id)
+                         const esReingreso = idsReingresados.has(r.id)
+                         const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
+                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (esDuplicadoDia ? 'num-duplicado' : '')
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
