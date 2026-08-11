@@ -69,6 +69,20 @@ function esVentaInstalada(venta) {
   return String(venta?.estado || '').trim().toUpperCase() === 'INSTALADO'
 }
 
+function observacionVisiblePorEstado(obs, estado) {
+  const texto = String(obs || '').trim()
+  const estadoNormalizado = String(estado || '').trim().toUpperCase()
+  if (estadoNormalizado === 'SIN COBERTURA') {
+    const coordenadas = texto.match(/COORDENADAS:\s*([^|]+)/i)
+    return (coordenadas?.[1] || texto).trim()
+  }
+  if (estadoNormalizado === 'VENTA CERRADA') {
+    const documento = texto.match(/\b(DNI|CE|RUC)\s*:\s*(\d+)/i)
+    return documento ? `${documento[1].toUpperCase()}: ${documento[2]}` : texto
+  }
+  return texto
+}
+
 function fechaHoyFormateada() {
   return new Date().toLocaleDateString('es-PE', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
 }
@@ -365,6 +379,7 @@ export default function Dashboard() {
           }
           let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO')
           let obs    = soyActual ? (l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')) : (l.obs_asesor || '')
+          obs = observacionVisiblePorEstado(obs, estado)
           // Stickiness: conserva lo recién tipificado/observado hasta que el server lo
           // confirme (evita el parpadeo estado→pendiente→estado tras tipificar).
           const pend = pendTipRef.current[l.id]
