@@ -2134,14 +2134,17 @@ const cargarLeads = useCallback(async () => {
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
                             <td colSpan={10}>
                               <div className="historial-inner">
+                                <div className="historial-columns">
+                                <div className="hist-asignaciones-col">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
                                   const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
                                   return cola.map((h,ci)=>{
                                     const sig = cola[ci+1]
-                                    const tipif = ci===cola.length-1
-                                      ? (r._tipifVend || '')
+                                    const tipsAsesor = (r.historial||[]).filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim()===String(h.asesor||'').trim())
+                                    const tipif = tipsAsesor.length
+                                      ? (tipsAsesor[tipsAsesor.length-1].tipif || '')
                                       : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
                                     const asignadoPor = h.tipo==='ROTACION'
                                       ? (h.rotadoPor || '—')
@@ -2165,22 +2168,26 @@ const cargarLeads = useCallback(async () => {
                                     )
                                   })
                                 })()}
+                                </div>
                                 {(() => {
                                   const tips = (r.historial||[]).filter(h => h?.tipo==='TIPIF_VEND').sort((a,b)=>(a.ts||0)-(b.ts||0))
                                   if (!tips.length) return null
                                   return (
-                                    <div style={{marginTop:12, borderTop:'1px dashed #e5e7eb', paddingTop:10}}>
-                                      <div className="hist-label" style={{marginBottom:6}}>Historial de tipificaciones</div>
+                                    <div className="hist-tipificaciones-col">
+                                      <div className="hist-label">Historial de tipificaciones</div>
+                                      <div className="hist-tipificaciones-lista">
                                       {tips.map((t,ti)=>(
-                                        <div key={ti} style={{display:'flex', alignItems:'center', gap:8, fontSize:11, padding:'3px 0'}}>
-                                          <span style={{color:'#9ca3af', fontFamily:'monospace', minWidth:92}}>{t.hora||'—'} {t.fecha||''}</span>
-                                          <strong style={{minWidth:130}}>{t.asesor||'—'}</strong>
-                                          <span style={{color:'#065f46', fontWeight:700}}>{t.tipif||'—'}</span>
+                                        <div key={ti} className="hist-tipificacion-item">
+                                          <span>{t.hora||'—'} {t.fecha||''}</span>
+                                          <strong>{t.asesor||'—'}</strong>
+                                          <b>{t.tipif||'—'}</b>
                                         </div>
                                       ))}
+                                      </div>
                                     </div>
                                   )
                                 })()}
+                                </div>
                                 <div style={{marginTop:10, textAlign:'right'}}>
                                   <button type="button"
                                     onClick={()=>{ if(window.confirm(`¿Eliminar el número ${r.n1}? Se borrará por completo y no se puede deshacer.`)) eliminarReg(r.id) }}

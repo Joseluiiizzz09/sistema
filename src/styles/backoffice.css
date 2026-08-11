@@ -484,9 +484,18 @@ body{
 .historial-row.open{display:table-row;}
 .historial-row td{padding:0!important;border-bottom:1px solid var(--line)!important;background:var(--surf-1)!important;}
 .historial-inner{padding:10px 14px;display:flex;flex-direction:column;gap:4px;}
+.historial-columns{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:22px;align-items:start;}
+.hist-asignaciones-col{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.hist-tipificaciones-col{min-width:0;border-left:1px dashed #e5e7eb;padding-left:18px;}
+.hist-tipificaciones-lista{display:flex;gap:20px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin;}
+.hist-tipificacion-item{display:flex;flex-direction:column;gap:3px;min-width:175px;font-size:11px;white-space:nowrap;}
+.hist-tipificacion-item span{color:#9ca3af;font-family:monospace;}
+.hist-tipificacion-item strong{color:var(--ink-2);}
+.hist-tipificacion-item b{color:#065f46;}
 .hist-label{font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px;}
 .hist-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-2);}
 .hist-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+@media (max-width:900px){.historial-columns{grid-template-columns:1fr}.hist-tipificaciones-col{border-left:0;border-top:1px dashed #e5e7eb;padding-left:0;padding-top:10px}}
 
 /* ━━ BADGES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .badge-grab,.badge-estado,.badge-seg,.badge-cargo,.badge-motivo,.badge-tramo{
