@@ -263,6 +263,10 @@ export default function Grabaciones() {
   async function guardarEstado() {
     const v = ventas.find(x=>x.id===modalEstado.id); if (!v) return
     if (nuevoEstadoSel === 'grabado') {
+      if (!v._grabAudio) {
+        mostrarToast('Debes subir un archivo MP3 antes de marcar la venta como GRABADO')
+        return
+      }
       try {
         const res  = await fetch(`${API}/ventas/${v.id}`, {
           method:'PATCH', headers:ncHeaders(),
@@ -302,7 +306,13 @@ export default function Grabaciones() {
   function handleFileSelect(files) {
     if (!files || !files.length) return
     const file = files[0]
-    if (!file.name.match(/\.(mp3|wav|ogg|m4a|mp4|webm)$/i)) { mostrarToast('Solo archivos de audio'); return }
+    if (!file.name.match(/\.mp3$/i)) {
+      setArchivoSel(null)
+      setSubirInfo('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      mostrarToast('Solo se permite un archivo MP3')
+      return
+    }
     setArchivoSel(file)
     setSubirInfo(`${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`)
   }
@@ -682,11 +692,11 @@ export default function Grabaciones() {
             >
               <div className="upload-icon"></div>
               <div style={{fontSize:13,fontWeight:600,color:'#374151',marginTop:6}}>Arrastra tu archivo aquí o haz clic</div>
-              <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
+              <p>Acepta únicamente: MP3</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".mp3,.wav,.ogg,.m4a,.mp4,.webm"
+                accept=".mp3,audio/mpeg"
                 style={{display:'none'}}
                 onChange={e=>handleFileSelect(e.target.files)}
               />

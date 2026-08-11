@@ -119,7 +119,7 @@ export default function SupGrabaciones() {
           .filter(v => {
             const grab = (v.estado_grab || '').toLowerCase()
             const revision = (v.estado_supgrab || 'sin_revisar').toLowerCase()
-            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
+            return grab === 'grabado' && !!v.audio_path && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
           })
           .map(v => ({
             ...v,
@@ -232,6 +232,10 @@ export default function SupGrabaciones() {
     if (!estadoRevision || estadoRevision === 'sin_revisar' || estadoRevision === 'programado') {
       mostrarToast('Selecciona un resultado'); return
     }
+    if (!modalRevisar.audioPath) {
+      mostrarToast('No se puede revisar una venta sin archivo MP3')
+      return
+    }
     setGuardando(true)
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
@@ -251,8 +255,11 @@ export default function SupGrabaciones() {
                 }),
         }),
       })
-      const data = await res.json()
-      if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        mostrarToast(data.mensaje || 'No se pudo guardar la revisión')
+        return
+      }
       if (['aprobado', 'observado', 'conforme', 'no_conforme'].includes(estadoRevision)) {
         setVentas(list => list.filter(x => x.id !== modalRevisar.id))
       } else {
@@ -264,6 +271,7 @@ export default function SupGrabaciones() {
       setPagina(1)
     } catch (e) {
       mostrarToast('Error conectando al servidor')
+    } finally {
       setGuardando(false)
     }
   }
