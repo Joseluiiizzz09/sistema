@@ -2050,7 +2050,7 @@ const cargarLeads = useCallback(async () => {
                                   {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                 </select>
                                 {['PREVENTA','VENTA CERRADA'].includes(tipifEfectiva(r))&&extraerDni(r.obsAsesor)&&(
-                                  <button type="button" className="btn-dni-cuaderno"
+                                  <button type="button" className={`btn-dni-cuaderno${tipifEfectiva(r)==='PREVENTA'?' btn-preventa-cuaderno':''}`}
                                     title="Ver documento del asesor"
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
