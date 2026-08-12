@@ -76,6 +76,7 @@ function mapVenta(v) {
     fechaIngreso:       (v.created_at||'').split(' ')[0],
     horaIngreso:        (v.created_at||'').split(' ')[1]||'',
     nombreApellidos:    v.nombre        || '',
+    correoElectronico:  v.email         || '',
     telefonoContacto:   v.telefono1     || '',
     telefonoReferencia: v.telefono2     || '',
     obsBackOffice:      v.obs_backoffice|| '',
@@ -450,6 +451,7 @@ export default function Validacion() {
                   <th className="th-dni">DNI / DOC.</th>
                   <th className="th-tel">TEL. CONTACTO</th>
                   <th className="th-tel">TEL. REFERENCIA</th>
+                  <th className="th-tel">CORREO ELECTRÓNICO</th>
                   <th className="th-dpto">DEPARTAMENTO</th>
                   <th className="th-prov">PROVINCIA</th>
                   <th className="th-dist">DISTRITO</th>
@@ -468,7 +470,7 @@ export default function Validacion() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr className="tabla-empty"><td colSpan={21}>Sin registros.</td></tr>
+                  ? <tr className="tabla-empty"><td colSpan={22}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
                       const mostrar  = v.tipifVal || v.estado
                       const eObj     = estadoObj(mostrar)
@@ -499,6 +501,12 @@ export default function Validacion() {
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefonoContacto||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.telefonoReferencia||'—'}</td>
+                          <td
+                            style={{maxWidth:190,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+                            title={v.correoElectronico || ''}
+                          >
+                            {v.correoElectronico||'—'}
+                          </td>
                           <td>{v.departamento||'—'}</td>
                           <td>{v.provincia||'—'}</td>
                           <td style={{fontWeight:600}}>{v.distrito||'—'}</td>
