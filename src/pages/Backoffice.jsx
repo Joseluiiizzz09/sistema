@@ -643,12 +643,15 @@ const cargarLeads = useCallback(async () => {
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
-      if (cargaCompleta) cargaCompletaRealizadaRef.current = true
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
       // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
       if (mutGenRef.current !== gen) return
+      if (cargaCompleta) cargaCompletaRealizadaRef.current = true
       const nuevoBase = {}
       const nuevasFechas = []
+      // En una carga parcial, una respuesta vacía significa que la fecha ya no
+      // tiene registros; se inicializa para eliminar filas antiguas de la vista.
+      if (!cargaCompleta) nuevoBase[fechaActivaRef.current] = []
       data.data.forEach(l => {
         const fecha = normalizarFecha(l.fecha) || fechaHoy()
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
