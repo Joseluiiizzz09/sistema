@@ -377,6 +377,7 @@ export default function Backoffice() {
   // ── Filtros base ──
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
+  const [basePagina, setBasePagina] = useState(1)
   function cycleSort(col) {
     setTableSort(prev => {
       const firstDir = { tipif:'az', hora:'desc', rots:'asc' }[col]
@@ -1560,6 +1561,19 @@ const cargarLeads = useCallback(async () => {
       return 0
     })
   })()
+  const baseFilasPorPagina = 75
+  const baseTotalPaginas = Math.max(1, Math.ceil(registrosFiltrados.length / baseFilasPorPagina))
+  const basePaginaActual = Math.min(basePagina, baseTotalPaginas)
+  const registrosVisibles = registrosFiltrados.slice(
+    (basePaginaActual - 1) * baseFilasPorPagina,
+    basePaginaActual * baseFilasPorPagina,
+  )
+
+  useEffect(() => {
+    setBasePagina(1)
+    setHistOpen({})
+    setDetOpen({})
+  }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero])
 
   const statsBase = {
     total:      registrosActivos.length,
@@ -2044,7 +2058,7 @@ const cargarLeads = useCallback(async () => {
                 <tbody>
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
-                    : registrosFiltrados.map((r,i) => {
+                    : registrosVisibles.map((r,i) => {
                          const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
@@ -2054,7 +2068,7 @@ const cargarLeads = useCallback(async () => {
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
-                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{i+1}</td>
+                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{(basePaginaActual-1)*baseFilasPorPagina+i+1}</td>
 
                             {/* Campaña */}
                             <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
@@ -2259,6 +2273,14 @@ const cargarLeads = useCallback(async () => {
                   }
                 </tbody>
               </table>
+              {registrosFiltrados.length > baseFilasPorPagina && (
+                <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'9px 10px',fontSize:11,color:'#6b7280',background:'#fff',borderTop:'1px solid #e5e7eb',position:'sticky',bottom:0,zIndex:3}}>
+                  <span>Mostrando {(basePaginaActual-1)*baseFilasPorPagina+1}-{Math.min(basePaginaActual*baseFilasPorPagina,registrosFiltrados.length)} de {registrosFiltrados.length}</span>
+                  <button type="button" disabled={basePaginaActual<=1} onClick={()=>setBasePagina(p=>Math.max(1,p-1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:basePaginaActual<=1?'default':'pointer',opacity:basePaginaActual<=1?.45:1}}>Anterior</button>
+                  <strong>{basePaginaActual} / {baseTotalPaginas}</strong>
+                  <button type="button" disabled={basePaginaActual>=baseTotalPaginas} onClick={()=>setBasePagina(p=>Math.min(baseTotalPaginas,p+1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:basePaginaActual>=baseTotalPaginas?'default':'pointer',opacity:basePaginaActual>=baseTotalPaginas?.45:1}}>Siguiente</button>
+                </div>
+              )}
             </div>
           </section>
 
