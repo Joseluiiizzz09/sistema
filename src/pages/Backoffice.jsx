@@ -577,6 +577,9 @@ export default function Backoffice() {
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
   const cargandoLeadsRef = useRef(false)
+  const cargaCompletaRealizadaRef = useRef(false)
+  const fechaActivaRef = useRef(fechaActiva)
+  fechaActivaRef.current = fechaActiva
   const mutGenRef = useRef(0)   // se incrementa en cada acción local; descarta respuestas de polls viejos
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
@@ -631,9 +634,16 @@ const cargarLeads = useCallback(async () => {
     cargandoLeadsRef.current = true
     const gen = mutGenRef.current
     try {
-      const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
+      // La primera carga descubre todas las fechas. Los sondeos posteriores
+      // traen solo la fecha visible para no descargar y reprocesar toda la base.
+      const cargaCompleta = !cargaCompletaRealizadaRef.current
+      const url = cargaCompleta
+        ? `${API}/leads`
+        : `${API}/leads?fecha=${encodeURIComponent(fechaActivaRef.current)}`
+      const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
+      if (cargaCompleta) cargaCompletaRealizadaRef.current = true
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
       // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
       if (mutGenRef.current !== gen) return
