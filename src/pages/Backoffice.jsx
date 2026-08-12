@@ -447,6 +447,7 @@ export default function Backoffice() {
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
   const [rotRotados,    setRotRotados]    = useState(0)
+  const [rotPagina,     setRotPagina]     = useState(1)
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
@@ -769,6 +770,10 @@ const cargarLeads = useCallback(async () => {
   function irSeccion(id) {
     sessionStorage.setItem('nc_backoffice_apartado', id)
     setSeccion(id)
+    if (id !== 'base') {
+      setRotPanelOpen(false)
+      setRotPagina(1)
+    }
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
   }
 
@@ -1628,6 +1633,13 @@ const cargarLeads = useCallback(async () => {
         return rotSort.dir === 'desc' ? -cmp : cmp
       })
     : allRotLeads
+  const rotFilasPorPagina = 100
+  const rotTotalPaginas = Math.max(1, Math.ceil(allRotLeadsSorted.length / rotFilasPorPagina))
+  const rotPaginaActual = Math.min(rotPagina, rotTotalPaginas)
+  const rotLeadsVisibles = allRotLeadsSorted.slice(
+    (rotPaginaActual - 1) * rotFilasPorPagina,
+    rotPaginaActual * rotFilasPorPagina,
+  )
   function toggleRotSort(col) {
     setRotSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir:'asc' })
   }
@@ -1647,7 +1659,15 @@ const cargarLeads = useCallback(async () => {
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
   const allAptosSelected = rotAptos.length > 0 && rotAptos.every(l=>rotSel[l.id])
   const rotFechasDisp  = Object.keys(baseData).filter(f=>(baseData[f]||[]).length>0).sort().reverse()
-  const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:Object.values(baseData).flat().filter(r=>r.asesor===a.nombre).length }))
+  const rotConteoAsesores = new Map()
+  if (rotPanelOpen) {
+    Object.values(baseData).forEach(registros => {
+      ;(registros || []).forEach(r => {
+        if (r.asesor) rotConteoAsesores.set(r.asesor, (rotConteoAsesores.get(r.asesor) || 0) + 1)
+      })
+    })
+  }
+  const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:rotConteoAsesores.get(a.nombre) || 0 }))
   const masivaFilasParaCargar = inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)
   const masivaNDup    = masivaFilas.filter(f=>f.dup).length
   const masivaFilasCnt= masivaFilas.length
@@ -1713,7 +1733,7 @@ const cargarLeads = useCallback(async () => {
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
-                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>setRotPanelOpen(v=>!v)}>
+                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>{ setRotPagina(1); setRotPanelOpen(v=>!v) }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   Rotación inteligente
                 </button>
@@ -1825,7 +1845,7 @@ const cargarLeads = useCallback(async () => {
                           <tbody>
                             {allRotLeadsSorted.length === 0
                               ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
-                              : allRotLeadsSorted.map(l => {
+                              : rotLeadsVisibles.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
@@ -1849,6 +1869,14 @@ const cargarLeads = useCallback(async () => {
                           </tbody>
                         </table>
                       </div>
+                      {allRotLeadsSorted.length > rotFilasPorPagina && (
+                        <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'10px 4px 2px',fontSize:11,color:'#6b7280'}}>
+                          <span>Mostrando {(rotPaginaActual-1)*rotFilasPorPagina+1}-{Math.min(rotPaginaActual*rotFilasPorPagina,allRotLeadsSorted.length)} de {allRotLeadsSorted.length}</span>
+                          <button type="button" disabled={rotPaginaActual<=1} onClick={()=>setRotPagina(p=>Math.max(1,p-1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:rotPaginaActual<=1?'default':'pointer',opacity:rotPaginaActual<=1?.45:1}}>Anterior</button>
+                          <strong>{rotPaginaActual} / {rotTotalPaginas}</strong>
+                          <button type="button" disabled={rotPaginaActual>=rotTotalPaginas} onClick={()=>setRotPagina(p=>Math.min(rotTotalPaginas,p+1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:rotPaginaActual>=rotTotalPaginas?'default':'pointer',opacity:rotPaginaActual>=rotTotalPaginas?.45:1}}>Siguiente</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
