@@ -39,7 +39,7 @@ const PAQUETES_POR_PLAN = {
 }
 
 const NV_DEFAULT = {
-  nombre:'', tipoDoc:'DNI', dni:'', tel1:'', tel2:'',
+  nombre:'', tipoDoc:'DNI', dni:'', email:'', tel1:'', tel2:'',
   dpto:'', prov:'', dist:'', dir:'', coord:'',
   fechaNac:'', lugarNac:'', padre:'', madre:'',
   cuota:'', hogar:'', tec:'', paquete:'',
@@ -747,6 +747,7 @@ export default function Dashboard() {
       nombre:   v.nombre      || '',
       tipoDoc:  v.tipo_doc    || 'DNI',
       dni:      v.dni         || '',
+      email:    v.email       || '',
       tel1:     v.telefono1   || '',
       tel2:     v.telefono2   || '',
       dpto:     v.departamento|| '',
@@ -815,6 +816,9 @@ export default function Dashboard() {
     if (!new RegExp(`^\\d{${longitudDoc}}$`).test(nvForm.dni.trim()))
       return mostrarToast(`${nvForm.tipoDoc} debe contener exactamente ${longitudDoc} dígitos`)
     if (!nvForm.nombre.trim()) return mostrarToast('El nombre es obligatorio')
+    if (!nvEditId && !nvForm.email.trim()) return mostrarToast('El correo electrónico es obligatorio')
+    if (nvForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nvForm.email.trim()))
+      return mostrarToast('Ingresa un correo electrónico válido')
     const reNombre = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]+$/
     if (!reNombre.test(nvForm.nombre.trim()))
       return mostrarToast('El nombre solo puede contener letras, tildes, espacios y guiones')
@@ -836,6 +840,7 @@ export default function Dashboard() {
     if (faltante) return mostrarToast(`${faltante[0]} es obligatorio para cerrar la venta`)
     const body = {
       ...(!nvEditId && nvLeadId ? { leadId:nvLeadId } : {}),
+      ...(!nvEditId ? { email:nvForm.email.trim() } : {}),
       tipoDoc:nvForm.tipoDoc, dni:nvForm.dni.trim(), nombre:nvForm.nombre.trim(),
       telefono1:nvForm.tel1.trim(), telefono2:nvForm.tel2.trim(),
       departamento:nvForm.dpto, provincia:nvForm.prov, distrito:nvForm.dist,
@@ -1432,6 +1437,12 @@ export default function Dashboard() {
                   <label className="nv-label">Teléfono Referencia</label>
                   <input className="nv-input" placeholder="9XXXXXXXX" maxLength={12} style={{fontFamily:'monospace'}}
                     value={nvForm.tel2} onChange={e => nvSet('tel2', e.target.value.replace(/\D/g, ''))} />
+                </div>
+                <div className="nv-field">
+                  <label className="nv-label">Correo Electrónico {!nvEditId && <span>*</span>}</label>
+                  <input className="nv-input" type="email" placeholder="cliente@correo.com" maxLength={150}
+                    value={nvForm.email} disabled={Boolean(nvEditId)}
+                    onChange={e => nvSet('email', e.target.value)} />
                 </div>
                 <div className="nv-field">
                   <label className="nv-label">Departamento</label>
