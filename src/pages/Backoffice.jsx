@@ -99,7 +99,7 @@ function tipifBadgeClass(t) {
   return 'b-default'
 }
 
-const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
+const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','INSTALADO'])
@@ -826,7 +826,7 @@ const cargarLeads = useCallback(async () => {
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
+      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:['DERIVADO','LLAMANDO'].includes(tipifBack)?(sesion?.nombre||''):'', asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
@@ -931,15 +931,17 @@ const cargarLeads = useCallback(async () => {
     const hora = horaAhora()
     const tipifAntes = reg.tipifBack || ''
     const esDer = nuevoValor === 'DERIVADO'
+    const registraAutor = esDer || nuevoValor === 'LLAMANDO'
     const entrada = {
       tipo: esDer ? 'DERIVADO' : 'TIPIF_BACK',
       asesor: reg.asesor || '',
       hora, fecha: fechaHoy(),
-      motivo: esDer ? 'Marcado DERIVADO' : 'Cambio tipif. back',
+      motivo: esDer ? 'Marcado DERIVADO' : nuevoValor === 'LLAMANDO' ? 'Marcado LLAMANDO' : 'Cambio tipif. back',
       tipifBackAntes: tipifAntes, tipifBackNueva: nuevoValor,
+      ...(registraAutor ? { derivadoPor: sesion?.nombre || '' } : {}),
     }
     const newHist = [...reg.historial, entrada]
-    const derivadoPor = esDer ? (sesion?.nombre || '') : ''
+    const derivadoPor = registraAutor ? (sesion?.nombre || '') : ''
     updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) }).catch(()=>{})
   }
@@ -1465,7 +1467,7 @@ const cargarLeads = useCallback(async () => {
       ['DISTRITO','Distrito del contacto','No','Texto libre'],
       ['N2','Número secundario','No','Guardar como texto para conservar ceros iniciales'],
       ['N1','Número principal (teléfono)','SÍ','Guardar como texto para conservar ceros iniciales'],
-      ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO'],
+      ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO · LLAMANDO'],
       ['COMENTARIO','Comentario libre','No','No se importa al sistema, solo referencia'],
       ['TIPIFICACIÓN','Tipificación del asesor/vendedor','No','CONTESTA · VENTA CERRADA · NC · etc.'],
       ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
@@ -2106,7 +2108,7 @@ const cargarLeads = useCallback(async () => {
                                 <option value="">— Sin tipif. —</option>
                                 {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
                               </select>
-                              {r.tipifBack==='DERIVADO'&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
+                              {['DERIVADO','LLAMANDO'].includes(r.tipifBack)&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
                             </td>
 
                             {/* Asesor asignado */}
