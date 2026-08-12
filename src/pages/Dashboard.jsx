@@ -349,10 +349,11 @@ export default function Dashboard() {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden)
     cargandoLeadsRef.current = true
     try {
-      const res  = await fetch(`${API}/leads${filtroAsesor}`, { headers: ncHeaders() })
+      const hoy = fechaHoy()
+      const separador = filtroAsesor ? '&' : '?'
+      const res  = await fetch(`${API}/leads${filtroAsesor}${separador}fecha=${encodeURIComponent(hoy)}`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
-      const hoy = fechaHoy()
       const leadsAsignados = data.data.filter(l => {
         const historial = Array.isArray(l.historial) ? l.historial : []
         const asignaciones = historial.filter(h => h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND')
