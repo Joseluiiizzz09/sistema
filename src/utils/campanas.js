@@ -20,6 +20,7 @@ export const CAMPANAS = [
   'K8',
   'K9',
   'LEAD CRM',
+  'M1',
   'MACETA',
   'MATEO',
   'MESSENGER',
@@ -30,5 +31,6 @@ export const CAMPANAS = [
   'RAHI',
   'REFERIDO',
   'REFUERZO',
+  'YOPI',
   'YURI',
 ]
