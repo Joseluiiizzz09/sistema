@@ -110,6 +110,21 @@ const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'
 function normalizarNumero(valor) {
   return String(valor || '').replace(/\D/g, '')
 }
+
+function cantidadRotaciones(reg) {
+  const guardadas = parseInt(String(reg?.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
+  const historial = Array.isArray(reg?.historial) ? reg.historial : []
+  const eventosRotacion = historial.filter(h => String(h?.tipo || '').toUpperCase() === 'ROTACION').length
+  const asignaciones = historial.filter(h => h?.asesor && String(h?.tipo || '').toUpperCase() !== 'TIPIF_VEND').length
+  return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
+}
+
+function grupoPrioridadLead(reg) {
+  const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
+  if (tipif === 'VENTA CERRADA') return 2
+  if (tipif === 'SIN COBERTURA') return 1
+  return 0
+}
 function resaltadoPorVenta(venta) {
   if (!venta) return null
   const estado = String(venta.estado || '').trim().toUpperCase()
@@ -662,7 +677,7 @@ const cargarLeads = useCallback(async () => {
           asesor:     l.asesor_nombre || '',
           horaAsig:   l.hora_asig || '',
           sinAsignar: !!l.sin_asignar,
-          rotaciones: l.rotaciones || 0,
+          rotaciones: cantidadRotaciones(l),
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
           venta_confirmada: Number(l.venta_confirmada || 0),
@@ -979,7 +994,7 @@ const cargarLeads = useCallback(async () => {
         tipifBack:  '',
         derivadoPor:'',
         historial:  data.historial || reg.historial,
-        rotaciones: (reg.rotaciones || 0) + 1,
+        rotaciones: Number(data.rotaciones ?? (cantidadRotaciones(reg) + 1)),
         _tipifVend: '',
         _tipifHora: '',
       })
@@ -1561,8 +1576,12 @@ const cargarLeads = useCallback(async () => {
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
       return true
     })
-    if (!tableSort.col) return filtered
     return [...filtered].sort((a, b) => {
+      // Esta prioridad es fija: los leads operativos siempre permanecen arriba,
+      // SIN COBERTURA se agrupa debajo y VENTA CERRADA queda al final.
+      const grupo = grupoPrioridadLead(a) - grupoPrioridadLead(b)
+      if (grupo !== 0) return grupo
+      if (!tableSort.col) return 0
       if (tableSort.col === 'tipif') {
         const ta = (a._tipifVend || '').trim()
         const tb = (b._tipifVend || '').trim()
@@ -1581,8 +1600,8 @@ const cargarLeads = useCallback(async () => {
         return tableSort.dir === 'desc' ? mb - ma : ma - mb
       }
       if (tableSort.col === 'rots') {
-        const ra = parseInt(String(a.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
-        const rb = parseInt(String(b.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
+        const ra = cantidadRotaciones(a)
+        const rb = cantidadRotaciones(b)
         return tableSort.dir === 'asc' ? ra - rb : rb - ra
       }
       if (tableSort.col === 'asesor') {
@@ -2154,8 +2173,8 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Rotaciones */}
                             <td style={{textAlign:'center'}}>
-                              {r.rotaciones>0
-                                ?<span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:99,display:'inline-block'}}>{r.rotaciones}x</span>
+                              {cantidadRotaciones(r)>0
+                                ?<span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:99,display:'inline-block'}}>{cantidadRotaciones(r)}x</span>
                                 :<span style={{color:'#d1d5db',fontSize:10}}>0</span>}
                             </td>
 
