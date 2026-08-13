@@ -532,6 +532,8 @@ export default function Backoffice() {
   const [blLeads,  setBlLeads]  = useState([])
   const [blFecha,  setBlFecha]  = useState(fechaHoy())
   const [blCargando, setBlCargando] = useState(false)
+  const [blBuscar, setBlBuscar] = useState('')
+  const [blFiltroTipif, setBlFiltroTipif] = useState('')
 
   // ── Toast ──
   const [toast, setToast] = useState('')
@@ -800,7 +802,7 @@ const cargarLeads = useCallback(async () => {
     if (!blModal.open || blModal.asesorId == null) return
     setBlCargando(true)
     setBlLeads([])
-    let url = `${API}/leads?asesor_id=${blModal.asesorId}`
+    let url = `${API}/leads/avance-asesor?asesor_id=${blModal.asesorId}`
     if (blFecha) url += `&fecha=${blFecha}`
     fetch(url, { headers: ncHeaders() })
       .then(r => r.json())
@@ -1557,6 +1559,8 @@ const cargarLeads = useCallback(async () => {
   function abrirBlModal(nombre, asesorId) {
     setBlModal({ open:true, nombre, asesorId })
     setBlFecha(fechaHoy())
+    setBlBuscar('')
+    setBlFiltroTipif('')
   }
 
   // ── Computed values ───────────────────────────────────────────────────────
@@ -1777,6 +1781,13 @@ const cargarLeads = useCallback(async () => {
   const masivaNDup    = masivaFilas.filter(f=>f.dup).length
   const masivaFilasCnt= masivaFilas.length
   const avanceFiltrado= asesores.filter(a => !avanceBuscar || a.nombre.toLowerCase().includes(avanceBuscar.toLowerCase()) || (a.usuario||'').toLowerCase().includes(avanceBuscar.toLowerCase()))
+  const blTipificaciones = [...new Set((blLeads || []).map(l => String(l.tipif_vend || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const blLeadsFiltrados = (blLeads || []).filter(l => {
+    const q = blBuscar.trim().toLowerCase()
+    const coincideTexto = !q || [l.n1,l.n2,l.distrito,l.campana,l.obs_asesor,l.tipif_vend].some(v=>String(v||'').toLowerCase().includes(q))
+    const coincideTipif = !blFiltroTipif || (blFiltroTipif === '__pendiente__' ? !String(l.tipif_vend||'').trim() : String(l.tipif_vend||'').trim() === blFiltroTipif)
+    return coincideTexto && coincideTipif
+  }).sort((a,b) => Number(Boolean(a.tipif_vend)) - Number(Boolean(b.tipif_vend)) || String(b.hora_asig||'').localeCompare(String(a.hora_asig||'')))
 
   const idx      = fechaPestanas.indexOf(fechaActiva)
   const prevDis  = idx >= fechaPestanas.length - 1
@@ -2969,7 +2980,12 @@ const cargarLeads = useCallback(async () => {
               <label style={{fontSize:12,fontWeight:600}}>Fecha:</label>
               <input type="date" value={blFecha} onChange={e=>setBlFecha(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit'}} />
               <button onClick={()=>setBlFecha(fechaHoy())} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,background:'#f9fafb',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer'}}>Hoy</button>
-              <span style={{fontSize:12,color:'#9ca3af',marginLeft:'auto'}}>{blLeads?.length??0} registros</span>
+              <input value={blBuscar} onChange={e=>setBlBuscar(e.target.value)} placeholder="Filtrar número, campaña, zona u observación..." style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:11,fontFamily:'inherit',outline:'none',minWidth:245}} />
+              <select value={blFiltroTipif} onChange={e=>setBlFiltroTipif(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:11,fontFamily:'inherit',outline:'none'}}>
+                <option value="">Todas las tipificaciones</option><option value="__pendiente__">Sin tipificar</option>
+                {blTipificaciones.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+              <span style={{fontSize:12,color:'#9ca3af',marginLeft:'auto'}}>{blLeadsFiltrados.length} de {blLeads?.length??0} registros</span>
             </div>
             {blLeads && blLeads.length > 0 && (
               <div style={{padding:'10px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
@@ -2985,18 +3001,18 @@ const cargarLeads = useCallback(async () => {
             <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
-                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Observación'].map(h=>(
+                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Hora tipif.','Observación'].map(h=>(
                     <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {blCargando
-                    ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
+                    ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
                     : !blLeads
-                      ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
-                      : blLeads.length === 0
-                        ? <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para esta fecha.</td></tr>
-                        : blLeads.map((l,i)=>(
+                      ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
+                      : blLeadsFiltrados.length === 0
+                        ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para los filtros seleccionados.</td></tr>
+                        : blLeadsFiltrados.map((l,i)=>(
                             <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA'?'#f0fdf4':''}}>
                               <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
                               <td style={{padding:8,fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{l.n1||'—'}</td>
@@ -3005,6 +3021,7 @@ const cargarLeads = useCallback(async () => {
                               <td style={{padding:8,fontSize:11}}>{l.campana||'—'}</td>
                               <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'—'}</td>
                               <td style={{padding:8}}><BlBadge tipif={l.tipif_vend} /></td>
+                              <td style={{padding:8,fontSize:11,fontFamily:'monospace',color:'#475569'}}>{l.tipif_hora||'—'}</td>
                               <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'—'}</td>
                             </tr>
                           ))
