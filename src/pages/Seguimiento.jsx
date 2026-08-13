@@ -15,6 +15,12 @@ const ESTADOS = [
   { id: 'caida',     label: 'CAIDA',            cls: 'bs-caida',   fila: 'fila-caida'   },
   { id: 'rechazo',   label: 'RECHAZO EN CAMPO', cls: 'bs-rech',    fila: 'fila-rech'    },
   { id: 'tecnico',   label: 'TECNICOS EN CASA', cls: 'bs-tecnico', fila: 'fila-tecnico' },
+  { id: 'levantar_sot', label: 'LEVANTAR SOT', cls: 'bs-rech', fila: 'fila-rech' },
+  { id: 'tecnicos_camino', label: 'TECNICOS EN CAMINO', cls: 'bs-tecnico', fila: 'fila-tecnico' },
+  { id: 'instalado_no_validado', label: 'INSTALADO NO VALIDADO', cls: 'bs-inst', fila: 'fila-inst' },
+  { id: 'reasignacion', label: 'REASIGNACION', cls: 'bs-ejec', fila: 'fila-ejec' },
+  { id: 'derivado_planta_externa', label: 'DERIVADO A PLANTA EXTERNA', cls: 'bs-rech', fila: 'fila-rech' },
+  { id: 'servicio_activo', label: 'SERVICIO ACTIVO', cls: 'bs-inst', fila: 'fila-inst' },
   { id: 'rechazo_programacion', label: 'RECHAZO', cls: 'bs-rech', fila: 'fila-rech' },
 ]
 
@@ -29,11 +35,17 @@ const ESTADO_BD_MAP = {
   caida:     'caida',
   rechazo:   'rechazo_campo',
   tecnico:   'tecnico_casa',
+  levantar_sot: 'levantar_sot',
+  tecnicos_camino: 'tecnicos_camino',
+  instalado_no_validado: 'instalado_no_validado',
+  reasignacion: 'reasignacion',
+  derivado_planta_externa: 'derivado_planta_externa',
+  servicio_activo: 'servicio_activo',
   rechazo_programacion: 'pendiente',
 }
 
 const SEG_FILTRO_KEY = 'nc_seguimiento_filtro'
-const ORD_EST = { caida: 0, rechazo: 1, tecnico: 2, ejecucion: 3, instalado: 4 }
+const ORD_EST = { caida:0, rechazo:1, levantar_sot:2, derivado_planta_externa:3, tecnico:4, tecnicos_camino:5, reasignacion:6, ejecucion:7, instalado_no_validado:8, servicio_activo:9, instalado:10 }
 
 function fechaHoy() {
   const a = new Date(), u = a.getTime() + a.getTimezoneOffset() * 60000
@@ -58,6 +70,12 @@ function motivoBadgeCls(motivo) {
 
 function mapearEstado(e) {
   const est = (e || '').toLowerCase()
+  const nuevos = {
+    levantar_sot:'levantar_sot', tecnicos_camino:'tecnicos_camino',
+    instalado_no_validado:'instalado_no_validado', reasignacion:'reasignacion',
+    derivado_planta_externa:'derivado_planta_externa', servicio_activo:'servicio_activo',
+  }
+  if (nuevos[est]) return nuevos[est]
   if (est.includes('tecnico'))   return 'tecnico'
   if (est.includes('rechazo'))   return 'rechazo'
   if (est.includes('ejecucion')) return 'ejecucion'
@@ -226,6 +244,7 @@ export default function Seguimiento() {
     rechazo:   ventas.filter(v => v._estadoSeg === 'rechazo').length,
     caida:     ventas.filter(v => v._estadoSeg === 'caida').length,
     tecnico:   ventas.filter(v => v._estadoSeg === 'tecnico').length,
+    nuevos:    ESTADOS.slice(6, 12).reduce((acc, e) => ({ ...acc, [e.id]: ventas.filter(v => v._estadoSeg === e.id).length }), {}),
   }), [ventas])
 
   const totalPag  = ventasFiltradas.length
@@ -410,6 +429,7 @@ export default function Seguimiento() {
             { id: 'rechazo',   label: 'RECHAZO EN CAMPO', cnt: kpis.rechazo,   cls: 'l-rech'    },
             { id: 'caida',     label: 'CAÍDA',            cnt: kpis.caida,     cls: 'l-caida'   },
             { id: 'tecnico',   label: 'TÉCNICOS EN CASA', cnt: kpis.tecnico,   cls: 'l-tecnico' },
+            ...ESTADOS.slice(6, 12).map(e => ({ id:e.id, label:e.label, cnt:kpis.nuevos[e.id] || 0, cls:'l-ejec' })),
           ].map(item => (
             <div
               key={item.id}
@@ -505,7 +525,7 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
-                <col style={{ width: 170 }} />
+                <col style={{ width: 230 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 220 }} />

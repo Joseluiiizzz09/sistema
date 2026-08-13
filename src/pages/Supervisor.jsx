@@ -25,6 +25,12 @@ const ESTADOS_VENTA = [
   { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
   { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
+  { id:'levantar_sot', label:'Levantar SOT', cls:'be-rechazocampo', dot:'#c2410c' },
+  { id:'tecnicos_camino', label:'Técnicos en Camino', cls:'be-observado', dot:'#be185d' },
+  { id:'instalado_no_validado', label:'Instalado No Validado', cls:'be-instalado', dot:'#2563eb' },
+  { id:'reasignacion', label:'Reasignación', cls:'be-ejecucion', dot:'#0891b2' },
+  { id:'derivado_planta_externa', label:'Derivado a Planta Externa', cls:'be-rechazocampo', dot:'#c2410c' },
+  { id:'servicio_activo_seguimiento', label:'Servicio Activo', cls:'be-servicio', dot:'#1f2937' },
   { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
   { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
   { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
@@ -126,6 +132,12 @@ function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   if(s==='caida')         return 'caida'
   if(s==='rechazo_campo') return 'rechazo_campo'
   if(s==='tecnico_casa')  return 'tecnico_casa'
+  if(s==='levantar_sot') return 'levantar_sot'
+  if(s==='tecnicos_camino') return 'tecnicos_camino'
+  if(s==='instalado_no_validado') return 'instalado_no_validado'
+  if(s==='reasignacion') return 'reasignacion'
+  if(s==='derivado_planta_externa') return 'derivado_planta_externa'
+  if(s==='servicio_activo' && sr==='conforme') return 'servicio_activo_seguimiento'
   if(s==='no_instalado')  return 'no_instalado'
   if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo','corregir','mala_oferta'].includes(s)) return s
   return 'venta'

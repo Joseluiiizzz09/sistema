@@ -37,6 +37,9 @@ const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN 
 const SEG_MAP = {
   en_ejecucion:'ejecucion',
   instalado:'instalado',caida:'caida',rechazo_campo:'rechazo',tecnico_casa:'tecnico',
+  levantar_sot:'levantar_sot', tecnicos_camino:'tecnicos_camino',
+  instalado_no_validado:'instalado_no_validado', reasignacion:'reasignacion',
+  derivado_planta_externa:'derivado_planta_externa', servicio_activo:'servicio_activo',
 }
 // Colores idénticos al resultado final real de seguimiento.css (cascada de
 // .bs-ejec/.bs-inst/.bs-rech/.bs-caida/.bs-tecnico + overrides !important en
@@ -47,8 +50,14 @@ const SEG_BADGES = {
   rechazo:  { label:'RECHAZO CAMPO',   bg:'#fff7ed', color:'#c2410c', border:'rgba(251,146,60,.38)'  },
   caida:    { label:'CAÍDA',           bg:'#fee2e2', color:'#b91c1c', border:'rgba(248,113,113,.35)' },
   tecnico:  { label:'TÉCNICO EN CASA', bg:'#fce7f3', color:'#be185d', border:'rgba(244,114,182,.45)' },
+  levantar_sot:{ label:'LEVANTAR SOT', bg:'#fff7ed', color:'#c2410c', border:'rgba(251,146,60,.38)' },
+  tecnicos_camino:{ label:'TÉCNICOS EN CAMINO', bg:'#fce7f3', color:'#be185d', border:'rgba(244,114,182,.45)' },
+  instalado_no_validado:{ label:'INSTALADO NO VALIDADO', bg:'#eff6ff', color:'#2563eb', border:'rgba(96,165,250,.35)' },
+  reasignacion:{ label:'REASIGNACIÓN', bg:'#ecfdf5', color:'#047857', border:'rgba(52,211,153,.35)' },
+  derivado_planta_externa:{ label:'DERIVADO A PLANTA EXTERNA', bg:'#fff7ed', color:'#c2410c', border:'rgba(251,146,60,.38)' },
+  servicio_activo:{ label:'SERVICIO ACTIVO', bg:'#f3f4f6', color:'#1f2937', border:'rgba(156,163,175,.45)' },
 }
-const SEG_ORD = { caida:0, rechazo:1, tecnico:2, ejecucion:3, instalado:4 }
+const SEG_ORD = { caida:0, rechazo:1, levantar_sot:2, derivado_planta_externa:3, tecnico:4, tecnicos_camino:5, reasignacion:6, ejecucion:7, instalado_no_validado:8, servicio_activo:9, instalado:10 }
 
 const PROG_STYLES = {
   PROGRAMADO:       { bg:'#dcfce7',color:'#15803d',border:'rgba(74,222,128,.4)'  },
@@ -105,7 +114,7 @@ function formatF(f)    { if(!f)return'—'; const p=f.split('-'); return `${p[2]
 function cargoObj(id)  { return CARGOS.find(c=>c.id===id)||{label:id,cls:'bc-default'} }
 function colorAvatar(n){ const c=["#3b82f6","#8b5cf6","#22c55e","#f97316","#ef4444","#06b6d4","#ec4899","#f59e0b"]; let s=0; for(const ch of n) s+=ch.charCodeAt(0); return c[s%c.length] }
 function iniciales(n)  { return n.trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
-function mapSeg(e)     { const s=(e||'').toLowerCase(); if(s.includes('tecnico'))return'tecnico'; if(s.includes('rechazo'))return'rechazo'; if(s.includes('ejecucion'))return'ejecucion'; return SEG_MAP[s]||null }
+function mapSeg(e)     { const s=(e||'').toLowerCase(); if(SEG_MAP[s])return SEG_MAP[s]; if(s.includes('tecnico'))return'tecnico'; if(s.includes('rechazo'))return'rechazo'; if(s.includes('ejecucion'))return'ejecucion'; return null }
 function efColor(v)    { return v>=70?'#16a34a':v>=40?'#d97706':'#dc2626' }
 function normEstado(v) {
   return String(v || '')
@@ -117,12 +126,16 @@ function normEstado(v) {
     .replace(/^_+|_+$/g, '')
 }
 const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda','corregir','mala_oferta'])
-const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
-const FLUJO_SEGUIMIENTO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
+const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','levantar_sot','tecnicos_camino','instalado_no_validado','reasignacion','derivado_planta_externa'])
+const FLUJO_SEGUIMIENTO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','levantar_sot','tecnicos_camino','instalado_no_validado','reasignacion','derivado_planta_externa','servicio_activo'])
 function flujoTieneAudio(v) {
   return Boolean(v?.audio || v?.audio_url || v?.archivo_audio || v?.archivoAudio || v?.grabacion || v?.grabacion_url || v?.audio_path)
 }
-function flujoNoValidada(v) { return FLUJO_NO_VALIDA.has(normEstado(v?.estado || v?.estado_venta)) }
+function flujoNoValidada(v) {
+  const estado = normEstado(v?.estado || v?.estado_venta)
+  if (estado === 'servicio_activo' && normEstado(v?.estado_supgrab) === 'conforme') return false
+  return FLUJO_NO_VALIDA.has(estado)
+}
 function flujoValidada(v) {
   const e = normEstado(v?.estado || v?.estado_venta)
   return Boolean(e) && e !== 'venta' && !flujoNoValidada(v)
@@ -160,6 +173,11 @@ function flujoLabelEstado(estado) {
     caida:'Caída',
     rechazo_campo:'Rechazo campo',
     tecnico_casa:'Técnico en casa',
+    levantar_sot:'Levantar SOT',
+    tecnicos_camino:'Técnicos en camino',
+    instalado_no_validado:'Instalado no validado',
+    reasignacion:'Reasignación',
+    derivado_planta_externa:'Derivado a planta externa',
     corta_llamada:'Corta llamada',
     fraude:'Fraude',
     no_desea:'No desea',
@@ -354,7 +372,7 @@ export default function Jefatura() {
     finally { cargandoVentasRef.current = false }
   }, [])
 
-  const ESTADOS_CAMPO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
+  const ESTADOS_CAMPO = FLUJO_SEGUIMIENTO
   const cargarSeguimiento = useCallback(async () => {
     try {
       const res  = await fetch(`${API}/ventas?seguimiento_campo=1`, { headers: ncHeaders() })
