@@ -56,6 +56,19 @@ function iniciales(n) { return (n||'?').trim().split(' ').slice(0,2).map(p=>p[0]
 function primerNombre(n) { return String(n||'').trim().split(/\s+/)[0] || '' }
 function normalizarSala(s) { return String(s||'').trim().toUpperCase() }
 const TIPIFICACIONES_VALIDACION = new Set(['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZÓN DE VOZ','BUZON DE VOZ','SERVICIO ACTIVO','CORREGIR','MALA OFERTA','VENTA','VALIDADO'])
+const ESTADO_POR_TIPIFICACION_VALIDACION = {
+  'CORTA LLAMADA':'corta_llamada', FRAUDE:'fraude', 'NO DESEA':'no_desea',
+  'NO CONTESTA':'no_contesta', 'BUZÓN DE VOZ':'buzon_voz', 'BUZON DE VOZ':'buzon_voz',
+  'SERVICIO ACTIVO':'servicio_activo', CORREGIR:'corregir', 'MALA OFERTA':'mala_oferta',
+}
+function getTipificacionValidacion(obs) {
+  const lineas = String(obs||'').split('\n').map(l=>l.trim()).filter(Boolean)
+  for (let i=lineas.length-1; i>=0; i--) {
+    const mensaje = ((lineas[i].match(/^\[.+?\]\s*(.*)$/)||[])[1] || lineas[i]).trim().toUpperCase()
+    if (TIPIFICACIONES_VALIDACION.has(mensaje)) return ESTADO_POR_TIPIFICACION_VALIDACION[mensaje] || ''
+  }
+  return ''
+}
 function getObsValidacion(obs) {
   const lineas = String(obs||'').split('\n').map(l=>l.trim()).filter(Boolean)
   for (let i=lineas.length-1; i>=0; i--) {
@@ -72,10 +85,16 @@ function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
 function formatF(f) { if(!f)return'?'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
-function mapearEstado(e, sup = '', eg = '') {
+function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
   const g=(eg||'').toLowerCase().trim()
+  // Seguimiento puede devolver una venta a PENDIENTE. En ese caso Supervisor
+  // conserva la tipificación final que Validación dejó registrada en su historial.
+  if (s==='pendiente') {
+    const tipificacionValidacion = getTipificacionValidacion(obsValidacion)
+    if (tipificacionValidacion) return tipificacionValidacion
+  }
   // Estado de Grabaciones ? independiente de `estado` (Validaci?n no cambia).
   // Mientras Super de Grabaciones no corrobore, se conserva GRABANDO.
   // Condicionado a s==='validado': en cuanto Programaci?n avanza `estado`
@@ -275,7 +294,7 @@ export default function Supervisor() {
         distrito: v.distrito || '',
         _fecha:   (v.created_at||'').split(' ')[0],
         _hora:    (v.created_at||'').split(' ')[1] || '',
-        _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab, v.estado_grab),
+        _estado:  mapearEstado(v.estado, v.estado_supgrab || v.estado_grab, v.estado_grab, v.obs_validacion),
       })))
     } catch(e) { console.error(e) }
     finally { cargandoDatosRef.current = false }
