@@ -328,16 +328,14 @@ export default function Dashboard() {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden)
     cargandoLeadsRef.current = true
     try {
-      const res  = await fetch(`${API}/leads${filtroAsesor}`, { headers: ncHeaders() })
+      const separador = filtroAsesor.includes('?') ? '&' : '?'
+      const res  = await fetch(`${API}/leads${filtroAsesor}${separador}fecha=${encodeURIComponent(fechaHoy())}`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
       const hoy = fechaHoy()
       const asesorIdVista = Number(vistaJefatura ? asesorObjetivo?.id : sesion?.id)
       const asesorNombreVista = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
       const leadsAsignados = data.data.filter(l => {
-        // El titular actual nunca debe desaparecer por un historial antiguo o
-        // incompleto. El historial se usa solo para mostrar lo trabajado antes.
-        if (asesorIdVista && Number(l.asesor_id) === asesorIdVista) return true
         const historial = Array.isArray(l.historial) ? l.historial : []
         const asignaciones = historial.filter(h =>
           h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND' &&
