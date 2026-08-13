@@ -1835,31 +1835,6 @@ const cargarLeads = useCallback(async () => {
                       <div className="rot-stat"><div className="rot-stat-num red">{rotStatNoAptos}</div><div className="rot-stat-label">No aptos</div></div>
                       <div className="rot-stat"><div className="rot-stat-num purple">{rotRotados}</div><div className="rot-stat-label">Rotados hoy</div></div>
                     </div>
-                    <div className="rot-grid" style={{marginBottom:14}}>
-                      <div className="bo-panel" style={{padding:'14px 16px'}}>
-                        <div className="bo-panel-title">Reglas de rotación</div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Sin repetir:</strong> el lead no puede ir a un asesor que ya lo tuvo</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-blue">T</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta, Nuevo o Sin cobertura</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Números protegidos:</strong> duplicados del día y reingresados con seguimiento activo o rechazado nunca rotan</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>
-                      </div>
-                      <div className="bo-panel rot-asesor-panel">
-                        <div className="bo-panel-title">Disponibilidad de asesores</div>
-                        <div className="rot-asesor-lista">
-                          <div className="rot-asesor-col-hdr" aria-hidden="true">
-                            <span>Asesor</span><span>Registros</span>
-                          </div>
-                          {rotAsesoresDisp.map(a=>(
-                            <div key={a.nombre} className="rot-asesor-row">
-                              <span className="rot-asesor-nombre" title={a.nombre}>{a.nombre}</span>
-                              <span className="rot-asesor-badge">{a.cnt} registros</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
                     <div className="rot-form" style={{marginBottom:12}}>
                       <div className="rot-form-title">Rotar leads a un asesor</div>
                       <div className="rot-form-row">
