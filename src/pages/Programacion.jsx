@@ -16,19 +16,7 @@ const BADGE_CLS = {
   CARACTER_ESPECIAL:'b-caracter',
   FRAUDE:           'b-fraude',
   ZONA_RESTRINGIDA: 'b-zona',
-  INSTALADO:        'b-instalado',
   PENDIENTE:        'b-pendiente',
-  CAIDA:            'b-caida',
-  'CAÍDA':           'b-caida',
-  VALIDADO:         'b-validado',
-  RECHAZO_CAMPO:    'b-rechazo',
-  'RECHAZO EN CAMPO':'b-rechazo',
-  TECNICO_CASA:     'b-tecnico',
-  'TECNICO EN CASA':'b-tecnico',
-  'TÉCNICO EN CASA':'b-tecnico',
-  EN_EJECUCION:     'b-ejecucion',
-  'EN EJECUCION':   'b-ejecucion',
-  'EN EJECUCIÓN':   'b-ejecucion',
 }
 
 const ESTADO_LABELS = {
@@ -40,19 +28,7 @@ const ESTADO_LABELS = {
   CARACTER_ESPECIAL:'Carácter especial',
   FRAUDE:           'Fraude',
   ZONA_RESTRINGIDA: 'Zona restringida',
-  INSTALADO:        'Instalado',
   PENDIENTE:        'Pendiente',
-  CAIDA:            'Caída',
-  'CAÍDA':           'Caída',
-  VALIDADO:         'Validado',
-  RECHAZO_CAMPO:    'Rechazo en campo',
-  'RECHAZO EN CAMPO':'Rechazo en campo',
-  TECNICO_CASA:     'Técnico en casa',
-  'TECNICO EN CASA':'Técnico en casa',
-  'TÉCNICO EN CASA':'Técnico en casa',
-  EN_EJECUCION:     'En ejecución',
-  'EN EJECUCION':   'En ejecución',
-  'EN EJECUCIÓN':   'En ejecución',
 }
 
 const ESTADO_BTNS = [
@@ -70,6 +46,13 @@ const ESTADO_BTNS = [
 // la grabación, se muestra GRABADO. Es puramente de presentación — no se
 // persiste nada distinto; `estado` sigue intacto (campo de Validación).
 function estadoVisible(v) {
+  // Seguimiento también actualiza `estado` (por ejemplo a INSTALADO o CAIDA).
+  // En esta pantalla debe prevalecer la última tipificación propia de
+  // Programación hasta que el área la cambie explícitamente.
+  const propioProgramacion = (v.estado_prog || '').toUpperCase()
+  if (ESTADO_BTNS.some(({ id }) => id === propioProgramacion)) {
+    return propioProgramacion
+  }
   const raw = (v.estado || '').toUpperCase()
   if (raw === 'VALIDADO' && (v.estado_grab || '').toLowerCase() === 'grabado') {
     return (v.estado_supgrab || '').toLowerCase() === 'aprobado'
@@ -327,11 +310,7 @@ export default function Programacion() {
                 <option value="CARACTER_ESPECIAL">Carácter especial</option>
                 <option value="FRAUDE">Fraude</option>
                 <option value="ZONA_RESTRINGIDA">Zona restringida</option>
-                <option value="INSTALADO">Instalado</option>
                 <option value="PENDIENTE">Pendiente</option>
-                <option value="CAIDA">Caída</option>
-                <option value="RECHAZO_CAMPO">Rechazo en campo</option>
-                <option value="TECNICO_CASA">Técnico en casa</option>
               </select>
             </div>
             <div className="filtro-group prog-reference-filter">
