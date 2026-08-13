@@ -99,7 +99,12 @@ function tipifBadgeClass(t) {
   return 'b-default'
 }
 
-const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
+const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO','SIN COBERTURA']
+
+function claseTipifBack(valor) {
+  const clave = String(valor || '').trim().toUpperCase().replace(/\s+/g, '-')
+  return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
+}
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO TOCAR']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
@@ -691,7 +696,10 @@ const cargarLeads = useCallback(async () => {
           coordenadasSinCobertura: l.coordenadas_sin_cobertura || l.coordenadas || '',
           obs_back:    l.obs_back || '',
           tipifBack:  l.tipif_back || '',
+          tipifBack2: l.tipif_back_2 || '',
           derivadoPor: l.derivado_por_nombre || '',
+          derivadoPor2: l.derivado_por_2_nombre || '',
+          createdAt: l.created_at || '',
           asesor:     l.asesor_nombre || '',
           horaAsig:   l.hora_asig || '',
           sinAsignar: !!l.sin_asignar,
@@ -906,7 +914,7 @@ const cargarLeads = useCallback(async () => {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'', tipifBack:'', tipifBack2:'', derivadoPor2:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
   }
 
@@ -1586,6 +1594,15 @@ const cargarLeads = useCallback(async () => {
     no_tocar: registrosActivos.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
   }
+
+  async function guardarTipifBack2(id, nuevoValor) {
+    const reg = allRegs.find(r=>r.id===id); if (!reg) return
+    const hora = ahoraHora(), fecha = hoyISO()
+    const newHist = [...(reg.historial||[]), { tipifBack2:nuevoValor, hora, fecha, motivo:'Segunda tipificacion Back' }]
+    const derivadoPor2 = ['DERIVADO','LLAMANDO'].includes(nuevoValor) ? (sesion?.nombre||'') : ''
+    updateReg(id, { tipifBack2:nuevoValor, historial:newHist, derivadoPor2 })
+    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back_2:nuevoValor, historial:newHist }) }).catch(()=>{})
+  }
   const registrosBusquedaGlobal = filtros.numero
     ? Object.entries(baseData).flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
     : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
@@ -1605,7 +1622,7 @@ const cargarLeads = useCallback(async () => {
     // Solo se consultan cuando Back Data abre expresamente el bloque del final.
     if (grupoProtegidoVisible) return gruposProtegidos[grupoProtegidoVisible] || []
     const filtered = registrosOperativos.filter(r => {
-      if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
+      if (filtros.tip && !`${r.tipifBack||''} ${r.tipifBack2||''}`.toUpperCase().includes(filtros.tip.toUpperCase())) return false
       if (filtros.tipVend) {
         if (filtros.tipVend === '__pendiente__') {
           if ((tipifEfectiva(r)||'').trim() !== '') return false
@@ -2052,15 +2069,17 @@ const cargarLeads = useCallback(async () => {
 
             {/* TABLA BASE — diseño compacto sin scroll horizontal */}
             <div className="base-tabla-wrap">
-              <table className="base-tabla" style={{tableLayout:'fixed',width:'100%',minWidth:880}}>
+              <table className="base-tabla" style={{tableLayout:'fixed',width:'100%',minWidth:1030}}>
                 <colgroup>
                   <col style={{width:34}} />
-                  <col style={{width:78}} />
-                  <col style={{width:128}} />
+                  <col style={{width:62}} />
+                  <col style={{width:112}} />
                   <col style={{width:82}} />
-                  <col style={{width:118}} />
+                  <col style={{width:108}} />
+                  <col style={{width:108}} />
                   <col style={{width:140}} />
                   <col style={{width:128}} />
+                  <col style={{width:92}} />
                   <col style={{width:52}} />
                   <col style={{width:44}} />
                   <col style={{width:112}} />
@@ -2068,7 +2087,7 @@ const cargarLeads = useCallback(async () => {
                 <thead>
                   <tr>
                     <th>#</th><th>Campaña</th><th>N1 / N2</th>
-                    <th>Contacto</th><th>Tipif. Back</th>
+                    <th>Contacto</th><th>Tipif. Back 1</th><th>Tipif. Back 2</th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='asesor'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('asesor')} title="Mostrar primero los leads sin asignar" aria-label="Ordenar por asesor asignado">
@@ -2082,6 +2101,7 @@ const cargarLeads = useCallback(async () => {
                         Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'?(tableSort.dir==='az'?'down':tableSort.dir==='za'?'up':null):null}/>
                       </button>
                     </th>
+                    <th>Alta del lead</th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='hora'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('hora')} title="Ordenar por hora" aria-label="Ordenar por hora"
@@ -2101,7 +2121,7 @@ const cargarLeads = useCallback(async () => {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={12} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosPagina.map((r,i) => {
                          const tipifActual = tipifEfectiva(r)
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
@@ -2149,11 +2169,20 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Tipif. Back */}
                             <td>
-                              <select className="bo-sel-compact" value={r.tipifBack} onChange={e=>guardarTipifBack(r.id,e.target.value)}>
+                              <select className={claseTipifBack(r.tipifBack)} value={r.tipifBack} onChange={e=>guardarTipifBack(r.id,e.target.value)}>
                                 <option value="">— Sin tipif. —</option>
                                 {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
                               </select>
                               {['DERIVADO','LLAMANDO'].includes(r.tipifBack)&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
+                            </td>
+
+                            {/* Segunda llamada de Back */}
+                            <td>
+                              <select className={claseTipifBack(r.tipifBack2)} value={r.tipifBack2||''} onChange={e=>guardarTipifBack2(r.id,e.target.value)}>
+                                <option value="">— Sin tipif. —</option>
+                                {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+                              </select>
+                              {['DERIVADO','LLAMANDO'].includes(r.tipifBack2)&&r.derivadoPor2&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor2}</small>}
                             </td>
 
                             {/* Asesor asignado */}
@@ -2208,6 +2237,12 @@ const cargarLeads = useCallback(async () => {
                               {r._tipifHora&&<span style={{display:'block',fontSize:9,color:'#9ca3af',marginTop:1}}>{r._tipifHora}</span>}
                             </td>
 
+                            {/* Fecha y hora en que Back incorporó el lead */}
+                            <td className="lead-alta-cell">
+                              <strong>{r.createdAt ? formatFecha(String(r.createdAt).slice(0,10)) : formatFecha(r._fechaBase||fechaActiva)}</strong>
+                              <span>{r.createdAt ? String(r.createdAt).slice(11,16) : (r.horaAsig||'—')}</span>
+                            </td>
+
                             {/* Hora */}
                             <td style={{textAlign:'center'}}>
                               {r.horaAsig?<span className="hora-cell">{r.horaAsig}</span>:<span style={{color:'#d1d5db'}}>—</span>}
@@ -2243,7 +2278,7 @@ const cargarLeads = useCallback(async () => {
 
                           /* Fila expandible: Detalles secundarios */
                           <tr key={`det-${r.id}`} className={`detalles-row${detAbierto?' open':''}`}>
-                            <td colSpan={10}>
+                            <td colSpan={12}>
                               <div className="detalles-inner">
                                 <div className="det-campo det-distrito">
                                   <label>Distrito</label>

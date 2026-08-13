@@ -409,6 +409,17 @@ body{
 .bo-root .bo-sel-compact:focus{border-color:var(--brand);box-shadow:0 0 0 2px rgba(229,62,62,.1);}
 .bo-root .bo-sel-compact.sel-asesor-tabla{font-size:10px;}
 .bo-root .bo-sel-compact.sel-tipif-vend{font-size:10px;}
+.bo-root .tipif-back-color{font-weight:800;border-width:1px;}
+.bo-root .tipif-back-VACIA{background:#fff;color:#64748b;}
+.bo-root .tipif-back-DERIVADO{background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;}
+.bo-root .tipif-back-LLAMANDO{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe;}
+.bo-root .tipif-back-NO-CONTESTA{background:#fef9c3;color:#854d0e;border-color:#fde047;}
+.bo-root .tipif-back-CORTA-LLAMADA{background:#ffedd5;color:#c2410c;border-color:#fdba74;}
+.bo-root .tipif-back-BUZON-DE-VOZ{background:#f3e8d4;color:#78350f;border-color:#d6a96c;}
+.bo-root .tipif-back-SIN-COBERTURA{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.lead-alta-cell{display:table-cell!important;line-height:1.25;color:#475569!important;}
+.lead-alta-cell strong,.lead-alta-cell span{display:block;font-size:9px;white-space:nowrap;}
+.lead-alta-cell span{color:#94a3b8;margin-top:2px;}
 /* ── Botones de acciones compactos ── */
 .acc-cell-compact{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;}
 .btn-acc-det{min-width:22px;height:22px;border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0 4px;font-family:inherit;}
