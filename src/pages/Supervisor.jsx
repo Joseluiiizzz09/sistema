@@ -34,6 +34,8 @@ const ESTADOS_VENTA = [
   { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
   { id:'grabando',       label:'Grabando',        cls:'be-grabando',   dot:'#9a3412', bg:'#fed7aa', border:'1px solid rgba(234,88,12,.45)' },
   { id:'suplantacion',   label:'Suplantaci?n',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
+  { id:'corregir',       label:'Corregir',        cls:'be-observado',  dot:'#78350f', bg:'#fef3c7', border:'1px solid #fcd34d' },
+  { id:'mala_oferta',    label:'Mala Oferta',     cls:'be-nodesea',    dot:'#9a3412', bg:'#ffedd5', border:'1px solid #fdba74' },
   { id:'programado',        label:'Programado',        cls:'be-prog-programado',  dot:'#047857', bg:'#dcfce7', border:'1px solid rgba(52,211,153,.45)' },
   { id:'bloqueado',         label:'Bloqueado',         cls:'be-prog-bloqueado',   dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.5)' },
   { id:'sin_agenda',        label:'Sin Agenda',        cls:'be-prog-sinagenda',   dot:'#a16207', bg:'#fef9c3', border:'1px solid rgba(250,204,21,.55)' },
@@ -53,7 +55,7 @@ function colorFor(n) { let s=0; for(const c of (n||'')) s+=c.charCodeAt(0); retu
 function iniciales(n) { return (n||'?').trim().split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase() }
 function primerNombre(n) { return String(n||'').trim().split(/\s+/)[0] || '' }
 function normalizarSala(s) { return String(s||'').trim().toUpperCase() }
-const TIPIFICACIONES_VALIDACION = new Set(['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZÓN DE VOZ','BUZON DE VOZ','SERVICIO ACTIVO','CORREGIR','VENTA','VALIDADO'])
+const TIPIFICACIONES_VALIDACION = new Set(['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZÓN DE VOZ','BUZON DE VOZ','SERVICIO ACTIVO','CORREGIR','MALA OFERTA','VENTA','VALIDADO'])
 function getObsValidacion(obs) {
   const lineas = String(obs||'').split('\n').map(l=>l.trim()).filter(Boolean)
   for (let i=lineas.length-1; i>=0; i--) {
@@ -106,7 +108,7 @@ function mapearEstado(e, sup = '', eg = '') {
   if(s==='rechazo_campo') return 'rechazo_campo'
   if(s==='tecnico_casa')  return 'tecnico_casa'
   if(s==='no_instalado')  return 'no_instalado'
-  if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo'].includes(s)) return s
+  if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo','corregir','mala_oferta'].includes(s)) return s
   return 'venta'
 }
 function estadoObj(id) { return ESTADOS_VENTA.find(e=>e.id===id)||ESTADOS_VENTA[0] }

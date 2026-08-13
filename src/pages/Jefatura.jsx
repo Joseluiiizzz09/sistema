@@ -117,7 +117,7 @@ function normEstado(v) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 }
-const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda'])
+const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda','corregir','mala_oferta'])
 const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
 const FLUJO_SEGUIMIENTO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
 function flujoTieneAudio(v) {
@@ -135,10 +135,13 @@ function flujoGrabada(v) {
 }
 function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
 function estadoValidacion(v) {
-  return v?.estado_validacion || v?.validacion || (flujoValidada(v) ? 'Validada' : 'Pendiente')
+  const e = (v?.estado || v?.estado_venta || '').trim()
+  if (!e || e.toUpperCase() === 'VENTA') return 'PENDIENTE'
+  return e
 }
 function estadoGrabacion(v) {
-  return v?.estado_grab || v?.estado_grabacion || (flujoGrabada(v) ? 'Grabada' : 'Sin grabación')
+  const g = (v?.estado_grab || '').trim()
+  return g || 'PENDIENTE'
 }
 function flujoLabelEstado(estado) {
   const e = normEstado(estado)
@@ -1265,8 +1268,8 @@ export default function Jefatura() {
                           <td>{v.asesor_nombre || v.asesor || v.vendedor || '—'}</td>
                           <td>{v.sala || '—'}</td>
                           <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
-                          <td>{flujoValidada(v) ? <span className="flujo-ok">Validada</span> : <span className="flujo-warn">Pendiente</span>}</td>
-                          <td>{flujoGrabada(v) ? <span className="flujo-ok">Grabada</span> : <span className="flujo-warn">Sin grabación</span>}</td>
+                          <td><span className={flujoValidada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoValidacion(v)}</span></td>
+                          <td><span className={flujoGrabada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoGrabacion(v)}</span></td>
                           <td>
                             <div title={pTip}>
                               <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:pSt.bg,color:pSt.color,border:`1px solid ${pSt.border}`,whiteSpace:'nowrap'}}>{pInfo.label}</span>
@@ -1277,6 +1280,7 @@ export default function Jefatura() {
                           <td>
                             <div className="venta-actions">
                               <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
+                              <button type="button" className="venta-action-btn" onClick={()=>setVentaEditar(v)}>Editar</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn" onClick={()=>setVentaHistorial(v)}>Historial</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v)}>Eliminar</button>

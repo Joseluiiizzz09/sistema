@@ -24,6 +24,7 @@ const ESTADOS_TODOS = [
   { id:'grabando',       label:'GRABANDO',        cls:'be-grabando' },
   { id:'servicio_activo',label:'SERVICIO ACTIVO', cls:'be-servicio' },
   { id:'corregir',       label:'CORREGIR',        cls:'be-observado' },
+  { id:'mala_oferta',    label:'MALA OFERTA',     cls:'be-malaoferta' },
 ]
 
 const TIP_BTNS = [
@@ -34,13 +35,14 @@ const TIP_BTNS = [
   { id:'buzon_voz',       label:'BUZÓN DE VOZ',     cls:'be-buzon' },
   { id:'servicio_activo', label:'SERVICIO ACTIVO',  cls:'be-servicio' },
   { id:'corregir',        label:'CORREGIR',          cls:'be-observado' },
+  { id:'mala_oferta',     label:'MALA OFERTA',       cls:'be-malaoferta' },
   { id:'venta',           label:'VENTA',             cls:'be-venta' },
   { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
 ]
 
 const ESTADOS_OK    = ['validado','instalado','programado','grabado','aprobado','en_ejecucion','caida','rechazo_campo','tecnico_casa']
-const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir']
-const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZON DE VOZ','GRABANDO','SERVICIO ACTIVO','CORREGIR','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
+const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir','mala_oferta']
+const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZON DE VOZ','GRABANDO','SERVICIO ACTIVO','CORREGIR','MALA OFERTA','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
 const LT_COLORES    = ['#7C3AED','#2563eb','#16a34a','#d97706','#dc2626','#0891b2','#ec4899']
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ function getObsDisplay(obsVal) {
 }
 
 function derivarTipifVal(obsValidacion) {
-  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir','venta','validado']
+  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir','mala_oferta','venta','validado']
   const lineas = (obsValidacion||'').split('\n').filter(l=>l.trim())
   for (let i=lineas.length-1; i>=0; i--) {
     const txt = ((lineas[i].match(/^\[.+?\]\s*(.*)$/)||[])[1]||'').toLowerCase().replace(/ /g,'_')

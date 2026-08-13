@@ -99,12 +99,12 @@ function tipifBadgeClass(t) {
   return 'b-default'
 }
 
-const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO']
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
+const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO ROTAR','MALA OFERTA']
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','MALA OFERTA'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','MALA OFERTA'])
 const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
-const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO'])
+const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
 function normalizarNumero(valor) {
@@ -165,12 +165,13 @@ const TIPIF_VEND_STYLES = {
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
   'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
-  'INSTALADO':['#dcfce7','#14532d'],
+  'INSTALADO':['#dcfce7','#14532d'],'SH NO ROTAR':['#fef2f2','#9f1239'],'MALA OFERTA':['#fff7ed','#9a3412'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
   'CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2',
   'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
+  'SH NO ROTAR':'#9f1239','MALA OFERTA':'#c2410c',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
@@ -181,7 +182,7 @@ const TIPIF_VEND_FUERTE = {
   'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
   'EN EJECUCION':'#92400e', 'DESEA MOVIL':'#b45309', 'DERIVADO':'#7c3aed',
   'NO CALIFICA':'#f43f5e', 'SIN COBERTURA':'#dc2626', 'EDIFICIO NO LIBERADO':'#b91c1c',
-  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b',
+  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'SH NO ROTAR':'#9f1239', 'MALA OFERTA':'#c2410c',
 }
 function estiloTipifVend(v) {
   const c = TIPIF_VEND_FUERTE[v]
@@ -349,6 +350,7 @@ export default function Backoffice() {
   const archivoInputRef   = useRef(null)
   const legacyInputRef    = useRef(null)
   const fechaSistemaRef   = useRef(fechaHoy())
+  const rotandoRef        = useRef(false)
   // ── Section ──
   const [seccion, setSeccion] = useState(() => {
     const guardada = sessionStorage.getItem('nc_backoffice_apartado')
@@ -1000,8 +1002,8 @@ const cargarLeads = useCallback(async () => {
         // Protección MORADO: duplicado en la misma fecha → no rota
         const nNorm = normalizarNumero(reg.n1)
         if (nNorm && cuentaFecha[nNorm] > 1) return
-        // Protección VERDE/AZUL/AMARILLO: reingresado con venta activa o rechazada → no rota
-        if (idsReingresados.has(reg.id) && resaltadoPorVenta(ventasPorNumero[nNorm])) return
+        // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
+        if (resaltadoPorVenta(ventasPorNumero[nNorm])) return
         list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
       })
     })
@@ -1046,24 +1048,39 @@ const cargarLeads = useCallback(async () => {
 
   async function rotEjecutar() {
     if (!rotAsesor) return
-    const asesorActual = rotAsesor
-    let selToUse = { ...rotSel }
-    if (Object.keys(selToUse).length === 0) {
-      const aptos = buildRotLeads().filter(l => rotApto(l, asesorActual).apto).slice(0, rotCant)
-      if (!aptos.length) { mostrarToast('No hay leads aptos para ' + asesorActual); return }
-      const newSel = {}
-      aptos.forEach(l => { newSel[l.id] = true })
-      setRotSel(newSel)
-      selToUse = newSel
+    if (rotandoRef.current) return
+    rotandoRef.current = true
+    try {
+      const asesorActual = rotAsesor
+      let selToUse = { ...rotSel }
+      if (Object.keys(selToUse).length === 0) {
+        const aptos = buildRotLeads().filter(l => rotApto(l, asesorActual).apto).slice(0, rotCant)
+        if (!aptos.length) { mostrarToast('No hay leads aptos para ' + asesorActual); return }
+        const newSel = {}
+        aptos.forEach(l => { newSel[l.id] = true })
+        setRotSel(newSel)
+        selToUse = newSel
+      } else {
+        // Cap manual selection to rotCant
+        const ids = Object.keys(selToUse).filter(k => selToUse[k]).slice(0, rotCant)
+        selToUse = {}
+        ids.forEach(k => { selToUse[k] = true })
+      }
+      setRotProgress(25)
+      setTimeout(() => setRotProgress(50), 200)
+      setTimeout(() => setRotProgress(75), 400)
+      setTimeout(async () => {
+        try {
+          await rotFinalizarWith(selToUse, asesorActual)
+          setRotProgress(100)
+          setTimeout(() => setRotProgress(0), 1000)
+        } finally {
+          rotandoRef.current = false
+        }
+      }, 600)
+    } catch {
+      rotandoRef.current = false
     }
-    setRotProgress(25)
-    setTimeout(() => setRotProgress(50), 200)
-    setTimeout(() => setRotProgress(75), 400)
-    setTimeout(async () => {
-      await rotFinalizarWith(selToUse, asesorActual)
-      setRotProgress(100)
-      setTimeout(() => setRotProgress(0), 1000)
-    }, 600)
   }
 
   function rotToggleSel(id, checked) {
@@ -1501,9 +1518,9 @@ const cargarLeads = useCallback(async () => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
       if (filtros.tipVend) {
         if (filtros.tipVend === '__pendiente__') {
-          if ((r._tipifVend||'').trim() !== '') return false
+          if ((tipifEfectiva(r)||'').trim() !== '') return false
         } else {
-          if ((r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
+          if ((tipifEfectiva(r)||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
         }
       }
       if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
