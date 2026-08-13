@@ -397,6 +397,7 @@ export default function Backoffice() {
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [basePage, setBasePage] = useState(1)
   const [basePageSize, setBasePageSize] = useState(25)
+  const [grupoProtegidoVisible, setGrupoProtegidoVisible] = useState('')
   function cycleSort(col) {
     setTableSort(prev => {
       const firstDir = { tipif:'az', hora:'desc', rots:'asc', asesor:'sin_asignar' }[col]
@@ -1562,8 +1563,18 @@ const cargarLeads = useCallback(async () => {
       }).catch(() => {})
     })
   }, [fechaActiva, baseData, ventasPorNumero])
+  const gruposProtegidos = {
+    sin_cobertura: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
+    no_tocar: registrosActivos.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
+    venta_cerrada: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
+  }
+  const registrosOperativos = registrosActivos.filter(r => grupoPrioridadLead(r) === 0 && !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+
   const registrosFiltrados = (() => {
-    const filtered = registrosActivos.filter(r => {
+    // Los grupos protegidos no participan de filtros ni ordenamientos normales.
+    // Solo se consultan cuando Back Data abre expresamente el bloque del final.
+    if (grupoProtegidoVisible) return gruposProtegidos[grupoProtegidoVisible] || []
+    const filtered = registrosOperativos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
       if (filtros.tipVend) {
         if (filtros.tipVend === '__pendiente__') {
@@ -1619,7 +1630,7 @@ const cargarLeads = useCallback(async () => {
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, tableSort.col, tableSort.dir, basePageSize])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible])
 
   const statsBase = {
     total:      registrosActivos.length,
@@ -2295,6 +2306,24 @@ const cargarLeads = useCallback(async () => {
                   <button className="fnav-btn" disabled={basePageSafe<=1} onClick={()=>setBasePage(p=>Math.max(1,p-1))}>‹</button>
                   <span className="paginacion-info">Página {basePageSafe} de {baseTotalPages}</span>
                   <button className="fnav-btn" disabled={basePageSafe>=baseTotalPages} onClick={()=>setBasePage(p=>Math.min(baseTotalPages,p+1))}>›</button>
+                </div>
+              </div>
+              <div style={{borderTop:'1px solid #e5e7eb',padding:'12px 14px',background:'#f8fafc'}}>
+                <div style={{fontSize:10,fontWeight:800,color:'#64748b',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>
+                  Registros protegidos — no participan en filtros ni rotación normal
+                </div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {[
+                    ['sin_cobertura','SIN COBERTURA',gruposProtegidos.sin_cobertura.length,'#dc2626'],
+                    ['no_tocar','NO TOCAR',gruposProtegidos.no_tocar.length,'#9f1239'],
+                    ['venta_cerrada','VENTA CERRADA',gruposProtegidos.venta_cerrada.length,'#16a34a'],
+                  ].map(([id,label,total,color]) => (
+                    <button key={id} type="button" onClick={()=>setGrupoProtegidoVisible(prev=>prev===id?'':id)}
+                      style={{border:`1px solid ${color}`,color:grupoProtegidoVisible===id?'#fff':color,background:grupoProtegidoVisible===id?color:'#fff',borderRadius:8,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>
+                      {grupoProtegidoVisible===id?'Ocultar':'Ver'} {label} ({total})
+                    </button>
+                  ))}
+                  {grupoProtegidoVisible && <button type="button" onClick={()=>setGrupoProtegidoVisible('')} className="bo-btn-limpiar btn btn-sm">Volver a pendientes operativos</button>}
                 </div>
               </div>
             </div>
