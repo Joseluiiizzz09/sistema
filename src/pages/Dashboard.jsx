@@ -389,11 +389,11 @@ export default function Dashboard() {
           if (soyActual) {
             // La observación vigente llega del servidor. Reusar `p.obs` transferiría
             // el comentario del asesor anterior al nuevo titular durante el polling.
-            obs = l.obs_asesor || ''
+            obs = l.obs_asesor_personal ?? l.obs_asesor ?? ''
           } else {
             const hist = Array.isArray(l.historial) ? l.historial : []
             const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
-            obs = ent?.obsAsesorAntes || ''
+            obs = l.obs_asesor_personal ?? ent?.obsAsesorAntes ?? ''
           }
           const historial = Array.isArray(l.historial) ? l.historial : []
           const asignacionesDelAsesor = historial.filter(h =>
@@ -439,8 +439,8 @@ export default function Dashboard() {
           if (!horaA && !horaB) return Number(a.id) - Number(b.id)
           if (!horaA) return 1
           if (!horaB) return -1
-          const porAsignacion = horaA.localeCompare(horaB, 'es', { numeric:true })
-          return porAsignacion || Number(a.id) - Number(b.id)
+          const porAsignacion = horaB.localeCompare(horaA, 'es', { numeric:true })
+          return porAsignacion || Number(b.id) - Number(a.id)
         })
       })
       setLlamadas(leadsAsignados.length)
@@ -1086,15 +1086,15 @@ export default function Dashboard() {
         <table className="tabla-crm tabla-leads-asesor">
           <thead>
             <tr>
-              <th>Teléfono</th><th>Teléfono 2</th><th>Contacto</th><th>Tipificación</th><th>Zona</th>
-              <th>Dirección / Coord.</th><th>Obs. Back</th><th>Hora asig.</th>
-              <th>Estado</th><th>Observación asesor</th>
+              <th>Teléfono</th><th>Teléfono 2</th><th>Obs. Back</th><th>Tipificación</th>
+              <th>Estado</th><th>Observación asesor</th><th>Zona</th>
+              <th>Dirección / Coord.</th><th>Hora asig.</th>
             </tr>
           </thead>
           <tbody>
             {clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2}`.includes(filtroNumero)).length === 0 ? (
               <tr>
-                <td colSpan={10} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
+                <td colSpan={9} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
                   Esperando asignación de Back Data...<br />
                   <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>Back Data asignará registros a tu usuario.</span>
                 </td>
@@ -1103,7 +1103,7 @@ export default function Dashboard() {
               <tr key={c.id}>
                 <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
-                <td><span className={`dash-contacto ${c.tipoContacto==='WHATSAPP'?'wsp':'llamada'}`}>{c.tipoContacto==='WHATSAPP'?'WhatsApp':'Llamada'}</span></td>
+                <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
                 <td>
                   <button className="btn-accion" onClick={() => abrirModalTip(clientes.findIndex(x => x.id === c.id))} title="Tipificar">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1114,10 +1114,6 @@ export default function Dashboard() {
                     </svg>
                   </button>
                 </td>
-                <td>{c.zona}</td>
-                <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
-                <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
-                <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
                 <td><span className={`badge-estado ${colorEstado(c.estado)}`} title={c.estado==='DERIVADO'&&c.derivadoPor?`Derivado por ${c.derivadoPor}`:''}>{c.estado==='DERIVADO'&&c.derivadoPor?`DER. ${c.derivadoPor.trim().split(/\s+/)[0].toUpperCase()}`:c.estado}</span></td>
                 <td>
                   <input
@@ -1125,10 +1121,14 @@ export default function Dashboard() {
                     placeholder="Escribe una observación..."
                     maxLength={200}
                     value={c.obs || ''}
-                    onChange={e => setClientes(prev => prev.map(x => x.id === c.id ? { ...x, obs:e.target.value } : x))}
+                    onFocus={() => { ultEditRef.current = Date.now() }}
+                    onChange={e => { ultEditRef.current = Date.now(); setClientes(prev => prev.map(x => x.id === c.id ? { ...x, obs:e.target.value } : x)) }}
                     onBlur={e => guardarObs(c.id, e.target.value)}
                   />
                 </td>
+                <td>{c.zona}</td>
+                <td><div className="dash-ubicacion"><span>{c.direccion || '--'}</span>{c.coordenadas && <small>{c.coordenadas}</small>}</div></td>
+                <td style={{fontSize:'11px',color:'#9ca3af'}}>{c.horaAsig || '--'}</td>
               </tr>
             ))}
           </tbody>
