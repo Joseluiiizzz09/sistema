@@ -493,7 +493,7 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
-                <col style={{ width: 130 }} />
+                <col style={{ width: 170 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 220 }} />

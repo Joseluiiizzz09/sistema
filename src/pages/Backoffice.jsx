@@ -99,11 +99,11 @@ function tipifBadgeClass(t) {
   return 'b-default'
 }
 
-const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
+const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO']
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','INSTALADO'])
-const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
+const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA','AGENDADO'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
@@ -377,6 +377,7 @@ export default function Backoffice() {
   // ── Filtros base ──
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
+  const [basePagina, setBasePagina] = useState(1)
   function cycleSort(col) {
     setTableSort(prev => {
       const firstDir = { tipif:'az', hora:'desc', rots:'asc' }[col]
@@ -447,6 +448,7 @@ export default function Backoffice() {
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
   const [rotRotados,    setRotRotados]    = useState(0)
+  const [rotPagina,     setRotPagina]     = useState(1)
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
@@ -577,6 +579,9 @@ export default function Backoffice() {
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
   const cargandoLeadsRef = useRef(false)
+  const cargaCompletaRealizadaRef = useRef(false)
+  const fechaActivaRef = useRef(fechaActiva)
+  fechaActivaRef.current = fechaActiva
   const mutGenRef = useRef(0)   // se incrementa en cada acción local; descarta respuestas de polls viejos
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
@@ -631,14 +636,24 @@ const cargarLeads = useCallback(async () => {
     cargandoLeadsRef.current = true
     const gen = mutGenRef.current
     try {
-      const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
+      // La primera carga descubre todas las fechas. Los sondeos posteriores
+      // traen solo la fecha visible para no descargar y reprocesar toda la base.
+      const cargaCompleta = !cargaCompletaRealizadaRef.current
+      const url = cargaCompleta
+        ? `${API}/leads`
+        : `${API}/leads?fecha=${encodeURIComponent(fechaActivaRef.current)}`
+      const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
       // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
       if (mutGenRef.current !== gen) return
+      if (cargaCompleta) cargaCompletaRealizadaRef.current = true
       const nuevoBase = {}
       const nuevasFechas = []
+      // En una carga parcial, una respuesta vacía significa que la fecha ya no
+      // tiene registros; se inicializa para eliminar filas antiguas de la vista.
+      if (!cargaCompleta) nuevoBase[fechaActivaRef.current] = []
       data.data.forEach(l => {
         const fecha = normalizarFecha(l.fecha) || fechaHoy()
         if (!nuevoBase[fecha]) nuevoBase[fecha] = []
@@ -756,6 +771,10 @@ const cargarLeads = useCallback(async () => {
   function irSeccion(id) {
     sessionStorage.setItem('nc_backoffice_apartado', id)
     setSeccion(id)
+    if (id !== 'base') {
+      setRotPanelOpen(false)
+      setRotPagina(1)
+    }
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
   }
 
@@ -807,7 +826,7 @@ const cargarLeads = useCallback(async () => {
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
+      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:['DERIVADO','LLAMANDO'].includes(tipifBack)?(sesion?.nombre||''):'', asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
@@ -912,15 +931,17 @@ const cargarLeads = useCallback(async () => {
     const hora = horaAhora()
     const tipifAntes = reg.tipifBack || ''
     const esDer = nuevoValor === 'DERIVADO'
+    const registraAutor = esDer || nuevoValor === 'LLAMANDO'
     const entrada = {
       tipo: esDer ? 'DERIVADO' : 'TIPIF_BACK',
       asesor: reg.asesor || '',
       hora, fecha: fechaHoy(),
-      motivo: esDer ? 'Marcado DERIVADO' : 'Cambio tipif. back',
+      motivo: esDer ? 'Marcado DERIVADO' : nuevoValor === 'LLAMANDO' ? 'Marcado LLAMANDO' : 'Cambio tipif. back',
       tipifBackAntes: tipifAntes, tipifBackNueva: nuevoValor,
+      ...(registraAutor ? { derivadoPor: sesion?.nombre || '' } : {}),
     }
     const newHist = [...reg.historial, entrada]
-    const derivadoPor = esDer ? (sesion?.nombre || '') : ''
+    const derivadoPor = registraAutor ? (sesion?.nombre || '') : ''
     updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) }).catch(()=>{})
   }
@@ -1446,7 +1467,7 @@ const cargarLeads = useCallback(async () => {
       ['DISTRITO','Distrito del contacto','No','Texto libre'],
       ['N2','Número secundario','No','Guardar como texto para conservar ceros iniciales'],
       ['N1','Número principal (teléfono)','SÍ','Guardar como texto para conservar ceros iniciales'],
-      ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO'],
+      ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO · LLAMANDO'],
       ['COMENTARIO','Comentario libre','No','No se importa al sistema, solo referencia'],
       ['TIPIFICACIÓN','Tipificación del asesor/vendedor','No','CONTESTA · VENTA CERRADA · NC · etc.'],
       ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
@@ -1542,6 +1563,19 @@ const cargarLeads = useCallback(async () => {
       return 0
     })
   })()
+  const baseFilasPorPagina = 75
+  const baseTotalPaginas = Math.max(1, Math.ceil(registrosFiltrados.length / baseFilasPorPagina))
+  const basePaginaActual = Math.min(basePagina, baseTotalPaginas)
+  const registrosVisibles = registrosFiltrados.slice(
+    (basePaginaActual - 1) * baseFilasPorPagina,
+    basePaginaActual * baseFilasPorPagina,
+  )
+
+  useEffect(() => {
+    setBasePagina(1)
+    setHistOpen({})
+    setDetOpen({})
+  }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero])
 
   const statsBase = {
     total:      registrosActivos.length,
@@ -1615,6 +1649,13 @@ const cargarLeads = useCallback(async () => {
         return rotSort.dir === 'desc' ? -cmp : cmp
       })
     : allRotLeads
+  const rotFilasPorPagina = 100
+  const rotTotalPaginas = Math.max(1, Math.ceil(allRotLeadsSorted.length / rotFilasPorPagina))
+  const rotPaginaActual = Math.min(rotPagina, rotTotalPaginas)
+  const rotLeadsVisibles = allRotLeadsSorted.slice(
+    (rotPaginaActual - 1) * rotFilasPorPagina,
+    rotPaginaActual * rotFilasPorPagina,
+  )
   function toggleRotSort(col) {
     setRotSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir:'asc' })
   }
@@ -1634,7 +1675,15 @@ const cargarLeads = useCallback(async () => {
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
   const allAptosSelected = rotAptos.length > 0 && rotAptos.every(l=>rotSel[l.id])
   const rotFechasDisp  = Object.keys(baseData).filter(f=>(baseData[f]||[]).length>0).sort().reverse()
-  const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:Object.values(baseData).flat().filter(r=>r.asesor===a.nombre).length }))
+  const rotConteoAsesores = new Map()
+  if (rotPanelOpen) {
+    Object.values(baseData).forEach(registros => {
+      ;(registros || []).forEach(r => {
+        if (r.asesor) rotConteoAsesores.set(r.asesor, (rotConteoAsesores.get(r.asesor) || 0) + 1)
+      })
+    })
+  }
+  const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:rotConteoAsesores.get(a.nombre) || 0 }))
   const masivaFilasParaCargar = inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)
   const masivaNDup    = masivaFilas.filter(f=>f.dup).length
   const masivaFilasCnt= masivaFilas.length
@@ -1700,7 +1749,7 @@ const cargarLeads = useCallback(async () => {
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
-                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>setRotPanelOpen(v=>!v)}>
+                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>{ setRotPagina(1); setRotPanelOpen(v=>!v) }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   Rotación inteligente
                 </button>
@@ -1727,7 +1776,7 @@ const cargarLeads = useCallback(async () => {
                         <div className="bo-panel-title">Reglas de rotación</div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Sin repetir:</strong> el lead no puede ir a un asesor que ya lo tuvo</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-blue">T</div><div><strong>Mínimo 2h</strong> sin ser contactado para rotar</div></div>
-                        <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta, Nuevo o Sin cobertura</div></div>
+                        <div className="rot-regla"><div className="rot-regla-icon r-green">✓</div><div><strong>Estado válido:</strong> Buzón, No contesta, Nuevo, Sin cobertura o Agendado</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">!</div><div><strong>Números prohibidos:</strong> NO TOCAR y FRAUDE nunca se asignan ni rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-red">✕</div><div><strong>Números protegidos:</strong> duplicados del día y reingresados con seguimiento activo o rechazado nunca rotan</div></div>
                         <div className="rot-regla"><div className="rot-regla-icon r-purple">#</div><div><strong>Máximo 4 leads</strong> por rotación a un mismo asesor</div></div>
@@ -1812,7 +1861,7 @@ const cargarLeads = useCallback(async () => {
                           <tbody>
                             {allRotLeadsSorted.length === 0
                               ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
-                              : allRotLeadsSorted.map(l => {
+                              : rotLeadsVisibles.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
@@ -1836,6 +1885,14 @@ const cargarLeads = useCallback(async () => {
                           </tbody>
                         </table>
                       </div>
+                      {allRotLeadsSorted.length > rotFilasPorPagina && (
+                        <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'10px 4px 2px',fontSize:11,color:'#6b7280'}}>
+                          <span>Mostrando {(rotPaginaActual-1)*rotFilasPorPagina+1}-{Math.min(rotPaginaActual*rotFilasPorPagina,allRotLeadsSorted.length)} de {allRotLeadsSorted.length}</span>
+                          <button type="button" disabled={rotPaginaActual<=1} onClick={()=>setRotPagina(p=>Math.max(1,p-1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:rotPaginaActual<=1?'default':'pointer',opacity:rotPaginaActual<=1?.45:1}}>Anterior</button>
+                          <strong>{rotPaginaActual} / {rotTotalPaginas}</strong>
+                          <button type="button" disabled={rotPaginaActual>=rotTotalPaginas} onClick={()=>setRotPagina(p=>Math.min(rotTotalPaginas,p+1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:rotPaginaActual>=rotTotalPaginas?'default':'pointer',opacity:rotPaginaActual>=rotTotalPaginas?.45:1}}>Siguiente</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2003,7 +2060,7 @@ const cargarLeads = useCallback(async () => {
                 <tbody>
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
-                    : registrosFiltrados.map((r,i) => {
+                    : registrosVisibles.map((r,i) => {
                          const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
@@ -2013,7 +2070,7 @@ const cargarLeads = useCallback(async () => {
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
-                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{i+1}</td>
+                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{(basePaginaActual-1)*baseFilasPorPagina+i+1}</td>
 
                             {/* Campaña */}
                             <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
@@ -2051,7 +2108,7 @@ const cargarLeads = useCallback(async () => {
                                 <option value="">— Sin tipif. —</option>
                                 {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
                               </select>
-                              {r.tipifBack==='DERIVADO'&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
+                              {['DERIVADO','LLAMANDO'].includes(r.tipifBack)&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
                             </td>
 
                             {/* Asesor asignado */}
@@ -2218,6 +2275,14 @@ const cargarLeads = useCallback(async () => {
                   }
                 </tbody>
               </table>
+              {registrosFiltrados.length > baseFilasPorPagina && (
+                <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'9px 10px',fontSize:11,color:'#6b7280',background:'#fff',borderTop:'1px solid #e5e7eb',position:'sticky',bottom:0,zIndex:3}}>
+                  <span>Mostrando {(basePaginaActual-1)*baseFilasPorPagina+1}-{Math.min(basePaginaActual*baseFilasPorPagina,registrosFiltrados.length)} de {registrosFiltrados.length}</span>
+                  <button type="button" disabled={basePaginaActual<=1} onClick={()=>setBasePagina(p=>Math.max(1,p-1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:basePaginaActual<=1?'default':'pointer',opacity:basePaginaActual<=1?.45:1}}>Anterior</button>
+                  <strong>{basePaginaActual} / {baseTotalPaginas}</strong>
+                  <button type="button" disabled={basePaginaActual>=baseTotalPaginas} onClick={()=>setBasePagina(p=>Math.min(baseTotalPaginas,p+1))} style={{padding:'4px 9px',border:'1px solid #e5e7eb',borderRadius:7,background:'#fff',cursor:basePaginaActual>=baseTotalPaginas?'default':'pointer',opacity:basePaginaActual>=baseTotalPaginas?.45:1}}>Siguiente</button>
+                </div>
+              )}
             </div>
           </section>
 

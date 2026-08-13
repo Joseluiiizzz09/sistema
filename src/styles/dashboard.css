@@ -812,7 +812,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .vs-badge-tecnico{background:#ecfeff!important;color:#0e7490!important;border:1px solid rgba(34,211,238,.45)!important;box-shadow:none!important;}
 .vs-badge-ejecucion{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;box-shadow:none!important;}
 .vs-badge-programado{background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.45)!important;box-shadow:none!important;}
-.vs-badge-caida{background:#fee2e2!important;color:#b91c1c!important;border:1px solid rgba(248,113,113,.45)!important;box-shadow:none!important;}
+.vs-badge-caida{background:#fee2e2!important;color:#b91c1c!important;border:1px solid rgba(248,113,113,.35)!important;box-shadow:none!important;}
 .vs-badge-observado{background:#fff7ed!important;color:#c2410c!important;border:1px solid rgba(251,146,60,.45)!important;box-shadow:none!important;}
 
 /* Codex pass 2: tecnico casa en rosa */
