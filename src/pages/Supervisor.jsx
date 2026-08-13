@@ -62,9 +62,6 @@ function mapearEstado(e, sup = '', eg = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
   const g=(eg||'').toLowerCase().trim()
-  // Las tipificaciones finales de Validación mandan sobre cualquier estado
-  // pendiente que haya quedado en Grabaciones (por ejemplo, "No Grabado").
-  if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo'].includes(s)) return s
   // Estado de Grabaciones — independiente de `estado` (Validación no cambia).
   // Mientras Super de Grabaciones no corrobore, se conserva GRABANDO.
   // Condicionado a s==='validado': en cuanto Programación avanza `estado`
@@ -97,6 +94,7 @@ function mapearEstado(e, sup = '', eg = '') {
   if(s==='rechazo_campo') return 'rechazo_campo'
   if(s==='tecnico_casa')  return 'tecnico_casa'
   if(s==='no_instalado')  return 'no_instalado'
+  if(['fraude','no_desea','no_contesta','buzon_voz','corta_llamada','servicio_activo'].includes(s)) return s
   return 'venta'
 }
 function estadoObj(id) { return ESTADOS_VENTA.find(e=>e.id===id)||ESTADOS_VENTA[0] }
