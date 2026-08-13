@@ -35,9 +35,8 @@ const CARGOS = [
 const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
 
 const SEG_MAP = {
-  aprobado:'ejecucion',en_ejecucion:'ejecucion',
+  en_ejecucion:'ejecucion',
   instalado:'instalado',caida:'caida',rechazo_campo:'rechazo',tecnico_casa:'tecnico',
-  validado:'ejecucion',observado:'ejecucion',
 }
 // Colores idénticos al resultado final real de seguimiento.css (cascada de
 // .bs-ejec/.bs-inst/.bs-rech/.bs-caida/.bs-tecnico + overrides !important en
@@ -355,13 +354,14 @@ export default function Jefatura() {
     finally { cargandoVentasRef.current = false }
   }, [])
 
+  const ESTADOS_CAMPO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa'])
   const cargarSeguimiento = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/ventas?seguimiento_campo=1`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) {
         setVentasSeg(data.data
-          .filter(v => { const e=(v.estado||'').toLowerCase(); return e!=='venta'&&e!=='validado'&&e!=='grabado'&&e!=='pendiente'&&e!=='programado'&&e!=='' })
+          .filter(v => ESTADOS_CAMPO.has((v.estado||'').toLowerCase().trim()))
           .map(v => ({ ...v, _seg: mapSeg(v.estado)||(v.estado||'').toLowerCase(), _fecha: (v.created_at||'').split(' ')[0] }))
         )
       }
