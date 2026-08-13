@@ -6,6 +6,7 @@ import { HistorialVentaModal, ReasignarVentaModal } from '../components/VentaAss
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import DashboardLeads from '../components/DashboardLeads'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
 import Chart from 'chart.js/auto'
@@ -1001,6 +1002,7 @@ export default function Jefatura() {
         <aside id="jefatura-sidebar" className={`sidebar${menuMovilAbierto ? ' open' : ''}`}>
           <div className="sidebar-sep">General</div>
           <button className={`nav-btn${seccion==='dashboard'?'   active':''}`} onClick={()=>irSeccion('dashboard')}><span className="nav-dot"></span> Dashboard</button>
+          <button className={`nav-btn${seccion==='dashboard-leads'?' active':''}`} onClick={()=>irSeccion('dashboard-leads')}><span className="nav-dot"></span> Dashboard leads</button>
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
           <div className="sidebar-sep">Operaciones</div>
           <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
@@ -1071,6 +1073,11 @@ export default function Jefatura() {
                 <div className="chart-wrap"><canvas ref={canvasDiario}></canvas></div>
               </div>
             </div>
+          </section>
+
+          {/* ===== DASHBOARD LEADS ===== */}
+          <section className={`section${seccion==='dashboard-leads'?' active':''}`}>
+            <DashboardLeads />
           </section>
 
           {/* ===== ACCESOS ===== */}
