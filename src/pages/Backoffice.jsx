@@ -730,7 +730,7 @@ const cargarLeads = useCallback(async () => {
     cargarAsesores()
     cargarLeads()
     cargarEstadosVentas()
-    const t = setVisibleInterval(cargarLeads, 500)
+    const t = setVisibleInterval(cargarLeads, 2000)
     const tv = setVisibleInterval(cargarEstadosVentas, 2000)
     return () => { clearInterval(t); clearInterval(tv) }
   }, [cargarAsesores, cargarLeads, cargarEstadosVentas])
