@@ -4,7 +4,12 @@ export function useAuth() {
   const [sesion, setSesion] = useState(() => {
     try {
       const raw = sessionStorage.getItem('nc_usuario')
-      return raw ? JSON.parse(raw) : null
+      const actor = raw ? JSON.parse(raw) : null
+      const objetivo = JSON.parse(sessionStorage.getItem('nc_jefatura_usuario_objetivo') || 'null')
+      if (actor?.cargo === 'jefatura' && objetivo?.id && objetivo?.cargo) {
+        return { ...actor, ...objetivo, cargo: objetivo.cargo, _actorJefatura: actor }
+      }
+      return actor
     } catch {
       return null
     }
@@ -17,6 +22,8 @@ export function useAuth() {
   }
 
   function logout() {
+    sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
+    sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
     sessionStorage.removeItem('nc_token')
     sessionStorage.removeItem('nc_usuario')
     setSesion(null)

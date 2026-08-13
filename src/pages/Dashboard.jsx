@@ -205,7 +205,7 @@ export default function Dashboard() {
       return objetivo?.cargo === 'asesor' ? objetivo : null
     } catch { return null }
   })
-  const vistaJefatura = sesion?.cargo === 'jefatura' && Boolean(asesorObjetivo?.id)
+  const vistaJefatura = Boolean((sesion?._actorJefatura || sesion?.cargo === 'jefatura') && asesorObjetivo?.id)
   const filtroAsesor = vistaJefatura
     ? `?asesor_id=${encodeURIComponent(asesorObjetivo.id)}`
     : '?area=asesor'

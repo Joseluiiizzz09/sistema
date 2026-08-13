@@ -7,7 +7,7 @@ export default function JefaturaViewControls({ children }) {
   let objetivo = null
   try { objetivo = JSON.parse(sessionStorage.getItem('nc_jefatura_usuario_objetivo') || 'null') } catch {}
 
-  if (sesion?.cargo !== 'jefatura' || !objetivo) return children
+  if (!objetivo || (sesion?.cargo !== 'jefatura' && !sesion?._actorJefatura)) return children
 
   function volver() {
     sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
