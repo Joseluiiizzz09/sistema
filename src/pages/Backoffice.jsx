@@ -103,8 +103,8 @@ const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVA
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO TOCAR']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','SH NO TOCAR'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','SH NO TOCAR'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','SH NO ROTAR'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','SH NO ROTAR'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
@@ -1581,27 +1581,24 @@ const cargarLeads = useCallback(async () => {
   // Todo número resaltado por duplicidad o por encontrarse en el flujo de ventas
   // queda protegido automáticamente. Se conserva su historial y solo cambia la
   // tipificación vigente a SH NO TOCAR.
-  useEffect(() => {
-    const proteger = registrosActivos.filter(reg => {
-      const n1 = normalizarNumero(reg.n1)
-      const tieneColor = idsDuplicados.has(reg.id) ||
-        (idsReingresados.has(reg.id) && !!resaltadoPorVenta(ventasPorNumero[n1]))
-      const tipif = String(reg._tipifVend || '').trim().toUpperCase()
-      return tieneColor && tipif !== 'SH NO TOCAR' && !!reg._backendId
-    })
-    proteger.forEach(reg => {
-      updateReg(reg.id, { _tipifVend:'SH NO TOCAR', _tipifHora:horaAhora() })
-      fetch(`${API}/leads/${reg._backendId}/tipif`, {
-        method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:'SH NO TOCAR' })
-      }).catch(() => {})
-    })
-  }, [fechaActiva, baseData, ventasPorNumero])
   const gruposProtegidos = {
     sin_cobertura: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
     no_tocar: registrosActivos.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
   }
-  const registrosOperativos = registrosActivos.filter(r => grupoPrioridadLead(r) === 0 && !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+  const registrosBusquedaGlobal = filtros.numero
+    ? Object.entries(baseData).flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
+    : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
+  const registrosOperativos = filtros.numero
+    ? registrosBusquedaGlobal
+    : registrosBusquedaGlobal.filter(r => grupoPrioridadLead(r) === 0 && !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+  const n1FormularioNormalizado = normalizarNumero(form.n1)
+  const fechasPreviasN1 = n1FormularioNormalizado
+    ? Object.entries(baseData)
+        .filter(([, regs]) => (regs || []).some(r => normalizarNumero(r.n1) === n1FormularioNormalizado))
+        .map(([fecha]) => fecha)
+        .sort().reverse()
+    : []
 
   const registrosFiltrados = (() => {
     // Los grupos protegidos no participan de filtros ni ordenamientos normales.
@@ -2022,7 +2019,9 @@ const cargarLeads = useCallback(async () => {
                     {distritos.map(d=><option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
+                  {fechasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue asignado anteriormente ({fechasPreviasN1.slice(0,3).map(formatFecha).join(', ')}). Puedes agregarlo.</small>}
+                </div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>Tipo de contacto</label>
                   <select className="form-select" value={form.tipoContacto} onChange={e=>setForm(p=>({...p,tipoContacto:e.target.value}))}>
@@ -2108,9 +2107,11 @@ const cargarLeads = useCallback(async () => {
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
-                         const esReingreso = idsReingresados.has(r.id)
+                         const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
+                           fecha !== (r._fechaBase || fechaActiva) && (regs || []).some(x => normalizarNumero(x.n1) === normalizarNumero(r.n1))
+                         )
                          const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
-                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (esDuplicadoDia ? 'num-duplicado' : '')
+                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (esReingreso || esDuplicadoDia ? 'num-duplicado' : '')
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2125,7 +2126,7 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} title={estadoNumero?.label || ''}>{r.n1}</span>
+                                  <span className={claseNumero} title={estadoNumero?.label || (esReingreso ? 'Asignado también en otra fecha' : '')}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
