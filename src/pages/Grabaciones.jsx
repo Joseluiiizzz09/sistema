@@ -76,6 +76,10 @@ function mapVenta(v) {
     nombreApellidos:  v.nombre        || '',
     telefonoContacto: v.telefono1     || '',
     vendedor:         v.asesor_nombre || '',
+    distrito:         v.distrito      || '',
+    direccion:        v.direccion     || '',
+    sala:             v.sala          || '',
+    email:            v.email         || '',
     fechaIngreso:     fechaRaw,
     // Fecha en que la venta entró al flujo de Grabaciones = cuándo pasó
     // Validación (no la fecha de creación de la venta). Ventas viejas sin
@@ -183,7 +187,7 @@ export default function Grabaciones() {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
     try {
-      const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/ventas?estado=validado`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
@@ -194,7 +198,7 @@ export default function Grabaciones() {
             // Validación). Una vez Back marca GRABADO, estado_grab='grabado'
             // saca la venta de esta cola porque pasa a Super de Grabaciones;
             // si Super la observa (estado_grab='observado') vuelve a aparecer.
-            return (e==='validado'||e==='venta') && eg!=='grabado'
+            return e==='validado' && eg!=='grabado'
           })
           .map(mapVenta)
         )
@@ -559,6 +563,10 @@ export default function Grabaciones() {
                 <col style={{width:250}} />
                 <col style={{width:120}} />
                 <col style={{width:140}} />
+                <col style={{width:150}} />
+                <col style={{width:230}} />
+                <col style={{width:110}} />
+                <col style={{width:210}} />
                 <col style={{width:180}} />
                 <col style={{width:160}} />
                 <col style={{width:230}} />
@@ -572,6 +580,10 @@ export default function Grabaciones() {
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
                   <th style={{width:90}}>DNI / DOC.</th>
                   <th style={{width:110}}>TEL. CONTACTO</th>
+                  <th style={{width:150}}>DISTRITO</th>
+                  <th style={{width:230}}>DIRECCIÓN</th>
+                  <th style={{width:110}}>SALA</th>
+                  <th style={{width:210}}>EMAIL</th>
                   <th style={{width:130}}>VENDEDOR</th>
                   <th style={{width:120}}>SUPERVISOR</th>
                   <th style={{width:160}}>ARCHIVO AUDIO</th>
@@ -580,7 +592,7 @@ export default function Grabaciones() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr><td colSpan={10} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
+                  ? <tr><td colSpan={14} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
                       const esAnterior = v._fechaGrab < hoy
                       const tieneAudio = !!v._grabAudio
@@ -605,6 +617,10 @@ export default function Grabaciones() {
                           <td style={{fontWeight:600}}>{v.nombreApellidos||'—'}</td>
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefonoContacto||'—'}</td>
+                          <td>{v.distrito||'—'}</td>
+                          <td style={{maxWidth:230,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={v.direccion||''}>{v.direccion||'—'}</td>
+                          <td style={{fontWeight:600}}>{v.sala||'—'}</td>
+                          <td style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={v.email||''}>{v.email||'—'}</td>
                           <td style={{fontWeight:600,color:'#7C3AED'}}>{v.vendedor||'—'}</td>
                           <td style={{fontSize:11}}>{v.supervisor||'—'}</td>
                           <td>

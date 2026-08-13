@@ -97,7 +97,7 @@ export default function SupGrabaciones() {
 
   function actualizarFecha() {
     const d = new Date()
-    const dias  = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+    const dias  = ['Domingo','Lunes','Martes','Mi?rcoles','Jueves','Viernes','S?bado']
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const hora  = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
     setFechaLabel(`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} - ${hora}`)
@@ -108,7 +108,7 @@ export default function SupGrabaciones() {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
     try {
-      const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/ventas?area=supgrabaciones`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
@@ -125,6 +125,7 @@ export default function SupGrabaciones() {
             ...v,
             nombreApellidos:  v.nombre        || '',
             telefonoContacto: v.telefono1     || '',
+            email:            v.email         || '',
             vendedor:         v.asesor_nombre || '',
             fechaIngreso:     (v.created_at   || '').split(' ')[0],
             estadoRev:        v.estado_supgrab || 'sin_revisar',
@@ -133,9 +134,8 @@ export default function SupGrabaciones() {
             audioUrl:         v.audio_path ? `${NC_API}/${v.audio_path}` : null,
             audioNombre:      v.audio_path ? v.audio_path.split('/').pop() : '',
             programacionExpiraAt: v.programacion_expira_at || null,
-            // Solo cuando Programación ya marcó PROGRAMADO y el audio sigue
-            // sin subir — señal operativa real, no observación manual.
-            obsProgramacion:  (String(v.estado || '').trim().toUpperCase() === 'PROGRAMADO' && !v.audio_path)
+            // Momento real en que Programación marcó PROGRAMADO.
+            obsProgramacion:  String(v.estado || '').trim().toUpperCase() === 'PROGRAMADO'
               ? formatProgramado(v.fecha_programado)
               : null,
           }))
@@ -237,7 +237,7 @@ export default function SupGrabaciones() {
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
     try {
-      const res  = await fetch(`${API}/ventas/${modalRevisar.id}`, {
+      const res  = await fetch(`${API}/ventas/${modalRevisar.id}?area=supgrabaciones`, {
         method: 'PATCH', headers: ncHeaders(),
         body: JSON.stringify({
           obs_supgrab: nuevoHistorial,
@@ -351,7 +351,7 @@ export default function SupGrabaciones() {
               <span className="tabla-count">{totalPag} registros</span>
               {totalPag > 0 && (
                 <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 600 }}>
-                  Mostrando {inicio + 1}â€“{fin} de {totalPag}
+                  Mostrando {inicio + 1}?{fin} de {totalPag}
                 </span>
               )}
             </div>
@@ -366,9 +366,9 @@ export default function SupGrabaciones() {
                 onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}
                 style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', outline: 'none' }}
               >
-                <option value="18">18 / pÃ¡g</option>
-                <option value="30">30 / pÃ¡g</option>
-                <option value="50">50 / pÃ¡g</option>
+                <option value="18">18 / p?g</option>
+                <option value="30">30 / p?g</option>
+                <option value="50">50 / p?g</option>
               </select>
             </div>
           </div>
@@ -384,7 +384,9 @@ export default function SupGrabaciones() {
                   <th style={{ minWidth: '160px' }}>NOMBRE Y APELLIDOS</th>
                   <th style={{ minWidth: '90px'  }}>DNI / DOC.</th>
                   <th style={{ minWidth: '110px' }}>TEL. CONTACTO</th>
+                  <th style={{ minWidth: '190px' }}>EMAIL</th>
                   <th style={{ minWidth: '130px' }}>VENDEDOR</th>
+                  <th style={{ minWidth: '90px' }}>SALA</th>
                   <th style={{ minWidth: '110px' }}>SUPERVISOR</th>
                   <th style={{ minWidth: '150px' }}>ARCHIVO AUDIO</th>
                   <th style={{ minWidth: '180px' }}>OBS. PROGRAMACIÓN</th>
@@ -392,7 +394,7 @@ export default function SupGrabaciones() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="11" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
+                  <tr><td colSpan="13" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
                 ) : ventasPag.map(v => {
                   const badge    = BADGE_MAP[v.estadoRev] || BADGE_MAP.sin_revisar
                   const ultimaObs = v.obsSup
@@ -417,12 +419,14 @@ export default function SupGrabaciones() {
                       <td style={{ fontWeight: 600 }}>{v.nombreApellidos || '--'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{v.dni || '--'}</td>
                       <td style={{ fontFamily: 'monospace', color: '#185FA5', fontWeight: 700 }}>{v.telefonoContacto || '--'}</td>
+                      <td style={{ maxWidth: '190px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.email || ''}>{v.email || '—'}</td>
                       <td style={{ fontWeight: 600, color: '#7C3AED' }}>{v.vendedor || '--'}</td>
+                      <td style={{ fontWeight: 600 }}>{v.sala || '--'}</td>
                       <td style={{ fontSize: '11px' }}>{v.supervisor || '--'}</td>
                       <td>
                         {v.audioUrl
                           ? <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '11px' }}>OK {v.audioNombre}</span>
-                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaciÃ³n</span>
+                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaci?n</span>
                         }
                       </td>
                       <td style={{ fontSize: '10px', color: v.obsProgramacion ? '#c2410c' : '#9ca3af', fontWeight: v.obsProgramacion ? 700 : 400, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.obsProgramacion || ''}>
@@ -436,7 +440,7 @@ export default function SupGrabaciones() {
           </div>
 
           <div className="paginacion">
-            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}â€“${fin} de ${totalPag}` : ''}</span>
+            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}?${fin} de ${totalPag}` : ''}</span>
             <Paginacion total={totalPag} pagina={pagina} porPagina={porPagina} onChange={p => setPagina(p)} />
           </div>
         </div>
@@ -447,7 +451,7 @@ export default function SupGrabaciones() {
         onClose={() => setMediaVenta(null)}
         ventaId={mediaVenta?.id}
         title={`Archivos de ${mediaVenta?.nombreApellidos || 'la venta'}`}
-        subtitle={`DNI: ${mediaVenta?.dni || 'â€”'} Â· Tel: ${mediaVenta?.telefonoContacto || 'â€”'}`}
+        subtitle={`DNI: ${mediaVenta?.dni || '?'} ? Tel: ${mediaVenta?.telefonoContacto || '?'}`}
         audioPath={mediaVenta?.audioPath || mediaVenta?.audioUrl}
         audioName={mediaVenta?.audioNombre}
       />
@@ -466,8 +470,8 @@ export default function SupGrabaciones() {
           <div className="modal-box" style={{ maxWidth: '520px' }}>
             <div className="modal-title">Revisar Grabación</div>
             <div className="modal-sub">
-              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> Â·{' '}
-              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> Â·{' '}
+              Cliente: <strong>{modalRevisar.nombreApellidos || '--'}</strong> ?{' '}
+              Vendedor: <strong>{modalRevisar.vendedor || '--'}</strong> ?{' '}
               Fecha: <strong>{formatF(modalRevisar.fechaIngreso)}</strong>
             </div>
 

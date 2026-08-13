@@ -153,8 +153,7 @@ export default function Seguimiento() {
       if (data.ok) {
         setVentas(data.data
           .filter(v => {
-            const e = (v.estado || '').toLowerCase()
-            return e !== 'venta' && e !== 'validado' && e !== 'grabado' && e !== 'pendiente' && e !== 'programado' && e !== ''
+            return String(v.estado_supgrab || '').trim().toLowerCase() === 'conforme'
           })
           .map(v => ({
             ...v,
@@ -523,6 +522,7 @@ export default function Seguimiento() {
                   <th className="th-dir">DIRECCIÓN</th>
                   <th className="th-coord">COORDENADAS</th>
                   <th className="th-vend">VENDEDOR</th>
+                  <th>SALA</th>
                   <th className="th-superv">SUPERVIS.</th>
                   <th className="th-hogar">CLARO HOGAR</th>
                   <th className="th-olt">OLT</th>
@@ -535,7 +535,7 @@ export default function Seguimiento() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="18" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
+                  <tr><td colSpan="19" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
                 ) : ventasPag.map(v => {
                   const est     = estadoObj(v._estadoSeg)
                   const motCls  = motivoBadgeCls(v._motivoRech)
@@ -568,6 +568,7 @@ export default function Seguimiento() {
                       <td className="td-wrap" style={{ fontSize: '10px' }}>{v.direccion || '--'}</td>
                       <td style={{ fontSize: '9px', color: '#6b7280' }}>{v.coordenadas || '--'}</td>
                       <td style={{ fontWeight: 600, color: '#7C3AED', fontSize: '10px' }}>{v.asesor_nombre || v.vendedor || '--'}</td>
+                      <td style={{ fontWeight: 600, fontSize: '10px' }}>{v.sala || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.supervisor || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.claro_hogar || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.tecnologia || '--'}</td>

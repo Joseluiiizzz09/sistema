@@ -603,7 +603,7 @@ body{
   .modal-grid,.det-grid{grid-template-columns:1fr;}
 }
 
-/* â”â” TOPBAR OVERRIDE â€” tamaÃ±o correcto â”â” */
+/* â”â” TOPBAR OVERRIDE ? tama?o correcto â”â” */
 .topbar {
   height: 80px !important;
   padding: 0 28px !important;

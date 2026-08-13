@@ -101,8 +101,8 @@ function tipifBadgeClass(t) {
 
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO']
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','INSTALADO'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','INSTALADO'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO'])
 const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
@@ -377,11 +377,13 @@ export default function Backoffice() {
   // ── Filtros base ──
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
+  const [basePage, setBasePage] = useState(1)
+  const [basePageSize, setBasePageSize] = useState(25)
   function cycleSort(col) {
     setTableSort(prev => {
-      const firstDir = { tipif:'az', hora:'desc', rots:'asc' }[col]
+      const firstDir = { tipif:'az', hora:'desc', rots:'asc', asesor:'sin_asignar' }[col]
       if (prev.col !== col) return { col, dir: firstDir }
-      const seq = { tipif:['az','za',null], hora:['desc','asc',null], rots:['asc','desc',null] }[col]
+      const seq = { tipif:['az','za',null], hora:['desc','asc',null], rots:['asc','desc',null], asesor:['sin_asignar','asignados',null] }[col]
       const next = seq[(seq.indexOf(prev.dir) + 1) % seq.length]
       return next ? { col, dir: next } : { col: null, dir: null }
     })
@@ -1013,7 +1015,6 @@ const cargarLeads = useCallback(async () => {
     const mins = Math.floor((ahora - lead.ultimaAsig)/60000)
     const tiempo = mins >= 120
     const estadoOk = TIPIF_ROTABLES_ROTACION.has((lead.tipifVend||'').trim().toUpperCase())
-    if (!lead.asesor) return { apto:sinRepetir, prohibido:false, sinRepetir, tiempo:true, estadoOk:true }
     return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk }
   }
 
@@ -1533,9 +1534,22 @@ const cargarLeads = useCallback(async () => {
         const rb = parseInt(String(b.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
         return tableSort.dir === 'asc' ? ra - rb : rb - ra
       }
+      if (tableSort.col === 'asesor') {
+        const sa = !String(a.asesor || '').trim()
+        const sb = !String(b.asesor || '').trim()
+        if (sa !== sb) return tableSort.dir === 'sin_asignar' ? (sa ? -1 : 1) : (sa ? 1 : -1)
+        return String(a.asesor || '').localeCompare(String(b.asesor || ''), 'es')
+      }
       return 0
     })
   })()
+
+  const baseTotalPages = Math.max(1, Math.ceil(registrosFiltrados.length / basePageSize))
+  const basePageSafe = Math.min(basePage, baseTotalPages)
+  const baseDesde = (basePageSafe - 1) * basePageSize
+  const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
+
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, tableSort.col, tableSort.dir, basePageSize])
 
   const statsBase = {
     total:      registrosActivos.length,
@@ -1617,6 +1631,9 @@ const cargarLeads = useCallback(async () => {
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
   const rotStatNoAptos = allRotLeads.length - rotStatAptos
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
+  const rotVistaAsignacion = rotAsesor
+    ? allRotLeadsSorted.filter(l=>rotApto(l,rotAsesor).apto).slice(0, rotCant)
+    : []
   const allAptosSelected = rotAptos.length > 0 && rotAptos.every(l=>rotSel[l.id])
   const rotFechasDisp  = Object.keys(baseData).filter(f=>(baseData[f]||[]).length>0).sort().reverse()
   const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:Object.values(baseData).flat().filter(r=>r.asesor===a.nombre).length }))
@@ -1786,9 +1803,11 @@ const cargarLeads = useCallback(async () => {
                             {rotTh('sinrepetir','Sin repetir')}{rotTh('aptitud','Aptitud')}
                           </tr></thead>
                           <tbody>
-                            {allRotLeadsSorted.length === 0
-                              ? <tr><td colSpan={10} className="bo-empty">Sin leads.</td></tr>
-                              : allRotLeadsSorted.map(l => {
+                            {!rotAsesor
+                              ? <tr><td colSpan={10} className="bo-empty">Selecciona un asesor para ver únicamente los leads que se le asignarán.</td></tr>
+                              : rotVistaAsignacion.length === 0
+                                ? <tr><td colSpan={10} className="bo-empty">No hay leads que cumplan las 2 horas y las reglas de rotación.</td></tr>
+                                : rotVistaAsignacion.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
                                   const esFechaHoy = l.fecha === fechaHoy()
@@ -1868,7 +1887,7 @@ const cargarLeads = useCallback(async () => {
                   className="form-select" placeholderText="Todos" emptyLabel="Todos" />
               </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
-                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
+                <input className="form-control" inputMode="numeric" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value.replace(/\D/g,'')}))} placeholder="Buscar N1 o N2..." />
               </div>
               <label className="toggle-col base-filtro-toggle">
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
@@ -1951,7 +1970,12 @@ const cargarLeads = useCallback(async () => {
                   <tr>
                     <th>#</th><th>Campaña</th><th>N1 / N2</th>
                     <th>Contacto</th><th>Tipif. Back</th>
-                    <th>Asesor asignado</th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='asesor'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('asesor')} title="Mostrar primero los leads sin asignar" aria-label="Ordenar por asesor asignado">
+                        Asesor asignado<SortIcon active={tableSort.col==='asesor'} direction={tableSort.col==='asesor'?(tableSort.dir==='sin_asignar'?'up':'down'):null}/>
+                      </button>
+                    </th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='tipif'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('tipif')} title="Ordenar tipificación" aria-label="Ordenar tipificación alfabéticamente"
@@ -1979,7 +2003,7 @@ const cargarLeads = useCallback(async () => {
                 <tbody>
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
-                    : registrosFiltrados.map((r,i) => {
+                    : registrosPagina.map((r,i) => {
                          const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
@@ -1989,7 +2013,7 @@ const cargarLeads = useCallback(async () => {
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
-                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{i+1}</td>
+                            <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{baseDesde+i+1}</td>
 
                             {/* Campaña */}
                             <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
@@ -2194,6 +2218,19 @@ const cargarLeads = useCallback(async () => {
                   }
                 </tbody>
               </table>
+              <div className="paginacion">
+                <div className="paginacion-info">
+                  Mostrando {registrosFiltrados.length ? baseDesde + 1 : 0}–{Math.min(baseDesde + basePageSize, registrosFiltrados.length)} de {registrosFiltrados.length}
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <select className="select-por-pagina" value={basePageSize} onChange={e=>setBasePageSize(Number(e.target.value))} aria-label="Registros por página">
+                    {[10,25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
+                  </select>
+                  <button className="fnav-btn" disabled={basePageSafe<=1} onClick={()=>setBasePage(p=>Math.max(1,p-1))}>‹</button>
+                  <span className="paginacion-info">Página {basePageSafe} de {baseTotalPages}</span>
+                  <button className="fnav-btn" disabled={basePageSafe>=baseTotalPages} onClick={()=>setBasePage(p=>Math.min(baseTotalPages,p+1))}>›</button>
+                </div>
+              </div>
             </div>
           </section>
 

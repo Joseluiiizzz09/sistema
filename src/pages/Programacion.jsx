@@ -221,7 +221,7 @@ export default function Programacion() {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('Error actualizando'); return }
+      if (!data.ok) { mostrarToast(data.mensaje || 'Error actualizando'); return }
       setVentas(list => list.map(x =>
         x.id === modalDet.id
           ? {
@@ -432,6 +432,7 @@ export default function Programacion() {
               <div className="det-grid">
                 <DetCampo label="Teléfono Contacto"   val={modalDet.telefono1} />
                 <DetCampo label="Teléfono Referencia" val={modalDet.telefono2} />
+                <DetCampo label="Correo electrónico"  val={modalDet.email} />
                 <DetCampo label="Departamento"        val={modalDet.departamento} />
                 <DetCampo label="Provincia"           val={modalDet.provincia} />
                 <DetCampo label="Distrito"            val={modalDet.distrito} />

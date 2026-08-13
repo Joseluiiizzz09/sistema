@@ -151,10 +151,8 @@ function BadgeVS({ e, sup, estadoGrab, grabandoPorNombre }) {
     'validado':      { cls:'vs-badge-validado',    label:'VALIDADO' },
     'grabado':       { cls:'vs-badge-grabado',     label:'GRABADO' },
     'aprobado':      { cls:'vs-badge-programado',  label:'APROBADO' },
-    // PROGRAMADO (estado real de Programación, sin cambios en BD) se
-    // muestra públicamente como EN EJECUCIÓN — reutiliza exactamente la
-    // misma clase/label que ya existe para 'en_ejecucion', no un color nuevo.
-    'programado':    { cls:'vs-badge-ejecucion',   label:'EN EJECUCION' },
+    // Mientras Sup. Grabaciones no confirme, sigue siendo PROGRAMADO.
+    'programado':    { cls:'vs-badge-programado',  label:'PROGRAMADO' },
     'bloqueado':     { cls:'vs-badge-bloqueado',   label:'BLOQUEADO' },
     'sin_agenda':    { cls:'vs-badge-sinagenda',   label:'SIN AGENDA' },
     'caracter_especial': { cls:'vs-badge-caracterespecial', label:'CARÁCTER ESPECIAL' },
@@ -208,7 +206,9 @@ export default function Dashboard() {
     } catch { return null }
   })
   const vistaJefatura = sesion?.cargo === 'jefatura' && Boolean(asesorObjetivo?.id)
-  const filtroAsesor = vistaJefatura ? `?asesor_id=${encodeURIComponent(asesorObjetivo.id)}` : ''
+  const filtroAsesor = vistaJefatura
+    ? `?asesor_id=${encodeURIComponent(asesorObjetivo.id)}`
+    : '?area=asesor'
 
   // Tab
   const [tab, setTab] = useState(() => sessionStorage.getItem('nc_dashboard_apartado') || 'llamadas')
@@ -363,7 +363,14 @@ export default function Dashboard() {
             miTipif = ent?.tipifVendAntes || ''
           }
           let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO')
-          let obs    = soyActual ? (l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')) : (l.obs_asesor || '')
+          let obs = ''
+          if (soyActual) {
+            obs = l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')
+          } else {
+            const hist = Array.isArray(l.historial) ? l.historial : []
+            const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
+            obs = ent?.obsAsesorAntes || ''
+          }
           // Stickiness: conserva lo recién tipificado/observado hasta que el server lo
           // confirme (evita el parpadeo estado→pendiente→estado tras tipificar).
           const pend = pendTipRef.current[l.id]
@@ -392,6 +399,13 @@ export default function Dashboard() {
             obs,
             _soloLectura: !soyActual,   // ya no es su número: registro de lo trabajado
           }
+        }).sort((a, b) => {
+          const horaA = String(a.horaAsig || '').trim()
+          const horaB = String(b.horaAsig || '').trim()
+          if (!horaA && !horaB) return 0
+          if (!horaA) return 1
+          if (!horaB) return -1
+          return horaA.localeCompare(horaB, 'es', { numeric:true })
         })
       })
       setLlamadas(leadsAsignados.length)
@@ -1192,8 +1206,12 @@ export default function Dashboard() {
               ) : ventasMostradas.map((v, i) => (
                 <tr key={v.id || i}>
                   <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} estadoGrab={v.estado_grab} grabandoPorNombre={v.grabando_por_nombre} /></td>
-                  <td><ObsSeguimientoCell tramo={v.tramo_seguimiento} comentario={v.obs_seguimiento} motivo={v.motivo_seguimiento} /></td>
-                  <td><ProgramacionInfoCell fecha={v.fecha_programada} soloFecha /></td>
+                  <td><ObsSeguimientoCell
+                    tramo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.tramo_seguimiento : ''}
+                    comentario={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.obs_seguimiento : ''}
+                    motivo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.motivo_seguimiento : ''}
+                  /></td>
+                  <td><ProgramacionInfoCell fecha={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.fecha_programada : ''} soloFecha /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
                   <td style={{fontWeight:600,minWidth:'160px'}}>{v.nombre||'-'}</td>
                   <td style={{fontSize:'11px'}}>{v.tipo_doc||'DNI'}</td>

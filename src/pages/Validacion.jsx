@@ -23,6 +23,7 @@ const ESTADOS_TODOS = [
   { id:'buzon_voz',      label:'BUZON DE VOZ',    cls:'be-buzon' },
   { id:'grabando',       label:'GRABANDO',        cls:'be-grabando' },
   { id:'servicio_activo',label:'SERVICIO ACTIVO', cls:'be-servicio' },
+  { id:'corregir',       label:'CORREGIR',        cls:'be-observado' },
 ]
 
 const TIP_BTNS = [
@@ -32,12 +33,14 @@ const TIP_BTNS = [
   { id:'no_contesta',     label:'NO CONTESTA',      cls:'be-nocontesta' },
   { id:'buzon_voz',       label:'BUZÓN DE VOZ',     cls:'be-buzon' },
   { id:'servicio_activo', label:'SERVICIO ACTIVO',  cls:'be-servicio' },
+  { id:'corregir',        label:'CORREGIR',          cls:'be-observado' },
+  { id:'venta',           label:'VENTA',             cls:'be-venta' },
   { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
 ]
 
 const ESTADOS_OK    = ['validado','instalado','programado','grabado','aprobado','en_ejecucion','caida','rechazo_campo','tecnico_casa']
-const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo']
-const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZON DE VOZ','GRABANDO','SERVICIO ACTIVO','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
+const TIPIF_NO_VAL  = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir']
+const TIPS_DISPLAY  = ['CORTA LLAMADA','FRAUDE','NO DESEA','NO CONTESTA','BUZON DE VOZ','GRABANDO','SERVICIO ACTIVO','CORREGIR','VENTA','VALIDADO','INSTALADO','PROGRAMADO','CAÍDA','OBSERVADO','PENDIENTE']
 const LT_COLORES    = ['#7C3AED','#2563eb','#16a34a','#d97706','#dc2626','#0891b2','#ec4899']
 
 // ── Utilidades ────────────────────────────────────────────────────────────
@@ -60,7 +63,7 @@ function getObsDisplay(obsVal) {
 }
 
 function derivarTipifVal(obsValidacion) {
-  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','validado']
+  const TIPS = ['corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','corregir','venta','validado']
   const lineas = (obsValidacion||'').split('\n').filter(l=>l.trim())
   for (let i=lineas.length-1; i>=0; i--) {
     const txt = ((lineas[i].match(/^\[.+?\]\s*(.*)$/)||[])[1]||'').toLowerCase().replace(/ /g,'_')
@@ -451,11 +454,11 @@ export default function Validacion() {
                   <th className="th-dni">DNI / DOC.</th>
                   <th className="th-tel">TEL. CONTACTO</th>
                   <th className="th-tel">TEL. REFERENCIA</th>
-                  <th className="th-tel">CORREO ELECTRÓNICO</th>
                   <th className="th-dpto">DEPARTAMENTO</th>
                   <th className="th-prov">PROVINCIA</th>
                   <th className="th-dist">DISTRITO</th>
                   <th className="th-dir">DIRECCIÓN</th>
+                  <th className="th-tel">EMAIL</th>
                   <th className="th-cuota">CUOTA INST.</th>
                   <th className="th-claro">CLARO HOGAR</th>
                   <th className="th-tec">TECNOLOGÍA</th>
@@ -466,11 +469,12 @@ export default function Validacion() {
                   <th className="th-plano">PLANO</th>
                   <th className="th-obs">OBSERVACIÓN</th>
                   <th className="th-vendedor">VENDEDOR</th>
+                  <th>SALA</th>
                 </tr>
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr className="tabla-empty"><td colSpan={22}>Sin registros.</td></tr>
+                  ? <tr className="tabla-empty"><td colSpan={23}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
                       const mostrar  = v.tipifVal || v.estado
                       const eObj     = estadoObj(mostrar)
@@ -501,16 +505,16 @@ export default function Validacion() {
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefonoContacto||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.telefonoReferencia||'—'}</td>
+                          <td>{v.departamento||'—'}</td>
+                          <td>{v.provincia||'—'}</td>
+                          <td style={{fontWeight:600}}>{v.distrito||'—'}</td>
+                          <td className="td-wrap" style={{fontSize:10}}>{v.direccion||'—'}</td>
                           <td
                             style={{maxWidth:190,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
                             title={v.correoElectronico || ''}
                           >
                             {v.correoElectronico||'—'}
                           </td>
-                          <td>{v.departamento||'—'}</td>
-                          <td>{v.provincia||'—'}</td>
-                          <td style={{fontWeight:600}}>{v.distrito||'—'}</td>
-                          <td className="td-wrap" style={{fontSize:10}}>{v.direccion||'—'}</td>
                           <td>{v.cuota_inst||'—'}</td>
                           <td className="td-wrap" style={{fontSize:10}}>{v.claro_hogar||'—'}</td>
                           <td>{v.tecnologia||'—'}</td>
@@ -526,6 +530,7 @@ export default function Validacion() {
                             {obsDisp}
                           </td>
                           <td style={{fontWeight:600,color:'#7C3AED'}}>{v.vendedor||'—'}</td>
+                          <td style={{fontWeight:600}}>{v.sala||'—'}</td>
                         </tr>
                       )
                     })
