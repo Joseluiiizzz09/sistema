@@ -330,7 +330,10 @@ export default function Dashboard() {
     cargandoLeadsRef.current = true
     try {
       const separador = filtroAsesor.includes('?') ? '&' : '?'
-      const res  = await fetch(`${API}/leads${filtroAsesor}${separador}fecha=${encodeURIComponent(fechaHoy())}`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/leads${filtroAsesor}${separador}fecha=${encodeURIComponent(fechaHoy())}`, {
+        headers: ncHeaders(),
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (!data.ok) return
       const hoy = fechaHoy()
@@ -387,6 +390,14 @@ export default function Dashboard() {
             const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
             obs = ent?.obsAsesorAntes || ''
           }
+          const historial = Array.isArray(l.historial) ? l.historial : []
+          const asignacionesDelAsesor = historial.filter(h =>
+            h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND' &&
+            (!miNombre || String(h.asesor).trim() === miNombre)
+          )
+          const asignacionDelAsesor = asignacionesDelAsesor[asignacionesDelAsesor.length - 1]
+          const horaAsignacion = asignacionDelAsesor?.hora || (soyActual ? l.hora_asig : '') || ''
+          const fechaAsignacion = normalizarFecha(asignacionDelAsesor?.fecha || l.fecha) || ''
           // Stickiness: conserva lo recién tipificado/observado hasta que el server lo
           // confirme (evita el parpadeo estado→pendiente→estado tras tipificar).
           const pend = pendTipRef.current[l.id]
@@ -410,19 +421,21 @@ export default function Dashboard() {
             obsBack: l.obs_back || '',
             // La zona del asesor es ubicación geográfica; nunca debe mostrar campañas.
             zona:     l.distrito || l.provincia || l.departamento || '--',
-            horaAsig: l.hora_asig || '',
+            horaAsig: horaAsignacion,
+            _fechaAsig: fechaAsignacion,
             estado,
             derivadoPor: l.derivado_por_nombre || '',
             obs,
             _soloLectura: !soyActual,   // ya no es su número: registro de lo trabajado
           }
         }).sort((a, b) => {
-          const horaA = String(a.horaAsig || '').trim()
-          const horaB = String(b.horaAsig || '').trim()
-          if (!horaA && !horaB) return 0
+          const horaA = `${a._fechaAsig || ''} ${String(a.horaAsig || '').trim()}`.trim()
+          const horaB = `${b._fechaAsig || ''} ${String(b.horaAsig || '').trim()}`.trim()
+          if (!horaA && !horaB) return Number(a.id) - Number(b.id)
           if (!horaA) return 1
           if (!horaB) return -1
-          return horaA.localeCompare(horaB, 'es', { numeric:true })
+          const porAsignacion = horaA.localeCompare(horaB, 'es', { numeric:true })
+          return porAsignacion || Number(a.id) - Number(b.id)
         })
       })
       setLlamadas(leadsAsignados.length)
