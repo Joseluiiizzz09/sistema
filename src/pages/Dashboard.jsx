@@ -1087,7 +1087,7 @@ export default function Dashboard() {
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
                 <td><span className={`dash-contacto ${c.tipoContacto==='WHATSAPP'?'wsp':'llamada'}`}>{c.tipoContacto==='WHATSAPP'?'WhatsApp':'Llamada'}</span></td>
                 <td>
-                  <button className="btn-accion" onClick={() => abrirModalTip(i)} title="Tipificar">
+                  <button className="btn-accion" onClick={() => abrirModalTip(clientes.findIndex(x => x.id === c.id))} title="Tipificar">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="rgba(255,255,255,0.25)" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
                       <path d="M14 2v4h4" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
