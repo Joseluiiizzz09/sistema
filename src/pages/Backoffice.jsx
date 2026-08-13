@@ -455,6 +455,7 @@ export default function Backoffice() {
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
+  const [rotModalError, setRotModalError] = useState('')
   const [rotandoManual, setRotandoManual] = useState(false)
 
   // ── Carga masiva ──
@@ -938,13 +939,17 @@ const cargarLeads = useCallback(async () => {
     setRotModalAsesor('')
     setRotBusqueda('')
     setRotModalMotivo('')
+    setRotModalError('')
   }
 
   async function confirmarRotacion() {
     if (!rotModalAsesor || rotandoManual) return
+    setRotModalError('')
     const found = findReg(modalRotar.regId)
     if (!found) {
-      mostrarToast('El registro cambió. Abre nuevamente la opción Rotar.')
+      const mensaje = 'El registro cambió. Abre nuevamente la opción Rotar.'
+      setRotModalError(mensaje)
+      mostrarToast(mensaje)
       return
     }
     const { reg } = found
@@ -955,7 +960,9 @@ const cargarLeads = useCallback(async () => {
     }
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     if (!reg._backendId) {
-      mostrarToast('Espera a que el registro termine de guardarse antes de rotarlo.')
+      const mensaje = 'Espera a que el registro termine de guardarse antes de rotarlo.'
+      setRotModalError(mensaje)
+      mostrarToast(mensaje)
       return
     }
     setRotandoManual(true)
@@ -979,7 +986,9 @@ const cargarLeads = useCallback(async () => {
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       mostrarToast(data.mensaje || `Registro rotado a ${rotModalAsesor}`)
     } catch (error) {
-      mostrarToast(error.message || 'Error de conexión al rotar')
+      const mensaje = error.message || 'Error de conexión al rotar'
+      setRotModalError(mensaje)
+      mostrarToast(mensaje)
     } finally {
       setRotandoManual(false)
     }
@@ -2208,6 +2217,10 @@ const cargarLeads = useCallback(async () => {
                                     const tipif = ci===cola.length-1
                                       ? (r._tipifVend || '')
                                       : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
+                                    const nombreAsesor = String(h.asesor || '').trim().toUpperCase()
+                                    const tipsAsesor = (r.historial||[])
+                                      .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
+                                      .sort((a,b)=>(a.ts||0)-(b.ts||0))
                                     const asignadoPor = h.tipo==='ROTACION'
                                       ? (h.rotadoPor || '—')
                                       : (h.reasignadoPor || h.motivo || '—')
@@ -2223,30 +2236,19 @@ const cargarLeads = useCallback(async () => {
                                             </button>
                                           </div>
                                           <div className="hist-meta">Asignado: {h.hora||'—'}{h.hora&&h.fecha?' · ':''}{h.fecha||''}</div>
-                                          <div className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></div>
+                                          <div className="hist-tipificaciones-horizontal" style={{display:'flex',flexWrap:'wrap',gap:'6px 18px',margin:'4px 0'}}>
+                                            {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
+                                              <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
+                                                <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
+                                                <strong style={{color:'#065f46'}}>{t.tipif||'—'}</strong>
+                                              </span>
+                                            )) : <span className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></span>}
+                                          </div>
                                           <div className="hist-sub">Asignado por: {asignadoPor}</div>
                                         </div>
                                       </div>
                                     )
                                   })
-                                })()}
-                                {(() => {
-                                  const tips = (r.historial||[]).filter(h => h?.tipo==='TIPIF_VEND').sort((a,b)=>(a.ts||0)-(b.ts||0))
-                                  if (!tips.length) return null
-                                  return (
-                                    <div style={{marginTop:12, borderTop:'1px dashed #e5e7eb', paddingTop:10}}>
-                                      <div className="hist-label" style={{marginBottom:6}}>Historial de tipificaciones</div>
-                                      <div className="hist-tipificaciones-horizontal">
-                                      {tips.map((t,ti)=>(
-                                        <div key={ti} style={{display:'flex', alignItems:'center', gap:8, fontSize:11, padding:'3px 0'}}>
-                                          <span style={{color:'#9ca3af', fontFamily:'monospace', minWidth:92}}>{t.hora||'—'} {t.fecha||''}</span>
-                                          <strong style={{minWidth:130}}>{t.asesor||'—'}</strong>
-                                          <span style={{color:'#065f46', fontWeight:700}}>{t.tipif||'—'}</span>
-                                        </div>
-                                      ))}
-                                      </div>
-                                    </div>
-                                  )
                                 })()}
                                 <div style={{marginTop:10, textAlign:'right'}}>
                                   <button type="button"
@@ -2831,7 +2833,7 @@ const cargarLeads = useCallback(async () => {
                   </div>
                   <div style={{maxHeight:170, overflowY:'auto', marginTop:6}}>
                     {filtrados.map(a=>(
-                      <div key={a.id} onClick={()=>setRotModalAsesor(a.nombre)}
+                      <div key={a.id} onClick={()=>{ setRotModalAsesor(a.nombre); setRotModalError('') }}
                         style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
                         {a.nombre}
                       </div>
@@ -2842,6 +2844,7 @@ const cargarLeads = useCallback(async () => {
               )
             })()}
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
+            {rotModalError && <div role="alert" style={{marginTop:8,padding:'9px 11px',border:'1px solid #fecaca',borderRadius:8,background:'#fef2f2',color:'#b91c1c',fontSize:12,fontWeight:650}}>{rotModalError}</div>}
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>{rotandoManual ? 'Rotando...' : 'Rotar ahora'}</button>
