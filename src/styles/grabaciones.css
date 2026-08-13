@@ -408,6 +408,8 @@ body{
 .btn-acc-dl:hover{background:#eef2ff;color:#3730a3;border-color:rgba(99,102,241,.28);}
 .btn-acc-subir{border-color:rgba(37,99,235,.3);background:#eff6ff;color:#1e40af;}
 .btn-acc-subir:hover{background:#dbeafe;}
+.btn-acc-eliminar-audio{border-color:rgba(220,38,38,.3);background:#fff1f2;color:#b91c1c;}
+.btn-acc-eliminar-audio:hover{background:#ffe4e6;border-color:rgba(220,38,38,.5);}
 .btn-acc-fotos{border-color:rgba(13,148,136,.32);background:#f0fdfa;color:#0f766e;}
 .btn-acc-fotos:hover{background:#ccfbf1;border-color:rgba(13,148,136,.5);}
 .btn-acc-obs{border-color:rgba(217,119,6,.3);background:#fffbeb;color:#78350f;}

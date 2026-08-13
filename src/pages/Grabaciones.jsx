@@ -308,9 +308,41 @@ export default function Grabaciones() {
   function handleFileSelect(files) {
     if (!files || !files.length) return
     const file = files[0]
-    if (!file.name.match(/\.(mp3|wav|ogg|m4a|mp4|webm)$/i)) { mostrarToast('Solo archivos de audio'); return }
+    if (!file.name.match(/\.mp3$/i)) {
+      setArchivoSel(null)
+      setSubirInfo('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      mostrarToast('Solo se permiten archivos MP3')
+      return
+    }
     setArchivoSel(file)
     setSubirInfo(`${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`)
+  }
+
+  async function eliminarAudio(id) {
+    const v = ventas.find(x=>x.id===id)
+    if (!v || !v._grabAudio) return
+    if (!window.confirm('¿Eliminar esta grabación? Podrás subir otro archivo MP3.')) return
+
+    try {
+      const res = await fetch(`${API}/ventas/${id}/audio`, {
+        method:'DELETE',
+        headers:ncHeaders(),
+      })
+      const data = await res.json().catch(()=>({}))
+      if (!res.ok || !data.ok) {
+        mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar el audio'))
+        return
+      }
+      setVentas(list => list.map(x => x.id===id
+        ? { ...x, _grabAudio:null, _grabNombre:'', audio_path:null, _estadoGrab:'pendiente', estado_grab:'pendiente', estado_supgrab:'sin_revisar' }
+        : x
+      ))
+      mostrarToast('Grabación eliminada. Ya puedes subir otro MP3')
+    } catch(e) {
+      console.error('Error eliminando audio:', e)
+      mostrarToast('Error conectando al servidor')
+    }
   }
 
   async function guardarAudio() {
@@ -607,6 +639,7 @@ export default function Grabaciones() {
 
                               <button className="btn-acc btn-acc-obs"    onClick={()=>abrirModalObs(v.id)}    title="Observación">Obs.</button>
                               <button className="btn-acc btn-acc-subir"  onClick={()=>abrirModalSubir(v.id)}  title="Subir grabación">Subir</button>
+                              <button className="btn-acc btn-acc-eliminar-audio" onClick={()=>eliminarAudio(v.id)} disabled={!tieneAudio} title={tieneAudio?'Eliminar grabación':'No hay grabación para eliminar'} aria-label="Eliminar grabación">🗑</button>
                               <button className="btn-acc btn-acc-estado" onClick={()=>abrirModalEstado(v.id)} title="Cambiar estado">Estado</button>
                               <button className="btn-fotos btn-archivos" onClick={()=>setMediaVenta(v)} title="Ver fotos y documentos">Archivos</button>
                             </div>
@@ -700,11 +733,11 @@ export default function Grabaciones() {
             >
               <div className="upload-icon"></div>
               <div style={{fontSize:13,fontWeight:600,color:'#374151',marginTop:6}}>Arrastra tu archivo aquí o haz clic</div>
-              <p>Acepta: MP3 · WAV · OGG · M4A · MP4</p>
+              <p>Acepta únicamente archivos MP3</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".mp3,.wav,.ogg,.m4a,.mp4,.webm"
+                accept=".mp3,audio/mpeg"
                 style={{display:'none'}}
                 onChange={e=>handleFileSelect(e.target.files)}
               />
