@@ -145,15 +145,13 @@ function tipifPrevioHistorial(historial) {
 function tipifEfectiva(reg) {
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
-  // Una venta realmente creada es la única transición que puede reemplazar
-  // SIN COBERTURA. No basta con haber pulsado la tipificación en el Dashboard.
+  // Una venta realmente creada tiene prioridad definitiva. No basta con haber
+  // pulsado la tipificación en el Dashboard: debe existir la venta en la API.
   if (Number(reg?.venta_confirmada) === 1 || eventos.some(h => h?.tipif === 'VENTA CERRADA' && h?.ventaCompleta)) {
     return 'VENTA CERRADA'
   }
-  const tieneSinCobertura = String(reg?._tipifVend || '').trim().toUpperCase() === 'SIN COBERTURA'
-    || hist.some(h => String(h?.tipif || h?.tipifVendAntes || '').trim().toUpperCase() === 'SIN COBERTURA')
-  if (tieneSinCobertura) return 'SIN COBERTURA'
-  // Fuera de los estados protegidos, la tipificación cronológica más reciente gana.
+  // Mientras no exista venta, la tipificación cronológica más reciente gana,
+  // incluso si la dejó un asesor que ya no es el titular actual.
   if (eventos.length) {
     const ult = eventos.reduce((a, b) => (b.ts > a.ts ? b : a))
     return ult.tipif || ''
@@ -858,7 +856,7 @@ const cargarLeads = useCallback(async () => {
       if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
       return
     }
-    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:reg._tipifVend||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
+    const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
   }
@@ -2048,7 +2046,8 @@ const cargarLeads = useCallback(async () => {
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosPagina.map((r,i) => {
-                         const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
+                         const tipifActual = tipifEfectiva(r)
+                         const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
                          const esReingreso = idsReingresados.has(r.id)
@@ -2101,7 +2100,7 @@ const cargarLeads = useCallback(async () => {
                             {/* Asesor asignado */}
                             <td>
                               <AsesorBuscador value={r.asesor} asesores={asesores} disabled={esExclusiva}
-                                title={esExclusiva?`Prohibido: ${r._tipifVend}`:''}
+                                title={esExclusiva?`Prohibido: ${tipifActual}`:''}
                                 onChange={v=>reasignarReg(r.id,v)} />
                               {r.sinAsignar&&r.asesor&&<span style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:600,marginTop:1}}>histórico</span>}
                               {r.sinAsignar&&!r.asesor&&<span style={{display:'block',fontSize:9,color:'#c2410c',fontWeight:700,marginTop:1}}>sin asig.</span>}
@@ -2159,7 +2158,7 @@ const cargarLeads = useCallback(async () => {
                                   {detAbierto?'▲':'⋯'}
                                 </button>
                                 <button className="btn-rotar btn-rotar-sm" disabled={esExclusiva}
-                                  title={esExclusiva?`Prohibido: ${r._tipifVend}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
+                                  title={esExclusiva?`Prohibido: ${tipifActual}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 </button>
                                 <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">

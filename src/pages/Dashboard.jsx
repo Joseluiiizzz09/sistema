@@ -374,10 +374,14 @@ export default function Dashboard() {
           // LLAMANDO es una marca interna de Back Data y nunca debe convertirse
           // en el estado visible del asesor. DERIVADO conserva su aviso actual.
           const tipifBackVisible = l.tipif_back === 'LLAMANDO' ? '' : (l.tipif_back || '')
-          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (tipifBackVisible || p.estado || 'NUEVO') : 'NUEVO')
+          // No reutilizar `p.estado` aquí: al rotar se conserva el mismo id del lead
+          // y ese valor local pertenecía a la asignación anterior.
+          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (tipifBackVisible || 'NUEVO') : 'NUEVO')
           let obs = ''
           if (soyActual) {
-            obs = l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')
+            // La observación vigente llega del servidor. Reusar `p.obs` transferiría
+            // el comentario del asesor anterior al nuevo titular durante el polling.
+            obs = l.obs_asesor || ''
           } else {
             const hist = Array.isArray(l.historial) ? l.historial : []
             const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
@@ -1103,7 +1107,6 @@ export default function Dashboard() {
                     placeholder="Escribe una observación..."
                     maxLength={200}
                     value={c.obs || ''}
-                    disabled={c._soloLectura}
                     onChange={e => setClientes(prev => prev.map(x => x.id === c.id ? { ...x, obs:e.target.value } : x))}
                     onBlur={e => guardarObs(c.id, e.target.value)}
                   />
