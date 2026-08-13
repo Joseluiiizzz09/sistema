@@ -1610,11 +1610,13 @@ const cargarLeads = useCallback(async () => {
     ? registrosBusquedaGlobal
     : registrosBusquedaGlobal.filter(r => grupoPrioridadLead(r) === 0 && !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
   const n1FormularioNormalizado = normalizarNumero(form.n1)
-  const fechasPreviasN1 = n1FormularioNormalizado
+  const altasPreviasN1 = n1FormularioNormalizado
     ? Object.entries(baseData)
-        .filter(([, regs]) => (regs || []).some(r => normalizarNumero(r.n1) === n1FormularioNormalizado))
-        .map(([fecha]) => fecha)
-        .sort().reverse()
+        .flatMap(([fecha, regs]) => (regs || [])
+          .filter(r => normalizarNumero(r.n1) === n1FormularioNormalizado)
+          .map(r => ({ fecha:String(r.createdAt || '').slice(0,10) || fecha, hora:String(r.createdAt || '').slice(11,16) })))
+        .filter((alta, i, arr) => arr.findIndex(x => x.fecha === alta.fecha && x.hora === alta.hora) === i)
+        .sort((a,b) => `${b.fecha} ${b.hora}`.localeCompare(`${a.fecha} ${a.hora}`))
     : []
 
   const registrosFiltrados = (() => {
@@ -2037,15 +2039,9 @@ const cargarLeads = useCallback(async () => {
                   </select>
                 </div>
                 <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
-                  {fechasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue asignado anteriormente ({fechasPreviasN1.slice(0,3).map(formatFecha).join(', ')}). Puedes agregarlo.</small>}
+                  {altasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue dado de alta anteriormente ({altasPreviasN1.slice(0,3).map(a=>`${formatFecha(a.fecha)}${a.hora?` ${a.hora}`:''}`).join(', ')}). Puedes agregarlo.</small>}
                 </div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
-                <div className="bo-input-group"><label>Tipo de contacto</label>
-                  <select className="form-select" value={form.tipoContacto} onChange={e=>setForm(p=>({...p,tipoContacto:e.target.value}))}>
-                    <option value="LLAMADA">Llamada normal</option>
-                    <option value="WHATSAPP">WhatsApp</option>
-                  </select>
-                </div>
                 <div className="bo-input-group"><label>Dirección</label><input className="form-control" value={form.direccion} onChange={e=>setForm(p=>({...p,direccion:e.target.value}))} placeholder="Dirección del cliente" /></div>
                 <div className="bo-input-group"><label>Coordenadas</label><input className="form-control" value={form.coordenadas} onChange={e=>setForm(p=>({...p,coordenadas:e.target.value}))} placeholder="Latitud, longitud" /></div>
                 <div className="bo-input-group"><label>Observación Back</label><input className="form-control" value={form.obsBack} onChange={e=>setForm(p=>({...p,obsBack:e.target.value}))} placeholder="Información para el asesor" maxLength={2000} /></div>
@@ -2069,12 +2065,11 @@ const cargarLeads = useCallback(async () => {
 
             {/* TABLA BASE — diseño compacto sin scroll horizontal */}
             <div className="base-tabla-wrap">
-              <table className="base-tabla" style={{tableLayout:'fixed',width:'100%',minWidth:1030}}>
+              <table className="base-tabla" style={{tableLayout:'fixed',width:'100%',minWidth:948}}>
                 <colgroup>
                   <col style={{width:34}} />
                   <col style={{width:62}} />
                   <col style={{width:112}} />
-                  <col style={{width:82}} />
                   <col style={{width:108}} />
                   <col style={{width:108}} />
                   <col style={{width:140}} />
@@ -2087,7 +2082,7 @@ const cargarLeads = useCallback(async () => {
                 <thead>
                   <tr>
                     <th>#</th><th>Campaña</th><th>N1 / N2</th>
-                    <th>Contacto</th><th>Tipif. Back 1</th><th>Tipif. Back 2</th>
+                    <th>Tipif. Back 1</th><th>Tipif. Back 2</th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='asesor'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('asesor')} title="Mostrar primero los leads sin asignar" aria-label="Ordenar por asesor asignado">
@@ -2121,7 +2116,7 @@ const cargarLeads = useCallback(async () => {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={12} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={11} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosPagina.map((r,i) => {
                          const tipifActual = tipifEfectiva(r)
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
@@ -2157,14 +2152,6 @@ const cargarLeads = useCallback(async () => {
                                   </div>
                                 )}
                               </div>
-                            </td>
-
-                            {/* Contacto */}
-                            <td>
-                              <select className="bo-sel-compact" value={r.tipo_contacto||'LLAMADA'} onChange={e=>guardarDatosBack(r.id,{tipo_contacto:e.target.value})}>
-                                <option value="LLAMADA">Llamada</option>
-                                <option value="WHATSAPP">WhatsApp</option>
-                              </select>
                             </td>
 
                             {/* Tipif. Back */}
@@ -2278,7 +2265,7 @@ const cargarLeads = useCallback(async () => {
 
                           /* Fila expandible: Detalles secundarios */
                           <tr key={`det-${r.id}`} className={`detalles-row${detAbierto?' open':''}`}>
-                            <td colSpan={12}>
+                            <td colSpan={11}>
                               <div className="detalles-inner">
                                 <div className="det-campo det-distrito">
                                   <label>Distrito</label>
