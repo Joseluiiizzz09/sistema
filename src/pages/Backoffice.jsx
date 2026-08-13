@@ -101,9 +101,10 @@ function tipifBadgeClass(t) {
 
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO TOCAR']
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','SH NO TOCAR'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','SH NO TOCAR'])
-const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
+// Para rotación sólo existen tres cierres definitivos. Cualquier otra
+// tipificación vigente puede volver a trabajarse después de 2 horas.
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','SH NO TOCAR'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','SH NO TOCAR'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
@@ -475,6 +476,7 @@ export default function Backoffice() {
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
+  const [rotFiltroRotaciones,setRotFiltroRotaciones]= useState('')
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
   const [rotRotados,    setRotRotados]    = useState(0)
@@ -1070,10 +1072,11 @@ const cargarLeads = useCallback(async () => {
   function rotApto(lead, asesor) {
     const ahora = new Date()
     if (!asesor) return { apto:false, prohibido:false }
-    const sinRepetir = !lead.histAsesores.includes(asesor)
+    const asesorNorm = String(asesor || '').trim().toUpperCase()
+    const sinRepetir = !lead.histAsesores.some(nombre => String(nombre || '').trim().toUpperCase() === asesorNorm)
     const mins = Math.floor((ahora - lead.ultimaAsig)/60000)
     const tiempo = mins >= 120
-    const estadoOk = TIPIF_ROTABLES_ROTACION.has((lead.tipifVend||'').trim().toUpperCase())
+    const estadoOk = !TIPIF_EXCLUIDAS_ROTACION.has((lead.tipifVend||'').trim().toUpperCase())
     return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk }
   }
 
@@ -1700,8 +1703,14 @@ const cargarLeads = useCallback(async () => {
   const rendMaxVentas = Math.max(...rendData.map(r=>r.ventas), 1)
 
   const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
-  const rotTipifsDisp  = [...new Set(allRotLeadsRaw.map(l=>l.estado||'NUEVO'))].sort()
-  const allRotLeads    = rotFiltroTipif ? allRotLeadsRaw.filter(l=>(l.estado||'NUEVO')===rotFiltroTipif) : allRotLeadsRaw
+  const rotTipifsDisp  = ['NUEVO', ...TIPIF_VEND_OPCIONES]
+    .filter((v, i, arr) => arr.indexOf(v) === i)
+  const rotRotacionesDisp = [...new Set(allRotLeadsRaw.map(l=>cantidadRotaciones(l._reg)))].sort((a,b)=>a-b)
+  const allRotLeads    = allRotLeadsRaw.filter(l => {
+    const coincideTipif = !rotFiltroTipif || (l.estado||'NUEVO').trim().toUpperCase() === rotFiltroTipif
+    const coincideRot = rotFiltroRotaciones === '' || cantidadRotaciones(l._reg) === Number(rotFiltroRotaciones)
+    return coincideTipif && coincideRot
+  })
   function rotSortVal(l, col) {
     switch (col) {
       case 'n1':     return l.tel || ''
@@ -1875,7 +1884,12 @@ const cargarLeads = useCallback(async () => {
                             <option value="">Todas</option>
                             {rotTipifsDisp.map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
-                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
+                          <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Rotaciones:</label>
+                          <select value={rotFiltroRotaciones} onChange={e=>{ setRotFiltroRotaciones(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
+                            <option value="">Todas</option>
+                            {rotRotacionesDisp.map(n=><option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotFiltroRotaciones(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
                       <div className="rot-table">
