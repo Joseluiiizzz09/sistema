@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
+import { VentaEditarModal } from '../components/VentaEditarModal'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import { API, ncHeaders } from '../services/api'
@@ -133,6 +134,7 @@ export default function Seguimiento() {
   // Modal historial
   const [modalHist, setModalHist]           = useState(null)
   const [mediaVenta, setMediaVenta]         = useState(null)
+  const [ventaEditar, setVentaEditar]       = useState(null)
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -547,6 +549,7 @@ export default function Seguimiento() {
                           <button className="btn-acc btn-acc-agenda" onClick={() => abrirModalAgenda(v)} title="Agendar">Agenda</button>
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
+                          <button className="btn-fotos" onClick={() => setVentaEditar(v)} title="Editar datos del cliente">Editar</button>
                         </div>
                       </td>
                       <td className="td-estado">
@@ -754,6 +757,14 @@ export default function Seguimiento() {
             </div>
           </div>
         </div>
+      )}
+
+      {ventaEditar && (
+        <VentaEditarModal
+          venta={ventaEditar}
+          onClose={()=>setVentaEditar(null)}
+          onSuccess={()=>{ setVentaEditar(null); cargarVentas() }}
+        />
       )}
 
     </div>

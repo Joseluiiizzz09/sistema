@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import { ReasignarVentaModal } from '../components/VentaAssignmentModal'
+import { VentaEditarModal } from '../components/VentaEditarModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
@@ -184,6 +185,7 @@ export default function Supervisor() {
   // â”€â”€ Toast â”€â”€
   const [toast, setToast] = useState('')
   const [ventaReasignar, setVentaReasignar] = useState(null)
+  const [ventaEditar, setVentaEditar] = useState(null)
   const [obsValidacionDetalle, setObsValidacionDetalle] = useState('')
 
   // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -719,6 +721,7 @@ export default function Supervisor() {
                           <td>
                             <div className="venta-actions">
                               <button className="btn-fotos" onClick={()=>mostrarToast('Fotos ? ver m?dulo de validaci?n')}>Fotos</button>
+                              <button type="button" className="venta-action-btn" onClick={()=>setVentaEditar(v)}>Editar</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
                             </div>
@@ -1133,6 +1136,14 @@ export default function Supervisor() {
           alcance="sala"
           onClose={()=>setVentaReasignar(null)}
           onSuccess={completarReasignacion}
+        />
+      )}
+
+      {ventaEditar && (
+        <VentaEditarModal
+          venta={ventaEditar}
+          onClose={()=>setVentaEditar(null)}
+          onSuccess={()=>{ setVentaEditar(null); cargarDatos(); mostrarToast('Datos actualizados') }}
         />
       )}
 

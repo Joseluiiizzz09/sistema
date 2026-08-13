@@ -16,8 +16,10 @@ const ESTADOS_GRAB = [
   { id:'corta_llamada',  label:'CORTA LLAMADA',  cls:'bg-corta'         },
   { id:'suplantacion',   label:'SUPLANTACIÓN',   cls:'bg-suplantacion'  },
   { id:'no_desea',       label:'NO DESEA',       cls:'bg-nodesea'       },
-  { id:'no_contesta',    label:'NO CONTESTA',    cls:'bg-nocontesta'    },
-  { id:'buzon_voz',      label:'BUZÓN DE VOZ',   cls:'bg-buzon'         },
+  { id:'no_contesta',       label:'NO CONTESTA',       cls:'bg-nocontesta'    },
+  { id:'buzon_voz',         label:'BUZÓN DE VOZ',      cls:'bg-buzon'         },
+  { id:'esperando_tercero', label:'ESPERANDO TERCERO', cls:'bg-esperando'     },
+  { id:'corregir_sec',      label:'CORREGIR SEC',      cls:'bg-corregir'      },
 ]
 // Estados que ya no aparecen en el selector de Back/Grabaciones pero que otros
 // módulos (Super de Grabaciones) siguen usando internamente — se conservan

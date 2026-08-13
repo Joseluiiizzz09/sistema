@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import MediaViewer from '../components/MediaViewer'
 import { HistorialVentaModal, ReasignarVentaModal } from '../components/VentaAssignmentModal'
+import { VentaEditarModal } from '../components/VentaEditarModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
@@ -289,6 +290,7 @@ export default function Jefatura() {
   const [mediaVenta, setMediaVenta] = useState(null)
   const [ventaReasignar, setVentaReasignar] = useState(null)
   const [ventaHistorial, setVentaHistorial] = useState(null)
+  const [ventaEditar, setVentaEditar] = useState(null)
 
   /* charts */
   const canvasEstados = useRef(null)
@@ -1135,6 +1137,7 @@ export default function Jefatura() {
                               <td style={{minWidth:'310px'}}>
                                 <div className="venta-actions">
                                   <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
+                                  <button type="button" className="venta-action-btn" onClick={()=>setVentaEditar(v)}>Editar</button>
                                   <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                                   <button type="button" className="venta-action-btn" onClick={()=>setVentaHistorial(v)}>Historial</button>
                                   <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v)}>Eliminar</button>
@@ -1706,6 +1709,14 @@ export default function Jefatura() {
         <HistorialVentaModal
           venta={ventaHistorial}
           onClose={()=>setVentaHistorial(null)}
+        />
+      )}
+
+      {ventaEditar && (
+        <VentaEditarModal
+          venta={ventaEditar}
+          onClose={()=>setVentaEditar(null)}
+          onSuccess={()=>{ setVentaEditar(null); Promise.all([cargarSeguimiento(), cargarVentasCache()]); mostrarToast('Datos actualizados') }}
         />
       )}
 

@@ -149,7 +149,7 @@ export default function SupGrabaciones() {
     cargarVentas()
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
-    const fc = setVisibleInterval(cargarVentas, 1000)
+    const fc = setVisibleInterval(cargarVentas, 2000)
     return () => { clearInterval(fi); clearInterval(fc) }
   }, [cargarVentas])
 
@@ -242,7 +242,13 @@ export default function SupGrabaciones() {
         body: JSON.stringify({
           obs_supgrab: nuevoHistorial,
           ...(estadoRevision === 'conforme'
-            ? { estado: 'EN_EJECUCION', estado_supgrab: 'conforme', estado_grab: 'grabado' }
+            ? {
+                // CAMBIO 5: solo enviar estado si la venta aún no ha avanzado más allá de VALIDADO
+                ...( ['VENTA','GRABADO','APROBADO','VALIDADO'].includes((modalRevisar.estado || '').toUpperCase())
+                  ? { estado: 'EN_EJECUCION' } : {} ),
+                estado_supgrab: 'conforme',
+                estado_grab: 'grabado',
+              }
             : estadoRevision === 'no_conforme'
               ? { estado: 'VALIDADO', estado_supgrab: 'no_conforme', estado_grab: 'pendiente' }
               : {
@@ -260,6 +266,7 @@ export default function SupGrabaciones() {
           x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
         ))
       }
+      setGuardando(false)  // CAMBIO 3: liberar botón antes de cerrar para que el siguiente modal arranque desbloqueado
       cerrarModalRevisar()
       setPagina(1)
     } catch (e) {
@@ -318,6 +325,7 @@ export default function SupGrabaciones() {
                 <option value="sin_revisar">En revisión</option>
                 <option value="aprobado">Aprobado</option>
                 <option value="observado">Observado</option>
+                <option value="programado">Programado</option>
               </select>
             </div>
             <div className="fg">
