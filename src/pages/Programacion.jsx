@@ -199,7 +199,7 @@ export default function Programacion() {
             : {}),
         }
     try {
-      const res  = await fetch(`${API}/ventas/${modalDet.id}`, {
+      const res  = await fetch(`${API}/ventas/${modalDet.id}?area=programacion`, {
         method: 'PATCH', headers: ncHeaders(),
         body: JSON.stringify(payload),
       })
