@@ -357,6 +357,19 @@ function extraerDni(obs) {
   return m2 ? m2[1] : null
 }
 
+function documentoPreventa(reg) {
+  const historial = Array.isArray(reg?.historial) ? reg.historial : []
+  for (let i = historial.length - 1; i >= 0; i--) {
+    const evento = historial[i] || {}
+    if (String(evento.tipo || '').toUpperCase() === 'TIPIF_VEND' &&
+        String(evento.tipif || '').trim().toUpperCase() === 'PREVENTA' &&
+        evento.documento) {
+      return String(evento.documento).replace(/^\s*(DNI|CE|RUC)\s*:?\s*/i, '').trim()
+    }
+  }
+  return extraerDni(reg?.obsAsesor)
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function Backoffice() {
   const navigate    = useNavigate()
@@ -667,11 +680,13 @@ const cargarLeads = useCallback(async () => {
           _backendId: l.id,
           campana:    l.campana || '—',
           distrito:   l.distrito || '—',
+          distritoSinCobertura: l.distrito_sin_cobertura || l.distrito || '',
           n1:         l.n1,
           n2:         l.n2 || '',
           tipo_contacto: l.tipo_contacto || 'LLAMADA',
           direccion:   l.direccion || '',
           coordenadas: l.coordenadas || '',
+          coordenadasSinCobertura: l.coordenadas_sin_cobertura || l.coordenadas || '',
           obs_back:    l.obs_back || '',
           tipifBack:  l.tipif_back || '',
           derivadoPor: l.derivado_por_nombre || '',
@@ -874,8 +889,8 @@ const cargarLeads = useCallback(async () => {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'', tipifBack:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
@@ -2163,12 +2178,23 @@ const cargarLeads = useCallback(async () => {
                                     <NotebookIcon/>
                                   </button>
                                 )}
-                                {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distrito||r.coordenadas)&&(
+                                {tipifEfectiva(r)==='PREVENTA'&&documentoPreventa(r)&&(
+                                  <button type="button" className="btn-dni-cuaderno"
+                                    style={{background:'#2563eb',borderColor:'#1d4ed8',color:'#fff'}}
+                                    title="Ver DNI de preventa"
+                                    onClick={e=>{
+                                      const rect=e.currentTarget.getBoundingClientRect()
+                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:documentoPreventa(r),label:'DNI DE PREVENTA',soloLectura:true,top:rect.bottom+6,left:rect.left})
+                                    }}>
+                                    <NotebookIcon/>
+                                  </button>
+                                )}
+                                {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distritoSinCobertura||r.coordenadasSinCobertura)&&(
                                   <button type="button" className="btn-dni-cuaderno btn-cobertura-cuaderno"
                                     title="Ver distrito y coordenadas"
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
-                                      setCoberturaModal(prev=>prev&&prev.id===r.id?null:{id:r.id,distrito:r.distrito||'',coordenadas:r.coordenadas||'',top:rect.bottom+6,left:rect.left})
+                                      setCoberturaModal(prev=>prev&&prev.id===r.id?null:{id:r.id,distrito:r.distritoSinCobertura||'',coordenadas:r.coordenadasSinCobertura||'',top:rect.bottom+6,left:rect.left})
                                     }}>
                                     <NotebookIcon/>
                                   </button>
@@ -2999,7 +3025,7 @@ const cargarLeads = useCallback(async () => {
           <div className="dni-popover" style={{top:dniModal.top,left:dniModal.left}}
             onKeyDown={e=>e.key==='Escape'&&setDniModal(null)}>
             <button type="button" className="dni-popover-close" onClick={()=>setDniModal(null)} aria-label="Cerrar">×</button>
-            <div className="dni-popover-label">DNI DE LA VENTA</div>
+            <div className="dni-popover-label">{dniModal.label||'DNI DE LA VENTA'}</div>
             {dniModal.editing ? (
               <>
                 <input className="dni-popover-value" style={{width:'100%',textAlign:'center',border:'1px solid #bbf7d0',borderRadius:6,padding:'4px 6px',outline:'none'}}
@@ -3012,8 +3038,8 @@ const cargarLeads = useCallback(async () => {
               <>
                 <div className="dni-popover-value" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                   <span>{dniModal.dni||'—'}</span>
-                  <button type="button" title="Editar DNI" onClick={()=>setDniModal(p=>({...p,editing:true,editVal:p.dni||''}))}
-                    style={{border:'none',background:'transparent',cursor:'pointer',fontSize:14,padding:0,lineHeight:1}}>✏️</button>
+                  {!dniModal.soloLectura&&<button type="button" title="Editar DNI" onClick={()=>setDniModal(p=>({...p,editing:true,editVal:p.dni||''}))}
+                    style={{border:'none',background:'transparent',cursor:'pointer',fontSize:14,padding:0,lineHeight:1}}>✏️</button>}
                 </div>
                 <button type="button" className="dni-copy-btn" onClick={()=>{ copiarNumero(dniModal.dni); setDniModal(null) }}>Copiar</button>
               </>
