@@ -332,9 +332,17 @@ export default function Dashboard() {
       const data = await res.json()
       if (!data.ok) return
       const hoy = fechaHoy()
+      const asesorIdVista = Number(vistaJefatura ? asesorObjetivo?.id : sesion?.id)
+      const asesorNombreVista = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
       const leadsAsignados = data.data.filter(l => {
+        // El titular actual nunca debe desaparecer por un historial antiguo o
+        // incompleto. El historial se usa solo para mostrar lo trabajado antes.
+        if (asesorIdVista && Number(l.asesor_id) === asesorIdVista) return true
         const historial = Array.isArray(l.historial) ? l.historial : []
-        const asignaciones = historial.filter(h => h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND')
+        const asignaciones = historial.filter(h =>
+          h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND' &&
+          (!asesorNombreVista || String(h.asesor).trim() === asesorNombreVista)
+        )
         const ultimaAsignacion = asignaciones[asignaciones.length - 1]
 
         // La fecha del lead identifica la base de origen. Para el asesor
@@ -353,7 +361,9 @@ export default function Dashboard() {
         return leadsAsignados.map(l => {
           const p = ea[l.id] || {}
           // ¿Soy el asesor actual del número o solo lo trabajé antes (registro)?
-          const soyActual = !miNombre || (l.asesor_nombre || '').trim() === miNombre
+          const soyActual = asesorIdVista
+            ? Number(l.asesor_id) === asesorIdVista
+            : (!miNombre || (l.asesor_nombre || '').trim() === miNombre)
           let miTipif = ''
           if (soyActual) {
             miTipif = l.tipif_vend || ''
@@ -412,7 +422,7 @@ export default function Dashboard() {
       setLlamadas(leadsAsignados.length)
     } catch(e) { console.error('Error cargando leads:', e) }
     finally { cargandoLeadsRef.current = false }
-  }, [filtroAsesor, vistaJefatura, asesorObjetivo?.nombre, sesion?.nombre])
+  }, [filtroAsesor, vistaJefatura, asesorObjetivo?.id, asesorObjetivo?.nombre, sesion?.id, sesion?.nombre])
 
   // ── API: Ventas ──────────────────────────────────────────────────────────
   const cargarVentasSubidas = useCallback(async () => {
