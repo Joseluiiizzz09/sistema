@@ -17,29 +17,29 @@ const ESTADOS_VENTA = [
   { id:'venta',         label:'Venta',           cls:'be-venta',      dot:'#2563eb' },
   { id:'validado',      label:'Validado',         cls:'be-validado',   dot:'#7c3aed' },
   { id:'no_validado',   label:'No Validado',      cls:'be-caida',      dot:'#dc2626' },
-  { id:'en_revision',   label:'En Revisi?n',      cls:'be-revision',   dot:'#2563eb' },
+  { id:'en_revision',   label:'En Revisión',      cls:'be-revision',   dot:'#2563eb' },
   { id:'grabado',       label:'Grabado',          cls:'be-grabado',    dot:'#d97706' },
   { id:'no_grabado',    label:'No Grabado',       cls:'be-pendiente',  dot:'#9ca3af' },
-  { id:'en_ejecucion',  label:'En Ejecuci?n',     cls:'be-ejecucion',  dot:'#0891b2' },
+  { id:'en_ejecucion',  label:'En Ejecución',     cls:'be-ejecucion',  dot:'#0891b2' },
   { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#2563eb', bg:'#eff6ff', border:'1px solid rgba(96,165,250,.35)' },
-  { id:'caida',         label:'Ca?da',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
+  { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
-  { id:'tecnico_casa',  label:'T?cnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
+  { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
   { id:'no_instalado',   label:'No Instalado',    cls:'be-caida',      dot:'#991b1b' },
   { id:'fraude',         label:'Fraude',          cls:'be-fraude',     dot:'#7f1d1d', bg:'#fecaca', border:'1px solid #ef4444' },
   { id:'no_desea',       label:'No Desea',        cls:'be-nodesea',    dot:'#5c2e0a', bg:'#e9d5b8', border:'1px solid #b45309' },
   { id:'no_contesta',    label:'No Contesta',     cls:'be-nocontesta', dot:'#78350f', bg:'#fde68a', border:'1px solid #f59e0b' },
-  { id:'buzon_voz',      label:'Buz?n de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
+  { id:'buzon_voz',      label:'Buzón de Voz',    cls:'be-buzon',      dot:'#0e4a5e', bg:'#a5f3fc', border:'1px solid #06b6d4' },
   { id:'corta_llamada',  label:'Corta Llamada',   cls:'be-corta',      dot:'#1e3a8a', bg:'#bfdbfe', border:'1px solid #3b82f6' },
   { id:'servicio_activo',label:'Servicio Activo', cls:'be-servicio',   dot:'#1f2937', bg:'#e5e7eb', border:'1px solid #9ca3af' },
   { id:'grabando',       label:'Grabando',        cls:'be-grabando',   dot:'#9a3412', bg:'#fed7aa', border:'1px solid rgba(234,88,12,.45)' },
-  { id:'suplantacion',   label:'Suplantaci?n',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
+  { id:'suplantacion',   label:'Suplantación',    cls:'be-suplantacion',dot:'#9d174d', bg:'#fce7f3', border:'1px solid rgba(219,39,119,.45)' },
   { id:'corregir',       label:'Corregir',        cls:'be-observado',  dot:'#78350f', bg:'#fef3c7', border:'1px solid #fcd34d' },
   { id:'mala_oferta',    label:'Mala Oferta',     cls:'be-nodesea',    dot:'#9a3412', bg:'#ffedd5', border:'1px solid #fdba74' },
   { id:'programado',        label:'Programado',        cls:'be-prog-programado',  dot:'#047857', bg:'#dcfce7', border:'1px solid rgba(52,211,153,.45)' },
   { id:'bloqueado',         label:'Bloqueado',         cls:'be-prog-bloqueado',   dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.5)' },
   { id:'sin_agenda',        label:'Sin Agenda',        cls:'be-prog-sinagenda',   dot:'#a16207', bg:'#fef9c3', border:'1px solid rgba(250,204,21,.55)' },
-  { id:'caracter_especial', label:'Car?cter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
+  { id:'caracter_especial', label:'Carácter Especial', cls:'be-prog-caracter',    dot:'#6d28d9', bg:'#f5f3ff', border:'1px solid rgba(167,139,250,.55)' },
   { id:'zona_restringida',  label:'Zona Restringida',  cls:'be-prog-zona',        dot:'#c2410c', bg:'#ffedd5', border:'1px solid rgba(251,146,60,.52)' },
 ]
 const TIPIF_COLORS = {
@@ -84,7 +84,7 @@ function fechaHoy() {
 function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
-function formatF(f) { if(!f)return'?'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
 function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
@@ -349,7 +349,7 @@ export default function Supervisor() {
       const data = await res.json()
       if (data.ok) { setVentas(prev=>prev.filter(v=>v.id!==id)) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo eliminar'))
-    } catch(e) { mostrarToast('Error de conexi?n') }
+    } catch(e) { mostrarToast('Error de conexión') }
   }
 
   async function completarReasignacion(data) {
@@ -368,7 +368,7 @@ export default function Supervisor() {
       const data = await res.json()
       if (data.ok) { await cargarDatos(); setPanelNV(false); setNvForm(NV_DEFAULT) }
       else mostrarToast('Error: ' + (data.mensaje||'no se pudo guardar'))
-    } catch(e) { mostrarToast('Error de conexi?n') }
+    } catch(e) { mostrarToast('Error de conexión') }
   }
 
   // â”€â”€ BL Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -461,7 +461,7 @@ export default function Supervisor() {
       if (ch4Ref.current && dashRendData.length) {
         chartInst.current.ch4 = new Chart(ch4Ref.current, {
           type:'bar',
-          data:{ labels:nombres, datasets:[{ label:'Conversi?n %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
+          data:{ labels:nombres, datasets:[{ label:'Conversión %', data:dashRendData.map(r=>r.conv), backgroundColor:colores.map(c=>c+'aa'), borderRadius:6 }] },
           options:{ indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}} }
         })
       }
@@ -486,7 +486,7 @@ export default function Supervisor() {
   const cntEst = (id) => dashVentas.filter(v=>v._estado===id).length
   const periodoLabel = () => {
     if(periodo==='dia')return'hoy'; if(periodo==='semana')return'semana'
-    if(periodo==='mes')return'mes actual'; return'hist?rico'
+    if(periodo==='mes')return'mes actual'; return'histórico'
   }
 
   // â”€â”€ JSX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -556,12 +556,12 @@ export default function Supervisor() {
             <div className="kpi-grid">
               {[
                 { label:'Total ventas',   val:dashVentas.length,       cls:'k-blue',   sub:periodoLabel() },
-                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validaci?n' },
+                { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validación' },
                 { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
                 { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
-                { label:'En Ejecuci?n',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
+                { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
                 { label:'Instaladas',     val:cntEst('instalado'),      cls:'k-green',  sub:'completadas' },
-                { label:'Ca?das',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
+                { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
                 { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
               ].map(k=>(
                 <div key={k.label} className={`kpi-card ${k.cls}`}>
@@ -586,9 +586,9 @@ export default function Supervisor() {
             {/* Charts */}
             <div className="charts-grid">
               <div className="chart-card"><div className="chart-title">Ventas por asesor</div><div className="chart-wrap"><canvas ref={ch1Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Distribuci?n por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Ventas diarias ? ?ltimos 7 d?as</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
-              <div className="chart-card"><div className="chart-title">Conversi?n por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Distribución por estado</div><div className="chart-wrap"><canvas ref={ch2Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Ventas diarias — últimos 7 días</div><div className="chart-wrap"><canvas ref={ch3Ref} /></div></div>
+              <div className="chart-card"><div className="chart-title">Conversión por asesor (%)</div><div className="chart-wrap"><canvas ref={ch4Ref} /></div></div>
             </div>
 
             {/* Ranking */}
@@ -629,9 +629,9 @@ export default function Supervisor() {
               <div style={{background:'#fff',border:'1.5px dashed #e5e7eb',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#ff2d2d',textTransform:'uppercase',letterSpacing:.7,marginBottom:14}}>+ Registrar nueva venta</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:12}}>
-                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="N?mero principal" style={{fontFamily:'monospace'}} /></div>
+                  <div className="filtro-group"><label>N1 *</label><input className="filtro-input" value={nvForm.n1} onChange={e=>setNvForm(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
                   <div className="filtro-group"><label>N2</label><input className="filtro-input" value={nvForm.n2} onChange={e=>setNvForm(p=>({...p,n2:e.target.value}))} placeholder="Secundario" style={{fontFamily:'monospace'}} /></div>
-                  <div className="filtro-group"><label>Campa?a</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
+                  <div className="filtro-group"><label>Campaña</label><input className="filtro-input" value={nvForm.campana} onChange={e=>setNvForm(p=>({...p,campana:e.target.value}))} placeholder="Ej: NKT" /></div>
                   <div className="filtro-group"><label>Asesor *</label>
                     <select className="filtro-select" value={nvForm.asesor} onChange={e=>setNvForm(p=>({...p,asesor:e.target.value}))}>
                       <option value="">? Asesor ?</option>
@@ -646,7 +646,7 @@ export default function Supervisor() {
                   </div>
                   <div className="filtro-group"><label>Fecha</label><input type="date" className="filtro-input" value={nvForm.fecha} onChange={e=>setNvForm(p=>({...p,fecha:e.target.value}))} /></div>
                 </div>
-                <div className="filtro-group" style={{marginBottom:12}}><label>Observaci?n</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
+                <div className="filtro-group" style={{marginBottom:12}}><label>Observación</label><input className="filtro-input" value={nvForm.obs} onChange={e=>setNvForm(p=>({...p,obs:e.target.value}))} placeholder="Notas adicionales..." /></div>
                 <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
                   <button className="btn-limpiar" onClick={()=>setPanelNV(false)}>Cancelar</button>
                   <button className="btn-filtrar" onClick={agregarVentaManual}>Guardar venta</button>
@@ -724,24 +724,24 @@ export default function Supervisor() {
                           >{getObsValidacion(v.obs_validacion)}</td>
                           <td><ProgramacionInfoCell fecha={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.fecha_programada : ''} soloFecha /></td>
                           <td style={{fontWeight:700,color:'#185FA5',fontSize:11}}>{formatF(v._fecha)}</td>
-                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'?'}</td>
-                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'?'}</td>
-                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'?'}</td>
-                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'?'}</td>
-                          <td style={{fontSize:11}}>{v.departamento||'?'}</td>
-                          <td style={{fontSize:11}}>{v.distrito||'?'}</td>
-                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'?'}</td>
+                          <td style={{fontWeight:600,minWidth:140}}>{v.nombre||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{v.n1||'—'}</td>
+                          <td style={{fontFamily:'monospace',color:'#6b7280'}}>{v.n2||'—'}</td>
+                          <td style={{fontSize:11}}>{v.departamento||'—'}</td>
+                          <td style={{fontSize:11}}>{v.distrito||'—'}</td>
+                          <td style={{fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}}>{v.paquete||'—'}</td>
                           <td>
                             <div className="asesor-cell">
                               <div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:24,height:24,fontSize:9}}>{iniciales(v.asesor||'?')}</div>
-                              <span style={{fontSize:11,fontWeight:600}} title={v.asesor||''}>{primerNombre(v.asesor)||'?'}</span>
+                              <span style={{fontSize:11,fontWeight:600}} title={v.asesor||''}>{primerNombre(v.asesor)||'—'}</span>
                             </div>
                           </td>
-                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'?'}</td>
-                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'?'}</td>
+                          <td style={{fontSize:11,color:'#6b7280'}}>{v._hora||'—'}</td>
+                          <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
                           <td>
                             <div className="venta-actions">
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos ? ver m?dulo de validaci?n')}>Fotos</button>
+                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>Fotos</button>
                               <button type="button" className="venta-action-btn" onClick={()=>setVentaEditar(v)}>Editar</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
@@ -912,9 +912,9 @@ export default function Supervisor() {
                           <div className="ac-stat"><div className="ac-stat-num">{mis.length}</div><div className="ac-stat-label">Total</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#16a34a'}}>{inst}</div><div className="ac-stat-label">Inst.</div></div>
                           <div className="ac-stat"><div className="ac-stat-num" style={{color:'#dc2626'}}>{noVal}</div><div className="ac-stat-label">No Val.</div></div>
-                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">Ca?das</div></div>
+                          <div className="ac-stat"><div className="ac-stat-num" style={{color:'#b91c1c'}}>{caida}</div><div className="ac-stat-label">Caídas</div></div>
                         </div>
-                        <div className="ac-conv"><span className="ac-conv-label">Conversi?n (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
+                        <div className="ac-conv"><span className="ac-conv-label">Conversión (inst.)</span><span className="ac-conv-val">{conv}%</span></div>
                       </div>
                     )
                   })
@@ -928,7 +928,7 @@ export default function Supervisor() {
                 <thead><tr>
                   <th>#</th><th>Asesor</th>
                   {[0,1,2].map(o=><th key={o}>{getMesLabel(o)} (instaladas)</th>)}
-                  <th>Total hist?rico</th>
+                  <th>Total histórico</th>
                 </tr></thead>
                 <tbody>
                   {asesoresSala.length === 0
@@ -956,7 +956,7 @@ export default function Supervisor() {
               return (
                 <div className="tabla-wrap" style={{marginTop:16}}>
                   <div className="tabla-header">
-                    <span className="tabla-title">Ventas con problemas ? No validadas ? Ca?das</span>
+                    <span className="tabla-title">Ventas con problemas — No validadas · Caídas</span>
                     <span className="tabla-count">{problemas.length} registros</span>
                   </div>
                   <table className="tabla">
@@ -967,12 +967,12 @@ export default function Supervisor() {
                         : problemas.map((v,i)=>(
                             <tr key={v.id||i}>
                               <td style={{fontSize:11,color:'#185FA5',fontWeight:700}}>{formatF(v._fecha)}</td>
-                              <td style={{fontWeight:600}}>{v.nombre||'?'}</td>
-                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'?'}</td>
-                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'?'}</td>
-                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}} title={v.asesor||''}>{primerNombre(v.asesor)||'?'}</span></div></td>
+                              <td style={{fontWeight:600}}>{v.nombre||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
+                              <td style={{fontFamily:'monospace',fontWeight:700}}>{v.n1||'—'}</td>
+                              <td><div className="asesor-cell"><div className="av-circle" style={{background:colorFor(v.asesor||'X'),width:22,height:22,fontSize:9}}>{iniciales(v.asesor||'?')}</div><span style={{fontSize:11}} title={v.asesor||''}>{primerNombre(v.asesor)||'—'}</span></div></td>
                               <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
-                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'?'}</td>
+                              <td style={{fontSize:11,color:'#6b7280'}}>{v.obs_validacion||v.obs_backoffice||v.observacion||'—'}</td>
                             </tr>
                           ))
                       }

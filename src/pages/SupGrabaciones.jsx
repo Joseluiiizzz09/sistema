@@ -97,7 +97,7 @@ export default function SupGrabaciones() {
 
   function actualizarFecha() {
     const d = new Date()
-    const dias  = ['Domingo','Lunes','Martes','Mi?rcoles','Jueves','Viernes','S?bado']
+    const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const hora  = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
     setFechaLabel(`${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} - ${hora}`)
@@ -347,7 +347,7 @@ export default function SupGrabaciones() {
               <input type="date" value={fHasta} onChange={e => { setFHasta(e.target.value); setPagina(1) }} />
             </div>
             <div style={{ alignSelf: 'flex-end' }}>
-              <button className="btn-limpiar" onClick={limpiarFiltros}>âœ• Limpiar</button>
+              <button className="btn-limpiar" onClick={limpiarFiltros}>✕ Limpiar</button>
             </div>
           </div>
         </div>
@@ -374,9 +374,9 @@ export default function SupGrabaciones() {
                 onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}
                 style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', outline: 'none' }}
               >
-                <option value="18">18 / p?g</option>
-                <option value="30">30 / p?g</option>
-                <option value="50">50 / p?g</option>
+                <option value="18">18 / pág.</option>
+                <option value="30">30 / pág.</option>
+                <option value="50">50 / pág.</option>
               </select>
             </div>
           </div>
@@ -434,7 +434,7 @@ export default function SupGrabaciones() {
                       <td>
                         {v.audioUrl
                           ? <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '11px' }}>OK {v.audioNombre}</span>
-                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabaci?n</span>
+                          : <span style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>Sin grabación</span>
                         }
                       </td>
                       <td style={{ fontSize: '10px', color: v.obsProgramacion ? '#c2410c' : '#9ca3af', fontWeight: v.obsProgramacion ? 700 : 400, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.obsProgramacion || ''}>
