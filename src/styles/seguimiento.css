@@ -261,7 +261,7 @@ body{
 .tabla-header-left{display:flex;align-items:center;gap:8px;}
 .tabla-title{font-size:13px;font-weight:700;color:var(--ink-2);}
 .tabla-count{font-size:10px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:2px 9px;border-radius:99px;box-shadow:0 2px 6px rgba(229,62,62,.3);}
-.tabla-search,.filtro-buscar{padding:7px 12px;border:1px solid var(--line-2);border-radius:9px;font-size:12px;font-family:inherit;outline:none;width:210px;background:var(--surf-1);transition:all .18s;}
+.tabla-search,.filtro-buscar{padding:7px 12px;border:1px solid var(--line-2);border-radius:9px;font-size:12px;font-family:inherit;outline:none;width:280px;background:var(--surf-1);transition:all .18s;}
 .tabla-search:focus,.filtro-buscar:focus{border-color:var(--brand);background:var(--surf-0);box-shadow:0 0 0 3px rgba(229,62,62,.08);}
 .pag-size select,.select-por-pagina{padding:6px 10px;border:1px solid var(--line-2);border-radius:8px;font-size:11px;font-family:inherit;outline:none;background:var(--surf-0);cursor:pointer;}
 .tabla-scroll{overflow-x:auto;max-height:calc(100vh - 300px);overflow-y:auto;}
@@ -646,8 +646,8 @@ body{
 .kpi-item.k-tec{border-left-color:#ec4899!important;}
 
 .seguimiento-ventas-tabla {
-  width: 2650px !important;
-  min-width: 2650px !important;
+  width: 2690px !important;
+  min-width: 2690px !important;
   table-layout: fixed !important;
 }
 
@@ -668,9 +668,9 @@ body{
 
 .seguimiento-ventas-tabla th:nth-child(2),
 .seguimiento-ventas-tabla td:nth-child(2) {
-  width: 130px !important;
-  min-width: 130px !important;
-  max-width: 130px !important;
+  width: 170px !important;
+  min-width: 170px !important;
+  max-width: 170px !important;
 }
 
 .seguimiento-ventas-tabla .seg-acciones {

@@ -201,7 +201,12 @@ export default function Seguimiento() {
       if (fHasta && f > fHasta) return false
       if (busqueda) {
         const b = busqueda.toLowerCase()
-        if (![v.nombreApellidos, v.dni, v.telefonoContacto, v.vendedor, v.distrito, v._comentario].some(x => (x || '').toLowerCase().includes(b))) return false
+        const fechaProgramada = String(v.fecha_programada || '').slice(0, 10)
+        if (![
+          v.nombreApellidos, v.dni, v.telefonoContacto, v.vendedor,
+          v.distrito, v._comentario, v.sot, fechaProgramada,
+          formatF(fechaProgramada),
+        ].some(x => String(x || '').toLowerCase().includes(b))) return false
       }
       return true
     })
@@ -476,7 +481,7 @@ export default function Seguimiento() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="text" className="tabla-search" value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
-                placeholder="Buscar nombre, DNI, vendedor..." />
+                placeholder="Buscar nombre, DNI, vendedor, SOT o fecha..." />
               <div className="pag-size">
                 <select value={porPagina} onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}>
                   <option value="18">18 / pág.</option>
@@ -492,7 +497,7 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
-                <col style={{ width: 130 }} />
+                <col style={{ width: 170 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 220 }} />
