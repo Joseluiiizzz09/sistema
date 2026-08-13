@@ -913,6 +913,7 @@ const cargarLeads = useCallback(async () => {
     const hora = horaAhora()
     const tipifAntes = reg.tipifBack || ''
     const esDer = nuevoValor === 'DERIVADO'
+    const registraAutor = esDer || nuevoValor === 'LLAMANDO'
     const entrada = {
       tipo: esDer ? 'DERIVADO' : 'TIPIF_BACK',
       asesor: reg.asesor || '',
@@ -921,7 +922,7 @@ const cargarLeads = useCallback(async () => {
       tipifBackAntes: tipifAntes, tipifBackNueva: nuevoValor,
     }
     const newHist = [...reg.historial, entrada]
-    const derivadoPor = esDer ? (sesion?.nombre || '') : ''
+    const derivadoPor = registraAutor ? (sesion?.nombre || '') : ''
     updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) }).catch(()=>{})
   }
@@ -2094,7 +2095,7 @@ const cargarLeads = useCallback(async () => {
                                 <option value="">— Sin tipif. —</option>
                                 {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
                               </select>
-                              {r.tipifBack==='DERIVADO'&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
+                              {['DERIVADO','LLAMANDO'].includes(r.tipifBack)&&r.derivadoPor&&<small style={{display:'block',fontSize:9,color:'#6b7280',fontWeight:700,marginTop:1}}>Por: {r.derivadoPor}</small>}
                             </td>
 
                             {/* Asesor asignado */}
@@ -2236,6 +2237,7 @@ const cargarLeads = useCallback(async () => {
                                   return (
                                     <div style={{marginTop:12, borderTop:'1px dashed #e5e7eb', paddingTop:10}}>
                                       <div className="hist-label" style={{marginBottom:6}}>Historial de tipificaciones</div>
+                                      <div className="hist-tipificaciones-horizontal">
                                       {tips.map((t,ti)=>(
                                         <div key={ti} style={{display:'flex', alignItems:'center', gap:8, fontSize:11, padding:'3px 0'}}>
                                           <span style={{color:'#9ca3af', fontFamily:'monospace', minWidth:92}}>{t.hora||'—'} {t.fecha||''}</span>
@@ -2243,6 +2245,7 @@ const cargarLeads = useCallback(async () => {
                                           <span style={{color:'#065f46', fontWeight:700}}>{t.tipif||'—'}</span>
                                         </div>
                                       ))}
+                                      </div>
                                     </div>
                                   )
                                 })()}

@@ -215,6 +215,7 @@ export default function Dashboard() {
 
   // Datos
   const [clientes,        setClientes]        = useState([])
+  const [filtroNumero,    setFiltroNumero]    = useState('')
   const [ventasSubidas,   setVentasSubidas]    = useState([])
   const [ventasMostradas, setVentasMostradas]  = useState([])
   const [frases,          setFrases]           = useState([])
@@ -370,7 +371,10 @@ export default function Dashboard() {
             const ent = [...hist].reverse().find(h => (h.asesorAnterior || '').trim() === miNombre)
             miTipif = ent?.tipifVendAntes || ''
           }
-          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (l.tipif_back || p.estado || 'NUEVO') : 'NUEVO')
+          // LLAMANDO es una marca interna de Back Data y nunca debe convertirse
+          // en el estado visible del asesor. DERIVADO conserva su aviso actual.
+          const tipifBackVisible = l.tipif_back === 'LLAMANDO' ? '' : (l.tipif_back || '')
+          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (tipifBackVisible || p.estado || 'NUEVO') : 'NUEVO')
           let obs = ''
           if (soyActual) {
             obs = l.obs_asesor && l.obs_asesor !== '' ? l.obs_asesor : (p.obs || '')
@@ -721,16 +725,22 @@ export default function Dashboard() {
     finally { setModalEspecial(p => p ? ({ ...p, guardando:false }) : p) }
   }
 
-  function guardarObs(i, valor) {
+  async function guardarObs(id, valor) {
     ultEditRef.current = Date.now()
-    setClientes(prev => {
-      const u = [...prev]; u[i] = { ...u[i], obs:valor }; return u
-    })
-    if (clientes[i]?.id) {
-      pendTipRef.current[clientes[i].id] = { ...(pendTipRef.current[clientes[i].id]||{}), obs: valor, ts: Date.now() }
-      fetch(`${API}/leads/${clientes[i].id}/obs`, {
+    const anterior = clientes.find(c => c.id === id)?.obs || ''
+    setClientes(prev => prev.map(c => c.id === id ? { ...c, obs:valor } : c))
+    if (!id) return
+    pendTipRef.current[id] = { ...(pendTipRef.current[id]||{}), obs: valor, ts: Date.now() }
+    try {
+      const res = await fetch(`${API}/leads/${id}/obs`, {
         method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:valor }),
-      }).catch(e => console.error('Error guardando obs:', e))
+      })
+      const data = await res.json().catch(()=>({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la observación')
+    } catch (e) {
+      delete pendTipRef.current[id]
+      setClientes(prev => prev.map(c => c.id === id ? { ...c, obs:anterior } : c))
+      alert(e.message || 'No se pudo guardar la observación')
     }
   }
 
@@ -1041,9 +1051,14 @@ export default function Dashboard() {
       <div className={`pantalla${tab !== 'llamadas' ? ' hidden' : ''}`}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px',flexWrap:'wrap',gap:'8px'}}>
           <h2 style={{marginBottom:0}}>Base de llamadas</h2>
-          <span style={{fontSize:'12px',color:'#9ca3af',fontWeight:600,background:'#fff',padding:'5px 12px',borderRadius:'20px',border:'1px solid #e5e7eb'}}>
-            {fechaHoyFormateada()}
-          </span>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <input value={filtroNumero} onChange={e=>setFiltroNumero(e.target.value.replace(/\s+/g,''))}
+              placeholder="Filtrar número..." inputMode="numeric"
+              style={{width:180,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:9,fontSize:12}} />
+            <span style={{fontSize:'12px',color:'#9ca3af',fontWeight:600,background:'#fff',padding:'5px 12px',borderRadius:'20px',border:'1px solid #e5e7eb'}}>
+              {fechaHoyFormateada()}
+            </span>
+          </div>
         </div>
         <div className="tabla-crm-wrap">
         <table className="tabla-crm tabla-leads-asesor">
@@ -1055,15 +1070,15 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {clientes.length === 0 ? (
+            {clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2}`.includes(filtroNumero)).length === 0 ? (
               <tr>
                 <td colSpan={10} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
                   Esperando asignación de Back Data...<br />
                   <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>Back Data asignará registros a tu usuario.</span>
                 </td>
               </tr>
-            ) : clientes.map((c, i) => (
-              <tr key={c.id || i}>
+            ) : clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2}`.includes(filtroNumero)).map((c) => (
+              <tr key={c.id}>
                 <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
                 <td><span className={`dash-contacto ${c.tipoContacto==='WHATSAPP'?'wsp':'llamada'}`}>{c.tipoContacto==='WHATSAPP'?'WhatsApp':'Llamada'}</span></td>
@@ -1086,9 +1101,11 @@ export default function Dashboard() {
                   <input
                     className="input-obs"
                     placeholder="Escribe una observación..."
-                    defaultValue={c.obs || ''}
                     maxLength={200}
-                    onBlur={e => guardarObs(i, e.target.value)}
+                    value={c.obs || ''}
+                    disabled={c._soloLectura}
+                    onChange={e => setClientes(prev => prev.map(x => x.id === c.id ? { ...x, obs:e.target.value } : x))}
+                    onBlur={e => guardarObs(c.id, e.target.value)}
                   />
                 </td>
               </tr>

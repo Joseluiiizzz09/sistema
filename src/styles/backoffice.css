@@ -1118,6 +1118,8 @@ body{
 .hist-arrow{color:#94a3b8;font-weight:400;}
 .hist-meta{font-size:10px;color:#94a3b8;}
 .hist-sub{font-size:10px;color:#64748b;font-style:italic;}
+.hist-tipificaciones-horizontal{display:flex;align-items:flex-start;gap:18px;overflow-x:auto;padding:2px 0 6px;}
+.hist-tipificaciones-horizontal>div{flex:0 0 auto;white-space:nowrap;}
 
 /* ━━ SORT HEADERS ━━ */
 .th-sort-btn{display:inline-flex;align-items:center;gap:0;background:none;border:none;color:inherit;font:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;padding:0;cursor:pointer;white-space:nowrap;border-radius:3px;transition:opacity .15s;}
