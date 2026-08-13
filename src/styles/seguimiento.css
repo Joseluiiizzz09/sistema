@@ -221,6 +221,7 @@ body{
 .filtros-titulo{font-size:9px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
 .filtros-grid,.filtros-row,.rend-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
 .fg,.filtro-group,.bo-input-group{display:flex;flex-direction:column;gap:3px;min-width:100px;flex:1;}
+.fg.fg-tipo-fecha{flex:0 0 125px;min-width:125px;}
 .fg label,.filtro-group label,.bo-input-group label{font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px;}
 .fg input,.fg select,.filtro-input,.filtro-select,.bo-input-group input,.bo-input-group select,.bo-input-group textarea{
   padding:7px 11px;border:1px solid var(--line-2);border-radius:9px;

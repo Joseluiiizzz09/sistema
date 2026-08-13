@@ -101,6 +101,7 @@ export default function Seguimiento() {
   const [fVendedor, setFVendedor] = useState('')
   const [fDistrito, setFDistrito] = useState('')
   const [fTramo, setFTramo]       = useState('')
+  const [fTipoFecha, setFTipoFecha] = useState('fecha')
   const [fDesde, setFDesde]       = useState('')
   const [fHasta, setFHasta]       = useState('')
   const [busqueda, setBusqueda]   = useState('')
@@ -196,16 +197,16 @@ export default function Seguimiento() {
       if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
       if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
       if (fTramo   && v._tramo !== fTramo) return false
-      const f = v.fechaIngreso || ''
+      const f = fTipoFecha === 'programados'
+        ? String(v.fecha_programada || '').slice(0, 10)
+        : (v.fechaIngreso || '')
       if (fDesde && f < fDesde) return false
       if (fHasta && f > fHasta) return false
       if (busqueda) {
         const b = busqueda.toLowerCase()
-        const fechaProgramada = String(v.fecha_programada || '').slice(0, 10)
         if (![
           v.nombreApellidos, v.dni, v.telefonoContacto, v.vendedor,
-          v.distrito, v._comentario, v.sot, fechaProgramada,
-          formatF(fechaProgramada),
+          v.distrito, v._comentario, v.sot,
         ].some(x => String(x || '').toLowerCase().includes(b))) return false
       }
       return true
@@ -216,7 +217,7 @@ export default function Seguimiento() {
       return oa !== ob ? oa - ob : (b.fechaIngreso || '').localeCompare(a.fechaIngreso || '')
     })
     return base
-  }, [ventas, filtroLeyenda, fEstado, fVendedor, fDistrito, fTramo, fDesde, fHasta, busqueda])
+  }, [ventas, filtroLeyenda, fEstado, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
 
   const kpis = useMemo(() => ({
     total:     ventas.length,
@@ -234,7 +235,7 @@ export default function Seguimiento() {
 
   function limpiarFiltros() {
     setFiltroLeyenda(''); setFEstado(''); setFVendedor(''); setFDistrito('')
-    setFTramo(''); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
+    setFTramo(''); setFTipoFecha('fecha'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
     try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
   }
 
@@ -456,6 +457,13 @@ export default function Seguimiento() {
                 {TRAMOS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+            <div className="fg fg-tipo-fecha">
+              <label>Filtrar por</label>
+              <select value={fTipoFecha} onChange={e => { setFTipoFecha(e.target.value); setPagina(1) }}>
+                <option value="fecha">Fecha</option>
+                <option value="programados">Programados</option>
+              </select>
+            </div>
             <div className="fg">
               <label>Desde</label>
               <input type="date" value={fDesde} onChange={e => { setFDesde(e.target.value); setPagina(1) }} />
@@ -481,7 +489,7 @@ export default function Seguimiento() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="text" className="tabla-search" value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
-                placeholder="Buscar nombre, DNI, vendedor, SOT o fecha..." />
+                placeholder="Buscar nombre, DNI, vendedor o SOT..." />
               <div className="pag-size">
                 <select value={porPagina} onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}>
                   <option value="18">18 / pág.</option>
