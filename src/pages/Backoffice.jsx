@@ -100,9 +100,9 @@ function tipifBadgeClass(t) {
 }
 
 const TIPIF_BACK_OPTIONS = ['BUZON DE VOZ','NO CONTESTA','CORTA LLAMADA','DERIVADO','LLAMANDO']
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO ROTAR','MALA OFERTA']
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','MALA OFERTA'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','MALA OFERTA'])
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO ROTAR','SH NO TOCAR']
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','SH NO TOCAR'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','SIN COBERTURA','NO TOCAR','FRAUDE','INSTALADO','SH NO ROTAR','SH NO TOCAR'])
 const TIPIF_ROTABLES_ROTACION   = new Set(['','NUEVO','NO CONTESTA','BUZON DE VOZ','SIN COBERTURA'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
@@ -118,6 +118,9 @@ function resaltadoPorVenta(venta) {
   if (estado === 'CAIDA')       return { clase:'num-estado-rojo', label:'CAÍDA en Seguimiento' }
   if (estado === 'INSTALADO')   return { clase:'num-estado-celeste', label:'INSTALADO en Seguimiento' }
   if (estado === 'EN_EJECUCION') return { clase:'num-estado-verde', label:'EN EJECUCIÓN en Seguimiento' }
+  if (['VENTA','VALIDADO','GRABADO','PROGRAMADO'].includes(estado)) {
+    return { clase:'num-estado-azul', label:`${estado} en el flujo de ventas` }
+  }
   if (ESTADOS_AMARILLOS_VENTA.has(estado) || ESTADOS_AMARILLOS_GRAB.has(estadoGrab) || ESTADOS_AMARILLOS_SUPGRAB.has(estadoSupGrab)) {
     return { clase:'num-estado-amarillo', label:'Rechazado en Seguimiento, Validación o Grabaciones' }
   }
@@ -165,13 +168,13 @@ const TIPIF_VEND_STYLES = {
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
   'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
-  'INSTALADO':['#dcfce7','#14532d'],'SH NO ROTAR':['#fef2f2','#9f1239'],'MALA OFERTA':['#fff7ed','#9a3412'],
+  'INSTALADO':['#dcfce7','#14532d'],'SH NO ROTAR':['#fef2f2','#9f1239'],'SH NO TOCAR':['#fef2f2','#9f1239'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
   'CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2',
   'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
-  'SH NO ROTAR':'#9f1239','MALA OFERTA':'#c2410c',
+  'SH NO ROTAR':'#9f1239','SH NO TOCAR':'#9f1239',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
@@ -182,7 +185,7 @@ const TIPIF_VEND_FUERTE = {
   'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
   'EN EJECUCION':'#92400e', 'DESEA MOVIL':'#b45309', 'DERIVADO':'#7c3aed',
   'NO CALIFICA':'#f43f5e', 'SIN COBERTURA':'#dc2626', 'EDIFICIO NO LIBERADO':'#b91c1c',
-  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'SH NO ROTAR':'#9f1239', 'MALA OFERTA':'#c2410c',
+  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'SH NO ROTAR':'#9f1239', 'SH NO TOCAR':'#9f1239',
 }
 function estiloTipifVend(v) {
   const c = TIPIF_VEND_FUERTE[v]
@@ -1055,7 +1058,11 @@ const cargarLeads = useCallback(async () => {
       let selToUse = { ...rotSel }
       if (Object.keys(selToUse).length === 0) {
         const aptos = buildRotLeads().filter(l => rotApto(l, asesorActual).apto).slice(0, rotCant)
-        if (!aptos.length) { mostrarToast('No hay leads aptos para ' + asesorActual); return }
+        if (!aptos.length) {
+          mostrarToast('No hay leads aptos para ' + asesorActual)
+          rotandoRef.current = false
+          return
+        }
         const newSel = {}
         aptos.forEach(l => { newSel[l.id] = true })
         setRotSel(newSel)
@@ -1513,6 +1520,25 @@ const cargarLeads = useCallback(async () => {
     })
     return reingresados
   })()
+
+  // Todo número resaltado por duplicidad o por encontrarse en el flujo de ventas
+  // queda protegido automáticamente. Se conserva su historial y solo cambia la
+  // tipificación vigente a SH NO TOCAR.
+  useEffect(() => {
+    const proteger = registrosActivos.filter(reg => {
+      const n1 = normalizarNumero(reg.n1)
+      const tieneColor = idsDuplicados.has(reg.id) ||
+        (idsReingresados.has(reg.id) && !!resaltadoPorVenta(ventasPorNumero[n1]))
+      const tipif = String(reg._tipifVend || '').trim().toUpperCase()
+      return tieneColor && tipif !== 'SH NO TOCAR' && !!reg._backendId
+    })
+    proteger.forEach(reg => {
+      updateReg(reg.id, { _tipifVend:'SH NO TOCAR', _tipifHora:horaAhora() })
+      fetch(`${API}/leads/${reg._backendId}/tipif`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:'SH NO TOCAR' })
+      }).catch(() => {})
+    })
+  }, [fechaActiva, baseData, ventasPorNumero])
   const registrosFiltrados = (() => {
     const filtered = registrosActivos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false

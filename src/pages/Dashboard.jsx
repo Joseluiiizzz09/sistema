@@ -392,7 +392,8 @@ export default function Dashboard() {
             direccion: l.direccion || '',
             coordenadas: l.coordenadas || '',
             obsBack: l.obs_back || '',
-            zona:     l.distrito || l.campana || '--',
+            // La zona del asesor es ubicación geográfica; nunca debe mostrar campañas.
+            zona:     l.distrito || l.provincia || l.departamento || '--',
             horaAsig: l.hora_asig || '',
             estado,
             derivadoPor: l.derivado_por_nombre || '',
