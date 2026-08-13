@@ -765,9 +765,24 @@ const cargarLeads = useCallback(async () => {
     cargarAsesores()
     cargarLeads()
     cargarEstadosVentas()
-    const t = setVisibleInterval(cargarLeads, 2000)
+    // Las tipificaciones del asesor deben reflejarse pronto en Back Data.
+    // Un segundo mantiene el sondeo liviano y reduce a la mitad la espera anterior.
+    const t = setVisibleInterval(cargarLeads, 1000)
     const tv = setVisibleInterval(cargarEstadosVentas, 2000)
-    return () => { clearInterval(t); clearInterval(tv) }
+
+    // Al regresar a la ventana no esperamos al siguiente ciclo del polling.
+    const refrescarAlVolver = () => {
+      if (document.visibilityState === 'visible') cargarLeads()
+    }
+    window.addEventListener('focus', cargarLeads)
+    document.addEventListener('visibilitychange', refrescarAlVolver)
+
+    return () => {
+      clearInterval(t)
+      clearInterval(tv)
+      window.removeEventListener('focus', cargarLeads)
+      document.removeEventListener('visibilitychange', refrescarAlVolver)
+    }
   }, [cargarAsesores, cargarLeads, cargarEstadosVentas])
 
   // BL modal reload on fecha change
