@@ -228,6 +228,8 @@ export default function Validacion() {
         if (v.estado === 'validado') return false
       } else if (fEstado && v.estado !== fEstado) {
         return false
+      } else if (!fEstado && v.estado === 'validado') {
+        return false
       }
       if (fAsesor && !(v.vendedor||'').toLowerCase().includes(fAsesor.toLowerCase())) return false
       if (fDesde  && v.fechaIngreso < fDesde) return false
@@ -385,7 +387,6 @@ export default function Validacion() {
                 <option value="validado">VALIDADO</option>
                 <option value="novalidado">NO VALIDADO</option>
                 <option value="venta">VENTA</option>
-                <option value="programado">PROGRAMADO</option>
               </select>
             </div>
             <div className="fg">

@@ -250,7 +250,12 @@ export default function SupGrabaciones() {
                 estado_grab: 'grabado',
               }
             : estadoRevision === 'no_conforme'
-              ? { estado: 'VALIDADO', estado_supgrab: 'no_conforme', estado_grab: 'pendiente' }
+              ? {
+                  ...(['VALIDADO','APROBADO'].includes((modalRevisar.estado || '').toUpperCase())
+                    ? { estado: 'VALIDADO' } : {}),
+                  estado_supgrab: 'no_conforme',
+                  estado_grab: 'pendiente',
+                }
               : {
                   estado_supgrab: estadoRevision,
                   estado_grab: estadoRevision === 'observado' ? 'grabando' : 'grabado',

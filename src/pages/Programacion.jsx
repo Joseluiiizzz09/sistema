@@ -181,7 +181,8 @@ export default function Programacion() {
     const esRechazo = estadoModal === 'RECHAZADO'
     const payload = esRechazo
       ? {
-          estado: 'VALIDADO',
+          ...(['VALIDADO','APROBADO','PROGRAMADO','PENDIENTE','BLOQUEADO','SIN_AGENDA','CARACTER_ESPECIAL'].includes((modalDet.estado || '').toUpperCase())
+            ? { estado: 'VALIDADO' } : {}),
           estado_grab: 'grabado',
           estado_supgrab: 'sin_revisar',
           obs_programacion: obsProg,
