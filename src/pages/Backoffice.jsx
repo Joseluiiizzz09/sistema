@@ -865,10 +865,11 @@ const cargarLeads = useCallback(async () => {
     const asesor   = form.asesor
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
+    const asignadoPor = asesor ? (sesion?.nombre || '') : ''
     const reg = {
       id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
-      sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
-      historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
+      sinAsignar:!asesor, rotaciones:asesor?1:0, _tipifVend:'', _tipifHora:'',
+      historial: asesor ? [{asesor, hora, fecha, asignadoPor, motivo:'Asignacion inicial'}] : [],
     }
     // Invalida cualquier poll iniciado antes de insertar el registro optimista.
     // Así una respuesta que todavía no contiene el nuevo lead no puede ocultarlo.
@@ -1095,9 +1096,10 @@ const cargarLeads = useCallback(async () => {
     const asesorNorm = String(asesor || '').trim().toUpperCase()
     const sinRepetir = !lead.histAsesores.some(nombre => String(nombre || '').trim().toUpperCase() === asesorNorm)
     const mins = Math.floor((ahora - lead.ultimaAsig)/60000)
-    const tiempo = mins >= 120
+    const esBaseHoy = lead.fecha === fechaHoy()
+    const tiempo = esBaseHoy || mins >= 120
     const estadoOk = !TIPIF_EXCLUIDAS_ROTACION.has((lead.tipifVend||'').trim().toUpperCase())
-    return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk }
+    return { apto:sinRepetir&&tiempo&&estadoOk, prohibido:false, sinRepetir, tiempo, estadoOk, esBaseHoy }
   }
 
   function rotMins(f) { return Math.floor((new Date() - f)/60000) }
@@ -1954,7 +1956,7 @@ const cargarLeads = useCallback(async () => {
                             {!rotAsesor
                               ? <tr><td colSpan={10} className="bo-empty">Selecciona un asesor para ver únicamente los leads que se le asignarán.</td></tr>
                               : rotVistaAsignacion.length === 0
-                                ? <tr><td colSpan={10} className="bo-empty">No hay leads que cumplan las 2 horas y las reglas de rotación.</td></tr>
+                                ? <tr><td colSpan={10} className="bo-empty">No hay leads que cumplan las reglas de rotación.</td></tr>
                                 : rotVistaAsignacion.map(l => {
                                   const { apto, prohibido, sinRepetir, tiempo } = rotApto(l, rotAsesor)
                                   const mins = rotMins(l.ultimaAsig)
