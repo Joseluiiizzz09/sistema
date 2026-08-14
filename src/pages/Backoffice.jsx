@@ -428,8 +428,9 @@ export default function Backoffice() {
   }
 
   // ── Historial / Detalles expandibles ──
-  const [histOpen, setHistOpen] = useState({})
-  const [detOpen,  setDetOpen]  = useState({})
+  const [histOpen,     setHistOpen]     = useState({})
+  const [detOpen,      setDetOpen]      = useState({})
+  const [campanaEdit,  setCampanaEdit]  = useState(null) // { id, valor } o null
   const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
   const [coberturaModal, setCoberturaModal] = useState(null)
   const [numeroModal, setNumeroModal] = useState(null) // { id, bid, n1, n2, guardando }
@@ -605,6 +606,12 @@ export default function Backoffice() {
       mostrarToast(e.message || 'No se pudieron guardar los datos')
       cargarLeads()
     }
+  }
+
+  async function guardarCampana(id, valor) {
+    const v = String(valor || '').trim() || '—'
+    await guardarDatosBack(id, { campana: v })
+    setCampanaEdit(null)
   }
 
   function findReg(id) {
@@ -1613,8 +1620,9 @@ const cargarLeads = useCallback(async () => {
   }
 
   async function guardarTipifBack2(id, nuevoValor) {
-    const reg = allRegs.find(r=>r.id===id); if (!reg) return
-    const hora = ahoraHora(), fecha = hoyISO()
+    const found = findReg(id); if (!found) return
+    const reg = found.reg
+    const hora = horaAhora(), fecha = fechaHoy()
     const newHist = [...(reg.historial||[]), { tipifBack2:nuevoValor, hora, fecha, motivo:'Segunda tipificacion Back' }]
     const derivadoPor2 = ['DERIVADO','LLAMANDO'].includes(nuevoValor) ? (sesion?.nombre||'') : ''
     updateReg(id, { tipifBack2:nuevoValor, historial:newHist, derivadoPor2 })
@@ -2168,7 +2176,28 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Campaña */}
                             <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
-                              <strong style={{fontSize:11}}>{r.campana}</strong>
+                              {campanaEdit?.id === r.id
+                                ? <div style={{display:'flex',flexDirection:'column',gap:4,minWidth:130}}>
+                                    <CampanaSelect plain value={campanaEdit.valor} onChange={v=>setCampanaEdit(p=>({...p,valor:v}))} />
+                                    <div style={{display:'flex',gap:4}}>
+                                      <button type="button" onClick={()=>guardarCampana(r.id,campanaEdit.valor)}
+                                        style={{flex:1,fontSize:10,padding:'2px 6px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:700}}>
+                                        ✓
+                                      </button>
+                                      <button type="button" onClick={()=>setCampanaEdit(null)}
+                                        style={{flex:1,fontSize:10,padding:'2px 6px',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:4,cursor:'pointer'}}>
+                                        ✗
+                                      </button>
+                                    </div>
+                                  </div>
+                                : <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                    <strong style={{fontSize:11}}>{r.campana}</strong>
+                                    <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana})}
+                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
+                                      <PencilIcon />
+                                    </button>
+                                  </div>
+                              }
                             </td>
 
                             {/* N1 / N2 combinados */}
@@ -2327,45 +2356,68 @@ const cargarLeads = useCallback(async () => {
                               <div className="historial-inner">
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
-                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
-                                  if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
-                                  return cola.map((h,ci)=>{
-                                    const sig = cola[ci+1]
-                                    const tipif = ci===cola.length-1
-                                      ? (r._tipifVend || '')
-                                      : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
-                                    const nombreAsesor = String(h.asesor || '').trim().toUpperCase()
-                                    const tipsAsesor = (r.historial||[])
-                                      .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
-                                      .sort((a,b)=>(a.ts||0)-(b.ts||0))
-                                    const asignadoPor = h.tipo==='ROTACION'
-                                      ? (h.rotadoPor || '—')
-                                      : (h.reasignadoPor || h.motivo || '—')
-                                    return (
-                                      <div key={ci} className="hist-item">
-                                        <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length]}} />
-                                        <div className="hist-content">
-                                          <div className="hist-title" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-                                            <strong>{h.asesor||'—'}</strong>
-                                            <button type="button" title="Eliminar esta asignación" onClick={()=>eliminarAsignacion(r.id, h)}
-                                              style={{fontSize:10,padding:'2px 8px',border:'1px solid #ef4444',color:'#ef4444',background:'#fff',borderRadius:5,cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
-                                              Quitar
-                                            </button>
-                                          </div>
-                                          <div className="hist-meta">Asignado: {h.hora||'—'}{h.hora&&h.fecha?' · ':''}{h.fecha||''}</div>
-                                          <div className="hist-tipificaciones-horizontal" style={{display:'flex',flexWrap:'wrap',gap:'6px 18px',margin:'4px 0'}}>
-                                            {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
-                                              <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
-                                                <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
-                                                <strong style={{color:'#065f46'}}>{t.tipif||'—'}</strong>
-                                              </span>
-                                            )) : <span className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></span>}
-                                          </div>
-                                          <div className="hist-sub">Asignado por: {asignadoPor}</div>
-                                        </div>
-                                      </div>
-                                    )
-                                  })
+                                  const hist = r.historial || []
+                                  // Entrada de carga: primer entry con asignadoPor, o motivo de carga/importación
+                                  const entradaCarga = hist.find(h =>
+                                    h.asignadoPor ||
+                                    h.motivo === 'Carga masiva' ||
+                                    h.motivo === 'Asignacion importada' ||
+                                    h.motivo === 'Asignacion inicial'
+                                  )
+                                  const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
+                                  return (<>
+                                    {/* Bloque de autor de carga */}
+                                    <div style={{fontSize:11,color:'#6b7280',marginBottom:8,padding:'4px 8px',background:'#f1f5f9',borderRadius:6,borderLeft:'3px solid #94a3b8'}}>
+                                      {entradaCarga?.asignadoPor
+                                        ? <span>Cargado por: <strong style={{color:'#1e40af'}}>{entradaCarga.asignadoPor}</strong>{entradaCarga.hora ? ` · ${entradaCarga.hora}` : ''}{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
+                                        : entradaCarga?.motivo === 'Carga masiva'
+                                          ? <span>Vía: <strong>Carga masiva</strong>{entradaCarga.hora ? ` · ${entradaCarga.hora}` : ''}{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
+                                          : entradaCarga?.motivo === 'Asignacion importada'
+                                            ? <span>Vía: <strong>Importación (Excel)</strong>{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
+                                            : <span style={{color:'#9ca3af'}}>Sin registro de autor de carga</span>
+                                      }
+                                    </div>
+                                    {cola.length === 0
+                                      ? <div style={{fontSize:11,color:'#ccc'}}>Sin asignaciones.</div>
+                                      : cola.map((h,ci)=>{
+                                          const sig = cola[ci+1]
+                                          const tipif = ci===cola.length-1
+                                            ? (r._tipifVend || '')
+                                            : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
+                                          const nombreAsesor = String(h.asesor || '').trim().toUpperCase()
+                                          const tipsAsesor = hist
+                                            .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
+                                            .sort((a,b)=>(a.ts||0)-(b.ts||0))
+                                          const asignadoPor = h.tipo==='ROTACION'
+                                            ? (h.rotadoPor || '—')
+                                            : (h.reasignadoPor || h.motivo || '—')
+                                          return (
+                                            <div key={ci} className="hist-item">
+                                              <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length]}} />
+                                              <div className="hist-content">
+                                                <div className="hist-title" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                                                  <strong>{h.asesor||'—'}</strong>
+                                                  <button type="button" title="Eliminar esta asignación" onClick={()=>eliminarAsignacion(r.id, h)}
+                                                    style={{fontSize:10,padding:'2px 8px',border:'1px solid #ef4444',color:'#ef4444',background:'#fff',borderRadius:5,cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
+                                                    Quitar
+                                                  </button>
+                                                </div>
+                                                <div className="hist-meta">Asignado: {h.hora||'—'}{h.hora&&h.fecha?' · ':''}{h.fecha||''}</div>
+                                                <div className="hist-tipificaciones-horizontal" style={{display:'flex',flexWrap:'wrap',gap:'6px 18px',margin:'4px 0'}}>
+                                                  {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
+                                                    <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
+                                                      <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
+                                                      <strong style={{color:'#065f46'}}>{t.tipif||'—'}</strong>
+                                                    </span>
+                                                  )) : <span className="hist-sub">Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></span>}
+                                                </div>
+                                                <div className="hist-sub">Asignado por: {asignadoPor}</div>
+                                              </div>
+                                            </div>
+                                          )
+                                        })
+                                    }
+                                  </>)
                                 })()}
                                 <div style={{marginTop:10, textAlign:'right'}}>
                                   <button type="button"
