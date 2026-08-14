@@ -88,6 +88,7 @@ function mapVenta(v) {
     vendedor:           v.asesor_nombre || '',
     obsVal:             v.obs_validacion|| '',
     tipifVal:           derivarTipifVal(v.obs_validacion),
+    estadoVal:          (v.estado_validacion || 'venta').toLowerCase(),
     obsSeg:             v.obs_seguimiento || '',
     _audioPath:         v.audio_path || '',
     _audioNombre:       v.audio_path ? v.audio_path.split('/').pop() : '',
@@ -225,10 +226,8 @@ export default function Validacion() {
   const ventasFiltradas = useMemo(() => {
     let vv = ventas.filter(v => {
       if (fEstado === 'novalidado') {
-        if (v.estado === 'validado') return false
-      } else if (fEstado && v.estado !== fEstado) {
-        return false
-      } else if (!fEstado && v.estado === 'validado') {
+        if (v.estadoVal === 'validado') return false
+      } else if (fEstado && v.estadoVal !== fEstado) {
         return false
       }
       if (fAsesor && !(v.vendedor||'').toLowerCase().includes(fAsesor.toLowerCase())) return false
@@ -246,8 +245,8 @@ export default function Validacion() {
 
   const kpis = useMemo(() => ({
     total:       ventas.length,
-    validados:   ventas.filter(v => v.estado === 'validado').length,
-    noValidados: ventas.filter(v => v.estado !== 'validado').length,
+    validados:   ventas.filter(v => v.estadoVal === 'validado').length,
+    noValidados: ventas.filter(v => v.estadoVal !== 'validado').length,
   }), [ventas])
 
   const totalPags   = Math.max(1, Math.ceil(ventasFiltradas.length / porPagina))
@@ -264,7 +263,7 @@ export default function Validacion() {
     const v = ventas.find(x=>x.id===id)
     if (!v) return
     setModalEst({ open:true, id })
-    setTipSel(v.tipifVal || '')
+    setTipSel(v.estadoVal !== 'venta' ? v.estadoVal : '')
     setNuevaObsModal('')
   }
 
@@ -473,7 +472,7 @@ export default function Validacion() {
                 {paginaVentas.length === 0
                   ? <tr className="tabla-empty"><td colSpan={23}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
-                      const mostrar  = v.tipifVal || v.estado
+                      const mostrar  = v.estadoVal
                       const eObj     = estadoObj(mostrar)
                       const obsDisp  = getObsDisplay(v.obsVal)
                       return (
