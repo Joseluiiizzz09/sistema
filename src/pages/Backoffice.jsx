@@ -2218,8 +2218,8 @@ const cargarLeads = useCallback(async () => {
                                 : <div style={{display:'flex',alignItems:'center',gap:4}}>
                                     <strong style={{fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1}}>{r.campana}</strong>
                                     <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana||''})}
-                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
-                                      <PencilIcon />
+                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#64748b',lineHeight:1,flexShrink:0}}>
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" strokeLinejoin="round"/><path d="m14.5 7.5 3 3"/></svg>
                                     </button>
                                     <button type="button" title="Ver quién cargó el registro" onClick={()=>openLeadOrigin(r)}
                                       style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
