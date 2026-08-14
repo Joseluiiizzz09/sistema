@@ -430,7 +430,7 @@ export default function Backoffice() {
   // ── Historial / Detalles expandibles ──
   const [histOpen,     setHistOpen]     = useState({})
   const [detOpen,      setDetOpen]      = useState({})
-  const [campanaEdit,  setCampanaEdit]  = useState(null) // { id, valor } o null
+  const [campanaModal, setCampanaModal] = useState(null) // { id, bid, valor, guardando }
   const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
   const [coberturaModal, setCoberturaModal] = useState(null)
   const [numeroModal, setNumeroModal] = useState(null) // { id, bid, n1, n2, guardando }
@@ -609,10 +609,24 @@ export default function Backoffice() {
     }
   }
 
-  async function guardarCampana(id, valor) {
-    const v = String(valor || '').trim() || '—'
-    await guardarDatosBack(id, { campana: v })
-    setCampanaEdit(null)
+  async function guardarCampanaModal() {
+    if (!campanaModal || campanaModal.guardando) return
+    const v = String(campanaModal.valor || '').trim()
+    if (!v) { mostrarToast('La campaña no puede estar vacía'); return }
+    setCampanaModal(prev => prev ? { ...prev, guardando: true } : prev)
+    try {
+      const res = await fetch(`${API}/leads/${campanaModal.bid}/datos-back`, {
+        method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ campana: v })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar la campaña')
+      updateReg(campanaModal.id, { campana: v })
+      setCampanaModal(null)
+      mostrarToast('Campaña actualizada')
+    } catch(e) {
+      setCampanaModal(prev => prev ? { ...prev, guardando: false } : prev)
+      mostrarToast(e.message || 'No se pudo actualizar la campaña')
+    }
   }
 
   function openLeadOrigin(r) {
@@ -2194,39 +2208,18 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Campaña */}
                             <td title={r.campana}>
-                              {campanaEdit?.id === r.id
-                                ? <div style={{display:'flex',alignItems:'center',gap:4,minWidth:110}}>
-                                    <input
-                                      autoFocus
-                                      value={campanaEdit.valor}
-                                      onChange={e=>setCampanaEdit(p=>({...p,valor:e.target.value}))}
-                                      onKeyDown={e=>{ if(e.key==='Enter'){e.preventDefault();guardarCampana(r.id,campanaEdit.valor)} else if(e.key==='Escape') setCampanaEdit(null) }}
-                                      style={{flex:1,minWidth:0,fontSize:11,padding:'2px 5px',border:'1px solid #93c5fd',borderRadius:4,outline:'none'}}
-                                      maxLength={100}
-                                    />
-                                    <button type="button" onClick={()=>guardarCampana(r.id,campanaEdit.valor)}
-                                      title="Guardar"
-                                      style={{fontSize:12,padding:'1px 5px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:700,flexShrink:0}}>
-                                      ✓
-                                    </button>
-                                    <button type="button" onClick={()=>setCampanaEdit(null)}
-                                      title="Cancelar"
-                                      style={{fontSize:12,padding:'1px 5px',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:4,cursor:'pointer',flexShrink:0}}>
-                                      ✗
-                                    </button>
-                                  </div>
-                                : <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                    <strong style={{fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1}}>{r.campana}</strong>
-                                    <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana||''})}
-                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#64748b',lineHeight:1,flexShrink:0}}>
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" strokeLinejoin="round"/><path d="m14.5 7.5 3 3"/></svg>
-                                    </button>
-                                    <button type="button" title="Ver quién cargó el registro" onClick={()=>openLeadOrigin(r)}
-                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                    </button>
-                                  </div>
-                              }
+                              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                <strong style={{fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1}}>{r.campana}</strong>
+                                <button type="button" title="Editar campaña"
+                                  onClick={()=>setCampanaModal({id:r.id,bid:r._backendId,valor:r.campana||'',guardando:false})}
+                                  style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#64748b',lineHeight:1,flexShrink:0}}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" strokeLinejoin="round"/><path d="m14.5 7.5 3 3"/></svg>
+                                </button>
+                                <button type="button" title="Ver quién cargó el registro" onClick={()=>openLeadOrigin(r)}
+                                  style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                </button>
+                              </div>
                             </td>
 
                             {/* N1 / N2 combinados */}
@@ -3213,6 +3206,38 @@ const cargarLeads = useCallback(async () => {
             <div className="cobertura-popover-campo"><strong>Coordenadas</strong><span>{coberturaModal.coordenadas||'—'}</span></div>
           </div>
         </>
+      )}
+
+      {/* ══ MODAL EDITAR CAMPAÑA ═════════════════════════════════════════════ */}
+      {campanaModal&&(
+        <div className="numero-edit-overlay"
+          onMouseDown={e=>{ if(e.target===e.currentTarget&&!campanaModal.guardando) setCampanaModal(null) }}>
+          <div className="numero-edit-modal" role="dialog" aria-modal="true" aria-labelledby="campana-edit-title">
+            <button type="button" className="numero-edit-close"
+              onClick={()=>setCampanaModal(null)} disabled={campanaModal.guardando} aria-label="Cerrar">×</button>
+            <div id="campana-edit-title" className="numero-edit-title">Editar campaña</div>
+            <div className="numero-edit-sub">Actualiza la campaña correspondiente a este lead.</div>
+            <label>Campaña <span>*</span></label>
+            <input
+              autoFocus
+              value={campanaModal.valor}
+              maxLength={100}
+              onChange={e=>setCampanaModal(p=>({...p,valor:e.target.value}))}
+              onKeyDown={e=>{
+                if(e.key==='Enter') guardarCampanaModal()
+                if(e.key==='Escape'&&!campanaModal.guardando) setCampanaModal(null)
+              }}
+            />
+            <div className="numero-edit-actions">
+              <button type="button" className="numero-edit-cancel"
+                onClick={()=>setCampanaModal(null)} disabled={campanaModal.guardando}>Cancelar</button>
+              <button type="button" className="numero-edit-save"
+                onClick={guardarCampanaModal} disabled={campanaModal.guardando}>
+                {campanaModal.guardando?'Guardando…':'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ══ MODAL ORIGEN DEL REGISTRO ════════════════════════════════════════ */}
