@@ -985,7 +985,7 @@ const cargarLeads = useCallback(async () => {
     updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
     if (reg._backendId) {
       try {
-        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) })
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor }) })
         const data = await res.json().catch(()=>({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar Tipif. Back 1')
       } catch (e) {
@@ -1620,7 +1620,7 @@ const cargarLeads = useCallback(async () => {
     updateReg(id, { tipifBack2:nuevoValor, historial:newHist, derivadoPor2 })
     if (reg._backendId) {
       try {
-        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back_2:nuevoValor, historial:newHist }) })
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back_2:nuevoValor }) })
         const data = await res.json().catch(()=>({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar Tipif. Back 2')
       } catch (e) {
