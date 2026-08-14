@@ -534,6 +534,7 @@ export default function Backoffice() {
   const [blCargando, setBlCargando] = useState(false)
   const [blBuscar, setBlBuscar] = useState('')
   const [blFiltroTipif, setBlFiltroTipif] = useState('')
+  const [blFiltroBack, setBlFiltroBack] = useState('')
 
   // ── Toast ──
   const [toast, setToast] = useState('')
@@ -916,7 +917,7 @@ const cargarLeads = useCallback(async () => {
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'', tipifBack:'', tipifBack2:'', derivadoPor2:'', ...(reg.tipifBack==='DERIVADO'?{derivadoPor:sesion?.nombre||''}:{}) })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'' })
     if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
   }
 
@@ -981,7 +982,16 @@ const cargarLeads = useCallback(async () => {
     const newHist = [...reg.historial, entrada]
     const derivadoPor = registraAutor ? (sesion?.nombre || '') : ''
     updateReg(id, { tipifBack: nuevoValor, historial: newHist, derivadoPor })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back:nuevoValor, historial:newHist }) })
+        const data = await res.json().catch(()=>({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar Tipif. Back 1')
+      } catch (e) {
+        updateReg(id, { tipifBack:tipifAntes, historial:reg.historial, derivadoPor:reg.derivadoPor||'' })
+        mostrarToast(e.message || 'Error al guardar Tipif. Back 1')
+      }
+    }
   }
 
   // ── Modal rotación manual ─────────────────────────────────────────────────
@@ -1561,6 +1571,7 @@ const cargarLeads = useCallback(async () => {
     setBlFecha(fechaHoy())
     setBlBuscar('')
     setBlFiltroTipif('')
+    setBlFiltroBack('')
   }
 
   // ── Computed values ───────────────────────────────────────────────────────
@@ -1605,7 +1616,16 @@ const cargarLeads = useCallback(async () => {
     const newHist = [...(reg.historial||[]), { tipifBack2:nuevoValor, hora, fecha, motivo:'Segunda tipificacion Back' }]
     const derivadoPor2 = ['DERIVADO','LLAMANDO'].includes(nuevoValor) ? (sesion?.nombre||'') : ''
     updateReg(id, { tipifBack2:nuevoValor, historial:newHist, derivadoPor2 })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back_2:nuevoValor, historial:newHist }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_back_2:nuevoValor, historial:newHist }) })
+        const data = await res.json().catch(()=>({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar Tipif. Back 2')
+      } catch (e) {
+        updateReg(id, { tipifBack2:reg.tipifBack2||'', historial:reg.historial, derivadoPor2:reg.derivadoPor2||'' })
+        mostrarToast(e.message || 'Error al guardar Tipif. Back 2')
+      }
+    }
   }
   const registrosBusquedaGlobal = filtros.numero
     ? Object.entries(baseData).flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
@@ -1784,9 +1804,10 @@ const cargarLeads = useCallback(async () => {
   const blTipificaciones = [...new Set((blLeads || []).map(l => String(l.tipif_vend || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const blLeadsFiltrados = (blLeads || []).filter(l => {
     const q = blBuscar.trim().toLowerCase()
-    const coincideTexto = !q || [l.n1,l.n2,l.distrito,l.campana,l.obs_asesor,l.tipif_vend].some(v=>String(v||'').toLowerCase().includes(q))
+    const coincideTexto = !q || [l.n1,l.n2,l.distrito,l.campana,l.obs_back,l.obs_asesor,l.tipif_vend].some(v=>String(v||'').toLowerCase().includes(q))
     const coincideTipif = !blFiltroTipif || (blFiltroTipif === '__pendiente__' ? !String(l.tipif_vend||'').trim() : String(l.tipif_vend||'').trim() === blFiltroTipif)
-    return coincideTexto && coincideTipif
+    const coincideBack = !blFiltroBack || String(l.obs_back||'').trim() === blFiltroBack
+    return coincideTexto && coincideTipif && coincideBack
   }).sort((a,b) => Number(Boolean(a.tipif_vend)) - Number(Boolean(b.tipif_vend)) || String(b.hora_asig||'').localeCompare(String(a.hora_asig||'')))
 
   const idx      = fechaPestanas.indexOf(fechaActiva)
@@ -2985,11 +3006,14 @@ const cargarLeads = useCallback(async () => {
                 <option value="">Todas las tipificaciones</option><option value="__pendiente__">Sin tipificar</option>
                 {blTipificaciones.map(t=><option key={t} value={t}>{t}</option>)}
               </select>
+              <select value={blFiltroBack} onChange={e=>setBlFiltroBack(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:11,fontFamily:'inherit',outline:'none'}}>
+                <option value="">Todas las Obs. Back</option><option value="DERIVADO">Derivados</option><option value="LLAMAR AHORA">Llamar ahora</option>
+              </select>
               <span style={{fontSize:12,color:'#9ca3af',marginLeft:'auto'}}>{blLeadsFiltrados.length} de {blLeads?.length??0} registros</span>
             </div>
             {blLeads && blLeads.length > 0 && (
               <div style={{padding:'10px 24px',display:'flex',gap:10,flexWrap:'wrap',borderBottom:'1px solid #f3f4f6'}}>
-                {[{label:'Leads',val:blLeads.length,color:'#2563eb'},{label:'Tipificados',val:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,color:'#16a34a'},{label:'VENTA CERRADA',val:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,color:'#7c3aed'},{label:'NC/Buzón',val:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,color:'#d97706'}]
+                {[{label:'Leads',val:blLeads.length,color:'#2563eb'},{label:'Tipificados',val:blLeads.filter(l=>(l.tipif_vend||'').trim()!=='').length,color:'#16a34a'},{label:'Derivados',val:blLeads.filter(l=>l.obs_back==='DERIVADO').length,color:'#0284c7'},{label:'VENTA CERRADA',val:blLeads.filter(l=>(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA').length,color:'#7c3aed'},{label:'NC/Buzón',val:blLeads.filter(l=>['NO CONTESTA','BUZON DE VOZ'].includes((l.tipif_vend||'').toUpperCase())).length,color:'#d97706'}]
                   .map(k=>(
                     <div key={k.label} style={{background:'#f9fafb',borderRadius:10,padding:'8px 14px',display:'flex',flexDirection:'column',gap:2,minWidth:100}}>
                       <div style={{fontSize:18,fontWeight:800,color:k.color}}>{k.val}</div>
@@ -3001,17 +3025,17 @@ const cargarLeads = useCallback(async () => {
             <div style={{flex:1,overflow:'auto',padding:'0 24px 20px'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
-                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Tipificación','Hora tipif.','Observación'].map(h=>(
+                  {['#','Teléfono N1','N2','Zona','Campaña','Hora asig.','Obs. Back','Tipificación','Hora tipif.','Observación'].map(h=>(
                     <th key={h} style={{padding:'10px 8px',textAlign:'left',fontSize:10,fontWeight:700,color:'#6b7280',textTransform:'uppercase',borderBottom:'1px solid #e5e7eb'}}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {blCargando
-                    ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
+                    ? <tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Cargando...</td></tr>
                     : !blLeads
-                      ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
+                      ? <tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'#ef4444'}}>Error de conexión.</td></tr>
                       : blLeadsFiltrados.length === 0
-                        ? <tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para los filtros seleccionados.</td></tr>
+                        ? <tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Sin leads para los filtros seleccionados.</td></tr>
                         : blLeadsFiltrados.map((l,i)=>(
                             <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:(l.tipif_vend||'').toUpperCase()==='VENTA CERRADA'?'#f0fdf4':''}}>
                               <td style={{padding:8,color:'#9ca3af',fontSize:10}}>{i+1}</td>
@@ -3020,6 +3044,7 @@ const cargarLeads = useCallback(async () => {
                               <td style={{padding:8,fontSize:11}}>{l.distrito||l.campana||'—'}</td>
                               <td style={{padding:8,fontSize:11}}>{l.campana||'—'}</td>
                               <td style={{padding:8,fontSize:11,fontFamily:'monospace'}}>{l.hora_asig||'—'}</td>
+                              <td style={{padding:8}}>{l.obs_back?<span className={`tipif-badge ${l.obs_back==='DERIVADO'?'b-programado':'b-nocontesta'}`}>{l.obs_back}</span>:'—'}</td>
                               <td style={{padding:8}}><BlBadge tipif={l.tipif_vend} /></td>
                               <td style={{padding:8,fontSize:11,fontFamily:'monospace',color:'#475569'}}>{l.tipif_hora||'—'}</td>
                               <td style={{padding:8,fontSize:11,color:'#6b7280'}}>{l.obs_asesor||'—'}</td>

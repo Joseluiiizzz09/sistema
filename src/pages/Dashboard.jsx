@@ -381,10 +381,9 @@ export default function Dashboard() {
           }
           // LLAMANDO es una marca interna de Back Data y nunca debe convertirse
           // en el estado visible del asesor. DERIVADO conserva su aviso actual.
-          const tipifBackVisible = l.tipif_back === 'LLAMANDO' ? '' : (l.tipif_back || '')
           // No reutilizar `p.estado` aquí: al rotar se conserva el mismo id del lead
           // y ese valor local pertenecía a la asignación anterior.
-          let estado = miTipif && miTipif !== '' ? miTipif : (soyActual ? (tipifBackVisible || 'NUEVO') : 'NUEVO')
+          let estado = miTipif && miTipif !== '' ? miTipif : 'NUEVO'
           let obs = ''
           if (soyActual) {
             // La observación vigente llega del servidor. Reusar `p.obs` transferiría
@@ -423,7 +422,7 @@ export default function Dashboard() {
             tipoContacto: l.tipo_contacto || 'LLAMADA',
             direccion: l.direccion || '',
             coordenadas: l.coordenadas || '',
-            obsBack: l.obs_back || '',
+            obsBack: l.obs_back_personal ?? l.obs_back ?? '',
             // La zona del asesor es ubicación geográfica; nunca debe mostrar campañas.
             zona:     l.distrito || l.provincia || l.departamento || '--',
             horaAsig: horaAsignacion,
