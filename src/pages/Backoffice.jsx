@@ -434,6 +434,7 @@ export default function Backoffice() {
   const [dniModal, setDniModal] = useState(null) // { id, bid, dni, top, left, editing, editVal }
   const [coberturaModal, setCoberturaModal] = useState(null)
   const [numeroModal, setNumeroModal] = useState(null) // { id, bid, n1, n2, guardando }
+  const [origenModal, setOrigenModal] = useState(null) // { n1, campana, cargadoPor, fecha, hora }
 
   async function guardarNumeros() {
     if (!numeroModal || numeroModal.guardando) return
@@ -612,6 +613,23 @@ export default function Backoffice() {
     const v = String(valor || '').trim() || '—'
     await guardarDatosBack(id, { campana: v })
     setCampanaEdit(null)
+  }
+
+  function openLeadOrigin(r) {
+    const hist = r.historial || []
+    const entrada = hist.find(h =>
+      h.asignadoPor || h.cargadoPor ||
+      h.motivo === 'Carga masiva' || h.motivo === 'Asignacion importada' ||
+      h.motivo === 'Asignacion inicial' || h.motivo === 'Carga inicial' ||
+      h.motivo === 'Importacion masiva'
+    )
+    setOrigenModal({
+      n1: r.n1,
+      campana: r.campana,
+      cargadoPor: entrada?.asignadoPor || entrada?.cargadoPor || null,
+      fecha: entrada?.fecha || null,
+      hora: entrada?.hora || null,
+    })
   }
 
   function findReg(id) {
@@ -2177,24 +2195,35 @@ const cargarLeads = useCallback(async () => {
                             {/* Campaña */}
                             <td title={r.campana}>
                               {campanaEdit?.id === r.id
-                                ? <div style={{display:'flex',flexDirection:'column',gap:4,minWidth:130}}>
-                                    <CampanaSelect plain value={campanaEdit.valor} onChange={v=>setCampanaEdit(p=>({...p,valor:v}))} />
-                                    <div style={{display:'flex',gap:4}}>
-                                      <button type="button" onClick={()=>guardarCampana(r.id,campanaEdit.valor)}
-                                        style={{flex:1,fontSize:10,padding:'2px 6px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:700}}>
-                                        ✓
-                                      </button>
-                                      <button type="button" onClick={()=>setCampanaEdit(null)}
-                                        style={{flex:1,fontSize:10,padding:'2px 6px',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:4,cursor:'pointer'}}>
-                                        ✗
-                                      </button>
-                                    </div>
+                                ? <div style={{display:'flex',alignItems:'center',gap:4,minWidth:110}}>
+                                    <input
+                                      autoFocus
+                                      value={campanaEdit.valor}
+                                      onChange={e=>setCampanaEdit(p=>({...p,valor:e.target.value}))}
+                                      onKeyDown={e=>{ if(e.key==='Enter'){e.preventDefault();guardarCampana(r.id,campanaEdit.valor)} else if(e.key==='Escape') setCampanaEdit(null) }}
+                                      style={{flex:1,minWidth:0,fontSize:11,padding:'2px 5px',border:'1px solid #93c5fd',borderRadius:4,outline:'none'}}
+                                      maxLength={100}
+                                    />
+                                    <button type="button" onClick={()=>guardarCampana(r.id,campanaEdit.valor)}
+                                      title="Guardar"
+                                      style={{fontSize:12,padding:'1px 5px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:700,flexShrink:0}}>
+                                      ✓
+                                    </button>
+                                    <button type="button" onClick={()=>setCampanaEdit(null)}
+                                      title="Cancelar"
+                                      style={{fontSize:12,padding:'1px 5px',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:4,cursor:'pointer',flexShrink:0}}>
+                                      ✗
+                                    </button>
                                   </div>
                                 : <div style={{display:'flex',alignItems:'center',gap:4}}>
                                     <strong style={{fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1}}>{r.campana}</strong>
-                                    <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana})}
+                                    <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana||''})}
                                       style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
                                       <PencilIcon />
+                                    </button>
+                                    <button type="button" title="Ver quién cargó el registro" onClick={()=>openLeadOrigin(r)}
+                                      style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                     </button>
                                   </div>
                               }
@@ -2207,9 +2236,6 @@ const cargarLeads = useCallback(async () => {
                                   <span className={claseNumero} title={estadoNumero?.label || (esReingreso ? 'Asignado también en otra fecha' : '')}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
-                                  <button type="button" className="num-copy-btn" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial del número">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                  </button>
                                 </div>
                                 {r.n2 && (
                                   <div className="num-secondary">
@@ -3185,6 +3211,48 @@ const cargarLeads = useCallback(async () => {
             <div className="dni-popover-label">SIN COBERTURA</div>
             <div className="cobertura-popover-campo"><strong>Distrito</strong><span>{coberturaModal.distrito||'—'}</span></div>
             <div className="cobertura-popover-campo"><strong>Coordenadas</strong><span>{coberturaModal.coordenadas||'—'}</span></div>
+          </div>
+        </>
+      )}
+
+      {/* ══ MODAL ORIGEN DEL REGISTRO ════════════════════════════════════════ */}
+      {origenModal&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,0.25)'}} onClick={()=>setOrigenModal(null)}/>
+          <div onKeyDown={e=>e.key==='Escape'&&setOrigenModal(null)}
+            style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:9999,
+              background:'#fff',borderRadius:10,padding:'20px 24px',
+              boxShadow:'0 8px 32px rgba(0,0,0,0.18)',minWidth:270,maxWidth:340}}>
+            <button type="button" className="dni-popover-close" onClick={()=>setOrigenModal(null)} aria-label="Cerrar">×</button>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:'#6b7280',marginBottom:14,textTransform:'uppercase'}}>Origen del registro</div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
+                <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Número</span>
+                <strong style={{fontSize:13}}>{origenModal.n1||'—'}</strong>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
+                <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Campaña</span>
+                <strong style={{fontSize:13}}>{origenModal.campana||'—'}</strong>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
+                <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Cargado por</span>
+                <strong style={{fontSize:13,color:origenModal.cargadoPor?'#1e40af':'#9ca3af'}}>
+                  {origenModal.cargadoPor||'Sin información'}
+                </strong>
+              </div>
+              {origenModal.fecha&&(
+                <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
+                  <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Fecha</span>
+                  <strong style={{fontSize:13}}>{origenModal.fecha}</strong>
+                </div>
+              )}
+              {origenModal.hora&&(
+                <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
+                  <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Hora</span>
+                  <strong style={{fontSize:13}}>{origenModal.hora}</strong>
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
