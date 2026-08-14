@@ -1669,12 +1669,11 @@ const cargarLeads = useCallback(async () => {
       }
     }
   }
-  const registrosBusquedaGlobal = filtros.numero
-    ? Object.entries(baseData).flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
-    : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
-  const registrosOperativos = filtros.numero
-    ? registrosBusquedaGlobal
-    : registrosBusquedaGlobal.filter(r => grupoPrioridadLead(r) === 0 && !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+  const registrosBusquedaGlobal = registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
+  const registrosOperativos = registrosBusquedaGlobal.filter(r =>
+    grupoPrioridadLead(r) === 0 &&
+    !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
+  )
   const n1FormularioNormalizado = normalizarNumero(form.n1)
   const altasPreviasN1 = n1FormularioNormalizado
     ? Object.entries(baseData)
