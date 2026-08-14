@@ -9,10 +9,11 @@ import { setVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
-  aprobado:    { cls: 'bg-grabado',  label: 'GRABADO'     },
-  observado:   { cls: 'bg-observado',label: 'OBSERVADO'   },
-  programado:  { cls: 'bg-revisado', label: 'PROGRAMADO'  },
-  sin_revisar: { cls: 'bg-revisado', label: 'EN REVISION' },
+  aprobado:     { cls: 'bg-grabado',  label: 'GRABADO'      },
+  observado:    { cls: 'bg-observado',label: 'OBSERVADO'    },
+  programado:   { cls: 'bg-revisado', label: 'PROGRAMADO'   },
+  sin_revisar:  { cls: 'bg-revisado', label: 'EN REVISION'  },
+  audio_subido: { cls: 'bg-grabado',  label: 'AUDIO SUBIDO' },
 }
 
 function formatF(f) {
@@ -119,7 +120,7 @@ export default function SupGrabaciones() {
           .filter(v => {
             const grab = (v.estado_grab || '').toLowerCase()
             const revision = (v.estado_supgrab || 'sin_revisar').toLowerCase()
-            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado'].includes(revision)
+            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado', 'audio_subido'].includes(revision)
           })
           .map(v => ({
             ...v,
@@ -426,11 +427,6 @@ export default function SupGrabaciones() {
                         <span className={`badge-grab ${badge.cls}`} onClick={() => abrirModalRevisar(v)} style={{ cursor: 'pointer' }}>
                           {badge.label}
                         </span>
-                        {v.estadoRev === 'programado' && v.audioUrl && (
-                          <span style={{ display:'block', marginTop:4, fontSize:9, fontWeight:700, letterSpacing:'.5px', color:'#15803d', background:'#dcfce7', borderRadius:4, padding:'2px 6px', width:'fit-content' }}>
-                            AUDIO SUBIDO
-                          </span>
-                        )}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: '#374151' }}>{v.sot || '—'}</td>
                       <td><span style={{ color: '#185FA5', fontWeight: 700, fontSize: '11px' }}>{formatF(v.fechaIngreso)}</span></td>
@@ -516,13 +512,19 @@ export default function SupGrabaciones() {
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {(modalRevisar.estadoRev === 'programado'
                   ? [
-                      { id: 'conforme', label: 'CONFORME', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
-                      { id: 'no_conforme', label: 'NO CONFORME', border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                      { id: 'conforme',     label: 'CONFORME',     border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                      { id: 'audio_subido', label: 'AUDIO SUBIDO', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                      { id: 'no_conforme',  label: 'NO CONFORME',  border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
                     ]
-                  : [
-                      { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
-                      { id: 'observado', label: 'OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
-                    ]
+                  : modalRevisar.estadoRev === 'audio_subido'
+                    ? [
+                        { id: 'conforme',    label: 'CONFORME',    border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                        { id: 'no_conforme', label: 'NO CONFORME', border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                      ]
+                    : [
+                        { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
+                        { id: 'observado', label: 'OBSERVADO', border: '#c4b5fd', bg: '#ede9fe', color: '#4c1d95' },
+                      ]
                 ).map(btn => (
                   <button key={btn.id} onClick={() => setEstadoRevision(btn.id)}
                     style={{
