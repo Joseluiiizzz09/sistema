@@ -225,7 +225,7 @@ export default function Validacion() {
   const ventasFiltradas = useMemo(() => {
     let vv = ventas.filter(v => {
       if (fEstado === 'novalidado') {
-        if (['validado','instalado','programado'].includes(v.estado)) return false
+        if (v.estado === 'validado') return false
       } else if (fEstado && v.estado !== fEstado) {
         return false
       }
@@ -384,14 +384,6 @@ export default function Validacion() {
                 <option value="">Todos los estados</option>
                 <option value="validado">VALIDADO</option>
                 <option value="novalidado">NO VALIDADO</option>
-                <option value="venta">VENTA</option>
-                <option value="instalado">INSTALADO</option>
-                <option value="programado">PROGRAMADO</option>
-                <option value="caida">CAÍDA</option>
-                <option value="observado">OBSERVADO</option>
-                <option value="pendiente">PENDIENTE</option>
-                <option value="tecnico_casa">TECNICO EN CASA</option>
-                <option value="bloqueado">BLOQUEADO</option>
               </select>
             </div>
             <div className="fg">
