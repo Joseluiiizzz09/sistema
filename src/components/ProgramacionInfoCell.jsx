@@ -5,10 +5,10 @@ const formatFechaProgramada = (fecha) => {
   return year && month && day ? `${day}/${month}/${year}` : value
 }
 
-export default function ProgramacionInfoCell({ sot, fecha, soloFecha = false, onEdit }) {
+export default function ProgramacionInfoCell({ sot, fecha, soloFecha = false, soloFechaLabel = 'Fecha de instalación:', onEdit }) {
   const fechaFormateada = formatFechaProgramada(fecha)
   const contenido = soloFecha
-    ? (fechaFormateada ? <><strong>Fecha de instalación:</strong> {fechaFormateada}</> : '—')
+    ? (fechaFormateada ? <><strong>{soloFechaLabel}</strong> {fechaFormateada}</> : '—')
     : (sot || fechaFormateada
         ? <><div><strong>SOT:</strong> {sot || '—'}</div><div><strong>Fecha programada:</strong> {fechaFormateada || '—'}</div></>
         : '—')

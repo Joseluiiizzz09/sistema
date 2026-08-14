@@ -22,6 +22,7 @@ const ESTADOS = [
   { id: 'derivado_planta_externa', label: 'DERIVADO A PLANTA EXTERNA', cls: 'bs-rech', fila: 'fila-rech' },
   { id: 'servicio_activo', label: 'SERVICIO ACTIVO', cls: 'bs-inst', fila: 'fila-inst' },
   { id: 'rechazo_programacion', label: 'RECHAZO', cls: 'bs-rech', fila: 'fila-rech' },
+  { id: 'rechazo_mesa', label: 'RECHAZO EN MESA', cls: 'bs-rechazo-mesa', fila: 'fila-rech' },
 ]
 
 const MOTIVOS_CAIDA = ['FRAUDE','EXCESO DE ACOMETIDA','INFRAESTRUCTURA','RED SATURADA','EDIFICIO NO LIBERADO']
@@ -42,10 +43,11 @@ const ESTADO_BD_MAP = {
   derivado_planta_externa: 'derivado_planta_externa',
   servicio_activo: 'servicio_activo',
   rechazo_programacion: 'pendiente',
+  rechazo_mesa: 'rechazo_mesa',
 }
 
 const SEG_FILTRO_KEY = 'nc_seguimiento_filtro'
-const ORD_EST = { caida:0, rechazo:1, levantar_sot:2, derivado_planta_externa:3, tecnico:4, tecnicos_camino:5, reasignacion:6, ejecucion:7, instalado_no_validado:8, servicio_activo:9, instalado:10 }
+const ORD_EST = { caida:0, rechazo:1, rechazo_mesa:1, levantar_sot:2, derivado_planta_externa:3, tecnico:4, tecnicos_camino:5, reasignacion:6, ejecucion:7, instalado_no_validado:8, servicio_activo:9, instalado:10 }
 
 function fechaHoy() {
   const a = new Date(), u = a.getTime() + a.getTimezoneOffset() * 60000
@@ -74,6 +76,7 @@ function mapearEstado(e) {
     levantar_sot:'levantar_sot', tecnicos_camino:'tecnicos_camino',
     instalado_no_validado:'instalado_no_validado', reasignacion:'reasignacion',
     derivado_planta_externa:'derivado_planta_externa', servicio_activo:'servicio_activo',
+    rechazo_mesa:'rechazo_mesa',
   }
   if (nuevos[est]) return nuevos[est]
   if (est.includes('tecnico'))   return 'tecnico'
@@ -152,6 +155,9 @@ export default function Seguimiento() {
   // Modal historial
   const [modalHist, setModalHist]           = useState(null)
   const [mediaVenta, setMediaVenta]         = useState(null)
+
+  // Modal SOT
+  const [sotModal, setSotModal] = useState(null) // { id, valor, guardando }
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -331,6 +337,27 @@ export default function Seguimiento() {
       setVentas(list => list.filter(x => x.id !== modalEstado.id))
     }
     setModalProgramacion(null)
+  }
+
+  async function guardarSot() {
+    if (!sotModal || sotModal.guardando) return
+    const valor = String(sotModal.valor || '').trim()
+    if (!valor) { mostrarToast('Ingresa el número de SOT'); return }
+    setSotModal(prev => prev ? { ...prev, guardando: true } : prev)
+    try {
+      const res = await fetch(`${API}/ventas/${sotModal.id}`, {
+        method: 'PATCH', headers: ncHeaders(),
+        body: JSON.stringify({ sot: valor }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        mostrarToast(data.mensaje || 'No se pudo actualizar la SOT')
+        setSotModal(prev => prev ? { ...prev, guardando: false } : prev)
+        return
+      }
+    } catch (e) { console.error(e); mostrarToast('No se pudo actualizar la SOT'); setSotModal(prev => prev ? { ...prev, guardando: false } : prev); return }
+    setVentas(list => list.map(v => v.id === sotModal.id ? { ...v, sot: valor } : v))
+    setSotModal(null)
   }
 
   // MODAL OBS / LLAMADA
@@ -526,6 +553,7 @@ export default function Seguimiento() {
               <colgroup>
                 <col style={{ width: 260 }} />
                 <col style={{ width: 230 }} />
+                <col style={{ width: 90 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 220 }} />
@@ -547,6 +575,7 @@ export default function Seguimiento() {
                 <tr>
                   <th className="th-acc">ACCIÓN</th>
                   <th className="th-est">ESTADO</th>
+                  <th>SOT</th>
                   <th>OBS. PROGRAMACIÓN</th>
                   <th className="th-fecha">FECHA</th>
                   <th className="th-cliente">NOMBRE Y APELLIDOS</th>
@@ -587,10 +616,21 @@ export default function Seguimiento() {
                           {est.label}
                         </span>
                       </td>
+                      <td style={{ textAlign:'center' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
+                          <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color:'#374151' }}>{v.sot || '—'}</span>
+                          <button type="button" title="Editar SOT"
+                            onClick={() => setSotModal({ id:v.id, valor:v.sot||'', guardando:false })}
+                            style={{ border:'none', background:'transparent', cursor:'pointer', padding:2, color:'#64748b', lineHeight:1, flexShrink:0 }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="11" height="11"><path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" strokeLinejoin="round"/><path d="m14.5 7.5 3 3"/></svg>
+                          </button>
+                        </div>
+                      </td>
                       <td>
                         <ProgramacionInfoCell
-                          sot={v.sot}
                           fecha={v.fecha_programada}
+                          soloFecha
+                          soloFechaLabel="Fecha programada:"
                           onEdit={() => abrirModalProgramacion(v)}
                         />
                       </td>
@@ -765,6 +805,28 @@ export default function Seguimiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-m" onClick={() => setModalAgenda(null)}>Cancelar</button>
               <button className="btn-guardar" onClick={guardarAgenda}>Agendar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SOT */}
+      {sotModal && (
+        <div className="modal-bg open" onClick={e => { if (e.target === e.currentTarget && !sotModal.guardando) setSotModal(null) }}>
+          <div className="modal-box" style={{ maxWidth: '380px' }}>
+            <div className="modal-title">Editar SOT</div>
+            <div className="modal-grid">
+              <div className="modal-campo">
+                <label>Número de SOT *</label>
+                <input autoFocus value={sotModal.valor} maxLength={100}
+                  onChange={e => setSotModal(p => ({ ...p, valor: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') guardarSot(); if (e.key === 'Escape' && !sotModal.guardando) setSotModal(null) }}
+                  placeholder="Número de SOT" />
+              </div>
+            </div>
+            <div className="modal-btns">
+              <button className="btn-cancelar-m" onClick={() => setSotModal(null)} disabled={sotModal.guardando}>Cancelar</button>
+              <button className="btn-guardar" onClick={guardarSot} disabled={sotModal.guardando}>{sotModal.guardando ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
         </div>
