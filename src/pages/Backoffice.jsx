@@ -2175,7 +2175,7 @@ const cargarLeads = useCallback(async () => {
                             <td style={{color:'#9ca3af',fontSize:10,textAlign:'center'}}>{baseDesde+i+1}</td>
 
                             {/* Campaña */}
-                            <td style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.campana}>
+                            <td title={r.campana}>
                               {campanaEdit?.id === r.id
                                 ? <div style={{display:'flex',flexDirection:'column',gap:4,minWidth:130}}>
                                     <CampanaSelect plain value={campanaEdit.valor} onChange={v=>setCampanaEdit(p=>({...p,valor:v}))} />
@@ -2191,7 +2191,7 @@ const cargarLeads = useCallback(async () => {
                                     </div>
                                   </div>
                                 : <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                    <strong style={{fontSize:11}}>{r.campana}</strong>
+                                    <strong style={{fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1}}>{r.campana}</strong>
                                     <button type="button" title="Editar campaña" onClick={()=>setCampanaEdit({id:r.id,valor:r.campana})}
                                       style={{border:'none',background:'transparent',cursor:'pointer',padding:2,color:'#9ca3af',lineHeight:1,flexShrink:0}}>
                                       <PencilIcon />
@@ -2207,6 +2207,9 @@ const cargarLeads = useCallback(async () => {
                                   <span className={claseNumero} title={estadoNumero?.label || (esReingreso ? 'Asignado también en otra fecha' : '')}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
+                                  <button type="button" className="num-copy-btn" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial del número">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                  </button>
                                 </div>
                                 {r.n2 && (
                                   <div className="num-secondary">
@@ -2360,16 +2363,19 @@ const cargarLeads = useCallback(async () => {
                                   // Entrada de carga: primer entry con asignadoPor, o motivo de carga/importación
                                   const entradaCarga = hist.find(h =>
                                     h.asignadoPor ||
+                                    h.cargadoPor ||
                                     h.motivo === 'Carga masiva' ||
                                     h.motivo === 'Asignacion importada' ||
-                                    h.motivo === 'Asignacion inicial'
+                                    h.motivo === 'Asignacion inicial' ||
+                                    h.motivo === 'Carga inicial' ||
+                                    h.motivo === 'Importacion masiva'
                                   )
                                   const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   return (<>
                                     {/* Bloque de autor de carga */}
                                     <div style={{fontSize:11,color:'#6b7280',marginBottom:8,padding:'4px 8px',background:'#f1f5f9',borderRadius:6,borderLeft:'3px solid #94a3b8'}}>
-                                      {entradaCarga?.asignadoPor
-                                        ? <span>Cargado por: <strong style={{color:'#1e40af'}}>{entradaCarga.asignadoPor}</strong>{entradaCarga.hora ? ` · ${entradaCarga.hora}` : ''}{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
+                                      {(entradaCarga?.asignadoPor || entradaCarga?.cargadoPor)
+                                        ? <span>Cargado por: <strong style={{color:'#1e40af'}}>{entradaCarga.asignadoPor || entradaCarga.cargadoPor}</strong>{entradaCarga.hora ? ` · ${entradaCarga.hora}` : ''}{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
                                         : entradaCarga?.motivo === 'Carga masiva'
                                           ? <span>Vía: <strong>Carga masiva</strong>{entradaCarga.hora ? ` · ${entradaCarga.hora}` : ''}{entradaCarga.fecha ? ` · ${entradaCarga.fecha}` : ''}</span>
                                           : entradaCarga?.motivo === 'Asignacion importada'
