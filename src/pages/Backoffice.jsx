@@ -751,6 +751,15 @@ const cargarLeads = useCallback(async () => {
           venta_confirmada: Number(l.venta_confirmada || 0),
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
+          // hora de asignación del asesor actual, derivada del historial para que no se pise en rotaciones
+          horaAsigDisplay: (() => {
+            const hist = Array.isArray(l.historial) ? l.historial : []
+            const entry = [...hist].reverse().find(h =>
+              !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h?.tipo||'').toUpperCase()) &&
+              h?.asesor && String(h.asesor).trim().toUpperCase() === String(l.asesor_nombre||'').trim().toUpperCase()
+            )
+            return entry?.hora || l.hora_asig || ''
+          })(),
         }
         // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
         const pend = pendingRef.current[l.id]
@@ -1717,8 +1726,8 @@ const cargarLeads = useCallback(async () => {
         return tableSort.dir === 'za' ? -cmp : cmp
       }
       if (tableSort.col === 'hora') {
-        const ma = horaAMinutos(a.horaAsig)
-        const mb = horaAMinutos(b.horaAsig)
+        const ma = horaAMinutos(a.horaAsigDisplay)
+        const mb = horaAMinutos(b.horaAsigDisplay)
         if (ma === -1 && mb === -1) return 0
         if (ma === -1) return 1
         if (mb === -1) return -1
@@ -2316,7 +2325,7 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Hora */}
                             <td style={{textAlign:'center'}}>
-                              {r.horaAsig?<span className="hora-cell">{r.horaAsig}</span>:<span style={{color:'#d1d5db'}}>—</span>}
+                              {r.horaAsigDisplay?<span className="hora-cell">{r.horaAsigDisplay}</span>:<span style={{color:'#d1d5db'}}>—</span>}
                             </td>
 
                             {/* Rotaciones */}
