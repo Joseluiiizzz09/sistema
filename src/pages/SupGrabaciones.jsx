@@ -426,6 +426,11 @@ export default function SupGrabaciones() {
                         <span className={`badge-grab ${badge.cls}`} onClick={() => abrirModalRevisar(v)} style={{ cursor: 'pointer' }}>
                           {badge.label}
                         </span>
+                        {v.estadoRev === 'programado' && v.audioUrl && (
+                          <span style={{ display:'block', marginTop:4, fontSize:9, fontWeight:700, letterSpacing:'.5px', color:'#15803d', background:'#dcfce7', borderRadius:4, padding:'2px 6px', width:'fit-content' }}>
+                            AUDIO SUBIDO
+                          </span>
+                        )}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: '#374151' }}>{v.sot || '—'}</td>
                       <td><span style={{ color: '#185FA5', fontWeight: 700, fontSize: '11px' }}>{formatF(v.fechaIngreso)}</span></td>
