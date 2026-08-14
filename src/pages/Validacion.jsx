@@ -384,6 +384,8 @@ export default function Validacion() {
                 <option value="">Todos los estados</option>
                 <option value="validado">VALIDADO</option>
                 <option value="novalidado">NO VALIDADO</option>
+                <option value="venta">VENTA</option>
+                <option value="programado">PROGRAMADO</option>
               </select>
             </div>
             <div className="fg">
