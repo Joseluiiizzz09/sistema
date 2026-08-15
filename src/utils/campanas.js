@@ -4,12 +4,10 @@
 // Se usa en el formulario de registro individual y en la carga masiva.
 export const CAMPANAS = [
   'A - SCW',
-  'CAMP ADRI',
-  'CAMP KEV',
-  'CAMP YOPI',
+  'ADRI',
+  'KEV',
   'FABIAN',
   'GOOGLE',
-  'GUSTAVO',
   'H1',
   'H4',
   'H5',
@@ -22,7 +20,6 @@ export const CAMPANAS = [
   'LEAD CRM',
   'M1',
   'MACETA',
-  'MATEO',
   'MESSENGER',
   'NICOLE',
   'NX03',
@@ -30,7 +27,6 @@ export const CAMPANAS = [
   'NX7',
   'RAHI',
   'REFERIDO',
-  'REFUERZO',
   'YOPI',
   'YURI',
 ]
