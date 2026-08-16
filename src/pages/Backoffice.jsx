@@ -442,6 +442,7 @@ export default function Backoffice() {
   const archivoInputRef   = useRef(null)
   const legacyInputRef    = useRef(null)
   const fechaSistemaRef   = useRef(fechaHoy())
+  const fechaActivaRef    = useRef(fechaHoy())
   const rotandoRef        = useRef(false)
   // ── Section ──
   const [seccion, setSeccion] = useState(() => {
@@ -766,12 +767,26 @@ export default function Backoffice() {
     } catch(e) { console.error('Error cargando estados de ventas:', e) }
   }, [])
 
-const cargarLeads = useCallback(async () => {
+  const cargarFechas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/leads/fechas`, { headers:ncHeaders() })
+      const data = await res.json()
+      if (!data.ok) return
+      const fechas = data.data.map(item => normalizarFecha(item.fecha)).filter(Boolean)
+      const hoy = fechaHoy()
+      setFechaPestanas(prev => Array.from(new Set([...prev, ...fechas, hoy])).sort().reverse())
+    } catch(e) { console.error('Error cargando fechas:', e) }
+  }, [])
+
+const cargarLeads = useCallback(async (todasLasFechas = false) => {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoLeadsRef.current = true
     const gen = mutGenRef.current
     try {
-      const res  = await fetch(`${API}/leads`, { headers: ncHeaders() })
+      const url = todasLasFechas
+        ? `${API}/leads`
+        : `${API}/leads?fecha=${encodeURIComponent(fechaActivaRef.current)}`
+      const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
@@ -889,28 +904,38 @@ const cargarLeads = useCallback(async () => {
   }, [])
 
   useEffect(() => {
-    cargarAsesores()
+    fechaActivaRef.current = fechaActiva
     cargarLeads()
+  }, [fechaActiva, cargarLeads])
+
+  useEffect(() => {
+    if (filtros.global) cargarLeads(true)
+  }, [filtros.global, cargarLeads])
+
+  useEffect(() => {
+    cargarAsesores()
+    cargarFechas()
     cargarEstadosVentas()
     // Las tipificaciones del asesor deben reflejarse pronto en Back Data.
     // Un segundo mantiene el sondeo liviano y reduce a la mitad la espera anterior.
     const t = setVisibleInterval(cargarLeads, 1000)
-    const tv = setVisibleInterval(cargarEstadosVentas, 2000)
+    const tv = setVisibleInterval(cargarEstadosVentas, 15000)
 
     // Al regresar a la ventana no esperamos al siguiente ciclo del polling.
     const refrescarAlVolver = () => {
       if (document.visibilityState === 'visible') cargarLeads()
     }
-    window.addEventListener('focus', cargarLeads)
+    const refrescarAlEnfocar = () => cargarLeads()
+    window.addEventListener('focus', refrescarAlEnfocar)
     document.addEventListener('visibilitychange', refrescarAlVolver)
 
     return () => {
       clearInterval(t)
       clearInterval(tv)
-      window.removeEventListener('focus', cargarLeads)
+      window.removeEventListener('focus', refrescarAlEnfocar)
       document.removeEventListener('visibilitychange', refrescarAlVolver)
     }
-  }, [cargarAsesores, cargarLeads, cargarEstadosVentas])
+  }, [cargarAsesores, cargarFechas, cargarLeads, cargarEstadosVentas])
 
   // BL modal reload on fecha change
   useEffect(() => {
