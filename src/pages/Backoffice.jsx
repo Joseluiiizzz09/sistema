@@ -130,6 +130,13 @@ function cantidadRotaciones(reg) {
   return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
 }
 
+function ultimaAsignacionReg(reg) {
+  const historial = Array.isArray(reg?.historial) ? reg.historial : []
+  return [...historial].reverse().find(h =>
+    h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h?.tipo || '').toUpperCase())
+  ) || null
+}
+
 function resumenSinCoberturaHoy(reg) {
   const hoy = fechaHoy()
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
@@ -2231,12 +2238,12 @@ const cargarLeads = useCallback(async () => {
                         Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'?(tableSort.dir==='az'?'down':tableSort.dir==='za'?'up':null):null}/>
                       </button>
                     </th>
-                    <th>Alta del lead</th>
+                    <th>Sala</th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='hora'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('hora')} title="Ordenar por hora" aria-label="Ordenar por hora"
                         aria-sort={tableSort.col==='hora'?(tableSort.dir==='asc'?'ascending':'descending'):'none'}>
-                        Hora<SortIcon active={tableSort.col==='hora'} direction={tableSort.col==='hora'?(tableSort.dir==='desc'?'down':'up'):null}/>
+                        Fecha / hora<SortIcon active={tableSort.col==='hora'} direction={tableSort.col==='hora'?(tableSort.dir==='desc'?'down':'up'):null}/>
                       </button>
                     </th>
                     <th>
@@ -2254,6 +2261,13 @@ const cargarLeads = useCallback(async () => {
                     ? <tr><td colSpan={11} className="bo-empty">{filtros.global ? 'Sin registros para el rango y filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>
                     : registrosPagina.map((r,i) => {
                          const tipifActual = tipifEfectiva(r)
+                         const ultimaAsignacion = ultimaAsignacionReg(r)
+                         const fechaAsignacion = normalizarFecha(ultimaAsignacion?.fecha || r.fecha || r._fechaBase || fechaActiva)
+                         const horaAsignacion = ultimaAsignacion?.hora || r.horaAsigDisplay || r.horaAsig || ''
+                         const asesorActualNorm = String(r.asesor || '').trim().toUpperCase()
+                         const salaAsesor = asesorActualNorm
+                           ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
+                           : 'SIN ASIGNAR'
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
                          const detAbierto  = !!detOpen[r.id]
                          const esDuplicadoDia = idsDuplicados.has(r.id)
@@ -2370,15 +2384,16 @@ const cargarLeads = useCallback(async () => {
                               {r._tipifHora&&<span style={{display:'block',fontSize:9,color:'#9ca3af',marginTop:1}}>{r._tipifHora}</span>}
                             </td>
 
-                            {/* Fecha y hora en que Back incorporó el lead */}
+                            {/* Sala actual del vendedor asignado */}
                             <td className="lead-alta-cell">
-                              <strong>{r.createdAt ? formatFecha(String(r.createdAt).slice(0,10)) : formatFecha(r._fechaBase||fechaActiva)}</strong>
-                              <span>{r.createdAt ? String(r.createdAt).slice(11,16) : (r.horaAsig||'—')}</span>
+                              <strong>{salaAsesor}</strong>
                             </td>
 
-                            {/* Hora */}
+                            {/* Fecha y hora de la última asignación */}
                             <td style={{textAlign:'center'}}>
-                              {r.horaAsigDisplay?<span className="hora-cell">{r.horaAsigDisplay}</span>:<span style={{color:'#d1d5db'}}>—</span>}
+                              {horaAsignacion
+                                ?<span className="hora-cell"><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{horaAsignacion}</span></span>
+                                :<span style={{color:'#d1d5db'}}>—</span>}
                             </td>
 
                             {/* Rotaciones */}
