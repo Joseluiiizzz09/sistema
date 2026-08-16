@@ -1157,13 +1157,13 @@ const cargarLeads = useCallback(async () => {
         let ultimaAsig = new Date(fechaAsignacion+'T'+horaAsignacion+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
         const histAsesores = asignaciones.map(h=>h.asesor)
-        const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
+        const tipifActual = String(tipifEfectiva(reg) || '').trim().toUpperCase()
         if (!tipifActual || tipifActual === 'NUEVO') return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual) || esLeadProhibido(reg)) return
         const nNorm = normalizarNumero(reg.n1)
         // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
         if (resaltadoPorVenta(ventasPorNumero[nNorm])) return
-        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, fechaAsignacion, histAsesores, _reg:reg })
+        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:tipifActual, tipifVend:tipifActual, asesor:reg.asesor||'', ultimaAsig, fecha, fechaAsignacion, histAsesores, _reg:reg })
       })
     })
     return list
