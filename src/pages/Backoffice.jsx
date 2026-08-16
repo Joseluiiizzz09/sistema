@@ -130,18 +130,22 @@ function cantidadRotaciones(reg) {
   return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
 }
 
-function resumenSinCoberturaHoy(reg) {
+function esTipificacionOrigen(valor) {
+  const tipif = normalizarTipifVend(valor).toUpperCase()
+  return Boolean(tipif) && !['NUEVO','NO ROTAR'].includes(tipif)
+}
+
+function resumenTipificadoHoy(reg) {
   const hoy = fechaHoy()
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
-  const tipifActual = String(reg?._tipifVend || '').trim().toUpperCase()
-  const tuvoSinCobertura = (tipifActual === 'SIN COBERTURA' && normalizarFecha(reg?.fecha) === hoy)
+  const tuvoTipificacion = (esTipificacionOrigen(reg?._tipifVend) && normalizarFecha(reg?.fecha) === hoy)
     || historial.some(h => normalizarFecha(h?.fecha) === hoy && [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
-      .some(v => String(v || '').trim().toUpperCase() === 'SIN COBERTURA'))
+      .some(esTipificacionOrigen))
   const rotaciones = historial.filter(h =>
     (String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor))
     && normalizarFecha(h?.fecha) === hoy
   ).length
-  return { aplica:tuvoSinCobertura, rotaciones }
+  return { aplica:tuvoTipificacion, rotaciones }
 }
 
 function grupoPrioridadLead(reg) {
@@ -168,7 +172,7 @@ function resaltadoPorVenta(venta) {
 }
 function esLeadProhibido(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
-  const limite = resumenSinCoberturaHoy(reg)
+  const limite = resumenTipificadoHoy(reg)
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
 }
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
@@ -1148,9 +1152,6 @@ const cargarLeads = useCallback(async () => {
     const fechas = rotFiltroFecha ? [rotFiltroFecha] : Object.keys(baseData).sort().reverse()
     fechas.forEach(fecha => {
       const regsDate = baseData[fecha] || []
-      // Detectar duplicados dentro de esta fecha (lógica MORADO)
-      const cuentaFecha = {}
-      regsDate.forEach(r => { const n = normalizarNumero(r.n1); if (n) cuentaFecha[n] = (cuentaFecha[n]||0)+1 })
       regsDate.forEach(reg => {
         const asignaciones = reg.historial.filter(h=>h?.asesor&&!['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase()))
         const ultimaEntrada = asignaciones[asignaciones.length - 1]
@@ -1162,9 +1163,7 @@ const cargarLeads = useCallback(async () => {
         const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
         if (!tipifActual || tipifActual === 'NUEVO') return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual) || esLeadProhibido(reg)) return
-        // Protección MORADO: duplicado en la misma fecha → no rota
         const nNorm = normalizarNumero(reg.n1)
-        if (nNorm && cuentaFecha[nNorm] > 1) return
         // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
         if (resaltadoPorVenta(ventasPorNumero[nNorm])) return
         list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, fechaAsignacion, histAsesores, _reg:reg })
@@ -2387,7 +2386,9 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Rotaciones */}
                             <td style={{textAlign:'center'}}>
-                              {cantidadRotaciones(r)>0
+                              {String(tipifEfectiva(r)||'').trim().toUpperCase()==='NO ROTAR'
+                                ?<span style={{color:'#d1d5db',fontSize:10}}>—</span>
+                                :cantidadRotaciones(r)>0
                                 ?<span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:99,display:'inline-block'}}>{cantidadRotaciones(r)}x</span>
                                 :<span style={{color:'#d1d5db',fontSize:10}}>0</span>}
                             </td>
