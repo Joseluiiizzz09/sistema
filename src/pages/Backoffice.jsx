@@ -220,35 +220,36 @@ function tipifEfectiva(reg) {
   return normalizarTipifVend(propia !== '' ? propia : tipifPrevioHistorial(reg?.historial))
 }
 const TIPIF_VEND_STYLES = {
-  'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
-  'NO CONTESTA':['#fefce8','#854d0e'],'BUZON DE VOZ':['#e0f2fe','#0c4a6e'],'CORTA LLAMADA':['#f8fafc','#334155'],
-  'EN EJECUCION':['#dcfce7','#14532d'],'SIN COBERTURA':['#ffe4e6','#881337'],'NO CALIFICA':['#fefce8','#713f12'],
-  'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
-  'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],
+  'VENTA CERRADA':['#dcfce7','#008b32'],'PREVENTA':['#dbeafe','#1e63a8'],'AGENDADO':['#fff3d6','#a85b00'],
+  'NO CONTESTA':['#ffffd6','#737300'],'BUZON DE VOZ':['#fff0f0','#a83e3e'],'CORTA LLAMADA':['#e7f5fb','#236b8d'],
+  'EN EJECUCION':['#eeeeee','#3f3f3f'],'SIN COBERTURA':['#fee2e2','#991b1b'],'NO CALIFICA':['#fff0e8','#8a4529'],
+  'NO DESEA':['#f8e9dc','#713707'],'CONTACTO CON TERCEROS':['#e1f4ed','#10684c'],'EDIFICIO NO LIBERADO':['#fee2e2','#991b1b'],
+  'DESEA MOVIL':['#f8e9dc','#713707'],'SERVICIO ACTIVO':['#444444','#ffffff'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
-  'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fef2f2','#9f1239'],'SH NO ROTAR':['#fef2f2','#9f1239'],'SH NO TOCAR':['#fef2f2','#9f1239'],
+  'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fee2e2','#980000'],'SH NO ROTAR':['#fee2e2','#980000'],'SH NO TOCAR':['#fee2e2','#980000'],
 }
 const BL_TIPIF_COLORS = {
-  'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
-  'CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2',
-  'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
-  'NO ROTAR':'#9f1239','SH NO ROTAR':'#9f1239','SH NO TOCAR':'#9f1239',
+  'VENTA CERRADA':'#00a83e','PREVENTA':'#1e63a8','AGENDADO':'#e98500','NO CONTESTA':'#a3a300',
+  'CORTA LLAMADA':'#2788b5','NO DESEA':'#8a4508','BUZON DE VOZ':'#c94f4f','SERVICIO ACTIVO':'#444444',
+  'SIN COBERTURA':'#dc2626','NO CALIFICA':'#c56f49','CONTACTO CON TERCEROS':'#14805e','EDIFICIO NO LIBERADO':'#b91c1c',
+  'DESEA MOVIL':'#8a4508','EN EJECUCION':'#444444','NO TOCAR':'#980000','FRAUDE':'#991b1b','INSTALADO':'#15803d',
+  'NO ROTAR':'#980000','SH NO ROTAR':'#980000','SH NO TOCAR':'#980000',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
 const TIPIF_VEND_FUERTE = {
-  'VENTA CERRADA':'#16a34a', 'INSTALADO':'#15803d',
-  'CONTACTO CON TERCEROS':'#0d9488', 'SERVICIO ACTIVO':'#1d4ed8', 'PREVENTA':'#2563eb',
-  'CORTA LLAMADA':'#0284c7', 'AGENDADO':'#ea580c', 'BUZON DE VOZ':'#f97316',
-  'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
-  'EN EJECUCION':'#92400e', 'DESEA MOVIL':'#b45309', 'DERIVADO':'#7c3aed',
-  'NO CALIFICA':'#f43f5e', 'SIN COBERTURA':'#dc2626', 'EDIFICIO NO LIBERADO':'#b91c1c',
-  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'NO ROTAR':'#9f1239', 'SH NO ROTAR':'#9f1239', 'SH NO TOCAR':'#9f1239',
+  'VENTA CERRADA':['#00b83f','#052e16'], 'INSTALADO':['#15803d','#ffffff'],
+  'CONTACTO CON TERCEROS':['#14805e','#ffffff'], 'SERVICIO ACTIVO':['#444444','#ffffff'], 'PREVENTA':['#1e63a8','#ffffff'],
+  'CORTA LLAMADA':['#9bd2e8','#164e63'], 'AGENDADO':['#f59e0b','#3b2600'], 'BUZON DE VOZ':['#d95555','#ffffff'],
+  'NO DESEA':['#8a4508','#ffffff'], 'NO CONTESTA':['#e6e600','#292900'], 'NC':['#e6e600','#292900'],
+  'EN EJECUCION':['#444444','#ffffff'], 'DESEA MOVIL':['#8a4508','#ffffff'], 'DERIVADO':['#7c3aed','#ffffff'],
+  'NO CALIFICA':['#f4b494','#5c2410'], 'SIN COBERTURA':['#dc2626','#ffffff'], 'EDIFICIO NO LIBERADO':['#b91c1c','#ffffff'],
+  'NO TOCAR':['#980000','#ffffff'], 'FRAUDE':['#991b1b','#ffffff'], 'NO ROTAR':['#980000','#ffffff'], 'SH NO ROTAR':['#980000','#ffffff'], 'SH NO TOCAR':['#980000','#ffffff'],
 }
 function estiloTipifVend(v) {
-  const c = TIPIF_VEND_FUERTE[v]
-  return c
-    ? { flex:1, minWidth:0, background:c, color:'#fff', fontWeight:700, border:`1px solid ${c}`, borderRadius:6 }
+  const paleta = TIPIF_VEND_FUERTE[v]
+  return paleta
+    ? { flex:1, minWidth:0, background:paleta[0], color:paleta[1], fontWeight:700, border:`1px solid ${paleta[0]}`, borderRadius:6 }
     : { flex:1, minWidth:0, background:'#fff', color:'inherit', fontWeight:'inherit', border:'1px solid #e5e7eb' }
 }
 

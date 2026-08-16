@@ -570,20 +570,20 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 }
 .tip-chip:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
 .tip-chip:active { transform: scale(.96); }
-.tip-venta      { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
-.tip-preventa   { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
-.tip-agendado   { background:#ffedd5; color:#c2410c; border-color:#fed7aa; }
-.tip-nocontesta { background:#fef9c3; color:#854d0e; border-color:#fde68a; }
-.tip-buzon      { background:#e0f2fe; color:#0369a1; border-color:#bae6fd; }
-.tip-corta      { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
-.tip-ejecucion  { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+.tip-venta      { background:#dcfce7; color:#008b32; border-color:#86efac; }
+.tip-preventa   { background:#dbeafe; color:#1e63a8; border-color:#93c5fd; }
+.tip-agendado   { background:#fff3d6; color:#a85b00; border-color:#f59e0b; }
+.tip-nocontesta { background:#ffffd6; color:#737300; border-color:#d6d600; }
+.tip-buzon      { background:#fff0f0; color:#a83e3e; border-color:#e99999; }
+.tip-corta      { background:#e7f5fb; color:#236b8d; border-color:#9bd2e8; }
+.tip-ejecucion  { background:#eeeeee; color:#3f3f3f; border-color:#9b9b9b; }
 .tip-sincobert  { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
-.tip-nocalifica { background:#fef3c7; color:#92400e; border-color:#fde68a; }
-.tip-nodesea    { background:#ffe4e6; color:#9f1239; border-color:#fecdd3; }
-.tip-terceros   { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
-.tip-edificio   { background:#ede9fe; color:#5b21b6; border-color:#ddd6fe; }
-.tip-movil      { background:#e0e7ff; color:#3730a3; border-color:#c7d2fe; }
-.tip-servicio   { background:#111827; color:#fff; border-color:#374151; }
+.tip-nocalifica { background:#fff0e8; color:#8a4529; border-color:#f4b494; }
+.tip-nodesea    { background:#f8e9dc; color:#713707; border-color:#c98a55; }
+.tip-terceros   { background:#e1f4ed; color:#10684c; border-color:#62b89a; }
+.tip-edificio   { background:#fee2e2; color:#991b1b; border-color:#ef8888; }
+.tip-movil      { background:#f8e9dc; color:#713707; border-color:#c98a55; }
+.tip-servicio   { background:#444; color:#fff; border-color:#666; }
 .tip-instalado  { background:#dcfce7; color:#15803d; border-color:#86efac; }
 .tip-cancelar {
     margin: 0 14px 14px; padding: 10px; border: 1.5px solid #e5e7eb;
@@ -785,19 +785,19 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 /* Codex polish: distinct readable advisor status colors */
 .badge-estado{border-radius:9px!important;border:1px solid transparent!important;box-shadow:0 1px 3px rgba(15,23,42,.08)!important;}
 .badge-estado.estado-venta-cerrada{background:#dcfce7!important;color:#047857!important;border-color:rgba(52,211,153,.45)!important;}
-.badge-estado.estado-corta-llamada{background:#eff6ff!important;color:#1d4ed8!important;border-color:rgba(96,165,250,.45)!important;}
-.badge-estado.estado-preventa{background:#e0f2fe!important;color:#0369a1!important;border-color:rgba(56,189,248,.42)!important;}
-.badge-estado.estado-no-contesta{background:#fffbeb!important;color:#b45309!important;border-color:rgba(251,191,36,.45)!important;}
-.badge-estado.estado-en-ejecucion{background:#ecfdf5!important;color:#047857!important;border-color:rgba(52,211,153,.45)!important;}
+.badge-estado.estado-corta-llamada{background:#e7f5fb!important;color:#236b8d!important;border-color:#9bd2e8!important;}
+.badge-estado.estado-preventa{background:#dbeafe!important;color:#1e63a8!important;border-color:#93c5fd!important;}
+.badge-estado.estado-no-contesta{background:#ffffd6!important;color:#737300!important;border-color:#d6d600!important;}
+.badge-estado.estado-en-ejecucion{background:#eeeeee!important;color:#3f3f3f!important;border-color:#9b9b9b!important;}
 .badge-estado.estado-sin-cobertura{background:#fee2e2!important;color:#b91c1c!important;border-color:rgba(248,113,113,.45)!important;}
-.badge-estado.estado-desea-movil{background:#eef2ff!important;color:#4338ca!important;border-color:rgba(129,140,248,.45)!important;}
-.badge-estado.estado-servicio-activo{background:#ecfeff!important;color:#0e7490!important;border-color:rgba(34,211,238,.45)!important;}
-.badge-estado.estado-agendado{background:#ffedd5!important;color:#c2410c!important;border-color:rgba(251,146,60,.45)!important;}
-.badge-estado.estado-no-califica{background:#fef3c7!important;color:#92400e!important;border-color:rgba(245,158,11,.42)!important;}
-.badge-estado.estado-sh-edificio-no-liberado{background:#f5f3ff!important;color:#6d28d9!important;border-color:rgba(167,139,250,.45)!important;}
-.badge-estado.estado-contacto-con-terceros{background:#f0fdf4!important;color:#166534!important;border-color:rgba(74,222,128,.42)!important;}
-.badge-estado.estado-no-desea{background:#fff1f2!important;color:#be123c!important;border-color:rgba(251,113,133,.42)!important;}
-.badge-estado.estado-buzon-voz{background:#f1f5f9!important;color:#475569!important;border-color:rgba(148,163,184,.45)!important;}
+.badge-estado.estado-desea-movil{background:#f8e9dc!important;color:#713707!important;border-color:#c98a55!important;}
+.badge-estado.estado-servicio-activo{background:#444!important;color:#fff!important;border-color:#666!important;}
+.badge-estado.estado-agendado{background:#fff3d6!important;color:#a85b00!important;border-color:#f59e0b!important;}
+.badge-estado.estado-no-califica{background:#fff0e8!important;color:#8a4529!important;border-color:#f4b494!important;}
+.badge-estado.estado-sh-edificio-no-liberado{background:#fee2e2!important;color:#991b1b!important;border-color:#ef8888!important;}
+.badge-estado.estado-contacto-con-terceros{background:#e1f4ed!important;color:#10684c!important;border-color:#62b89a!important;}
+.badge-estado.estado-no-desea{background:#f8e9dc!important;color:#713707!important;border-color:#c98a55!important;}
+.badge-estado.estado-buzon-voz{background:#fff0f0!important;color:#a83e3e!important;border-color:#e99999!important;}
 .badge-estado.estado-derivado{background:#ede9fe!important;color:#5b21b6!important;border-color:rgba(139,92,246,.4)!important;}
 .badge-estado.estado-nuevo{background:#f8fafc!important;color:#64748b!important;border-color:rgba(148,163,184,.35)!important;}
 .badge-estado.estado-instalado{background:#dcfce7!important;color:#047857!important;border-color:rgba(52,211,153,.45)!important;}
