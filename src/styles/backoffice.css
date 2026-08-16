@@ -274,6 +274,7 @@ body{
 .bo-root .bo-nav.active{font-weight:700;color:#fff;}
 .bo-root .numero-copiar.secundario{color:#64748b;font-weight:600;}
 .bo-root .num-primary .num-duplicado{color:var(--purple);font-weight:800;}
+.bo-root .num-primary .num-duplicado-limite{color:#980000;font-weight:800;}
 .bo-root .num-primary .num-estado{display:inline-block;padding:2px 5px;border-radius:5px;font-weight:800;}
 .bo-root .num-primary .num-estado-celeste{color:#0369a1;background:#e0f2fe;}
 .bo-root .num-primary .num-estado-rojo{color:#b91c1c;background:#fee2e2;}

@@ -1678,16 +1678,19 @@ const cargarLeads = useCallback(async () => {
 
   // ── Computed values ───────────────────────────────────────────────────────
   const registrosActivos = baseData[fechaActiva] || []
-  const idsDuplicados = (() => {
-    const vistos = new Set()
-    const duplicados = new Set()
+  const ocurrenciaDiariaPorId = (() => {
+    const conteoPorNumero = new Map()
+    const ocurrencias = new Map()
+    // La API entrega los registros mas recientes primero. Se recorre al reves
+    // para numerar desde la primera caida real del dia.
     for (let i = registrosActivos.length - 1; i >= 0; i--) {
       const n1 = normalizarNumero(registrosActivos[i].n1)
       if (!n1) continue
-      if (vistos.has(n1)) duplicados.add(registrosActivos[i].id)
-      else vistos.add(n1)
+      const ocurrencia = (conteoPorNumero.get(n1) || 0) + 1
+      conteoPorNumero.set(n1, ocurrencia)
+      ocurrencias.set(registrosActivos[i].id, ocurrencia)
     }
-    return duplicados
+    return ocurrencias
   })()
   const idsReingresados = (() => {
     const vistos = new Set()
@@ -2332,12 +2335,13 @@ const cargarLeads = useCallback(async () => {
                            : 'SIN ASIGNAR'
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
                          const detAbierto  = !!detOpen[r.id]
-                         const esDuplicadoDia = idsDuplicados.has(r.id)
+                         const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
                          const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
                            fecha !== (r._fechaBase || fechaActiva) && (regs || []).some(x => normalizarNumero(x.n1) === normalizarNumero(r.n1))
                          )
                          const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
-                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : (esReingreso || esDuplicadoDia ? 'num-duplicado' : '')
+                         const claseDuplicadoDia = ocurrenciaDia >= 4 ? 'num-duplicado-limite' : (ocurrenciaDia >= 2 ? 'num-duplicado' : '')
+                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2363,7 +2367,7 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} title={estadoNumero?.label || (esReingreso ? 'Asignado también en otra fecha' : '')}>{r.n1}</span>
+                                  <span className={claseNumero} title={estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : '')}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
