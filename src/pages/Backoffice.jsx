@@ -446,6 +446,7 @@ export default function Backoffice() {
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
+  const [tipifHeaderOpen, setTipifHeaderOpen] = useState(false)
   const [basePage, setBasePage] = useState(1)
   const [basePageSize, setBasePageSize] = useState(25)
   const [grupoProtegidoVisible, setGrupoProtegidoVisible] = useState('')
@@ -1916,6 +1917,10 @@ const cargarLeads = useCallback(async () => {
       </th>
     )
   }
+  const tipifVendDisponibles = [...new Set(registrosBusquedaGlobal
+    .map(r => String(tipifEfectiva(r) || '').trim())
+    .filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b, 'es'))
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
   const rotVistaAsignacion = rotAsesor
     ? allRotLeadsSorted.filter(l=>rotApto(l,rotAsesor).apto).slice(0, 200)
@@ -2270,11 +2275,25 @@ const cargarLeads = useCallback(async () => {
                       </button>
                     </th>
                     <th>
-                      <button type="button" className={`th-sort-btn${tableSort.col==='tipif'?' th-sort-active':''}`}
-                        onClick={()=>cycleSort('tipif')} title="Ordenar tipificación" aria-label="Ordenar tipificación alfabéticamente"
-                        aria-sort={tableSort.col==='tipif'?(tableSort.dir==='az'?'ascending':tableSort.dir==='za'?'descending':'none'):'none'}>
-                        Tipif. Vendedor<SortIcon active={tableSort.col==='tipif'} direction={tableSort.col==='tipif'?(tableSort.dir==='az'?'down':tableSort.dir==='za'?'up':null):null}/>
-                      </button>
+                      {tipifHeaderOpen
+                        ?<select autoFocus value={filtros.tipVend}
+                            onBlur={()=>setTipifHeaderOpen(false)}
+                            onChange={e=>{
+                              setFiltros(p=>({...p,tipVend:e.target.value}))
+                              setOrdenDiarioActivo(false)
+                              setGrupoProtegidoVisible('')
+                              setBasePage(1)
+                              setTipifHeaderOpen(false)
+                            }}
+                            style={{width:'100%',minWidth:0,padding:'4px 3px',border:'1px solid #475569',borderRadius:5,background:'#fff',color:'#111827',fontSize:9,fontFamily:'inherit'}}>
+                            <option value="">Todas</option>
+                            <option value="__pendiente__">Pendiente</option>
+                            {tipifVendDisponibles.map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                        :<button type="button" className={`th-sort-btn${filtros.tipVend?' th-sort-active':''}`}
+                            onClick={()=>setTipifHeaderOpen(true)} title="Filtrar por tipificación" aria-label="Filtrar por tipificación de vendedor">
+                            {filtros.tipVend==='__pendiente__'?'Pendiente':filtros.tipVend||'Tipif. Vendedor'} <span style={{fontSize:9}}>▼</span>
+                          </button>}
                     </th>
                     <th>Sala</th>
                     <th>
