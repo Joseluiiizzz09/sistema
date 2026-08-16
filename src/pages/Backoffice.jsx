@@ -105,7 +105,7 @@ function claseTipifBack(valor) {
   const clave = String(valor || '').trim().toUpperCase().replace(/\s+/g, '-')
   return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
 }
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
 const TIPIF_FILTRO_OPCIONES = [...TIPIF_VEND_OPCIONES, 'INSTALADO', 'VENTA CAIDA']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
@@ -224,7 +224,7 @@ const TIPIF_VEND_STYLES = {
   'NO CONTESTA':['#fefce8','#854d0e'],'BUZON DE VOZ':['#e0f2fe','#0c4a6e'],'CORTA LLAMADA':['#f8fafc','#334155'],
   'EN EJECUCION':['#dcfce7','#14532d'],'SIN COBERTURA':['#ffe4e6','#881337'],'NO CALIFICA':['#fefce8','#713f12'],
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
-  'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
+  'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
   'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fef2f2','#9f1239'],'SH NO ROTAR':['#fef2f2','#9f1239'],'SH NO TOCAR':['#fef2f2','#9f1239'],
 }
@@ -237,7 +237,7 @@ const BL_TIPIF_COLORS = {
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
 const TIPIF_VEND_FUERTE = {
-  'VENTA CERRADA':'#16a34a', 'INSTALADO':'#15803d', 'CONTESTA':'#22c55e',
+  'VENTA CERRADA':'#16a34a', 'INSTALADO':'#15803d',
   'CONTACTO CON TERCEROS':'#0d9488', 'SERVICIO ACTIVO':'#1d4ed8', 'PREVENTA':'#2563eb',
   'CORTA LLAMADA':'#0284c7', 'AGENDADO':'#ea580c', 'BUZON DE VOZ':'#f97316',
   'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
@@ -1688,10 +1688,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     // Hoja 2: datos de ejemplo ficticios con 4 fechas distintas
     const ws2 = XLSX.utils.aoa_to_sheet([
       HDR,
-      ['01/08/2026','CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','CONTESTA','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
+      ['01/08/2026','CAMP ADMI','SAN BORJA','987654320','987654321','NC','Llamó y cortó','AGENDADO','17:11','DERWIN PEREZ','LUCAS GOMEZ','','','',''],
       ['02/08/2026','CAMP ADMI','MIRAFLORES','','912345678','NO CONTESTA','','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
       ['03/08/2026','NKT FIBRA','SURCO','976543211','976543210','BUZON DE VOZ','Sin respuesta','NO CONTESTA','11:45','CARLOS VEGA','PEDRO LUNA','','','',''],
-      ['04/08/2026','NKT FIBRA','LA MOLINA','','945612378','NC','','CONTESTA','14:00','ANA TORRES','','','','',''],
+      ['04/08/2026','NKT FIBRA','LA MOLINA','','945612378','NC','','AGENDADO','14:00','ANA TORRES','','','','',''],
     ])
     ws2['!cols'] = COLS
     ws2['!freeze'] = { xSplit: 0, ySplit: 1 }
@@ -1710,7 +1710,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
       ['N1','Número principal (teléfono)','SÍ','Guardar como texto para conservar ceros iniciales'],
       ['TIPIF. BACK','Tipificación del área Back Data','No','NC · BUZON DE VOZ · NO CONTESTA · DERIVADO'],
       ['COMENTARIO','Comentario libre','No','No se importa al sistema, solo referencia'],
-      ['TIPIFICACIÓN','Tipificación del asesor/vendedor','No','CONTESTA · VENTA CERRADA · NC · etc.'],
+      ['TIPIFICACIÓN','Tipificación del asesor/vendedor','No','VENTA CERRADA · AGENDADO · NO CONTESTA · etc.'],
       ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
       ['ASESOR 1 … ASESOR 6','Historial de asesores','No','Nombre completo tal como aparece en el sistema'],
       [''],
@@ -1926,7 +1926,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     const data = asesores.map(a => {
       const regs    = todosReg.filter(r=>(r.asesor||'').trim().toLowerCase()===(a.nombre||'').trim().toLowerCase())
       const leads   = regs.length
-      const contesta= regs.filter(r=>['CONTESTA','VENTA CERRADA','PREVENTA','AGENDADO'].includes((r._tipifVend||'').toUpperCase())).length
+      const contesta= regs.filter(r=>['VENTA CERRADA','PREVENTA','AGENDADO'].includes((r._tipifVend||'').toUpperCase())).length
       const nc      = regs.filter(r=>['NC','NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length
       const ventas  = regs.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length
       const conv    = leads ? Math.round(ventas/leads*100) : 0
