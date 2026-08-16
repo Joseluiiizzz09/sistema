@@ -1932,7 +1932,7 @@ const cargarLeads = useCallback(async () => {
 
           {/* ══ SECCIÓN: BASE ══════════════════════════════════════════════════ */}
           <section className={`bo-seccion${seccion==='base'?'':' hidden'}`}>
-            <div className="bo-seccion-header">
+            {!rotPanelOpen && <div className="bo-seccion-header">
               <div>
                 <h2>Base de Llamadas</h2>
                 <p className="bo-sub">Gestiona y asigna contactos. La tipificación del vendedor se actualiza automáticamente.</p>
@@ -1940,7 +1940,7 @@ const cargarLeads = useCallback(async () => {
               <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
               </div>
-            </div>
+            </div>}
 
             {/* PANEL ROTACIÓN */}
             {rotPanelOpen && (
@@ -1948,7 +1948,6 @@ const cargarLeads = useCallback(async () => {
                 <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:14,overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,.05)'}}>
                   <div style={{background:'#111827',padding:'10px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                     <span style={{color:'#fff',fontSize:13,fontWeight:600}}>Rotación Inteligente de Leads</span>
-                    <button onClick={()=>setRotPanelOpen(false)} style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',padding:'3px 10px',borderRadius:6,cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>Cerrar ✕</button>
                   </div>
                   <div style={{padding:'14px 16px'}}>
                     <div className="rot-form" style={{marginBottom:12}}>
@@ -2044,6 +2043,7 @@ const cargarLeads = useCallback(async () => {
               </div>
             )}
 
+            {!rotPanelOpen && <>
             {/* ESTADÍSTICAS */}
             <div className="base-stats">
               <div className="base-stat"><div className="base-stat-num">{statsBase.total}</div><div className="base-stat-label">Total</div></div>
@@ -2520,6 +2520,7 @@ const cargarLeads = useCallback(async () => {
                 </div>
               </div>
             </div>
+            </>}
           </section>
 
           {/* ══ SECCIÓN: CARGA MASIVA ══════════════════════════════════════════ */}
