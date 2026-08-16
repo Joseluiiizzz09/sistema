@@ -2325,6 +2325,7 @@ const cargarLeads = useCallback(async () => {
                          const ultimaAsignacion = ultimaAsignacionReg(r)
                          const fechaAsignacion = normalizarFecha(ultimaAsignacion?.fecha || r.fecha || r._fechaBase || fechaActiva)
                          const horaAsignacion = ultimaAsignacion?.hora || r.horaAsigDisplay || r.horaAsig || ''
+                         const esAsignacionHoy = fechaAsignacion === fechaHoy()
                          const asesorActualNorm = String(r.asesor || '').trim().toUpperCase()
                          const salaAsesor = asesorActualNorm
                            ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
@@ -2453,7 +2454,7 @@ const cargarLeads = useCallback(async () => {
                             {/* Fecha y hora de la última asignación */}
                             <td style={{textAlign:'center'}}>
                               {horaAsignacion
-                                ?<span className="hora-cell"><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{horaAsignacion}</span></span>
+                                ?<span className="hora-cell" style={{color:esAsignacionHoy?'#ef4444':'#111827'}}><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{horaAsignacion}</span></span>
                                 :<span style={{color:'#d1d5db'}}>—</span>}
                             </td>
 
