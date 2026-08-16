@@ -291,6 +291,9 @@ function BoNavIcon({ tipo }) {
   if (tipo === 'carga') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 16V8m0 0-3 3m3-3 3 3"/></svg>
   )
+  if (tipo === 'rotacion') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-7a4 4 0 0 0-4 4v1"/><path d="m17 4 3 3-3 3"/><path d="M4 17h7a4 4 0 0 0 4-4v-1"/><path d="m7 20-3-3 3-3"/></svg>
+  )
   if (tipo === 'rendimiento') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>
   )
@@ -486,7 +489,6 @@ export default function Backoffice() {
   const [rotFiltroRotaciones,setRotFiltroRotaciones]= useState('')
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
-  const [rotRotados,    setRotRotados]    = useState(0)
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
@@ -863,7 +865,14 @@ const cargarLeads = useCallback(async () => {
   function irSeccion(id) {
     sessionStorage.setItem('nc_backoffice_apartado', id)
     setSeccion(id)
+    setRotPanelOpen(false)
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
+  }
+
+  function abrirRotacionInteligente() {
+    sessionStorage.setItem('nc_backoffice_apartado', 'base')
+    setSeccion('base')
+    setRotPanelOpen(true)
   }
 
   // ── Date navigation ──────────────────────────────────────────────────────
@@ -1171,7 +1180,6 @@ const cargarLeads = useCallback(async () => {
       } catch {}
     }
     await cargarLeads()
-    setRotRotados(prev => prev + res.length)
     setRotResultado(res)
     setRotSel({})
   }
@@ -1850,7 +1858,6 @@ const cargarLeads = useCallback(async () => {
     )
   }
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
-  const rotStatNoAptos = allRotLeads.length - rotStatAptos
   const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
   const rotVistaAsignacion = rotAsesor
     ? allRotLeadsSorted.filter(l=>rotApto(l,rotAsesor).apto).slice(0, rotCant)
@@ -1913,8 +1920,9 @@ const cargarLeads = useCallback(async () => {
         {/* SIDEBAR */}
         <aside className={`bo-sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Principal</div>
-          <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
+          <button className={`bo-nav${seccion==='base'&&!rotPanelOpen?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
+          <button className={`bo-nav${seccion==='base'&&rotPanelOpen?' active':''}`} onClick={abrirRotacionInteligente}><BoNavIcon tipo="rotacion" /> <span>Rotación inteligente</span></button>
           <div className="sidebar-sep">Reportes</div>
           <button className={`bo-nav${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><BoNavIcon tipo="rendimiento" /> <span>Rendimiento</span></button>
           <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><BoNavIcon tipo="avance" /> <span>Avance Asesores</span></button>
@@ -1931,10 +1939,6 @@ const cargarLeads = useCallback(async () => {
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
-                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>setRotPanelOpen(v=>!v)}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                  Rotación inteligente
-                </button>
               </div>
             </div>
 
@@ -1947,12 +1951,6 @@ const cargarLeads = useCallback(async () => {
                     <button onClick={()=>setRotPanelOpen(false)} style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',padding:'3px 10px',borderRadius:6,cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>Cerrar ✕</button>
                   </div>
                   <div style={{padding:'14px 16px'}}>
-                    <div className="rot-header-stats" style={{marginBottom:14}}>
-                      <div className="rot-stat"><div className="rot-stat-num">{allRotLeads.length}</div><div className="rot-stat-label">Leads totales</div></div>
-                      <div className="rot-stat"><div className="rot-stat-num green">{rotStatAptos}</div><div className="rot-stat-label">Aptos para rotar</div></div>
-                      <div className="rot-stat"><div className="rot-stat-num red">{rotStatNoAptos}</div><div className="rot-stat-label">No aptos</div></div>
-                      <div className="rot-stat"><div className="rot-stat-num purple">{rotRotados}</div><div className="rot-stat-label">Rotados hoy</div></div>
-                    </div>
                     <div className="rot-form" style={{marginBottom:12}}>
                       <div className="rot-form-title">Rotar leads a un asesor</div>
                       <div className="rot-form-row">
