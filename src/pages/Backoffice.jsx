@@ -125,9 +125,10 @@ function normalizarTipifVend(valor) {
 function cantidadRotaciones(reg) {
   const guardadas = parseInt(String(reg?.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
-  const eventosRotacion = historial.filter(h => String(h?.tipo || '').toUpperCase() === 'ROTACION').length
-  const asignaciones = historial.filter(h => h?.asesor && String(h?.tipo || '').toUpperCase() !== 'TIPIF_VEND').length
-  return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
+  if (!historial.length) return guardadas
+  return historial.filter(h =>
+    String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor)
+  ).length
 }
 
 function ultimaAsignacionReg(reg) {
@@ -1038,6 +1039,7 @@ const cargarLeads = useCallback(async () => {
         asesor:     data.asesor || '',
         sinAsignar: !data.asesor,
         _tipifVend: data.tipif_vend ?? '',
+        rotaciones: Number(data.rotaciones ?? 0),
       })
       mostrarToast('Asignación eliminada')
     } catch (e) { mostrarToast(e.message || 'Error al eliminar la asignación') }
