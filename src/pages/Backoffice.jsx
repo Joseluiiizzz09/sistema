@@ -412,7 +412,7 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [basePage, setBasePage] = useState(1)
   const [basePageSize, setBasePageSize] = useState(25)
@@ -1654,10 +1654,15 @@ const cargarLeads = useCallback(async () => {
   // Todo número resaltado por duplicidad o por encontrarse en el flujo de ventas
   // queda protegido automáticamente. Se conserva su historial y solo cambia la
   // tipificación vigente a SH NO TOCAR.
+  const registrosBusquedaGlobal = filtros.global
+    ? Object.entries(baseData)
+        .filter(([fecha]) => (!filtros.desde || fecha >= filtros.desde) && (!filtros.hasta || fecha <= filtros.hasta))
+        .flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
+    : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
   const gruposProtegidos = {
-    sin_cobertura: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
-    no_tocar: registrosActivos.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
-    venta_cerrada: registrosActivos.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
+    sin_cobertura: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
+    no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
+    venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
   }
 
   async function guardarTipifBack2(id, nuevoValor) {
@@ -1678,7 +1683,6 @@ const cargarLeads = useCallback(async () => {
       }
     }
   }
-  const registrosBusquedaGlobal = registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
   const registrosOperativos = registrosBusquedaGlobal.filter(r =>
     grupoPrioridadLead(r) === 0 &&
     !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
@@ -1753,14 +1757,14 @@ const cargarLeads = useCallback(async () => {
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible])
 
   const statsBase = {
-    total:      registrosActivos.length,
-    ventas:     registrosActivos.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
-    asignados:  registrosActivos.filter(r=>r.asesor&&r.asesor!=='').length,
-    sinAsignar: registrosActivos.filter(r=>r.sinAsignar).length,
-    rotaciones: registrosActivos.reduce((s,r)=>s+r.rotaciones,0),
+    total:      registrosBusquedaGlobal.length,
+    ventas:     registrosBusquedaGlobal.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
+    asignados:  registrosBusquedaGlobal.filter(r=>r.asesor&&r.asesor!=='').length,
+    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar).length,
+    rotaciones: registrosBusquedaGlobal.reduce((s,r)=>s+r.rotaciones,0),
   }
 
   const rendData = useMemo(() => {
@@ -2087,11 +2091,23 @@ const cargarLeads = useCallback(async () => {
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" inputMode="numeric" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value.replace(/\D/g,'')}))} placeholder="Buscar N1 o N2..." />
               </div>
+              <div className="bo-input-group base-filtro-fecha"><label>Desde</label>
+                <input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined}
+                  onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} />
+              </div>
+              <div className="bo-input-group base-filtro-fecha"><label>Hasta</label>
+                <input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined}
+                  onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} />
+              </div>
+              <label className="toggle-col base-filtro-toggle base-filtro-global">
+                <input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} />
+                <span>Buscar global</span>
+              </label>
               <label className="toggle-col base-filtro-toggle">
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
             </div>
 
             {/* FORMULARIO AGREGAR INDIVIDUAL */}
@@ -2198,7 +2214,7 @@ const cargarLeads = useCallback(async () => {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={11} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={11} className="bo-empty">{filtros.global ? 'Sin registros para el rango y filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>
                     : registrosPagina.map((r,i) => {
                          const tipifActual = tipifEfectiva(r)
                          const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())

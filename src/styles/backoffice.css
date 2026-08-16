@@ -359,12 +359,15 @@ body{
 }
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}
 .bo-root .base-filtros .base-filtro-numero{flex-basis:210px;min-width:180px;}
+.bo-root .base-filtros .base-filtro-fecha{flex:0 1 142px;min-width:132px;}
+.bo-root .base-filtros .base-filtro-fecha .form-control{min-height:33px;font-size:11px;}
 .bo-root .base-filtro-toggle{
   flex:0 0 auto;display:flex;align-items:center;gap:6px;white-space:nowrap;
   height:33px;padding:0 9px;border:1px solid var(--line-2);border-radius:9px;
   background:var(--surf-1);font-size:10px;color:var(--ink-3);font-weight:600;
 }
 .bo-root .base-filtro-toggle input{width:13px;height:13px;margin:0;accent-color:var(--brand);}
+.bo-root .base-filtro-global{color:#1d4ed8;}
 .bo-root .base-filtro-limpiar{flex:0 0 auto;height:33px;font-size:11px;padding:5px 11px;}
 .bo-root .base-tabla-wrap{
   overflow-x:auto;
