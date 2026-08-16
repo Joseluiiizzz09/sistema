@@ -106,6 +106,7 @@ function claseTipifBack(valor) {
   return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
 }
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
+const TIPIF_FILTRO_OPCIONES = [...TIPIF_VEND_OPCIONES, 'INSTALADO', 'VENTA CAIDA']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'])
@@ -198,6 +199,7 @@ function tipifPrevioHistorial(historial) {
 // Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
+  if (String(reg?.tipifInterna || '').trim()) return String(reg.tipifInterna).trim()
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
   // Una venta realmente creada tiene prioridad definitiva. No basta con haber
@@ -792,6 +794,10 @@ const cargarLeads = useCallback(async () => {
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
           venta_confirmada: Number(l.venta_confirmada || 0),
+          tipifInterna: l.tipif_interna || '',
+          tipifInternaColor: l.tipif_interna_color || '',
+          tipifInternaArea: l.tipif_interna_area || '',
+          tipifInternaFecha: l.tipif_interna_fecha || '',
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
           // hora de asignación del asesor actual, derivada del historial para que no se pise en rotaciones
@@ -2173,7 +2179,7 @@ const cargarLeads = useCallback(async () => {
                 <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
                   <option value="">Todas</option>
                   <option value="__pendiente__">Pendiente</option>
-                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                  {TIPIF_FILTRO_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="bo-input-group"><label>Asesor</label>
@@ -2348,7 +2354,7 @@ const cargarLeads = useCallback(async () => {
                          const salaAsesor = asesorActualNorm
                            ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
                            : 'SIN ASIGNAR'
-                         const esExclusiva = TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
+                         const esExclusiva = Boolean(r.tipifInterna) || TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
                          const detAbierto  = !!detOpen[r.id]
                          const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
                          const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
@@ -2356,7 +2362,10 @@ const cargarLeads = useCallback(async () => {
                          )
                          const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
                          const claseDuplicadoDia = ocurrenciaDia >= 4 ? 'num-duplicado-limite' : (ocurrenciaDia >= 2 ? 'num-duplicado' : '')
-                         const claseNumero = estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia
+                         const claseNumero = r.tipifInterna ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
+                         const estiloInterno = r.tipifInterna
+                           ? {color:r.tipifInternaColor,background:r.tipifInterna==='INSTALADO'?'#e0f2fe':r.tipifInterna==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
+                           : undefined
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2382,7 +2391,7 @@ const cargarLeads = useCallback(async () => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} title={estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : '')}>{r.n1}</span>
+                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?`${r.tipifInterna} · ${r.tipifInternaArea}`:(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
@@ -2425,11 +2434,13 @@ const cargarLeads = useCallback(async () => {
                             {/* Tipif. Vendedor */}
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
-                                <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                  style={estiloTipifVend(tipifEfectiva(r))}>
-                                  <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
-                                  {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
-                                </select>
+                                {r.tipifInterna
+                                  ? <span className="tipif-interna-badge" style={estiloInterno} title={`Tipificación interna de ${r.tipifInternaArea}`}>{r.tipifInterna}</span>
+                                  : <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                      style={estiloTipifVend(tipifEfectiva(r))}>
+                                      <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
+                                      {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
+                                    </select>}
                                 {r._tipifVend==='VENTA CERRADA'&&extraerDni(r.obsAsesor)&&(
                                   <button type="button" className="btn-dni-cuaderno"
                                     title="Ver DNI de cierre"
