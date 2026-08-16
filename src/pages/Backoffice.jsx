@@ -1772,9 +1772,13 @@ const cargarLeads = useCallback(async () => {
     })
     return [...filtered].sort((a, b) => {
       if (ordenDiarioActivo) {
-        const inicialA = !String(tipifEfectiva(a) || '').trim() && (!String(a.asesor || '').trim() || a.sinAsignar)
-        const inicialB = !String(tipifEfectiva(b) || '').trim() && (!String(b.asesor || '').trim() || b.sinAsignar)
-        if (inicialA !== inicialB) return inicialA ? -1 : 1
+        const pendienteA = !String(tipifEfectiva(a) || '').trim()
+        const pendienteB = !String(tipifEfectiva(b) || '').trim()
+        const sinAsignarA = !String(a.asesor || '').trim() || a.sinAsignar
+        const sinAsignarB = !String(b.asesor || '').trim() || b.sinAsignar
+        const bloqueA = pendienteA ? (sinAsignarA ? 0 : 1) : 2
+        const bloqueB = pendienteB ? (sinAsignarB ? 0 : 1) : 2
+        if (bloqueA !== bloqueB) return bloqueA - bloqueB
         const rotacionesA = cantidadRotaciones(a)
         const rotacionesB = cantidadRotaciones(b)
         if (rotacionesA !== rotacionesB) return rotacionesA - rotacionesB
