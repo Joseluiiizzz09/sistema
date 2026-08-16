@@ -916,9 +916,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     cargarAsesores()
     cargarFechas()
     cargarEstadosVentas()
-    // Las tipificaciones del asesor deben reflejarse pronto en Back Data.
-    // Un segundo mantiene el sondeo liviano y reduce a la mitad la espera anterior.
-    const t = setVisibleInterval(cargarLeads, 1000)
+    // Evita que varios usuarios saturen la API con consultas simultaneas. Los
+    // cambios locales siguen siendo inmediatos y la sincronizacion remota se
+    // confirma en el siguiente ciclo.
+    const t = setVisibleInterval(cargarLeads, 5000)
     const tv = setVisibleInterval(cargarEstadosVentas, 15000)
 
     // Al regresar a la ventana no esperamos al siguiente ciclo del polling.
