@@ -126,9 +126,11 @@ function cantidadRotaciones(reg) {
   const guardadas = parseInt(String(reg?.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
   if (!historial.length) return guardadas
-  return historial.filter(h =>
-    String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor)
-  ).length
+  return historial.filter(h => {
+    const tipo = String(h?.tipo || '').trim().toUpperCase()
+    return Boolean(String(h?.asesor || '').trim())
+      && !['CARGA', 'TIPIF_VEND', 'TIPIF_BACK', 'DERIVADO'].includes(tipo)
+  }).length
 }
 
 function ultimaAsignacionReg(reg) {
