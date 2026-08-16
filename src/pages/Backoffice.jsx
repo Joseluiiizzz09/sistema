@@ -124,6 +124,9 @@ function normalizarTipifVend(valor) {
 
 function cantidadRotaciones(reg) {
   const guardadas = parseInt(String(reg?.rotaciones ?? 0).replace(/x/gi, ''), 10) || 0
+  // En registros guardados, la API ya proyecta el contador unificado del
+  // primer lead del numero en el dia.
+  if (reg?._backendId) return guardadas
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
   if (!historial.length) return guardadas
   return historial.filter(h => {
@@ -202,14 +205,17 @@ function tipifEfectiva(reg) {
   if (Number(reg?.venta_confirmada) === 1 || eventos.some(h => h?.tipif === 'VENTA CERRADA' && h?.ventaCompleta)) {
     return 'VENTA CERRADA'
   }
+  const propia = normalizarTipifVend((reg?._tipifVend || '').trim())
+  // NO ROTAR es una regla estructural del duplicado diario y prevalece sobre
+  // eventos historicos que ese registro hubiera recibido por error.
+  if (propia === 'NO ROTAR') return 'NO ROTAR'
   // Mientras no exista venta, la tipificación cronológica más reciente gana,
   // incluso si la dejó un asesor que ya no es el titular actual.
   if (eventos.length) {
     const ult = eventos.reduce((a, b) => (b.ts > a.ts ? b : a))
     return normalizarTipifVend(ult.tipif)
   }
-  const propia = (reg?._tipifVend || '').trim()
-  return normalizarTipifVend(propia !== '' ? reg._tipifVend : tipifPrevioHistorial(reg?.historial))
+  return normalizarTipifVend(propia !== '' ? propia : tipifPrevioHistorial(reg?.historial))
 }
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
@@ -1054,7 +1060,16 @@ const cargarLeads = useCallback(async () => {
     const { reg } = found
     const hora = horaAhora()
     updateReg(id, { _tipifVend:valor, _tipifHora:hora })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) {
+          updateReg(id, { _tipifVend:data.tipif_vend || reg._tipifVend || '', _tipifHora:reg._tipifHora || '' })
+          throw new Error(data.mensaje || 'No se pudo guardar la tipificaciÃ³n')
+        }
+      } catch (e) { mostrarToast(e.message || 'Error al guardar la tipificaciÃ³n') }
+    }
   }
 
   // ── Tipif back ────────────────────────────────────────────────────────────
