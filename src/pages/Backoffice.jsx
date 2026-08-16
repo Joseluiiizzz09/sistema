@@ -482,7 +482,7 @@ export default function Backoffice() {
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
   const [rotAsesor,     setRotAsesor]     = useState('')
   const [rotSort,       setRotSort]       = useState({ col:null, dir:'asc' })
-  const [rotCant,       setRotCant]       = useState(20)
+  const [rotCant,       setRotCant]       = useState(4)
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
@@ -1135,6 +1135,7 @@ const cargarLeads = useCallback(async () => {
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
         const histAsesores = reg.historial.filter(h=>!h.tipo||h.tipo==='ASIGNACION'||h.tipo==='ROTACION').map(h=>h.asesor)
         const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
+        if (!tipifActual || tipifActual === 'NUEVO') return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual)) return
         // Protección MORADO: duplicado en la misma fecha → no rota
         const nNorm = normalizarNumero(reg.n1)
@@ -1812,9 +1813,11 @@ const cargarLeads = useCallback(async () => {
   const rendMaxVentas = Math.max(...rendData.map(r=>r.ventas), 1)
 
   const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
-  const rotTipifsDisp  = ['NUEVO', ...TIPIF_VEND_OPCIONES]
+  const rotTipifsDisp  = TIPIF_VEND_OPCIONES
     .filter((v, i, arr) => arr.indexOf(v) === i)
-  const rotRotacionesDisp = [...new Set(allRotLeadsRaw.map(l=>cantidadRotaciones(l._reg)))].sort((a,b)=>a-b)
+  const rotRotacionesDisp = [...new Set(allRotLeadsRaw.map(l=>cantidadRotaciones(l._reg)))]
+    .filter(n => n >= 0 && n <= 7)
+    .sort((a,b)=>a-b)
   const allRotLeads    = allRotLeadsRaw.filter(l => {
     const coincideTipif = !rotFiltroTipif || (l.estado||'NUEVO').trim().toUpperCase() === rotFiltroTipif
     const coincideRot = rotFiltroRotaciones === '' || cantidadRotaciones(l._reg) === Number(rotFiltroRotaciones)
