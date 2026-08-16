@@ -1754,7 +1754,7 @@ const cargarLeads = useCallback(async () => {
       filtros.desde || filtros.hasta || filtros.global
     )
     const fuente = ordenDiarioActivo
-      ? registrosOperativos
+      ? (filtros.tipVend ? registrosBusquedaGlobal : registrosOperativos)
       : grupoProtegidoVisible
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
@@ -2279,8 +2279,8 @@ const cargarLeads = useCallback(async () => {
                         ?<select autoFocus value={filtros.tipVend}
                             onBlur={()=>setTipifHeaderOpen(false)}
                             onChange={e=>{
-                              setFiltros(p=>({...p,tipVend:e.target.value}))
-                              setOrdenDiarioActivo(false)
+                              setFiltros(p=>({...p,tipVend:e.target.value,desde:'',hasta:'',global:false}))
+                              setOrdenDiarioActivo(true)
                               setGrupoProtegidoVisible('')
                               setBasePage(1)
                               setTipifHeaderOpen(false)
