@@ -130,22 +130,19 @@ function cantidadRotaciones(reg) {
   return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
 }
 
-function esTipificacionOrigen(valor) {
-  const tipif = normalizarTipifVend(valor).toUpperCase()
-  return Boolean(tipif) && !['NUEVO','NO ROTAR'].includes(tipif)
-}
-
-function resumenTipificadoHoy(reg) {
+function resumenSinCoberturaHoy(reg) {
   const hoy = fechaHoy()
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
-  const tuvoTipificacion = (esTipificacionOrigen(reg?._tipifVend) && normalizarFecha(reg?.fecha) === hoy)
-    || historial.some(h => normalizarFecha(h?.fecha) === hoy && [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
-      .some(esTipificacionOrigen))
+  const tuvoSinCobertura = (
+    String(reg?._tipifVend || '').trim().toUpperCase() === 'SIN COBERTURA'
+    && normalizarFecha(reg?.fecha) === hoy
+  ) || historial.some(h => normalizarFecha(h?.fecha) === hoy && [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
+    .some(v => String(v || '').trim().toUpperCase() === 'SIN COBERTURA'))
   const rotaciones = historial.filter(h =>
     (String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor))
     && normalizarFecha(h?.fecha) === hoy
   ).length
-  return { aplica:tuvoTipificacion, rotaciones }
+  return { aplica:tuvoSinCobertura, rotaciones }
 }
 
 function grupoPrioridadLead(reg) {
@@ -172,7 +169,7 @@ function resaltadoPorVenta(venta) {
 }
 function esLeadProhibido(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
-  const limite = resumenTipificadoHoy(reg)
+  const limite = resumenSinCoberturaHoy(reg)
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
 }
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
