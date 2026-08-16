@@ -418,6 +418,21 @@ function documentoPreventa(reg) {
   return extraerDni(reg?.obsAsesor)
 }
 
+function documentoVenta(reg) {
+  const documento = String(reg?.ventaDocumento || '').trim()
+  if (documento) {
+    return {
+      valor: documento,
+      tipo: String(reg?.ventaTipoDoc || 'DNI').trim().toUpperCase() || 'DNI',
+      soloLectura: true,
+    }
+  }
+  const preventa = documentoPreventa(reg)
+  if (preventa) return { valor: preventa, tipo: 'DNI', soloLectura: true }
+  const documentoObs = extraerDni(reg?.obsAsesor)
+  return documentoObs ? { valor: documentoObs, tipo: 'DNI', soloLectura: false } : null
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function Backoffice() {
   const navigate    = useNavigate()
@@ -794,6 +809,8 @@ const cargarLeads = useCallback(async () => {
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
           venta_confirmada: Number(l.venta_confirmada || 0),
+          ventaDocumento: l.venta_documento || '',
+          ventaTipoDoc: l.venta_tipo_doc || '',
           tipifInterna: l.tipif_interna || '',
           tipifInternaColor: l.tipif_interna_color || '',
           tipifInternaArea: l.tipif_interna_area || '',
@@ -2441,23 +2458,13 @@ const cargarLeads = useCallback(async () => {
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                       {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                     </select>}
-                                {r._tipifVend==='VENTA CERRADA'&&extraerDni(r.obsAsesor)&&(
+                                {documentoVenta(r)&&(
                                   <button type="button" className="btn-dni-cuaderno"
-                                    title="Ver DNI de cierre"
+                                    title={`Ver ${documentoVenta(r).tipo} registrado en Ventas`}
                                     onClick={e=>{
                                       const rect=e.currentTarget.getBoundingClientRect()
-                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:extraerDni(r.obsAsesor),top:rect.bottom+6,left:rect.left})
-                                    }}>
-                                    <NotebookIcon/>
-                                  </button>
-                                )}
-                                {tipifEfectiva(r)==='PREVENTA'&&documentoPreventa(r)&&(
-                                  <button type="button" className="btn-dni-cuaderno"
-                                    style={{background:'#2563eb',borderColor:'#1d4ed8',color:'#fff'}}
-                                    title="Ver DNI de preventa"
-                                    onClick={e=>{
-                                      const rect=e.currentTarget.getBoundingClientRect()
-                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:documentoPreventa(r),label:'DNI DE PREVENTA',soloLectura:true,top:rect.bottom+6,left:rect.left})
+                                      const doc=documentoVenta(r)
+                                      setDniModal(prev=>prev&&prev.id===r.id?null:{id:r.id,bid:r._backendId,dni:doc.valor,label:`${doc.tipo} DE LA VENTA`,soloLectura:doc.soloLectura,top:rect.bottom+6,left:rect.left})
                                     }}>
                                     <NotebookIcon/>
                                   </button>
