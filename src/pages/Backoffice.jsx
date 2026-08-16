@@ -1753,7 +1753,7 @@ const cargarLeads = useCallback(async () => {
       filtros.desde || filtros.hasta || filtros.global
     )
     const fuente = ordenDiarioActivo
-      ? registrosBusquedaGlobal
+      ? registrosOperativos
       : grupoProtegidoVisible
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
