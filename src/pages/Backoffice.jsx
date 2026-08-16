@@ -105,7 +105,7 @@ function claseTipifBack(valor) {
   const clave = String(valor || '').trim().toUpperCase().replace(/\s+/g, '-')
   return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
 }
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO TOCAR']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'])
@@ -119,7 +119,7 @@ function normalizarNumero(valor) {
 
 function normalizarTipifVend(valor) {
   const tipif = String(valor || '').trim()
-  return tipif.toUpperCase() === 'SH NO ROTAR' ? 'NO ROTAR' : tipif
+  return ['SH NO ROTAR','SH NO TOCAR'].includes(tipif.toUpperCase()) ? 'NO ROTAR' : tipif
 }
 
 function cantidadRotaciones(reg) {
@@ -1497,7 +1497,7 @@ const cargarLeads = useCallback(async () => {
       }
       // Normalizar tipifVend: alias del sistema antiguo
       const tipNorm=(tipifVend||'').trim().toUpperCase()
-      if(tipNorm==='SH NO ROTAR') tipifVend='NO ROTAR'
+      if(tipNorm==='SH NO ROTAR'||tipNorm==='SH NO TOCAR') tipifVend='NO ROTAR'
       else if(tipNorm==='SH INSTALADO') tipifVend='INSTALADO'
       if (!n1||n1.length<6) return
       let fechaFila=legacyFecha, fechaError=false, fechaErrorMsg=''
@@ -1695,7 +1695,7 @@ const cargarLeads = useCallback(async () => {
 
   // Todo número resaltado por duplicidad o por encontrarse en el flujo de ventas
   // queda protegido automáticamente. Se conserva su historial y solo cambia la
-  // tipificación vigente a SH NO TOCAR.
+  // tipificación vigente a NO ROTAR.
   const registrosBusquedaGlobal = filtros.global
     ? Object.entries(baseData)
         .filter(([fecha]) => (!filtros.desde || fecha >= filtros.desde) && (!filtros.hasta || fecha <= filtros.hasta))
