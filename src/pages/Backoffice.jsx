@@ -2383,9 +2383,7 @@ const cargarLeads = useCallback(async () => {
 
                             {/* Rotaciones */}
                             <td style={{textAlign:'center'}}>
-                              {String(tipifEfectiva(r)||'').trim().toUpperCase()==='NO ROTAR'
-                                ?<span style={{color:'#d1d5db',fontSize:10}}>—</span>
-                                :cantidadRotaciones(r)>0
+                              {cantidadRotaciones(r)>0
                                 ?<span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:99,display:'inline-block'}}>{cantidadRotaciones(r)}x</span>
                                 :<span style={{color:'#d1d5db',fontSize:10}}>0</span>}
                             </td>
