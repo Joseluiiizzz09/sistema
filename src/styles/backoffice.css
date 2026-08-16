@@ -690,7 +690,7 @@ body{
 .rot-table-wrap{background:var(--surf-0);border-radius:var(--r);border:1px solid var(--line);overflow:hidden;box-shadow:var(--sh);}
 .rot-table-header{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700;}
 .tag-aptos{background:#ecfdf5;color:#065f46;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;}
-.bo-root .rot-table{max-height:360px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
+.bo-root .rot-table{height:calc(100vh - 315px);min-height:500px;max-height:720px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;}
 .bo-root .rot-table::-webkit-scrollbar{width:6px;height:6px;}
 .bo-root .rot-table::-webkit-scrollbar-track{background:#e2e8f0;border-radius:99px;}
 .bo-root .rot-table::-webkit-scrollbar-thumb{background:var(--brand);border:2px solid #e2e8f0;border-radius:99px;}

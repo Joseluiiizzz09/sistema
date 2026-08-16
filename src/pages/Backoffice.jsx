@@ -482,7 +482,7 @@ export default function Backoffice() {
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
   const [rotAsesor,     setRotAsesor]     = useState('')
   const [rotSort,       setRotSort]       = useState({ col:null, dir:'asc' })
-  const [rotCant,       setRotCant]       = useState(4)
+  const [rotCant,       setRotCant]       = useState(20)
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
@@ -1192,7 +1192,7 @@ const cargarLeads = useCallback(async () => {
       const asesorActual = rotAsesor
       let selToUse = { ...rotSel }
       if (Object.keys(selToUse).length === 0) {
-        const aptos = buildRotLeads().filter(l => rotApto(l, asesorActual).apto).slice(0, rotCant)
+        const aptos = rotVistaAsignacion.slice(0, rotCant)
         if (!aptos.length) {
           mostrarToast('No hay leads aptos para ' + asesorActual)
           rotandoRef.current = false
@@ -1858,11 +1858,11 @@ const cargarLeads = useCallback(async () => {
     )
   }
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
-  const rotAptos       = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto)
   const rotVistaAsignacion = rotAsesor
-    ? allRotLeadsSorted.filter(l=>rotApto(l,rotAsesor).apto).slice(0, rotCant)
+    ? allRotLeadsSorted.filter(l=>rotApto(l,rotAsesor).apto).slice(0, 200)
     : []
-  const allAptosSelected = rotAptos.length > 0 && rotAptos.every(l=>rotSel[l.id])
+  const rotSeleccionables = rotVistaAsignacion.slice(0, rotCant)
+  const allAptosSelected = rotSeleccionables.length > 0 && rotSeleccionables.every(l=>rotSel[l.id])
   const rotFechasDisp  = Object.keys(baseData).filter(f=>(baseData[f]||[]).length>0).sort().reverse()
   const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:Object.values(baseData).flat().filter(r=>r.asesor===a.nombre).length }))
   const masivaFilasParaCargar = inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)
@@ -1958,7 +1958,8 @@ const cargarLeads = useCallback(async () => {
                             onChange={v=>{ setRotAsesor(v); setRotSel({}) }}
                             className="form-select" placeholderText="— Seleccionar asesor destino —" emptyLabel="— Ninguno —" />
                         </div>
-                        <input type="number" value={rotCant} min={1} max={4} onChange={e=>setRotCant(parseInt(e.target.value)||4)} style={{width:60}} />
+                        <input type="number" value={rotCant} min={1} max={200}
+                          onChange={e=>{ setRotCant(Math.min(200,Math.max(1,parseInt(e.target.value)||1))); setRotSel({}) }} style={{width:72}} />
                         <span style={{fontSize:12,color:'#888'}}>leads máx.</span>
                         <button className="btn-rotar-masivo" onClick={rotEjecutar} disabled={!rotAsesor || rotProgress>0}>
                           {rotProgress>0 ? 'Rotando...' : 'Rotar ahora'}
@@ -1978,6 +1979,7 @@ const cargarLeads = useCallback(async () => {
                       <div className="rot-table-header" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
                           Leads disponibles <span className="tag-aptos">{rotStatAptos} aptos</span>
+                          {rotAsesor&&<span style={{fontSize:10,color:'#64748b',fontWeight:600}}>Mostrando {rotVistaAsignacion.length} · seleccionados {Object.values(rotSel).filter(Boolean).length}/{rotCant}</span>}
                         </div>
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Fecha:</label>
@@ -2002,7 +2004,8 @@ const cargarLeads = useCallback(async () => {
                         <table>
                           <thead><tr>
                             <th>
-                              <input type="checkbox" checked={allAptosSelected} onChange={e=>{ if(e.target.checked){const ns={};rotAptos.slice(0,rotCant).forEach(l=>{ns[l.id]=true});setRotSel(ns);}else setRotSel({}) }} />
+                              <input type="checkbox" checked={allAptosSelected} title={allAptosSelected?'Deseleccionar visibles':'Seleccionar automáticamente'}
+                                onChange={()=>{ if(allAptosSelected){setRotSel({})}else{const ns={};rotSeleccionables.forEach(l=>{ns[l.id]=true});setRotSel(ns)} }} />
                             </th>
                             {rotTh('n1','N1 / Campaña')}{rotTh('fecha','Fecha')}{rotTh('tipif','Tipificación')}
                             {rotTh('asesor','Asesor actual')}{rotTh('rotac','Rotac.')}{rotTh('hora','Hora asig.')}{rotTh('tiempo','Tiempo')}
