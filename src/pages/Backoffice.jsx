@@ -108,13 +108,18 @@ function claseTipifBack(valor) {
 const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','CONTESTA','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','SH NO TOCAR']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','SH NO ROTAR'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','SH NO ROTAR'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
 function normalizarNumero(valor) {
   return String(valor || '').replace(/\D/g, '')
+}
+
+function normalizarTipifVend(valor) {
+  const tipif = String(valor || '').trim()
+  return tipif.toUpperCase() === 'SH NO ROTAR' ? 'NO ROTAR' : tipif
 }
 
 function cantidadRotaciones(reg) {
@@ -123,6 +128,20 @@ function cantidadRotaciones(reg) {
   const eventosRotacion = historial.filter(h => String(h?.tipo || '').toUpperCase() === 'ROTACION').length
   const asignaciones = historial.filter(h => h?.asesor && String(h?.tipo || '').toUpperCase() !== 'TIPIF_VEND').length
   return Math.max(guardadas, eventosRotacion, Math.max(0, asignaciones - 1))
+}
+
+function resumenSinCoberturaHoy(reg) {
+  const hoy = fechaHoy()
+  const historial = Array.isArray(reg?.historial) ? reg.historial : []
+  const tipifActual = String(reg?._tipifVend || '').trim().toUpperCase()
+  const tuvoSinCobertura = (tipifActual === 'SIN COBERTURA' && normalizarFecha(reg?.fecha) === hoy)
+    || historial.some(h => normalizarFecha(h?.fecha) === hoy && [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
+      .some(v => String(v || '').trim().toUpperCase() === 'SIN COBERTURA'))
+  const rotaciones = historial.filter(h =>
+    (String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor))
+    && normalizarFecha(h?.fecha) === hoy
+  ).length
+  return { aplica:tuvoSinCobertura, rotaciones }
 }
 
 function grupoPrioridadLead(reg) {
@@ -149,7 +168,8 @@ function resaltadoPorVenta(venta) {
 }
 function esLeadProhibido(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
-  return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
+  const limite = resumenSinCoberturaHoy(reg)
+  return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
 }
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
 // La base principal la muestra mientras el asesor actual todavía no coloca la suya.
@@ -175,10 +195,10 @@ function tipifEfectiva(reg) {
   // incluso si la dejó un asesor que ya no es el titular actual.
   if (eventos.length) {
     const ult = eventos.reduce((a, b) => (b.ts > a.ts ? b : a))
-    return ult.tipif || ''
+    return normalizarTipifVend(ult.tipif)
   }
   const propia = (reg?._tipifVend || '').trim()
-  return propia !== '' ? reg._tipifVend : tipifPrevioHistorial(reg?.historial)
+  return normalizarTipifVend(propia !== '' ? reg._tipifVend : tipifPrevioHistorial(reg?.historial))
 }
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
@@ -187,13 +207,13 @@ const TIPIF_VEND_STYLES = {
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
   'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
-  'INSTALADO':['#dcfce7','#14532d'],'SH NO ROTAR':['#fef2f2','#9f1239'],'SH NO TOCAR':['#fef2f2','#9f1239'],
+  'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fef2f2','#9f1239'],'SH NO ROTAR':['#fef2f2','#9f1239'],'SH NO TOCAR':['#fef2f2','#9f1239'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
   'CORTA LLAMADA':'#f97316','NO DESEA':'#ef4444','BUZON DE VOZ':'#6b7280','SERVICIO ACTIVO':'#0891b2',
   'SIN COBERTURA':'#dc2626','NO CALIFICA':'#d97706','NO TOCAR':'#dc2626','FRAUDE':'#991b1b','INSTALADO':'#15803d',
-  'SH NO ROTAR':'#9f1239','SH NO TOCAR':'#9f1239',
+  'NO ROTAR':'#9f1239','SH NO ROTAR':'#9f1239','SH NO TOCAR':'#9f1239',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
@@ -204,7 +224,7 @@ const TIPIF_VEND_FUERTE = {
   'NO DESEA':'#d97706', 'NO CONTESTA':'#ca8a04', 'NC':'#ca8a04',
   'EN EJECUCION':'#92400e', 'DESEA MOVIL':'#b45309', 'DERIVADO':'#7c3aed',
   'NO CALIFICA':'#f43f5e', 'SIN COBERTURA':'#dc2626', 'EDIFICIO NO LIBERADO':'#b91c1c',
-  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'SH NO ROTAR':'#9f1239', 'SH NO TOCAR':'#9f1239',
+  'NO TOCAR':'#dc2626', 'FRAUDE':'#991b1b', 'NO ROTAR':'#9f1239', 'SH NO ROTAR':'#9f1239', 'SH NO TOCAR':'#9f1239',
 }
 function estiloTipifVend(v) {
   const c = TIPIF_VEND_FUERTE[v]
@@ -729,6 +749,7 @@ const cargarLeads = useCallback(async () => {
         const reg = {
           id:         l.id,
           _backendId: l.id,
+          fecha,
           campana:    l.campana || '—',
           distrito:   l.distrito || '—',
           distritoSinCobertura: l.distrito_sin_cobertura || l.distrito || '',
@@ -1140,7 +1161,7 @@ const cargarLeads = useCallback(async () => {
         const histAsesores = asignaciones.map(h=>h.asesor)
         const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
         if (!tipifActual || tipifActual === 'NUEVO') return
-        if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual)) return
+        if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual) || esLeadProhibido(reg)) return
         // Protección MORADO: duplicado en la misma fecha → no rota
         const nNorm = normalizarNumero(reg.n1)
         if (nNorm && cuentaFecha[nNorm] > 1) return
@@ -1476,7 +1497,7 @@ const cargarLeads = useCallback(async () => {
       }
       // Normalizar tipifVend: alias del sistema antiguo
       const tipNorm=(tipifVend||'').trim().toUpperCase()
-      if(tipNorm==='SH NO ROTAR') tipifVend='NO TOCAR'
+      if(tipNorm==='SH NO ROTAR') tipifVend='NO ROTAR'
       else if(tipNorm==='SH INSTALADO') tipifVend='INSTALADO'
       if (!n1||n1.length<6) return
       let fechaFila=legacyFecha, fechaError=false, fechaErrorMsg=''
@@ -1682,7 +1703,7 @@ const cargarLeads = useCallback(async () => {
     : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
   const gruposProtegidos = {
     sin_cobertura: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
-    no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
+    no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
   }
 
@@ -1706,7 +1727,7 @@ const cargarLeads = useCallback(async () => {
   }
   const registrosOperativos = registrosBusquedaGlobal.filter(r =>
     grupoPrioridadLead(r) === 0 &&
-    !['NO TOCAR','SH NO TOCAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
+    !['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
   )
   const n1FormularioNormalizado = normalizarNumero(form.n1)
   const altasPreviasN1 = n1FormularioNormalizado
