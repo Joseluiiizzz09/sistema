@@ -445,10 +445,12 @@ export default function Backoffice() {
   // ── Filtros base ──
   const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
+  const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [basePage, setBasePage] = useState(1)
   const [basePageSize, setBasePageSize] = useState(25)
   const [grupoProtegidoVisible, setGrupoProtegidoVisible] = useState('')
   function cycleSort(col) {
+    setOrdenDiarioActivo(false)
     setTableSort(prev => {
       const firstDir = { tipif:'az', hora:'desc', rots:'asc', asesor:'sin_asignar' }[col]
       if (prev.col !== col) return { col, dir: firstDir }
@@ -1750,7 +1752,9 @@ const cargarLeads = useCallback(async () => {
       filtros.tip || filtros.tipVend || filtros.asesor || filtros.numero ||
       filtros.desde || filtros.hasta || filtros.global
     )
-    const fuente = grupoProtegidoVisible
+    const fuente = ordenDiarioActivo
+      ? registrosBusquedaGlobal
+      : grupoProtegidoVisible
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
     const filtered = fuente.filter(r => {
@@ -1767,6 +1771,20 @@ const cargarLeads = useCallback(async () => {
       return true
     })
     return [...filtered].sort((a, b) => {
+      if (ordenDiarioActivo) {
+        const inicialA = !String(tipifEfectiva(a) || '').trim() && (!String(a.asesor || '').trim() || a.sinAsignar)
+        const inicialB = !String(tipifEfectiva(b) || '').trim() && (!String(b.asesor || '').trim() || b.sinAsignar)
+        if (inicialA !== inicialB) return inicialA ? -1 : 1
+        const rotacionesA = cantidadRotaciones(a)
+        const rotacionesB = cantidadRotaciones(b)
+        if (rotacionesA !== rotacionesB) return rotacionesA - rotacionesB
+        const asignacionA = ultimaAsignacionReg(a)
+        const asignacionB = ultimaAsignacionReg(b)
+        const marcaA = `${normalizarFecha(asignacionA?.fecha || a.fecha || a._fechaBase)} ${String(asignacionA?.hora || a.horaAsigDisplay || a.horaAsig || '').padStart(5,'0')}`
+        const marcaB = `${normalizarFecha(asignacionB?.fecha || b.fecha || b._fechaBase)} ${String(asignacionB?.hora || b.horaAsigDisplay || b.horaAsig || '').padStart(5,'0')}`
+        const porHora = marcaB.localeCompare(marcaA)
+        return porHora || Number(b.id || 0) - Number(a.id || 0)
+      }
       // Esta prioridad es fija: los leads operativos siempre permanecen arriba,
       // SIN COBERTURA se agrupa debajo y VENTA CERRADA queda al final.
       const grupo = grupoPrioridadLead(a) - grupoPrioridadLead(b)
@@ -1809,7 +1827,7 @@ const cargarLeads = useCallback(async () => {
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
   const statsBase = {
     total:      registrosBusquedaGlobal.length,
@@ -2203,6 +2221,22 @@ const cargarLeads = useCallback(async () => {
                 <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
                 <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
               </div>
+            </div>
+
+            <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:10,margin:'0 0 10px'}}>
+              {ordenDiarioActivo&&<span style={{fontSize:11,color:'#64748b',fontWeight:600}}>Aplicado a toda la base del {formatFecha(fechaActiva)}</span>}
+              <button type="button"
+                onClick={()=>{
+                  const activar = !ordenDiarioActivo
+                  setOrdenDiarioActivo(activar)
+                  setTableSort({col:null,dir:null})
+                  setGrupoProtegidoVisible('')
+                  setBasePage(1)
+                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
+                }}
+                style={{border:'none',borderRadius:9,padding:'8px 13px',fontFamily:'inherit',fontSize:11,fontWeight:700,cursor:'pointer',color:'#fff',background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)',boxShadow:'0 3px 10px rgba(124,58,237,.2)'}}>
+                {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
+              </button>
             </div>
 
             {/* TABLA BASE — diseño compacto sin scroll horizontal */}
