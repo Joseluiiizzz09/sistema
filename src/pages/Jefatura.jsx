@@ -281,6 +281,8 @@ export default function Jefatura() {
   const [fvDistrito,   setFvDistrito]   = useState('')
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
+  const [paginaFlujo, setPaginaFlujo] = useState(1)
+  const [porPaginaFlujo, setPorPaginaFlujo] = useState(25)
 
   /* filtros avanzados — Seguimiento en campo (se combinan con filtroSeg) */
   const [fsAsesor,    setFsAsesor]    = useState('')
@@ -816,6 +818,15 @@ export default function Jefatura() {
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
   }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstado, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
+
+  const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
+  const ventasFlujoPagina = useMemo(() => {
+    const inicio = (paginaFlujo - 1) * porPaginaFlujo
+    return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
+  }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
+
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstado, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
     setFiltroFlujoVentas('todas')
@@ -1376,7 +1387,7 @@ export default function Jefatura() {
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
                       <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
-                    ) : ventasFlujoFiltradas.map((v, i) => {
+                    ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const enSeg = FLUJO_SEGUIMIENTO.has(estado)
                       const pInfo = estadoProg(v.estado_prog)
@@ -1386,11 +1397,11 @@ export default function Jefatura() {
                       const pTip = [v.obs_programacion && `Obs: ${v.obs_programacion}`, fpStr && `Fecha: ${fpStr}`].filter(Boolean).join('\n') || undefined
                       return (
                         <tr key={v.id || `${v.dni || v.documento || 'venta'}-${i}`}>
-                          <td>{i + 1}</td>
+                          <td>{(paginaFlujo - 1) * porPaginaFlujo + i + 1}</td>
                           <td>{formatF(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)}</td>
                           <td className="flujo-cliente">{v.nombre || v.nombre_apellidos || v.cliente || '—'}</td>
                           <td>{v.dni || v.documento || '—'}</td>
-                          <td>{v.asesor_nombre || v.asesor || v.vendedor || '—'}</td>
+                          <td>{String(v.asesor_nombre || v.asesor || v.vendedor || '—').toLocaleUpperCase('es-PE')}</td>
                           <td>{v.sala || '—'}</td>
                           <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
                           <td><span className={flujoValidada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoValidacion(v)}</span></td>
@@ -1398,7 +1409,7 @@ export default function Jefatura() {
                           <td>
                             <div title={pTip}>
                               <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'99px',fontSize:'10px',fontWeight:700,letterSpacing:'.3px',background:pSt.bg,color:pSt.color,border:`1px solid ${pSt.border}`,whiteSpace:'nowrap'}}>{pInfo.label}</span>
-                              {v.usuario_prog && <div style={{fontSize:'10px',color:'#6b7280',marginTop:'2px',whiteSpace:'nowrap'}}>Por: {v.usuario_prog.split(' ').slice(0,2).join(' ')}</div>}
+                              {v.usuario_prog && <div style={{fontSize:'10px',color:'#6b7280',marginTop:'2px',whiteSpace:'nowrap'}}>Por: {v.usuario_prog.split(' ').slice(0,2).join(' ').toLocaleUpperCase('es-PE')}</div>}
                             </div>
                           </td>
                           <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
@@ -1416,6 +1427,17 @@ export default function Jefatura() {
                     })}
                   </tbody>
                 </table>
+              </div>
+              <div className="flujo-paginacion">
+                <span>Mostrando {ventasFlujoFiltradas.length ? (paginaFlujo - 1) * porPaginaFlujo + 1 : 0}–{Math.min(paginaFlujo * porPaginaFlujo, ventasFlujoFiltradas.length)} de {ventasFlujoFiltradas.length}</span>
+                <div>
+                  <select value={porPaginaFlujo} onChange={e=>setPorPaginaFlujo(Number(e.target.value))} aria-label="Registros por página">
+                    {[25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
+                  </select>
+                  <button type="button" onClick={()=>setPaginaFlujo(p=>Math.max(1,p-1))} disabled={paginaFlujo<=1}>‹</button>
+                  <strong>Página {paginaFlujo} de {totalPaginasFlujo}</strong>
+                  <button type="button" onClick={()=>setPaginaFlujo(p=>Math.min(totalPaginasFlujo,p+1))} disabled={paginaFlujo>=totalPaginasFlujo}>›</button>
+                </div>
               </div>
             </div>
           </section>

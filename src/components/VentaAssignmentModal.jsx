@@ -33,6 +33,7 @@ function ModalBase({ title, subtitle, onClose, children, footer }) {
 
 export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', onClose, onSuccess }) {
   const [asesorId, setAsesorId] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -40,6 +41,11 @@ export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', 
     .filter(asesor => asesor.activo && asesor.cargo === 'asesor' && Number(asesor.id) !== Number(venta?.asesor_id))
     .sort((a, b) => String(a.sala || '').localeCompare(String(b.sala || '')) || String(a.nombre || '').localeCompare(String(b.nombre || ''))),
   [asesores, venta?.asesor_id])
+  const opcionesFiltradas = useMemo(() => {
+    const termino = busqueda.trim().toLocaleUpperCase('es-PE')
+    if (!termino) return opciones
+    return opciones.filter(asesor => `${asesor.nombre || ''} ${asesor.sala || ''}`.toLocaleUpperCase('es-PE').includes(termino))
+  }, [opciones, busqueda])
 
   async function guardar() {
     if (!asesorId) { setError('Selecciona el asesor de destino.'); return }
@@ -70,14 +76,20 @@ export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', 
     >
       <div className="va-current">
         <span>Asesor actual</span>
-        <strong>{venta?.asesor_nombre || venta?.asesor || 'Sin asignar'}</strong>
+        <strong>{String(venta?.asesor_nombre || venta?.asesor || 'Sin asignar').toLocaleUpperCase('es-PE')}</strong>
         <small>{venta?.sala || 'Sin sala'}</small>
+      </div>
+      <label className="va-label" htmlFor="va-buscar">Buscar trabajador</label>
+      <div className="va-search-row">
+        <input id="va-buscar" className="va-search" value={busqueda} onChange={event=>setBusqueda(event.target.value)} placeholder="Escribir nombre o sala..." />
+        <button type="button" onClick={()=>document.getElementById('va-asesor')?.focus()}>Buscar</button>
       </div>
       <label className="va-label" htmlFor="va-asesor">Nuevo asesor</label>
       <select id="va-asesor" className="va-select" value={asesorId} onChange={event => { setAsesorId(event.target.value); setError('') }}>
         <option value="">Seleccionar asesor de destino</option>
-        {opciones.map(asesor => <option key={asesor.id} value={asesor.id}>{asesor.nombre} · {asesor.sala || 'Sin sala'}</option>)}
+        {opcionesFiltradas.map(asesor => <option key={asesor.id} value={asesor.id}>{String(asesor.nombre || '').toLocaleUpperCase('es-PE')} · {String(asesor.sala || 'Sin sala').toLocaleUpperCase('es-PE')}</option>)}
       </select>
+      {busqueda && !opcionesFiltradas.length && <div className="va-alert">No se encontraron trabajadores con esa búsqueda.</div>}
       <p className="va-help">{alcance === 'sala' ? 'Solo se muestran asesores activos de tu sala.' : 'Puedes elegir un asesor activo de cualquier sala.'}</p>
       {!opciones.length && <div className="va-alert">No hay otro asesor activo disponible para esta venta.</div>}
       {error && <div className="va-alert error">{error}</div>}
