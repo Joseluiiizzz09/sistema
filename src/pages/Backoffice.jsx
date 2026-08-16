@@ -1698,10 +1698,17 @@ const cargarLeads = useCallback(async () => {
     : []
 
   const registrosFiltrados = (() => {
-    // Los grupos protegidos no participan de filtros ni ordenamientos normales.
-    // Solo se consultan cuando Back Data abre expresamente el bloque del final.
-    if (grupoProtegidoVisible) return gruposProtegidos[grupoProtegidoVisible] || []
-    const filtered = registrosOperativos.filter(r => {
+    // La vista inicial conserva solo los pendientes operativos. En cuanto el
+    // usuario filtra, la búsqueda incluye todo el alcance (ventas y protegidos).
+    // Si abre un grupo protegido, los demás filtros también se respetan.
+    const hayFiltroConsulta = Boolean(
+      filtros.tip || filtros.tipVend || filtros.asesor || filtros.numero ||
+      filtros.desde || filtros.hasta || filtros.global
+    )
+    const fuente = grupoProtegidoVisible
+      ? (gruposProtegidos[grupoProtegidoVisible] || [])
+      : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
+    const filtered = fuente.filter(r => {
       if (filtros.tip && !`${r.tipifBack||''} ${r.tipifBack2||''}`.toUpperCase().includes(filtros.tip.toUpperCase())) return false
       if (filtros.tipVend) {
         if (filtros.tipVend === '__pendiente__') {
