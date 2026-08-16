@@ -486,7 +486,7 @@ export default function Backoffice() {
   const [rotSel,        setRotSel]        = useState({})
   const [rotFiltroFecha,setRotFiltroFecha]= useState('')
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
-  const [rotFiltroRotaciones,setRotFiltroRotaciones]= useState('')
+  const [rotFiltroRotaciones,setRotFiltroRotaciones]= useState('0')
   const [rotProgress,   setRotProgress]   = useState(0)
   const [rotResultado,  setRotResultado]  = useState([])
 
@@ -1131,9 +1131,13 @@ const cargarLeads = useCallback(async () => {
       const cuentaFecha = {}
       regsDate.forEach(r => { const n = normalizarNumero(r.n1); if (n) cuentaFecha[n] = (cuentaFecha[n]||0)+1 })
       regsDate.forEach(reg => {
-        let ultimaAsig = new Date(fecha+'T'+(reg.horaAsig||'00:00')+':00')
+        const asignaciones = reg.historial.filter(h=>h?.asesor&&!['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase()))
+        const ultimaEntrada = asignaciones[asignaciones.length - 1]
+        const fechaAsignacion = normalizarFecha(ultimaEntrada?.fecha) || fecha
+        const horaAsignacion = ultimaEntrada?.hora || reg.horaAsig || '00:00'
+        let ultimaAsig = new Date(fechaAsignacion+'T'+horaAsignacion+':00')
         if (isNaN(ultimaAsig)) ultimaAsig = new Date(ahora.getTime() - 24*3600000)
-        const histAsesores = reg.historial.filter(h=>!h.tipo||h.tipo==='ASIGNACION'||h.tipo==='ROTACION').map(h=>h.asesor)
+        const histAsesores = asignaciones.map(h=>h.asesor)
         const tipifActual = (reg._tipifVend || '').trim().toUpperCase()
         if (!tipifActual || tipifActual === 'NUEVO') return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual)) return
@@ -1142,7 +1146,7 @@ const cargarLeads = useCallback(async () => {
         if (nNorm && cuentaFecha[nNorm] > 1) return
         // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
         if (resaltadoPorVenta(ventasPorNumero[nNorm])) return
-        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, histAsesores, _reg:reg })
+        list.push({ id:reg.id, tel:reg.n1, campana:reg.campana, n2:reg.n2||'', estado:reg._tipifVend||'NUEVO', tipifVend:reg._tipifVend||'', asesor:reg.asesor||'', ultimaAsig, fecha, fechaAsignacion, histAsesores, _reg:reg })
       })
     })
     return list
@@ -1177,7 +1181,15 @@ const cargarLeads = useCallback(async () => {
       try {
         const respuesta = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, motivo:'Rotacion masiva' }) })
         const data = await respuesta.json().catch(() => ({}))
-        if (respuesta.ok && data.ok) res.push({ tel:reg.n1, asesor:asesorActual, hora })
+        if (respuesta.ok && data.ok) {
+          updateReg(reg.id, {
+            asesor:data.asesor||asesorActual, horaAsig:hora, horaAsigDisplay:hora,
+            rotaciones:Number(data.rotaciones ?? (cantidadRotaciones(reg)+1)),
+            historial:Array.isArray(data.historial)?data.historial:reg.historial,
+            sinAsignar:false, _tipifVend:'', _tipifHora:'',
+          })
+          res.push({ tel:reg.n1, asesor:asesorActual, hora })
+        }
       } catch {}
     }
     await cargarLeads()
@@ -1815,12 +1827,10 @@ const cargarLeads = useCallback(async () => {
   const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
   const rotTipifsDisp  = TIPIF_VEND_OPCIONES
     .filter((v, i, arr) => arr.indexOf(v) === i)
-  const rotRotacionesDisp = [...new Set(allRotLeadsRaw.map(l=>cantidadRotaciones(l._reg)))]
-    .filter(n => n >= 0 && n <= 7)
-    .sort((a,b)=>a-b)
+  const rotRotacionesDisp = [0,1,2,3,4,5,6,7]
   const allRotLeads    = allRotLeadsRaw.filter(l => {
     const coincideTipif = !rotFiltroTipif || (l.estado||'NUEVO').trim().toUpperCase() === rotFiltroTipif
-    const coincideRot = rotFiltroRotaciones === '' || cantidadRotaciones(l._reg) === Number(rotFiltroRotaciones)
+    const coincideRot = cantidadRotaciones(l._reg) === Number(rotFiltroRotaciones)
     return coincideTipif && coincideRot
   })
   function rotSortVal(l, col) {
@@ -1997,10 +2007,9 @@ const cargarLeads = useCallback(async () => {
                           </select>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Rotaciones:</label>
                           <select value={rotFiltroRotaciones} onChange={e=>{ setRotFiltroRotaciones(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
-                            <option value="">Todas</option>
                             {rotRotacionesDisp.map(n=><option key={n} value={n}>{n}</option>)}
                           </select>
-                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotFiltroRotaciones(''); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
+                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotFiltroRotaciones('0'); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
                       <div className="rot-table">
@@ -2011,7 +2020,7 @@ const cargarLeads = useCallback(async () => {
                                 onChange={()=>{ if(allAptosSelected){setRotSel({})}else{const ns={};rotSeleccionables.forEach(l=>{ns[l.id]=true});setRotSel(ns)} }} />
                             </th>
                             {rotTh('n1','N1 / Campaña')}{rotTh('fecha','Fecha')}{rotTh('tipif','Tipificación')}
-                            {rotTh('asesor','Asesor actual')}{rotTh('rotac','Rotac.')}{rotTh('hora','Hora asig.')}{rotTh('tiempo','Tiempo')}
+                            {rotTh('asesor','Asesor actual')}{rotTh('rotac','Rotac.')}{rotTh('hora','Día / hora asig.')}{rotTh('tiempo','Tiempo')}
                             {rotTh('sinrepetir','Sin repetir')}{rotTh('aptitud','Aptitud')}
                           </tr></thead>
                           <tbody>
@@ -2032,7 +2041,7 @@ const cargarLeads = useCallback(async () => {
                                       <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'NUEVO'}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor||'—'}{l.histAsesores.length>0&&<div style={{fontSize:9,color:'#9ca3af',marginTop:1}} title={l.histAsesores.join(' → ')}>Tuvo: {l.histAsesores.join(', ')}</div>}</td>
                                       <td style={{textAlign:'center'}}><span style={{display:'inline-block',minWidth:22,padding:'1px 7px',borderRadius:99,fontSize:11,fontWeight:700,background:nRot>0?'#fef3c7':'#f3f4f6',color:nRot>0?'#92400e':'#9ca3af'}} title={`${nRot} rotación(es)`}>{nRot}</span></td>
-                                      <td className="hora-color">{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td>
+                                      <td className="hora-color"><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(l.fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></td>
                                       <td className={!rotAsesor?'':tiempo?'timer-ok':'timer-fail'}>{tiempo!==false?`Hace ${rotTxt(l.ultimaAsig)}`:rotFaltanTxt(mins)}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
                                       <td>{!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
