@@ -484,6 +484,7 @@ export default function Backoffice() {
   const [baseData,      setBaseData]      = useState({})
   const [ventasPorNumero, setVentasPorNumero] = useState({})
   const [fechaPestanas, setFechaPestanas] = useState([fechaHoy()])
+  const [fechaCantidades,setFechaCantidades]= useState({})
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
   // ── Form (agregar registro) ──
@@ -802,6 +803,7 @@ export default function Backoffice() {
       const data = await res.json()
       if (!data.ok) return
       const fechas = data.data.map(item => normalizarFecha(item.fecha)).filter(Boolean)
+      setFechaCantidades(Object.fromEntries(data.data.map(item => [normalizarFecha(item.fecha), Number(item.cantidad || 0)]).filter(([fecha])=>fecha)))
       const hoy = fechaHoy()
       setFechaPestanas(prev => Array.from(new Set([...prev, ...fechas, hoy])).sort().reverse())
     } catch(e) { console.error('Error cargando fechas:', e) }
@@ -904,6 +906,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
       })
       const hoy = fechaHoy()
       if (!nuevasFechas.includes(hoy)) nuevasFechas.push(hoy)
+      setFechaCantidades(prev => ({
+        ...prev,
+        ...Object.fromEntries(Object.entries(nuevoBase).map(([fecha, regs]) => [fecha, regs.length])),
+      }))
 
       // Conserva pestañas de fecha agregadas manualmente por el usuario que aún
       // no tienen leads en el backend (p.ej. mientras prepara una carga masiva),
@@ -2171,7 +2177,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Fecha:</label>
                           <select value={rotFiltroFecha} onChange={e=>{ setRotFiltroFecha(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
                             <option value="">Todas las fechas</option>
-                            {rotFechasDisp.map(f=><option key={f} value={f}>{formatFecha(f)} ({(baseData[f]||[]).length})</option>)}
+                            {rotFechasDisp.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
                           </select>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Tipificación:</label>
                           <select value={rotFiltroTipif} onChange={e=>{ setRotFiltroTipif(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
@@ -2247,7 +2253,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
               <div className="fecha-nav-ctrl">
                 <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
                 <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
-                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({(baseData[f]||[]).length})</option>)}
+                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
                 </select>
                 <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
               </div>
@@ -2762,7 +2768,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
               <div className="fecha-nav-ctrl">
                 <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
                 <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
-                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({(baseData[f]||[]).length})</option>)}
+                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
                 </select>
                 <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
               </div>
