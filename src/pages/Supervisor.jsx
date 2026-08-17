@@ -191,11 +191,10 @@ export default function Supervisor() {
   // â”€â”€ Filtros ventas â”€â”€
   const [filtroAsesor,  setFiltroAsesor]  = useState('')
   const [filtroEstado,  setFiltroEstado]  = useState('')
-  const [filtroDesde,   setFiltroDesde]   = useState('')
-  const [filtroHasta,   setFiltroHasta]   = useState('')
+  const [filtroFecha,   setFiltroFecha]   = useState('')
   const [tablaSearch,   setTablaSearch]   = useState('')
   const [ventasPagina,  setVentasPagina]  = useState(1)
-  const ventasPorPagina = 25
+  const ventasPorPagina = 15
 
   // â”€â”€ Equipo â”€â”€
   const [equipoBuscar,      setEquipoBuscar]      = useState('')
@@ -269,21 +268,20 @@ export default function Supervisor() {
     let vv = [...todasVentas]
     if (filtroAsesor) vv = vv.filter(v=>v.asesor===filtroAsesor)
     if (filtroEstado) vv = vv.filter(v=>v._estado===filtroEstado)
-    if (filtroDesde)  vv = vv.filter(v=>v._fecha>=filtroDesde)
-    if (filtroHasta)  vv = vv.filter(v=>v._fecha<=filtroHasta)
-    if (!filtroDesde&&!filtroHasta&&!filtroAsesor&&!filtroEstado&&!tablaSearch)
+    if (filtroFecha) vv = vv.filter(v=>v._fecha===filtroFecha)
+    if (!filtroFecha&&!filtroAsesor&&!filtroEstado&&!tablaSearch)
       vv = vv.filter(v=>v._fecha&&v._fecha.startsWith(mesActual()))
     if (tablaSearch) {
       const q = tablaSearch.toLowerCase()
       vv = vv.filter(v=>v.n1?.includes(tablaSearch)||(v.asesor||'').toLowerCase().includes(q)||(v.nombre||'').toLowerCase().includes(q)||(v.dni||'').includes(tablaSearch))
     }
     return vv.sort((a,b)=>(b._fecha+b._hora).localeCompare(a._fecha+a._hora))
-  }, [todasVentas, filtroAsesor, filtroEstado, filtroDesde, filtroHasta, tablaSearch])
+  }, [todasVentas, filtroAsesor, filtroEstado, filtroFecha, tablaSearch])
 
   const ventasTotalPaginas = Math.max(1, Math.ceil(ventasTabla.length / ventasPorPagina))
   const ventasPaginaSegura = Math.min(ventasPagina, ventasTotalPaginas)
   const ventasPaginaData = ventasTabla.slice((ventasPaginaSegura-1)*ventasPorPagina, ventasPaginaSegura*ventasPorPagina)
-  useEffect(() => { setVentasPagina(1) }, [filtroAsesor, filtroEstado, filtroDesde, filtroHasta, tablaSearch])
+  useEffect(() => { setVentasPagina(1) }, [filtroAsesor, filtroEstado, filtroFecha, tablaSearch])
 
   const dashRendData = useMemo(() =>
     asesoresSala.map(a => {
@@ -689,9 +687,8 @@ export default function Supervisor() {
                     {ESTADOS_VENTA.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
                   </select>
                 </div>
-                <div className="filtro-group"><label>Desde</label><input type="date" className="filtro-input" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)} /></div>
-                <div className="filtro-group"><label>Hasta</label><input type="date" className="filtro-input" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)} /></div>
-                <div className="filtros-acciones"><button className="btn-limpiar" onClick={()=>{ setFiltroAsesor(''); setFiltroEstado(''); setFiltroDesde(''); setFiltroHasta(''); setTablaSearch('') }}>Limpiar</button></div>
+                <div className="filtro-group"><label>Fecha</label><input type="date" className="filtro-input" value={filtroFecha} onChange={e=>setFiltroFecha(e.target.value)} /></div>
+                <div className="filtros-acciones"><button className="btn-limpiar" onClick={()=>{ setFiltroAsesor(''); setFiltroEstado(''); setFiltroFecha(''); setTablaSearch('') }}>Limpiar</button></div>
               </div>
             </div>
 

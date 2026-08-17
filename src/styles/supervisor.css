@@ -275,7 +275,8 @@ body{
 .tabla-search:focus,.filtro-buscar:focus{border-color:var(--brand);background:var(--surf-0);box-shadow:0 0 0 3px rgba(229,62,62,.08);}
 .pag-size select,.select-por-pagina{padding:6px 10px;border:1px solid var(--line-2);border-radius:8px;font-size:11px;font-family:inherit;outline:none;background:var(--surf-0);cursor:pointer;}
 .tabla-scroll{overflow-x:auto;max-height:calc(100vh - 300px);overflow-y:auto;}
-.tabla-scroll-ventas{max-height:none;overflow-y:hidden;scrollbar-gutter:stable;}
+.tabla-scroll-ventas{max-height:calc(100vh - 285px);overflow:auto;scrollbar-gutter:stable;}
+.tabla-scroll-ventas .tabla thead th{position:sticky;top:0;z-index:3;}
 .tabla-scroll-ventas::-webkit-scrollbar{height:13px;}
 .tabla-scroll-ventas::-webkit-scrollbar-track{background:#eef2f7;border-radius:99px;}
 .tabla-scroll-ventas::-webkit-scrollbar-thumb{background:#8b929a;border:3px solid #eef2f7;border-radius:99px;}
