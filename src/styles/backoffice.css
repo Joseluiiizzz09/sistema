@@ -355,8 +355,8 @@ body{
   border:1px solid var(--line);overflow:hidden;margin-bottom:14px;box-shadow:var(--sh);
 }
 .bo-root .base-filtros{
-  display:flex;flex-wrap:nowrap;align-items:flex-end;gap:9px;
-  overflow-x:auto;overflow-y:hidden;padding:10px 12px;
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:9px;
+  overflow:visible;padding:10px 12px;
   scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;
 }
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}

@@ -499,7 +499,7 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', campana:'', sala:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [tipifHeaderOpen, setTipifHeaderOpen] = useState(false)
@@ -1858,6 +1858,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
   }
+  const campanasFiltroBase = [...new Set(registrosBusquedaGlobal.map(r=>String(r.campana||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const salasFiltroBase = [...new Set(asesores.map(a=>String(a.sala||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const salaDeRegistro = reg => {
+    const asesorNorm = String(reg?.asesor || '').trim().toUpperCase()
+    if (!asesorNorm) return 'SIN ASIGNAR'
+    return String(asesores.find(a=>String(a.nombre||'').trim().toUpperCase()===asesorNorm)?.sala || 'SIN SALA').trim().toUpperCase()
+  }
 
   async function guardarTipifBack2(id, nuevoValor) {
     const found = findReg(id); if (!found) return
@@ -1896,7 +1903,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     // usuario filtra, la búsqueda incluye todo el alcance (ventas y protegidos).
     // Si abre un grupo protegido, los demás filtros también se respetan.
     const hayFiltroConsulta = Boolean(
-      filtros.tip || filtros.tipVend || filtros.asesor || filtros.numero ||
+      filtros.tip || filtros.tipVend || filtros.asesor || filtros.campana || filtros.sala || filtros.numero ||
       filtros.desde || filtros.hasta || filtros.global
     )
     const fuente = ordenDiarioActivo
@@ -1914,6 +1921,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         }
       }
       if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
+      if (filtros.campana && String(r.campana||'').trim().toUpperCase() !== filtros.campana.toUpperCase()) return false
+      if (filtros.sala && salaDeRegistro(r) !== filtros.sala.toUpperCase()) return false
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
       return true
     })
@@ -1978,7 +1987,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
   const statsBase = {
     total:      registrosBusquedaGlobal.length,
@@ -2340,6 +2349,20 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   onChange={v=>setFiltros(p=>({...p,asesor:v}))}
                   className="form-select" placeholderText="Todos" emptyLabel="Todos" />
               </div>
+              <div className="bo-input-group"><label>Campaña</label>
+                <select className="form-select" value={filtros.campana} onChange={e=>setFiltros(p=>({...p,campana:e.target.value}))}>
+                  <option value="">Todas</option>
+                  {campanasFiltroBase.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="bo-input-group"><label>Sala</label>
+                <select className="form-select" value={filtros.sala} onChange={e=>setFiltros(p=>({...p,sala:e.target.value}))}>
+                  <option value="">Todas</option>
+                  {salasFiltroBase.map(s=><option key={s} value={s}>{s}</option>)}
+                  <option value="SIN ASIGNAR">Sin asignar</option>
+                  <option value="SIN SALA">Sin sala</option>
+                </select>
+              </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" inputMode="numeric" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value.replace(/\D/g,'')}))} placeholder="Buscar N1 o N2..." />
               </div>
@@ -2359,7 +2382,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
             </div>
 
             {/* FORMULARIO AGREGAR INDIVIDUAL */}
@@ -2422,7 +2445,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   setTableSort({col:null,dir:null})
                   setGrupoProtegidoVisible('')
                   setBasePage(1)
-                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
+                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
                 }}
                 style={{border:'none',borderRadius:9,padding:'8px 13px',fontFamily:'inherit',fontSize:11,fontWeight:700,cursor:'pointer',color:'#fff',background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)',boxShadow:'0 3px 10px rgba(124,58,237,.2)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
