@@ -781,7 +781,9 @@ export default function Backoffice() {
     try {
       const res  = await fetch(`${API}/usuarios`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) setAsesores(data.data.filter(u => usuarioTieneCargo(u, 'asesor') && u.activo).map(u => ({ id:u.id, nombre:u.nombre, usuario:u.usuario, sala:u.sala })))
+      if (data.ok) setAsesores(data.data
+        .filter(u => usuarioTieneCargo(u, 'asesor') && u.activo)
+        .map(u => ({ id:u.id, nombre:String(u.nombre || '').trim(), usuario:u.usuario, sala:u.sala })))
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
 
