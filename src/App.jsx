@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { cargosDeUsuario } from './utils/roles'
+import { RUTAS } from './utils/rutas'
 
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -24,9 +26,17 @@ function RouteLoader() {
   )
 }
 
-function PrivateRoute({ children }) {
+function rutaInicialAutorizada(sesion) {
+  return cargosDeUsuario(sesion).map(cargo => RUTAS[cargo]).find(Boolean) || '/login'
+}
+
+function PrivateRoute({ children, cargo }) {
   const { sesion } = useAuth()
-  return sesion ? children : <Navigate to="/login" replace />
+  if (!sesion) return <Navigate to="/login" replace />
+  if (cargo && !cargosDeUsuario(sesion).includes(cargo)) {
+    return <Navigate to={rutaInicialAutorizada(sesion)} replace />
+  }
+  return children
 }
 
 export default function App() {
@@ -36,18 +46,18 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
 
-      <Route path="/dashboard"     element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-      <Route path="/backoffice"    element={<PrivateRoute><Backoffice /></PrivateRoute>} />
-      <Route path="/supervisor"    element={<PrivateRoute><Supervisor /></PrivateRoute>} />
-      <Route path="/validacion"    element={<PrivateRoute><Validacion /></PrivateRoute>} />
-      <Route path="/seguimiento"   element={<PrivateRoute><Seguimiento /></PrivateRoute>} />
-      <Route path="/grabaciones"   element={<PrivateRoute><Grabaciones /></PrivateRoute>} />
-      <Route path="/sup-grabaciones" element={<PrivateRoute><SupGrabaciones /></PrivateRoute>} />
-      <Route path="/programacion"  element={<PrivateRoute><Programacion /></PrivateRoute>} />
-      <Route path="/jefatura"      element={<PrivateRoute><Jefatura /></PrivateRoute>} />
-      <Route path="/usuarios"      element={<PrivateRoute><Usuarios /></PrivateRoute>} />
-      <Route path="/backdata-reclutamiento" element={<PrivateRoute><Backdatareclutamiento /></PrivateRoute>} />
-      <Route path="/reclutamiento"          element={<PrivateRoute><DashboardReclutamiento /></PrivateRoute>} />
+      <Route path="/dashboard"     element={<PrivateRoute cargo="asesor"><Dashboard /></PrivateRoute>} />
+      <Route path="/backoffice"    element={<PrivateRoute cargo="backoffice"><Backoffice /></PrivateRoute>} />
+      <Route path="/supervisor"    element={<PrivateRoute cargo="supervisor"><Supervisor /></PrivateRoute>} />
+      <Route path="/validacion"    element={<PrivateRoute cargo="validacion"><Validacion /></PrivateRoute>} />
+      <Route path="/seguimiento"   element={<PrivateRoute cargo="seguimiento"><Seguimiento /></PrivateRoute>} />
+      <Route path="/grabaciones"   element={<PrivateRoute cargo="grabaciones"><Grabaciones /></PrivateRoute>} />
+      <Route path="/sup-grabaciones" element={<PrivateRoute cargo="supgrabaciones"><SupGrabaciones /></PrivateRoute>} />
+      <Route path="/programacion"  element={<PrivateRoute cargo="programacion"><Programacion /></PrivateRoute>} />
+      <Route path="/jefatura"      element={<PrivateRoute cargo="jefatura"><Jefatura /></PrivateRoute>} />
+      <Route path="/usuarios"      element={<PrivateRoute cargo="usuarios"><Usuarios /></PrivateRoute>} />
+      <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo="backreclutamiento"><Backdatareclutamiento /></PrivateRoute>} />
+      <Route path="/reclutamiento"          element={<PrivateRoute cargo="asesorreclutamiento"><DashboardReclutamiento /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
