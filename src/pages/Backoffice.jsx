@@ -117,6 +117,25 @@ const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'
 function normalizarNumero(valor) {
   return String(valor || '').replace(/\D/g, '')
 }
+function formatFechaHoraInterna(valor) {
+  if (!valor) return ''
+  const fecha = new Date(valor)
+  if (!Number.isNaN(fecha.getTime())) {
+    return fecha.toLocaleString('es-PE', {
+      timeZone:'America/Lima', day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit', hour12:false,
+    })
+  }
+  return String(valor).replace('T',' ').slice(0,16)
+}
+function tooltipTipificacionInterna(reg) {
+  if (!reg?.tipifInterna) return ''
+  return [
+    `${reg.tipifInterna} · ${reg.tipifInternaArea || 'CRM'}`,
+    reg.tipifInternaMotivo ? `Motivo: ${reg.tipifInternaMotivo}` : '',
+    reg.tipifInternaFecha ? `Tipificado: ${formatFechaHoraInterna(reg.tipifInternaFecha)}` : '',
+  ].filter(Boolean).join('\n')
+}
 
 function normalizarTipifVend(valor) {
   const tipif = String(valor || '').trim()
@@ -831,6 +850,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
           tipifInternaColor: l.tipif_interna_color || '',
           tipifInternaArea: l.tipif_interna_area || '',
           tipifInternaFecha: l.tipif_interna_fecha || '',
+          tipifInternaMotivo: l.tipif_interna_motivo || '',
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
           // hora de asignación del asesor actual, derivada del historial para que no se pise en rotaciones
@@ -2435,7 +2455,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?`${r.tipifInterna} · ${r.tipifInternaArea}`:(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1}</span>
+                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1}</span>
                                   <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
@@ -2479,7 +2499,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
                                 {r.tipifInterna
-                                  ? <span className="tipif-interna-badge" style={estiloInterno} title={`Tipificación interna de ${r.tipifInternaArea}`}>{r.tipifInterna}</span>
+                                  ? <span className="tipif-interna-badge" style={estiloInterno} title={tooltipTipificacionInterna(r)}>{r.tipifInterna}</span>
                                   : <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
                                       style={estiloTipifVend(tipifEfectiva(r))}>
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
