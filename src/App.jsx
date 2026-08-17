@@ -39,12 +39,17 @@ function PrivateRoute({ children, cargo }) {
   return children
 }
 
+function InicioAutorizado() {
+  const { sesion } = useAuth()
+  return <Navigate to={sesion ? rutaInicialAutorizada(sesion) : '/login'} replace />
+}
+
 export default function App() {
   return (
     <Suspense fallback={<RouteLoader />}>
       <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<InicioAutorizado />} />
 
       <Route path="/dashboard"     element={<PrivateRoute cargo="asesor"><Dashboard /></PrivateRoute>} />
       <Route path="/backoffice"    element={<PrivateRoute cargo="backoffice"><Backoffice /></PrivateRoute>} />
@@ -59,7 +64,7 @@ export default function App() {
       <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo="backreclutamiento"><Backdatareclutamiento /></PrivateRoute>} />
       <Route path="/reclutamiento"          element={<PrivateRoute cargo="asesorreclutamiento"><DashboardReclutamiento /></PrivateRoute>} />
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<InicioAutorizado />} />
       </Routes>
     </Suspense>
   )
