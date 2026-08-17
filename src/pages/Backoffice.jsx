@@ -571,7 +571,8 @@ export default function Backoffice() {
   const [rotSort,       setRotSort]       = useState({ col:null, dir:'asc' })
   const [rotCant,       setRotCant]       = useState(4)
   const [rotSel,        setRotSel]        = useState({})
-  const [rotFiltroFecha,setRotFiltroFecha]= useState('')
+  const [rotFiltroFecha,setRotFiltroFecha]= useState(fechaHoy())
+  const [rotCargandoFecha,setRotCargandoFecha]= useState(false)
   const [rotFiltroTipif,setRotFiltroTipif]= useState('')
   const [rotFiltroRotaciones,setRotFiltroRotaciones]= useState('0')
   const [rotProgress,   setRotProgress]   = useState(0)
@@ -809,14 +810,15 @@ export default function Backoffice() {
     } catch(e) { console.error('Error cargando fechas:', e) }
   }, [])
 
-const cargarLeads = useCallback(async (todasLasFechas = false) => {
-    if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
-    cargandoLeadsRef.current = true
+const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada = '') => {
+    const cargaPuntual = Boolean(fechaSolicitada)
+    if (!cargaPuntual && cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    if (!cargaPuntual) cargandoLeadsRef.current = true
     const gen = mutGenRef.current
     try {
       const url = todasLasFechas
         ? `${API}/leads`
-        : `${API}/leads?fecha=${encodeURIComponent(fechaActivaRef.current)}`
+        : `${API}/leads?fecha=${encodeURIComponent(fechaSolicitada || fechaActivaRef.current)}`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
@@ -936,7 +938,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
         return todasLasFechas.includes(prev) ? prev : (nuevasFechas[0] || hoy)
       })
     } catch(e) { console.error('Error cargando leads:', e) }
-    finally { cargandoLeadsRef.current = false }
+    finally { if (!cargaPuntual) cargandoLeadsRef.current = false }
   }, [])
 
   useEffect(() => {
@@ -1000,6 +1002,16 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     sessionStorage.setItem('nc_backoffice_apartado', 'base')
     setSeccion('base')
     setRotPanelOpen(true)
+    setRotFiltroFecha(fechaHoy())
+  }
+
+  async function cambiarFechaRotacion(fecha) {
+    setRotFiltroFecha(fecha)
+    setRotSel({})
+    if (!fecha || baseData[fecha]) return
+    setRotCargandoFecha(true)
+    try { await cargarLeads(false, fecha) }
+    finally { setRotCargandoFecha(false) }
   }
 
   // ── Date navigation ──────────────────────────────────────────────────────
@@ -2055,7 +2067,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     : []
   const rotSeleccionables = rotVistaAsignacion.slice(0, rotCant)
   const allAptosSelected = rotSeleccionables.length > 0 && rotSeleccionables.every(l=>rotSel[l.id])
-  const rotFechasDisp  = Object.keys(baseData).filter(f=>(baseData[f]||[]).length>0).sort().reverse()
+  const rotFechasDisp  = fechaPestanas.filter(f=>(fechaCantidades[f] ?? 0)>0).sort().reverse()
   const rotAsesoresDisp= asesores.map(a=>({ nombre:a.nombre, cnt:Object.values(baseData).flat().filter(r=>r.asesor===a.nombre).length }))
   const masivaFilasParaCargar = inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)
   const masivaNDup    = masivaFilas.filter(f=>f.dup).length
@@ -2170,13 +2182,12 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                     <div className="rot-table-wrap">
                       <div className="rot-table-header" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
-                          Leads disponibles <span className="tag-aptos">{rotStatAptos} aptos</span>
+                          Leads disponibles <span className="tag-aptos">{rotCargandoFecha?'Cargando…':`${rotStatAptos} aptos`}</span>
                           {rotAsesor&&<span style={{fontSize:10,color:'#64748b',fontWeight:600}}>Mostrando {rotVistaAsignacion.length} · seleccionados {Object.values(rotSel).filter(Boolean).length}/{rotCant}</span>}
                         </div>
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Fecha:</label>
-                          <select value={rotFiltroFecha} onChange={e=>{ setRotFiltroFecha(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
-                            <option value="">Todas las fechas</option>
+                          <select value={rotFiltroFecha} onChange={e=>cambiarFechaRotacion(e.target.value)} disabled={rotCargandoFecha} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
                             {rotFechasDisp.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
                           </select>
                           <label style={{fontSize:11,color:'#6b7280',fontWeight:600}}>Tipificación:</label>
@@ -2188,7 +2199,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                           <select value={rotFiltroRotaciones} onChange={e=>{ setRotFiltroRotaciones(e.target.value); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer'}}>
                             {rotRotacionesDisp.map(n=><option key={n} value={n}>{n}</option>)}
                           </select>
-                          <button onClick={()=>{ setRotFiltroFecha(''); setRotFiltroTipif(''); setRotFiltroRotaciones('0'); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
+                          <button onClick={()=>{ cambiarFechaRotacion(fechaHoy()); setRotFiltroTipif(''); setRotFiltroRotaciones('0'); setRotSel({}) }} style={{padding:'5px 10px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#6b7280',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer'}}>Limpiar</button>
                         </div>
                       </div>
                       <div className="rot-table">
@@ -2203,7 +2214,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                             {rotTh('sinrepetir','Sin repetir')}{rotTh('aptitud','Aptitud')}
                           </tr></thead>
                           <tbody>
-                            {!rotAsesor
+                            {rotCargandoFecha
+                              ? <tr><td colSpan={10} className="bo-empty">Cargando únicamente los leads de {formatFecha(rotFiltroFecha)}…</td></tr>
+                              : !rotAsesor
                               ? <tr><td colSpan={10} className="bo-empty">Selecciona un asesor para ver únicamente los leads que se le asignarán.</td></tr>
                               : rotVistaAsignacion.length === 0
                                 ? <tr><td colSpan={10} className="bo-empty">No hay leads que cumplan las reglas de rotación.</td></tr>
