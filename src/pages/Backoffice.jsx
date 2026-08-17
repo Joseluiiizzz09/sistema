@@ -229,27 +229,27 @@ const TIPIF_VEND_STYLES = {
   'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fee2e2','#980000'],'SH NO ROTAR':['#fee2e2','#980000'],'SH NO TOCAR':['#fee2e2','#980000'],
 }
 const BL_TIPIF_COLORS = {
-  'VENTA CERRADA':'#00b83f','PREVENTA':'#006fd6','AGENDADO':'#f57c00','NO CONTESTA':'#b5a800',
-  'CORTA LLAMADA':'#089ed1','NO DESEA':'#a54b00','BUZON DE VOZ':'#df3f46','SERVICIO ACTIVO':'#303030',
-  'SIN COBERTURA':'#f00000','NO CALIFICA':'#e86f45','CONTACTO CON TERCEROS':'#009b6a','EDIFICIO NO LIBERADO':'#c80000',
-  'DESEA MOVIL':'#a54b00','EN EJECUCION':'#303030','NO TOCAR':'#980000','FRAUDE':'#991b1b','INSTALADO':'#15803d',
+  'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#c2410c','NO CONTESTA':'#854d0e',
+  'CORTA LLAMADA':'#c2410c','NO DESEA':'#92400e','BUZON DE VOZ':'#78350f','SERVICIO ACTIVO':'#4b5563',
+  'SIN COBERTURA':'#b91c1c','NO CALIFICA':'#9a3412','CONTACTO CON TERCEROS':'#047857','EDIFICIO NO LIBERADO':'#991b1b',
+  'DESEA MOVIL':'#92400e','EN EJECUCION':'#4b5563','NO TOCAR':'#980000','FRAUDE':'#991b1b','INSTALADO':'#15803d',
   'NO ROTAR':'#980000','SH NO ROTAR':'#980000','SH NO TOCAR':'#980000',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
 const TIPIF_VEND_FUERTE = {
-  'VENTA CERRADA':['#00e640','#053b19'], 'INSTALADO':['#15803d','#ffffff'],
-  'CONTACTO CON TERCEROS':['#00a873','#ffffff'], 'SERVICIO ACTIVO':['#303030','#ffffff'], 'PREVENTA':['#0077e6','#ffffff'],
-  'CORTA LLAMADA':['#38bdf8','#073b55'], 'AGENDADO':['#ff9200','#3d2400'], 'BUZON DE VOZ':['#e5484d','#ffffff'],
-  'NO DESEA':['#a54b00','#ffffff'], 'NO CONTESTA':['#f4e400','#292500'], 'NC':['#f4e400','#292500'],
-  'EN EJECUCION':['#303030','#ffffff'], 'DESEA MOVIL':['#a54b00','#ffffff'], 'DERIVADO':['#7c3aed','#ffffff'],
-  'NO CALIFICA':['#ff9f7a','#5c1f08'], 'SIN COBERTURA':['#f00000','#ffffff'], 'EDIFICIO NO LIBERADO':['#c80000','#ffffff'],
-  'NO TOCAR':['#980000','#ffffff'], 'FRAUDE':['#991b1b','#ffffff'], 'NO ROTAR':['#980000','#ffffff'], 'SH NO ROTAR':['#980000','#ffffff'], 'SH NO TOCAR':['#980000','#ffffff'],
+  'VENTA CERRADA':['#dcfce7','#166534','#86efac'], 'INSTALADO':['#dcfce7','#14532d','#86efac'],
+  'CONTACTO CON TERCEROS':['#d1fae5','#065f46','#6ee7b7'], 'SERVICIO ACTIVO':['#e5e7eb','#374151','#9ca3af'], 'PREVENTA':['#dbeafe','#1d4ed8','#93c5fd'],
+  'CORTA LLAMADA':['#ffedd5','#c2410c','#fdba74'], 'AGENDADO':['#ffedd5','#c2410c','#fdba74'], 'BUZON DE VOZ':['#f3e8d4','#78350f','#d6a96c'],
+  'NO DESEA':['#fef3c7','#92400e','#fbbf24'], 'NO CONTESTA':['#fef9c3','#854d0e','#fde047'], 'NC':['#fef9c3','#854d0e','#fde047'],
+  'EN EJECUCION':['#e5e7eb','#374151','#9ca3af'], 'DESEA MOVIL':['#fef3c7','#92400e','#fbbf24'], 'DERIVADO':['#e0f2fe','#0369a1','#7dd3fc'],
+  'NO CALIFICA':['#ffedd5','#9a3412','#fdba74'], 'SIN COBERTURA':['#fee2e2','#b91c1c','#fca5a5'], 'EDIFICIO NO LIBERADO':['#fee2e2','#991b1b','#fca5a5'],
+  'NO TOCAR':['#fee2e2','#980000','#fca5a5'], 'FRAUDE':['#fee2e2','#991b1b','#fca5a5'], 'NO ROTAR':['#fee2e2','#980000','#fca5a5'], 'SH NO ROTAR':['#fee2e2','#980000','#fca5a5'], 'SH NO TOCAR':['#fee2e2','#980000','#fca5a5'],
 }
 function estiloTipifVend(v) {
   const paleta = TIPIF_VEND_FUERTE[v]
   return paleta
-    ? { flex:1, minWidth:0, background:paleta[0], color:paleta[1], fontWeight:700, border:`1px solid ${paleta[0]}`, borderRadius:6 }
+    ? { flex:1, minWidth:0, background:paleta[0], color:paleta[1], fontWeight:800, border:`1px solid ${paleta[2]}`, borderRadius:6 }
     : { flex:1, minWidth:0, background:'#fff', color:'inherit', fontWeight:'inherit', border:'1px solid #e5e7eb' }
 }
 
