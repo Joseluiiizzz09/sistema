@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
@@ -194,6 +194,8 @@ export default function Supervisor() {
   const [filtroDesde,   setFiltroDesde]   = useState('')
   const [filtroHasta,   setFiltroHasta]   = useState('')
   const [tablaSearch,   setTablaSearch]   = useState('')
+  const [ventasPagina,  setVentasPagina]  = useState(1)
+  const ventasPorPagina = 25
 
   // â”€â”€ Equipo â”€â”€
   const [equipoBuscar,      setEquipoBuscar]      = useState('')
@@ -277,6 +279,11 @@ export default function Supervisor() {
     }
     return vv.sort((a,b)=>(b._fecha+b._hora).localeCompare(a._fecha+a._hora))
   }, [todasVentas, filtroAsesor, filtroEstado, filtroDesde, filtroHasta, tablaSearch])
+
+  const ventasTotalPaginas = Math.max(1, Math.ceil(ventasTabla.length / ventasPorPagina))
+  const ventasPaginaSegura = Math.min(ventasPagina, ventasTotalPaginas)
+  const ventasPaginaData = ventasTabla.slice((ventasPaginaSegura-1)*ventasPorPagina, ventasPaginaSegura*ventasPorPagina)
+  useEffect(() => { setVentasPagina(1) }, [filtroAsesor, filtroEstado, filtroDesde, filtroHasta, tablaSearch])
 
   const dashRendData = useMemo(() =>
     asesoresSala.map(a => {
@@ -667,23 +674,6 @@ export default function Supervisor() {
               </div>
             )}
 
-            {/* Stats por estado */}
-            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
-                <span style={{color:'#9ca3af',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.3}}>TOTAL</span>
-                <span style={{fontSize:20,fontWeight:800,color:'#111827'}}>{ventasTabla.length}</span>
-              </div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                {ESTADOS_VENTA.map(e=>(
-                  <div key={e.id} style={{background:'#fff',border:`1px solid ${e.dot}33`,borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:6}}>
-                    <div style={{width:7,height:7,borderRadius:'50%',background:e.dot}} />
-                    <span style={{fontSize:11,fontWeight:600,color:'#374151'}}>{e.label}</span>
-                    <span style={{fontSize:14,fontWeight:800,color:e.dot}}>{ventasTabla.filter(v=>v._estado===e.id).length}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Filtros */}
             <div className="filtros-panel">
               <div className="filtros-row">
@@ -718,9 +708,9 @@ export default function Supervisor() {
                 <tbody>
                   {ventasTabla.length === 0
                     ? <tr className="tabla-empty"><td colSpan={17}>Sin ventas con esos filtros.</td></tr>
-                    : ventasTabla.map((v,i)=>(
+                    : ventasPaginaData.map((v,i)=>(
                         <tr key={v.id}>
-                          <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                          <td style={{color:'#9ca3af',fontSize:10}}>{(ventasPaginaSegura-1)*ventasPorPagina+i+1}</td>
                           <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
                           <td><ObsSeguimientoCell
                             tramo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.tramo_seguimiento : ''}
@@ -766,6 +756,18 @@ export default function Supervisor() {
                 </tbody>
               </table>
               </div>
+              {ventasTabla.length > 0 && (
+                <div className="paginacion">
+                  <span className="pag-info">
+                    Mostrando {(ventasPaginaSegura-1)*ventasPorPagina+1}–{Math.min(ventasPaginaSegura*ventasPorPagina,ventasTabla.length)} de {ventasTabla.length} · orden por día (más reciente primero)
+                  </span>
+                  <div className="pag-btns">
+                    <button className="pag-btn" disabled={ventasPaginaSegura===1} onClick={()=>setVentasPagina(p=>Math.max(1,p-1))}>‹</button>
+                    {Array.from({length:ventasTotalPaginas},(_,i)=>i+1).filter(p=>p===1||p===ventasTotalPaginas||Math.abs(p-ventasPaginaSegura)<=1).map((p,i,arr)=><Fragment key={p}>{i>0&&p-arr[i-1]>1?<span className="pag-info">…</span>:null}<button className={`pag-btn${p===ventasPaginaSegura?' active':''}`} onClick={()=>setVentasPagina(p)}>{p}</button></Fragment>)}
+                    <button className="pag-btn" disabled={ventasPaginaSegura===ventasTotalPaginas} onClick={()=>setVentasPagina(p=>Math.min(ventasTotalPaginas,p+1))}>›</button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
