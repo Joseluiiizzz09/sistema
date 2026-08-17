@@ -2661,7 +2661,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                     h.motivo === 'Carga inicial' ||
                                     h.motivo === 'Importacion masiva'
                                   )
-                                  const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
+                                  const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND' && h.tipo!=='QUITAR_ASIGNACION')
+                                  const retiros = hist.filter(h => h?.tipo === 'QUITAR_ASIGNACION')
                                   return (<>
                                     {/* Bloque de autor de carga */}
                                     <div style={{fontSize:11,color:'#6b7280',marginBottom:8,padding:'4px 8px',background:'#f1f5f9',borderRadius:6,borderLeft:'3px solid #94a3b8'}}>
@@ -2714,6 +2715,12 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                           )
                                         })
                                     }
+                                    {retiros.map((h,ri)=>(
+                                      <div key={`retiro-${ri}`} style={{fontSize:11,color:'#991b1b',marginTop:8,padding:'6px 8px',background:'#fef2f2',borderRadius:6,borderLeft:'3px solid #ef4444'}}>
+                                        <strong>{h.quitadoPor || 'Usuario'}</strong> quitó la asignación de <strong>{h.asesorQuitado || '—'}</strong>
+                                        {h.hora ? ` · ${h.hora}` : ''}{h.fecha ? ` · ${h.fecha}` : ''}
+                                      </div>
+                                    ))}
                                   </>)
                                 })()}
                                 <div style={{marginTop:10, textAlign:'right'}}>
