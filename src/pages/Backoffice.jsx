@@ -810,14 +810,18 @@ export default function Backoffice() {
     } catch(e) { console.error('Error cargando fechas:', e) }
   }, [])
 
-const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada = '') => {
+const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada = '', consultaGlobal = null) => {
     const cargaPuntual = Boolean(fechaSolicitada)
     if (!cargaPuntual && cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     if (!cargaPuntual) cargandoLeadsRef.current = true
     const gen = mutGenRef.current
     try {
+      const globalParams = new URLSearchParams()
+      if (consultaGlobal?.numero) globalParams.set('numero', consultaGlobal.numero)
+      if (consultaGlobal?.desde) globalParams.set('desde', consultaGlobal.desde)
+      if (consultaGlobal?.hasta) globalParams.set('hasta', consultaGlobal.hasta)
       const url = todasLasFechas
-        ? `${API}/leads`
+        ? `${API}/leads${globalParams.size ? `?${globalParams.toString()}` : ''}`
         : `${API}/leads?fecha=${encodeURIComponent(fechaSolicitada || fechaActivaRef.current)}`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
@@ -947,8 +951,12 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   }, [fechaActiva, cargarLeads])
 
   useEffect(() => {
-    if (filtros.global) cargarLeads(true)
-  }, [filtros.global, cargarLeads])
+    if (!filtros.global) return
+    const timer = setTimeout(() => cargarLeads(true, '', {
+      numero:filtros.numero, desde:filtros.desde, hasta:filtros.hasta,
+    }), 300)
+    return () => clearTimeout(timer)
+  }, [filtros.global, filtros.numero, filtros.desde, filtros.hasta, cargarLeads])
 
   useEffect(() => {
     cargarAsesores()
