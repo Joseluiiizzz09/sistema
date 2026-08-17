@@ -811,7 +811,9 @@ export default function Backoffice() {
   }, [])
 
 const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada = '', consultaGlobal = null) => {
-    const cargaPuntual = Boolean(fechaSolicitada)
+    // Una búsqueda global no debe quedar descartada porque el refresco automático
+    // de la fecha activa esté en curso.
+    const cargaPuntual = Boolean(fechaSolicitada || consultaGlobal)
     if (!cargaPuntual && cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     if (!cargaPuntual) cargandoLeadsRef.current = true
     const gen = mutGenRef.current
