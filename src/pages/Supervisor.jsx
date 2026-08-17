@@ -49,10 +49,10 @@ const ESTADOS_VENTA = [
   { id:'zona_restringida',  label:'Zona Restringida',  cls:'be-prog-zona',        dot:'#c2410c', bg:'#ffedd5', border:'1px solid rgba(251,146,60,.52)' },
 ]
 const TIPIF_COLORS = {
-  'VENTA CERRADA':'#00a83e','PREVENTA':'#1e63a8','AGENDADO':'#e98500',
-  'NO CONTESTA':'#a3a300','CORTA LLAMADA':'#2788b5','NO DESEA':'#8a4508',
-  'BUZON DE VOZ':'#c94f4f','SERVICIO ACTIVO':'#444444','SIN COBERTURA':'#dc2626','NO CALIFICA':'#c56f49',
-  'CONTACTO CON TERCEROS':'#14805e','EDIFICIO NO LIBERADO':'#b91c1c','DESEA MOVIL':'#8a4508','EN EJECUCION':'#444444','NO ROTAR':'#980000',
+  'VENTA CERRADA':'#00b83f','PREVENTA':'#006fd6','AGENDADO':'#f57c00',
+  'NO CONTESTA':'#b5a800','CORTA LLAMADA':'#089ed1','NO DESEA':'#a54b00',
+  'BUZON DE VOZ':'#df3f46','SERVICIO ACTIVO':'#303030','SIN COBERTURA':'#f00000','NO CALIFICA':'#e86f45',
+  'CONTACTO CON TERCEROS':'#009b6a','EDIFICIO NO LIBERADO':'#c80000','DESEA MOVIL':'#a54b00','EN EJECUCION':'#303030','NO ROTAR':'#980000',
 }
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899','#f59e0b']
 const NV_DEFAULT = { n1:'', n2:'', campana:'', asesor:'', estado:'', fecha:'', obs:'' }
