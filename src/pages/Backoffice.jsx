@@ -205,6 +205,14 @@ function esLeadProhibido(reg) {
   const limite = resumenSinCoberturaHoy(reg)
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
 }
+function esVentaCaidaInterna(reg) {
+  return String(reg?.tipifInterna || '').trim().toUpperCase() === 'VENTA CAIDA'
+}
+function esRotacionManualProhibida(reg) {
+  // Una venta caída puede recibir un nuevo vendedor únicamente desde el
+  // botón de rotación manual. La rotación inteligente conserva sus filtros.
+  return !esVentaCaidaInterna(reg) && esLeadProhibido(reg)
+}
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
 // La base principal la muestra mientras el asesor actual todavía no coloca la suya.
 function tipifPrevioHistorial(historial) {
@@ -1178,7 +1186,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
-    if (esLeadProhibido(reg)) {
+    if (esRotacionManualProhibida(reg)) {
       mostrarToast(`N1 ${reg.n1} no se puede rotar: ${reg._tipifVend}`)
       return
     }
@@ -1200,7 +1208,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
       return
     }
     const { reg } = found
-    if (esLeadProhibido(reg)) {
+    if (esRotacionManualProhibida(reg)) {
       mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       return
@@ -1258,6 +1266,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
         const histAsesores = asignaciones.map(h=>h.asesor)
         const tipifActual = String(tipifEfectiva(reg) || '').trim().toUpperCase()
         if (!tipifActual || tipifActual === 'NUEVO') return
+        // VENTA CAIDA se recupera únicamente mediante rotación manual.
+        if (esVentaCaidaInterna(reg)) return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual) || esLeadProhibido(reg)) return
         const nNorm = normalizarNumero(reg.n1)
         // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
@@ -2419,6 +2429,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                            ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
                            : 'SIN ASIGNAR'
                          const esExclusiva = Boolean(r.tipifInterna) || TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
+                         const rotacionManualBloqueada = esRotacionManualProhibida(r)
                          const detAbierto  = !!detOpen[r.id]
                          const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
                          const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
@@ -2556,8 +2567,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                                   title={detAbierto?'Ocultar detalles':'Ver detalles'} aria-label="Detalles">
                                   {detAbierto?'▲':'⋯'}
                                 </button>
-                                <button className="btn-rotar btn-rotar-sm" disabled={esExclusiva}
-                                  title={esExclusiva?`Prohibido: ${tipifActual}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
+                                <button className="btn-rotar btn-rotar-sm" disabled={rotacionManualBloqueada}
+                                  title={rotacionManualBloqueada?`Prohibido: ${tipifActual}`:(esVentaCaidaInterna(r)?'Rotar venta caída manualmente':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 </button>
                                 <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">
