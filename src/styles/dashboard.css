@@ -810,6 +810,17 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #111827; }
 .badge-estado.estado-bloqueado{background:#fee2e2!important;color:#b91c1c!important;border-color:rgba(248,113,113,.45)!important;}
 .vs-badge-validado{background:#ddd6fe!important;color:#3b0764!important;border:1px solid #8b5cf6!important;box-shadow:none!important;}
 
+/* NO CONTESTA: misma presentación visible que Tipif. Back. */
+.tip-nocontesta,
+.badge-estado.estado-no-contesta{
+  background:#fef9c3!important;
+  color:#854d0e!important;
+  border:1px solid #fde047!important;
+  border-radius:6px!important;
+  box-shadow:none!important;
+}
+.badge-estado.estado-no-contesta{display:inline-flex;align-items:center;justify-content:center;min-width:102px;}
+
 .vs-badge-tecnico{background:#ecfeff!important;color:#0e7490!important;border:1px solid rgba(34,211,238,.45)!important;box-shadow:none!important;}
 .vs-badge-ejecucion{background:#ecfdf5!important;color:#047857!important;border:1px solid rgba(52,211,153,.45)!important;box-shadow:none!important;}
 .vs-badge-programado{background:#eff6ff!important;color:#2563eb!important;border:1px solid rgba(96,165,250,.45)!important;box-shadow:none!important;}
