@@ -616,7 +616,6 @@ export default function Backoffice() {
   const [rendHasta,       setRendHasta]       = useState('')
   const [rendFiltroAsesor,setRendFiltroAsesor]= useState('')
   const [rendFiltroSala,  setRendFiltroSala]  = useState('')
-  const [rendOrden,       setRendOrden]       = useState('ventas_desc')
 
   // ── Avance ──
   const [avanceBuscar, setAvanceBuscar] = useState('')
@@ -1949,32 +1948,42 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
 
   const rendData = useMemo(() => {
     const mesActual = fechaHoy().slice(0,7)
-    let todosReg = []
-    for (const f in baseData) {
-      if (rendFiltroTipo==='mes'   && !f.startsWith(mesActual))           continue
-      if (rendFiltroTipo==='dia'   && f!==rendFiltroFecha)                continue
-      if (rendFiltroTipo==='rango' && rendDesde && f < rendDesde)         continue
-      if (rendFiltroTipo==='rango' && rendHasta && f > rendHasta)         continue
-      todosReg = todosReg.concat(baseData[f])
+    const fechaIncluida = fecha => {
+      const f = normalizarFecha(fecha)
+      if (!f) return false
+      if (rendFiltroTipo==='mes') return f.startsWith(mesActual)
+      if (rendFiltroTipo==='dia') return f===rendFiltroFecha
+      if (rendFiltroTipo==='rango' && rendDesde && f<rendDesde) return false
+      if (rendFiltroTipo==='rango' && rendHasta && f>rendHasta) return false
+      return true
     }
+    const todosReg = Object.entries(baseData).flatMap(([fecha,regs])=>(regs||[]).map(r=>({...r,_rendFechaBase:fecha})))
+    const registrosPeriodo = todosReg.filter(r=>fechaIncluida(r._rendFechaBase))
     const asesoresFiltrados = asesores.filter(a => {
       if (rendFiltroSala && String(a.sala || '').trim() !== rendFiltroSala) return false
       if (rendFiltroAsesor && String(a.nombre || '').trim() !== rendFiltroAsesor) return false
       return true
     })
     const data = asesoresFiltrados.map(a => {
-      const regs    = todosReg.filter(r=>(r.asesor||'').trim().toLowerCase()===(a.nombre||'').trim().toLowerCase())
-      const leads   = regs.length
-      const contesta= regs.filter(r=>['VENTA CERRADA','PREVENTA','AGENDADO'].includes((r._tipifVend||'').toUpperCase())).length
-      const nc      = regs.filter(r=>['NC','NO CONTESTA','BUZON DE VOZ'].includes((r._tipifVend||'').toUpperCase())).length
+      const regs = registrosPeriodo.filter(r=>(r.asesor||'').trim().toLowerCase()===(a.nombre||'').trim().toLowerCase())
+      // Leads realmente entregados al asesor en el periodo. No se usa el asesor
+      // proyectado de una venta, porque puede atribuirle leads que nunca recibió.
+      const nombreNorm = String(a.nombre||'').trim().toUpperCase()
+      const leads = todosReg.filter(r => {
+        const asignaciones = (Array.isArray(r.historial) ? r.historial : []).filter(h =>
+          h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase())
+        )
+        if (asignaciones.length) return asignaciones.some(h =>
+          String(h.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(h.fecha || r._rendFechaBase)
+        )
+        return String(r.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(r._rendFechaBase)
+      }).length
       const ventas  = regs.filter(r=>(r._tipifVend||'').toUpperCase()==='VENTA CERRADA').length
-      const conv    = leads ? Math.round(ventas/leads*100) : 0
-      return { nombre:a.nombre, usuario:a.usuario||'', sala:a.sala||'', leads, contesta, nc, ventas, conv }
+      return { nombre:a.nombre, usuario:a.usuario||'', sala:a.sala||'', leads, ventas }
     })
-    const sortMap = { 'ventas_desc':(a,b)=>b.ventas-a.ventas,'ventas_asc':(a,b)=>a.ventas-b.ventas,'conv_desc':(a,b)=>b.conv-a.conv,'leads_desc':(a,b)=>b.leads-a.leads,'contesta_desc':(a,b)=>b.contesta-a.contesta,'nc_desc':(a,b)=>b.nc-a.nc }
-    data.sort(sortMap[rendOrden] || sortMap['ventas_desc'])
+    data.sort((a,b)=>b.ventas-a.ventas || b.leads-a.leads || a.nombre.localeCompare(b.nombre,'es'))
     return data
-  }, [baseData, asesores, rendFiltroTipo, rendFiltroFecha, rendDesde, rendHasta, rendFiltroAsesor, rendFiltroSala, rendOrden])
+  }, [baseData, asesores, rendFiltroTipo, rendFiltroFecha, rendDesde, rendHasta, rendFiltroAsesor, rendFiltroSala])
 
   const rendSalas = [...new Set(asesores.map(a=>String(a.sala||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const rendAsesoresDisponibles = asesores
@@ -1983,8 +1992,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
 
   const rendTotLeads  = rendData.reduce((s,r)=>s+r.leads,0)
   const rendTotVentas = rendData.reduce((s,r)=>s+r.ventas,0)
-  const rendTotConv   = rendTotLeads ? Math.round(rendTotVentas/rendTotLeads*100) : 0
-  const rendMaxVentas = Math.max(...rendData.map(r=>r.ventas), 1)
 
   const allRotLeadsRaw = rotPanelOpen ? buildRotLeads() : []
   const rotTipifsDisp  = TIPIF_VEND_OPCIONES
@@ -3169,7 +3176,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
             <div className="bo-seccion-header">
               <div>
                 <h2>Rendimiento de Asesores</h2>
-                <p className="bo-sub">Ranking por período · métricas de leads, ventas y conversión</p>
+                <p className="bo-sub">Leads asignados y ventas cerradas por período</p>
               </div>
             </div>
             <div className="rend-filtros">
@@ -3206,48 +3213,29 @@ const cargarLeads = useCallback(async (todasLasFechas = false) => {
                   {rendAsesoresDisponibles.map(a=><option key={a.id||a.nombre} value={a.nombre}>{a.nombre}</option>)}
                 </select>
               </div>
-              <div className="bo-input-group" style={{minWidth:150}}>
-                <label>Ordenar por</label>
-                <select className="form-select" value={rendOrden} onChange={e=>setRendOrden(e.target.value)}>
-                  <option value="ventas_desc">Mayor ventas primero</option>
-                  <option value="ventas_asc">Menor ventas primero</option>
-                  <option value="conv_desc">Mayor conversión</option>
-                  <option value="leads_desc">Mayor leads</option>
-                </select>
-              </div>
               <div style={{alignSelf:'flex-end',paddingBottom:2}}>
                 <button className="bo-btn-limpiar btn btn-sm" style={{fontSize:11,padding:'6px 12px'}} onClick={()=>{setRendFiltroTipo('global');setRendFiltroSala('');setRendFiltroAsesor('')}}>Ver todo</button>
               </div>
             </div>
             <div className="rend-kpis">
-              {[['Total Leads',rendTotLeads,'rd-kpi-leads'],['Total Ventas',rendTotVentas,'rd-kpi-ventas'],['Conversión',rendTotConv+'%','rd-kpi-conv'],['Asesores',rendData.length,'rd-kpi-asesores']].map(([l,v,cls])=>(
+              {[['Total Leads',rendTotLeads,'rd-kpi-leads'],['Ventas cerradas',rendTotVentas,'rd-kpi-ventas']].map(([l,v,cls])=>(
                 <div key={l} className={`rend-kpi ${cls}`}><div className="rend-kpi-label">{l}</div><div className="rend-kpi-valor">{v}</div></div>
               ))}
             </div>
             <div className="bo-tabla-wrap">
               <table className="bo-tabla rend-tabla table table-sm table-hover">
                 <thead><tr>
-                  <th>#</th><th>Asesor</th>
-                  <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('leads_desc')}>Leads</th>
-                  <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('contesta_desc')}>Contesta</th>
-                  <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('nc_desc')}>NC</th>
-                  <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('ventas_desc')}>Ventas</th>
-                  <th style={{cursor:'pointer'}} onClick={()=>setRendOrden('conv_desc')}>Conv.</th>
-                  <th>Avance</th>
+                  <th>#</th><th>Asesor</th><th>Leads</th><th>Ventas cerradas</th>
                 </tr></thead>
                 <tbody>
                   {rendData.length === 0
-                    ? <tr><td colSpan={8} className="bo-empty">Sin datos.</td></tr>
+                    ? <tr><td colSpan={4} className="bo-empty">Sin datos.</td></tr>
                     : rendData.map((r,i)=>(
                         <tr key={r.nombre}>
                           <td><div className={`rend-pos${i<3?' '+['p1','p2','p3'][i]:''}`}>{i+1}</div></td>
                           <td><div className="rd-asesor-cell"><div className="rd-avatar" style={{background:colorAv(r.nombre)}}>{iniciales(r.nombre)}</div><div className="rd-name-block"><div className="rd-asesor-name">{r.nombre}</div><div className="rd-asesor-user">{r.usuario}</div></div></div></td>
                           <td style={{fontWeight:600}}>{r.leads}</td>
-                          <td style={{color:'#16a34a',fontWeight:600}}>{r.contesta}</td>
-                          <td style={{color:'#d97706',fontWeight:600}}>{r.nc}</td>
                           <td><span className="rd-ventas-num">{r.ventas}</span></td>
-                          <td><span className={`tipif-badge ${r.conv>=30?'b-venta':r.conv>=15?'b-nocontesta':'b-default'}`}>{r.conv}%</span></td>
-                          <td><div className="rend-bar-wrap"><div className="rend-bar"><div className="rend-bar-fill" style={{width:`${Math.round(r.ventas/rendMaxVentas*100)}%`}} /></div><span className="rd-bar-pct">{Math.round(r.ventas/rendMaxVentas*100)}%</span></div></td>
                         </tr>
                       ))
                   }
