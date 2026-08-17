@@ -277,6 +277,11 @@ body{
 .tabla-scroll{overflow-x:auto;max-height:calc(100vh - 300px);overflow-y:auto;}
 .tabla-scroll-ventas{max-height:calc(100vh - 285px);overflow:auto;scrollbar-gutter:stable;}
 .tabla-scroll-ventas .tabla thead th{position:sticky;top:0;z-index:3;}
+.sup-flujo-badge{display:inline-block;padding:4px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.2px;white-space:nowrap;border:1px solid #d1d5db;background:#f3f4f6;color:#6b7280;}
+.sup-flujo-badge.ok{background:#dcfce7;color:#15803d;border-color:#86efac;}
+.sup-flujo-badge.warn{background:#fff7ed;color:#c2410c;border-color:#fdba74;}
+.sup-flujo-badge.danger{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.sup-flujo-badge.pending{background:#f3f4f6;color:#6b7280;border-color:#d1d5db;}
 .tabla-scroll-ventas::-webkit-scrollbar{height:13px;}
 .tabla-scroll-ventas::-webkit-scrollbar-track{background:#eef2f7;border-radius:99px;}
 .tabla-scroll-ventas::-webkit-scrollbar-thumb{background:#8b929a;border:3px solid #eef2f7;border-radius:99px;}

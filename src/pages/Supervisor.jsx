@@ -92,6 +92,22 @@ function mesActual() { return fechaHoy().slice(0,7) }
 function getMesLabel(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toLocaleString('es-PE',{month:'long',year:'numeric'}) }
 function getMesClave(o=0) { const d=new Date(); d.setMonth(d.getMonth()-o); return d.toISOString().slice(0,7) }
 function formatF(f) { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function etiquetaFlujo(valor, fallback='PENDIENTE') {
+  const texto = String(valor || '').trim()
+  return (texto || fallback).replace(/_/g,' ').toUpperCase()
+}
+function estadoValidacionFlujo(v) {
+  const estado = String(v?.estado || '').trim().toUpperCase()
+  if (!estado || estado === 'VENTA') return 'PENDIENTE'
+  return etiquetaFlujo(v?.estado_validacion && String(v.estado_validacion).toUpperCase() !== 'VENTA' ? v.estado_validacion : estado)
+}
+function claseFlujo(valor) {
+  const e = String(valor || '').trim().toLowerCase().replace(/_/g,' ')
+  if (['validado','validada','grabado','grabada','aprobado','programado','instalado'].includes(e)) return 'ok'
+  if (['grabando','en revision','en revisión','observado'].includes(e)) return 'warn'
+  if (['no validado','rechazado','caida','caída','bloqueado','fraude'].includes(e)) return 'danger'
+  return 'pending'
+}
 function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
@@ -700,15 +716,18 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <div className="tabla-scroll tabla-scroll-ventas">
-              <table className="tabla" style={{minWidth:1900}}>
-                <thead><tr><th>#</th><th>Estado</th><th>Obs. Seguimiento</th><th>Obs. Validación</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
+              <table className="tabla" style={{minWidth:2250}}>
+                <thead><tr><th>#</th><th>Estado actual</th><th>Validación</th><th>Grabación</th><th>Programación</th><th>Obs. Seguimiento</th><th>Obs. Validación</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
-                    ? <tr className="tabla-empty"><td colSpan={17}>Sin ventas con esos filtros.</td></tr>
+                    ? <tr className="tabla-empty"><td colSpan={20}>Sin ventas con esos filtros.</td></tr>
                     : ventasPaginaData.map((v,i)=>(
                         <tr key={v.id}>
                           <td style={{color:'#9ca3af',fontSize:10}}>{(ventasPaginaSegura-1)*ventasPorPagina+i+1}</td>
-                          <td><BadgeEstado id={v._estado} grabandoPorNombre={v.grabando_por_nombre} fraudeProgramacion={(v.estado_supgrab||'').toLowerCase()==='aprobado'} /></td>
+                          <td><BadgeEstado id={mapearEstado(v.estado)} /></td>
+                          <td><span className={`sup-flujo-badge ${claseFlujo(estadoValidacionFlujo(v))}`}>{estadoValidacionFlujo(v)}</span></td>
+                          <td><span className={`sup-flujo-badge ${claseFlujo(v.estado_grab)}`}>{etiquetaFlujo(v.estado_grab)}</span></td>
+                          <td><span className={`sup-flujo-badge ${claseFlujo(v.estado_prog)}`}>{etiquetaFlujo(v.estado_prog)}</span></td>
                           <td><ObsSeguimientoCell
                             tramo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.tramo_seguimiento : ''}
                             comentario={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.obs_seguimiento : ''}
