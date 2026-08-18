@@ -488,7 +488,7 @@ export default function Backoffice() {
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
   // ── Form (agregar registro) ──
-  const [form,     setForm]     = useState({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
+  const [form,     setForm]     = useState({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
   const [n1Error,  setN1Error]  = useState(false)
   const [calPicker,   setCalPicker]   = useState('')
   const [cmCalPicker, setCmCalPicker] = useState('')
@@ -849,6 +849,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           distritoSinCobertura: l.distrito_sin_cobertura || l.distrito || '',
           n1:         l.n1,
           n2:         l.n2 || '',
+          usuarioWhatsapp: l.usuario_whatsapp || '',
           tipo_contacto: l.tipo_contacto || 'LLAMADA',
           direccion:   l.direccion || '',
           coordenadas: l.coordenadas || '',
@@ -1075,7 +1076,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   // ── Form (agregar registro individual) ───────────────────────────────────
   async function agregarRegistro() {
     const n1 = form.n1.replace(/\D/g, '')   // formato único: solo dígitos (999999999)
-    if (!n1) { setN1Error(true); mostrarToast('El campo N1 es obligatorio'); return }
+    const usuarioWhatsapp = form.usuarioWhatsapp.trim().replace(/^@+/, '')
+    if (!n1 && !usuarioWhatsapp) { setN1Error(true); mostrarToast('Ingresa un N1 o un usuario de WhatsApp'); return }
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
     const distrito = form.distrito || '—'
@@ -1090,7 +1092,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const fecha    = fechaActiva
     const asignadoPor = asesor ? (sesion?.nombre || '') : ''
     const reg = {
-      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
+      id:-idCntRef.current++, _backendId:null, campana, distrito, n1, n2, usuarioWhatsapp, tipo_contacto, direccion, coordenadas, obs_back, tipifBack, derivadoPor:tipifBack==='DERIVADO'&&asesor?(sesion?.nombre||''):'', asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:asesor?1:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, asignadoPor, motivo:'Asignacion inicial'}] : [],
     }
@@ -1100,7 +1102,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     setBaseData(prev => ({ ...prev, [fecha]: [reg, ...(prev[fecha] || [])] }))
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
-      const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
+      const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.mensaje || 'Error al guardar el registro')
       const bid  = data.ids?.[0] || data.id
@@ -1116,7 +1118,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           return next
         })
       }
-      setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
+      setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
     } catch(e) {
       // Elimina el registro local fantasma inmediatamente — no espera al polling
       setBaseData(prev => { const n={...prev}; n[fecha]=(n[fecha]||[]).filter(r=>r.id!==reg.id); return n })
@@ -1943,7 +1945,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
       if (filtros.campana && String(r.campana||'').trim().toUpperCase() !== filtros.campana.toUpperCase()) return false
       if (filtros.sala && salaDeRegistro(r) !== filtros.sala.toUpperCase()) return false
-      if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
+      if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero) && !(r.usuarioWhatsapp||'').toLowerCase().includes(filtros.numero.toLowerCase())) return false
       return true
     })
     return [...filtered].sort((a, b) => {
@@ -2431,10 +2433,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     {distritos.map(d=><option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
+                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
                   {altasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue dado de alta anteriormente ({altasPreviasN1.slice(0,3).map(a=>`${formatFecha(a.fecha)}${a.hora?` ${a.hora}`:''}`).join(', ')}). Puedes agregarlo.</small>}
                 </div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
                 <div className="bo-input-group"><label>Dirección</label><input className="form-control" value={form.direccion} onChange={e=>setForm(p=>({...p,direccion:e.target.value}))} placeholder="Dirección del cliente" /></div>
                 <div className="bo-input-group"><label>Coordenadas</label><input className="form-control" value={form.coordenadas} onChange={e=>setForm(p=>({...p,coordenadas:e.target.value}))} placeholder="Latitud, longitud" /></div>
                 <div className="bo-input-group"><label>Observación Back</label><input className="form-control" value={form.obsBack} onChange={e=>setForm(p=>({...p,obsBack:e.target.value}))} placeholder="Información para el asesor" maxLength={2000} /></div>
@@ -2451,7 +2454,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
+                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
                 <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
               </div>
             </div>
@@ -2588,8 +2591,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1}</span>
-                                  <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>
+                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1 || '—'}</span>
+                                  {r.n1 && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>}
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
                                 {r.n2 && (
@@ -2649,6 +2652,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                     <NotebookIcon/>
                                   </button>
                                 )}
+                                {r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
                                 {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distritoSinCobertura||r.coordenadasSinCobertura)&&(
                                   <button type="button" className="btn-dni-cuaderno btn-cobertura-cuaderno"
                                     title="Ver distrito y coordenadas"

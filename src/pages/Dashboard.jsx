@@ -419,6 +419,7 @@ export default function Dashboard() {
             id:       l.id,
             telefono: l.n1,
             telefono2: l.n2 || '',
+            usuarioWhatsapp: l.usuario_whatsapp || '',
             tipoContacto: l.tipo_contacto || 'LLAMADA',
             direccion: l.direccion || '',
             coordenadas: l.coordenadas || '',
@@ -1086,23 +1087,24 @@ export default function Dashboard() {
         <table className="tabla-crm tabla-leads-asesor">
           <thead>
             <tr>
-              <th>Teléfono</th><th>Teléfono 2</th><th>Obs. Back</th><th>Tipificación</th>
+              <th>Teléfono</th><th>Teléfono 2</th><th>Usuario WhatsApp</th><th>Obs. Back</th><th>Tipificación</th>
               <th>Estado</th><th>Observación asesor</th><th>Zona</th>
               <th>Dirección / Coord.</th><th>Hora asig.</th>
             </tr>
           </thead>
           <tbody>
-            {clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2}`.includes(filtroNumero)).length === 0 ? (
+            {clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2} ${c.usuarioWhatsapp}`.toLowerCase().includes(filtroNumero.toLowerCase())).length === 0 ? (
               <tr>
-                <td colSpan={9} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
+                <td colSpan={10} style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>
                   Esperando asignación de Back Data...<br />
                   <span style={{fontSize:'11px',marginTop:'6px',display:'block'}}>Back Data asignará registros a tu usuario.</span>
                 </td>
               </tr>
-            ) : clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2}`.includes(filtroNumero)).map((c) => (
+            ) : clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2} ${c.usuarioWhatsapp}`.toLowerCase().includes(filtroNumero.toLowerCase())).map((c) => (
               <tr key={c.id}>
-                <td><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div></td>
+                <td>{c.telefono ? <div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div> : '--'}</td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
+                <td>{c.usuarioWhatsapp ? <div className="dash-numero-copiar secundario"><span>@{c.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(c.usuarioWhatsapp)} title="Copiar usuario de WhatsApp" aria-label={`Copiar ${c.usuarioWhatsapp}`}><CopyIcon /></button></div> : '--'}</td>
                 <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>
                 <td>
                   <button className="btn-accion" onClick={() => abrirModalTip(clientes.findIndex(x => x.id === c.id))} title="Tipificar">
