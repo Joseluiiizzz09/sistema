@@ -1285,12 +1285,32 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
     setRotandoManual(true)
     try {
-      const res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+      let res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
         asesor_nombre:rotModalAsesor, motivo,
         asesor_id_esperado:reg._asesorId ?? null,
         rotaciones_esperadas:cantidadRotaciones(reg),
       }) })
-      const data = await res.json().catch(() => ({}))
+      let data = await res.json().catch(() => ({}))
+
+      // Si otro usuario alcanzó a rotarlo primero, sincroniza la versión que
+      // devolvió el servidor y reintenta una vez con el asesor elegido.
+      if (res.status === 409 && data.codigo === 'ROTACION_DESACTUALIZADA' && data.actual) {
+        const actual = data.actual
+        setModalRotar(p => ({
+          ...p,
+          asesorActual:actual.asesor || '',
+          desc:`N1: ${reg.n1} — Asesor actual: ${actual.asesor || 'Sin asignar'}`,
+        }))
+        if (String(actual.asesor || '').trim().toUpperCase() === String(rotModalAsesor || '').trim().toUpperCase()) {
+          throw new Error('El lead ya está asignado al asesor seleccionado')
+        }
+        res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+          asesor_nombre:rotModalAsesor, motivo,
+          asesor_id_esperado:actual.asesor_id ?? null,
+          rotaciones_esperadas:Number(actual.rotaciones || 0),
+        }) })
+        data = await res.json().catch(() => ({}))
+      }
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
       // Actualización optimista: el backend ahora UPDATE (mismo ID), no crea duplicado.
       // histOpen[regId] se preserva; el polling sincronizará en ≤3s.
