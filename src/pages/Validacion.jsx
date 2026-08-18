@@ -51,6 +51,11 @@ function formatF(f) { if(!f)return'—'; const d=(f.split('T')[0]||f); const p=d
 
 function estadoObj(id) { return ESTADOS_TODOS.find(e=>e.id===(id||'').toLowerCase()) || { id:'venta', label:'VENTA', cls:'be-venta' } }
 
+function esEstadoNoValidado(estado) {
+  const valor = String(estado || '').toLowerCase().trim()
+  return valor === 'no_validado' || TIPIF_NO_VAL.includes(valor)
+}
+
 function parsearHistorial(obs) { return (obs||'').split('\n').filter(l=>l.trim()).map(l=>l.trim()) }
 
 function getObsDisplay(obsVal) {
@@ -226,7 +231,7 @@ export default function Validacion() {
   const ventasFiltradas = useMemo(() => {
     let vv = ventas.filter(v => {
       if (fEstado === 'novalidado') {
-        if (v.estadoVal === 'validado') return false
+        if (!esEstadoNoValidado(v.estadoVal)) return false
       } else if (fEstado && v.estadoVal !== fEstado) {
         return false
       }
@@ -246,7 +251,7 @@ export default function Validacion() {
   const kpis = useMemo(() => ({
     total:       ventas.length,
     validados:   ventas.filter(v => v.estadoVal === 'validado').length,
-    noValidados: ventas.filter(v => v.estadoVal !== 'validado').length,
+    noValidados: ventas.filter(v => esEstadoNoValidado(v.estadoVal)).length,
   }), [ventas])
 
   const totalPags   = Math.max(1, Math.ceil(ventasFiltradas.length / porPagina))
