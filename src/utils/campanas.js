@@ -17,6 +17,7 @@ export const CAMPANAS = [
   'K1',
   'K2',
   'K3',
+  'K6',
   'K8',
   'K9',
   'LEAD CRM',
