@@ -851,7 +851,6 @@ export default function Jefatura() {
       ['DISTRITO',          v => v.distrito || '-'],
       ['ASESOR',            v => v.asesor_nombre || v.asesor || v.vendedor || '-'],
       ['SALA',              v => v.sala || '-'],
-      ['ESTADO ACTUAL',     v => flujoLabelEstado(v.estado || v.estado_venta)],
       ['VALIDACIÓN',        v => estadoValidacion(v)],
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
@@ -1394,7 +1393,6 @@ export default function Jefatura() {
                       <th>DNI</th>
                       <th>Asesor</th>
                       <th>Sala</th>
-                      <th>Estado actual</th>
                       <th>Validación</th>
                       <th>Grabación</th>
                       <th>Programación</th>
@@ -1404,7 +1402,7 @@ export default function Jefatura() {
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const enSeg = FLUJO_SEGUIMIENTO.has(estado)
@@ -1421,7 +1419,6 @@ export default function Jefatura() {
                           <td>{v.dni || v.documento || '—'}</td>
                           <td>{String(v.asesor_nombre || v.asesor || v.vendedor || '—').toLocaleUpperCase('es-PE')}</td>
                           <td>{v.sala || '—'}</td>
-                          <td><span className={`flujo-estado estado-${estado || 'venta'}`}>{flujoLabelEstado(v.estado || v.estado_venta)}</span></td>
                           <td><span className={flujoValidada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoValidacion(v)}</span></td>
                           <td><span className={flujoGrabada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoGrabacion(v)}</span></td>
                           <td>
