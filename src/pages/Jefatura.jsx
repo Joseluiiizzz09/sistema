@@ -146,10 +146,16 @@ function flujoGrabada(v) {
     || flujoTieneAudio(v)
 }
 function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
+const ESTADOS_PROPIOS_VALIDACION = new Set([
+  'venta','validado','no_validado','corta_llamada','fraude','no_desea',
+  'no_contesta','buzon_voz','servicio_activo','corregir','mala_oferta',
+])
 function estadoValidacion(v) {
-  const e = (v?.estado || v?.estado_venta || '').trim()
-  if (!e || e.toUpperCase() === 'VENTA') return 'PENDIENTE'
-  return e
+  // La validación tiene un estado histórico propio. Nunca debe heredar el
+  // estado global que luego cambia en Programación o Seguimiento.
+  const e = normEstado(v?.estado_validacion)
+  const propio = ESTADOS_PROPIOS_VALIDACION.has(e) ? e : 'venta'
+  return propio.replace(/_/g, ' ').toUpperCase()
 }
 function estadoGrabacion(v) {
   const g = (v?.estado_grab || '').trim()
