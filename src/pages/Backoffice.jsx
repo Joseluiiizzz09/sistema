@@ -158,9 +158,23 @@ function cantidadRotaciones(reg) {
 
 function ultimaAsignacionReg(reg) {
   const historial = Array.isArray(reg?.historial) ? reg.historial : []
-  return [...historial].reverse().find(h =>
+  const asignaciones = historial.filter(h =>
     h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h?.tipo || '').toUpperCase())
-  ) || null
+  )
+  if (!asignaciones.length) return null
+
+  // Si un número de una base anterior se rota hoy, la celda debe mostrar esa
+  // rotación en rojo aunque la fecha original del lead sea más antigua.
+  const rotacionesHoy = asignaciones.filter(h =>
+    normalizarFecha(h?.fecha) === fechaHoy()
+    && (String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor) || Boolean(h?.rotadoPor))
+  )
+  const candidatas = rotacionesHoy.length ? rotacionesHoy : asignaciones
+  return candidatas.reduce((ultima, actual) => {
+    const claveUltima = `${normalizarFecha(ultima?.fecha)} ${String(ultima?.hora || '').padStart(5, '0')}`
+    const claveActual = `${normalizarFecha(actual?.fecha)} ${String(actual?.hora || '').padStart(5, '0')}`
+    return claveActual >= claveUltima ? actual : ultima
+  })
 }
 
 function resumenSinCoberturaHoy(reg) {
