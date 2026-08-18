@@ -2368,40 +2368,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
 
             {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
             <div className="base-filtros">
-              <div className="bo-input-group"><label>Tipificación back</label>
-                <select className="form-select" value={filtros.tip} onChange={e=>setFiltros(p=>({...p,tip:e.target.value}))}>
-                  <option value="">Todas</option>
-                  {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Tipif. vendedor</label>
-                <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
-                  <option value="">Todas</option>
-                  <option value="__pendiente__">Pendiente</option>
-                  {TIPIF_FILTRO_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Asesor</label>
-                <AsesorBuscador value={filtros.asesor} asesores={asesores}
-                  onChange={v=>setFiltros(p=>({...p,asesor:v}))}
-                  className="form-select" placeholderText="Todos" emptyLabel="Todos" />
-              </div>
-              <div className="bo-input-group"><label>Campaña</label>
-                <select className="form-select" value={filtros.campana} onChange={e=>setFiltros(p=>({...p,campana:e.target.value}))}>
-                  <option value="">Todas</option>
-                  {campanasFiltroBase.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Sala</label>
-                <select className="form-select" value={filtros.sala} onChange={e=>setFiltros(p=>({...p,sala:e.target.value}))}>
-                  <option value="">Todas</option>
-                  {salasFiltroBase.map(s=><option key={s} value={s}>{s}</option>)}
-                  <option value="SIN ASIGNAR">Sin asignar</option>
-                  <option value="SIN SALA">Sin sala</option>
-                </select>
-              </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
-                <input className="form-control" inputMode="numeric" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value.replace(/\D/g,'')}))} placeholder="Buscar N1 o N2..." />
+                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
               </div>
               <div className="bo-input-group base-filtro-fecha"><label>Desde</label>
                 <input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined}
