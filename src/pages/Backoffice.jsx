@@ -310,7 +310,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, cla
     <>
       <button ref={btnRef} type="button" disabled={disabled} onClick={abrir} title={title}
         className={className !== undefined ? className : (plain ? undefined : 'bo-sel-compact sel-asesor-tabla')}
-        style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', color:value?'#111827':'#64748b', fontWeight:value?700:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
         {value || placeholderText || '— Asignar asesor —'}
       </button>
       {open && createPortal(
@@ -2490,8 +2490,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={claseNumero} style={estiloInterno} title={r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))}>{r.n1 || '—'}</span>
-                                  {r.n1 && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1)} title="Copiar N1"><CopyIcon /></button>}
+                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
+                                  {(r.n1 || r.usuarioWhatsapp) && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1 || r.usuarioWhatsapp)} title={r.n1?'Copiar N1':'Copiar usuario de WhatsApp'}><CopyIcon /></button>}
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
                                 {r.n2 && (
@@ -2500,7 +2500,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                     <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n2)} title="Copiar N2"><CopyIcon /></button>
                                   </div>
                                 )}
-                                {r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
+                                {r.n1 && r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
                               </div>
                             </td>
 
