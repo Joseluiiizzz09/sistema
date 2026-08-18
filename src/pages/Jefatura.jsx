@@ -953,6 +953,17 @@ export default function Jefatura() {
     } catch { mostrarToast('Error') }
   }
 
+  async function desbloquearUsuario(u) {
+    if (!u?.id) return
+    try {
+      const res = await fetch(`${API}/usuarios/${u.id}/desbloquear-login`, { method:'PATCH', headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) { mostrarToast(data.mensaje || 'No se pudo desbloquear'); return }
+      mostrarToast(data.mensaje || `${u.nombre} fue desbloqueado`)
+      agregarLog('Usuario desbloqueado', u.nombre)
+    } catch { mostrarToast('Error conectando con el servidor') }
+  }
+
   async function confirmarEliminarUsuario() {
     if (!modalEliminar || eliminandoUsu) return
     if (modalEliminar.cargo === 'jefatura') {
@@ -1512,6 +1523,9 @@ export default function Jefatura() {
                                 <button className="btn-edit" onClick={()=>abrirModalEditar(u)}>Editar</button>
                                 <button className={`btn-toggle-activo ${u.activo?'btn-desactivar':'btn-activar'}`} onClick={()=>toggleActivo(u)}>
                                   {u.activo?'Desactivar':'Activar'}
+                                </button>
+                                <button className="btn-edit" onClick={()=>desbloquearUsuario(u)} title="Reiniciar intentos fallidos de inicio de sesión">
+                                  Desbloquear
                                 </button>
                                 <button className="btn-eliminar-usuario" onClick={()=>setModalEliminar(u)} disabled={protegido}
                                   title={protegido?'Esta cuenta está protegida':'Eliminar usuario'}>
