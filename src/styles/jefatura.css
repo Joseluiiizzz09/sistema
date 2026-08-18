@@ -1258,7 +1258,11 @@ button.export-kpi-card:hover {
 .flujo-tabla .tabla th:nth-child(5),  .flujo-tabla .tabla td:nth-child(5)  { width: 95px; }
 .flujo-tabla .tabla th:nth-child(6),  .flujo-tabla .tabla td:nth-child(6)  { width: 80px; }
 .flujo-tabla .tabla th:nth-child(7),  .flujo-tabla .tabla td:nth-child(7)  { width: 130px; }
-.flujo-tabla .tabla th:nth-child(8),  .flujo-tabla .tabla td:nth-child(8)  { width: 100px; }
+.flujo-tabla .tabla th:nth-child(8),  .flujo-tabla .tabla td:nth-child(8)  {
+  width: 155px;
+  overflow: visible;
+  text-overflow: clip;
+}
 .flujo-tabla .tabla th:nth-child(9),  .flujo-tabla .tabla td:nth-child(9)  { width: 100px; }
 .flujo-tabla .tabla th:nth-child(10), .flujo-tabla .tabla td:nth-child(10) { width: 138px; }
 .flujo-tabla .tabla th:nth-child(11), .flujo-tabla .tabla td:nth-child(11) {
@@ -1285,12 +1289,29 @@ button.export-kpi-card:hover {
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
+  scrollbar-color: #8b8b8b #eef0f3;
+  scrollbar-width: auto;
 }
 
 .flujo-tabla-scroll .tabla {
-  width: max(100%, 1750px);
-  min-width: 1750px;
+  width: max(100%, 1805px);
+  min-width: 1805px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar {
+  height: 11px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar-track {
+  background: #eef0f3;
+  border-radius: 999px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar-thumb {
+  background: #8b8b8b;
+  border: 2px solid #eef0f3;
+  border-radius: 999px;
 }
 
 .flujo-estado,
