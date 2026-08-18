@@ -9,8 +9,10 @@ import { setVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
-  aprobado:     { cls: 'bg-grabado',  label: 'GRABADO'      },
+  aprobado:     { cls: 'bg-grabado',  label: 'APROBADO'     },
   observado:    { cls: 'bg-observado',label: 'OBSERVADO'    },
+  conforme:     { cls: 'bg-grabado',  label: 'CONFORME'     },
+  no_conforme:  { cls: 'bg-observado',label: 'NO CONFORME'  },
   programado:   { cls: 'bg-revisado', label: 'PROGRAMADO'   },
   sin_revisar:  { cls: 'bg-revisado', label: 'EN REVISION'  },
   audio_subido: { cls: 'bg-grabado',  label: 'AUDIO SUBIDO' },
@@ -113,14 +115,13 @@ export default function SupGrabaciones() {
       const data = await res.json()
       if (data.ok) {
         setVentas(data.data
-          // Cola independiente de Validación: no depende de `estado`, sino
-          // del campo propio de Grabaciones (evita pisar el estado que ve
-          // el módulo Validación). Excluye las ya aprobadas para que no
-          // reaparezcan en el polling tras revisarlas.
+          // Historial operativo de Supervisión: una venta que ingresó aquí
+          // permanece visible aunque luego continúe en Programación o vuelva
+          // a Grabaciones. Esto no modifica las colas de las otras áreas.
           .filter(v => {
             const grab = (v.estado_grab || '').toLowerCase()
-            const revision = (v.estado_supgrab || 'sin_revisar').toLowerCase()
-            return grab === 'grabado' && ['sin_revisar', 'rechazado', 'programado', 'audio_subido'].includes(revision)
+            const revision = (v.estado_supgrab || '').toLowerCase()
+            return revision !== '' || grab === 'grabado'
           })
           .map(v => ({
             ...v,
@@ -186,8 +187,8 @@ export default function SupGrabaciones() {
 
   const kpis = useMemo(() => ({
     total:     ventas.length,
-    aprobado:  ventas.filter(v => v.estadoRev === 'aprobado').length,
-    pendiente: ventas.filter(v => v.estadoRev === 'sin_revisar').length,
+    aprobado:  ventas.filter(v => ['aprobado','conforme'].includes(v.estadoRev)).length,
+    noConforme:ventas.filter(v => v.estadoRev === 'no_conforme').length,
     observado: ventas.filter(v => v.estadoRev === 'observado').length,
   }), [ventas])
 
@@ -265,13 +266,11 @@ export default function SupGrabaciones() {
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
-      if (['aprobado', 'observado', 'conforme', 'no_conforme'].includes(estadoRevision)) {
-        setVentas(list => list.filter(x => x.id !== modalRevisar.id))
-      } else {
-        setVentas(list => list.map(x =>
-          x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
-        ))
-      }
+      // Conserva el registro en el historial de esta área. El backend mantiene
+      // en paralelo el envío a Programación o el retorno a Grabaciones.
+      setVentas(list => list.map(x =>
+        x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
+      ))
       setGuardando(false)  // CAMBIO 3: liberar botón antes de cerrar para que el siguiente modal arranque desbloqueado
       cerrarModalRevisar()
       setPagina(1)
@@ -310,14 +309,14 @@ export default function SupGrabaciones() {
         <div className="page-header">
           <div className="page-header-left">
             <h2>Supervisor de Grabaciones</h2>
-            <p>Solo ventas con audio en revisión — escucha, aprueba u observa</p>
+            <p>Historial de ventas supervisadas — escucha, aprueba u observa</p>
           </div>
         </div>
 
         <div className="kpi-strip">
           <div className="kpi-item k-blue">  <div><div className="kpi-num">{kpis.total}</div>    <div className="kpi-label">Total grabadas</div></div></div>
           <div className="kpi-item k-green"> <div><div className="kpi-num">{kpis.aprobado}</div> <div className="kpi-label">Aprobadas</div></div></div>
-          <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.pendiente}</div><div className="kpi-label">En revisión</div></div></div>
+          <div className="kpi-item k-orange"><div><div className="kpi-num">{kpis.noConforme}</div><div className="kpi-label">No conformes</div></div></div>
           <div className="kpi-item k-purple"><div><div className="kpi-num">{kpis.observado}</div><div className="kpi-label">Observadas</div></div></div>
         </div>
 
@@ -331,6 +330,8 @@ export default function SupGrabaciones() {
                 <option value="sin_revisar">En revisión</option>
                 <option value="aprobado">Aprobado</option>
                 <option value="observado">Observado</option>
+                <option value="conforme">Conforme</option>
+                <option value="no_conforme">No conforme</option>
                 <option value="programado">Programado</option>
               </select>
             </div>
@@ -393,6 +394,7 @@ export default function SupGrabaciones() {
                 <tr>
                   <th style={{ minWidth: '240px' }}>ACCIONES</th>
                   <th style={{ minWidth: '110px' }}>ESTADO REV.</th>
+                  <th style={{ minWidth: '105px' }}>RESULTADO</th>
                   <th style={{ minWidth: '110px' }}>SOT</th>
                   <th style={{ minWidth: '100px' }}>FECHA</th>
                   <th style={{ minWidth: '160px' }}>NOMBRE Y APELLIDOS</th>
@@ -408,7 +410,7 @@ export default function SupGrabaciones() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="13" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
+                  <tr><td colSpan="14" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
                 ) : ventasPag.map(v => {
                   const badge    = BADGE_MAP[v.estadoRev] || BADGE_MAP.sin_revisar
                   const ultimaObs = v.obsSup
@@ -427,6 +429,13 @@ export default function SupGrabaciones() {
                         <span className={`badge-grab ${badge.cls}`} onClick={() => abrirModalRevisar(v)} style={{ cursor: 'pointer' }}>
                           {badge.label}
                         </span>
+                      </td>
+                      <td>
+                        {['aprobado','conforme','observado','no_conforme'].includes(v.estadoRev)
+                          ? <span className={`badge-grab ${['aprobado','conforme'].includes(v.estadoRev) ? 'bg-grabado' : 'bg-observado'}`}>
+                              {['aprobado','conforme'].includes(v.estadoRev) ? 'APROBADO' : v.estadoRev === 'no_conforme' ? 'NO CONFORME' : 'OBSERVADO'}
+                            </span>
+                          : <span style={{color:'#9ca3af'}}>—</span>}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: '#374151' }}>{v.sot || '—'}</td>
                       <td><span style={{ color: '#185FA5', fontWeight: 700, fontSize: '11px' }}>{formatF(v.fechaIngreso)}</span></td>
