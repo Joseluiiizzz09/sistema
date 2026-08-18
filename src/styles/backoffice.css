@@ -373,6 +373,11 @@ body{
   overflow:visible;padding:10px 12px;
   scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;
 }
+.bo-root .base-toolbar{display:flex;align-items:flex-end;gap:12px;margin-bottom:12px;min-width:0;}
+.bo-root .base-toolbar .fecha-nav-row{flex:0 0 auto;margin-bottom:0;flex-wrap:nowrap;}
+.bo-root .base-toolbar .base-filtros{flex:1 1 auto;margin-bottom:0;min-width:0;flex-wrap:nowrap;}
+.bo-root .base-toolbar .base-filtro-numero{min-width:190px;}
+@media(max-width:1250px){.bo-root .base-toolbar{flex-wrap:wrap;}.bo-root .base-toolbar .base-filtros{flex-wrap:wrap;width:100%;}}
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}
 .bo-root .base-filtros .base-filtro-numero{flex-basis:210px;min-width:180px;}
 .bo-root .base-filtros .base-filtro-fecha{flex:0 1 142px;min-width:132px;}

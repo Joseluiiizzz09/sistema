@@ -2334,41 +2334,29 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             )}
 
             {!rotPanelOpen && <>
-            {/* NAVEGADOR DE FECHA */}
-            <div className="fecha-nav-row">
-              <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha activa:</span>
-              <div className="fecha-nav-ctrl">
-                <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
-                <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
-                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
-                </select>
-                <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
+            <div className="base-toolbar">
+              {/* NAVEGADOR DE FECHA */}
+              <div className="fecha-nav-row">
+                <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha activa:</span>
+                <div className="fecha-nav-ctrl">
+                  <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
+                  <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
+                    {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
+                  </select>
+                  <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
+                </div>
+                <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
               </div>
-              <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
-            </div>
 
-            {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
-            <div className="base-filtros">
-              <div className="bo-input-group base-filtro-numero"><label>Número</label>
-                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
+              {/* BÚSQUEDA Y FILTROS AL COSTADO DE LA FECHA */}
+              <div className="base-filtros">
+                <div className="bo-input-group base-filtro-numero"><label>Número</label><input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." /></div>
+                <div className="bo-input-group base-filtro-fecha"><label>Desde</label><input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined} onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} /></div>
+                <div className="bo-input-group base-filtro-fecha"><label>Hasta</label><input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined} onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} /></div>
+                <label className="toggle-col base-filtro-toggle base-filtro-global"><input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} /><span>Buscar global</span></label>
+                <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /><span>Ver tipif. vendedor</span></label>
+                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
               </div>
-              <div className="bo-input-group base-filtro-fecha"><label>Desde</label>
-                <input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined}
-                  onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} />
-              </div>
-              <div className="bo-input-group base-filtro-fecha"><label>Hasta</label>
-                <input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined}
-                  onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} />
-              </div>
-              <label className="toggle-col base-filtro-toggle base-filtro-global">
-                <input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} />
-                <span>Buscar global</span>
-              </label>
-              <label className="toggle-col base-filtro-toggle">
-                <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
-                <span>Ver tipif. vendedor</span>
-              </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
             </div>
 
             <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:10,margin:'0 0 10px'}}>
