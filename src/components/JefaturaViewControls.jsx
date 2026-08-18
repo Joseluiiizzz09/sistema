@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 export default function JefaturaViewControls({ children }) {
-  const { sesion } = useAuth()
+  const { sesion, refrescarSesion } = useAuth()
   const navigate = useNavigate()
   let objetivo = null
   try { objetivo = JSON.parse(sessionStorage.getItem('nc_jefatura_usuario_objetivo') || 'null') } catch {}
@@ -13,6 +13,7 @@ export default function JefaturaViewControls({ children }) {
     sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
     sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
     sessionStorage.setItem('nc_jefatura_apartado', 'accesos')
+    refrescarSesion()
     navigate('/jefatura')
   }
 

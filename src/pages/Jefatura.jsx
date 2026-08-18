@@ -237,7 +237,7 @@ function descargarExcel(filas, columnas, nombreArchivo) {
 
 export default function Jefatura() {
   const navigate = useNavigate()
-  const { sesion, logout } = useAuth()
+  const { sesion, logout, refrescarSesion } = useAuth()
   const usuarioNombre = sesion?.nombre || 'Jefatura'
   const mainRef = useRef(null)
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
@@ -687,6 +687,7 @@ export default function Jefatura() {
     } else {
       sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
     }
+    refrescarSesion()
     agregarLog('Acceso a módulo', `${modulo.nombre}: ${usuario.nombre}`)
     cerrarSelectorModulo()
     navigate(modulo.path)

@@ -202,7 +202,7 @@ function generarRangoFechas(desde, hasta) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { sesion, logout } = useAuth()
+  const { sesion, logout, refrescarSesion } = useAuth()
   const navigate = useNavigate()
   const [asesorObjetivo] = useState(() => {
     try {
@@ -1005,6 +1005,7 @@ export default function Dashboard() {
     sessionStorage.removeItem('nc_dashboard_asesor_objetivo')
     sessionStorage.removeItem('nc_jefatura_usuario_objetivo')
     sessionStorage.setItem('nc_jefatura_apartado', 'accesos')
+    refrescarSesion()
     navigate('/jefatura')
   }
 
