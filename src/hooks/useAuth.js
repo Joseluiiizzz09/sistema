@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 const AUTH_CHANGE_EVENT = 'nc-auth-change'
 
-function leerSesionActual() {
+export function leerSesionActual() {
   try {
     const raw = sessionStorage.getItem('nc_usuario')
     const actor = raw ? JSON.parse(raw) : null

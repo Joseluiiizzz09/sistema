@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './hooks/useAuth'
+import { leerSesionActual, useAuth } from './hooks/useAuth'
 import { cargosDeUsuario } from './utils/roles'
 import { RUTAS } from './utils/rutas'
 
@@ -31,7 +31,10 @@ function rutaInicialAutorizada(sesion) {
 }
 
 function PrivateRoute({ children, cargo }) {
-  const { sesion } = useAuth()
+  // sessionStorage es la fuente autoritativa durante una vista delegada.
+  // Leerla aquí evita una carrera entre navigate() y el setState de useAuth.
+  useAuth() // mantiene este componente reactivo ante login/logout/cambio de vista
+  const sesion = leerSesionActual()
   if (!sesion) return <Navigate to="/login" replace />
   if (cargo && !cargosDeUsuario(sesion).includes(cargo)) {
     return <Navigate to={rutaInicialAutorizada(sesion)} replace />
@@ -40,7 +43,8 @@ function PrivateRoute({ children, cargo }) {
 }
 
 function InicioAutorizado() {
-  const { sesion } = useAuth()
+  useAuth()
+  const sesion = leerSesionActual()
   return <Navigate to={sesion ? rutaInicialAutorizada(sesion) : '/login'} replace />
 }
 
