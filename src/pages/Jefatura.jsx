@@ -128,6 +128,15 @@ function normEstado(v) {
 const FLUJO_NO_VALIDA = new Set(['venta','corta_llamada','fraude','no_desea','no_contesta','buzon_voz','servicio_activo','no_validado','bloqueado','zona_restringida','caracter_especial','sin_agenda','corregir','mala_oferta'])
 const FLUJO_GRABADA = new Set(['grabado','grabada','aprobado','programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','levantar_sot','tecnicos_camino','instalado_no_validado','reasignacion','derivado_planta_externa'])
 const FLUJO_SEGUIMIENTO = new Set(['en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa','levantar_sot','tecnicos_camino','instalado_no_validado','reasignacion','derivado_planta_externa','servicio_activo'])
+function estadoSeguimiento(v) {
+  const estado = normEstado(v?.estado || v?.estado_venta)
+  if (FLUJO_SEGUIMIENTO.has(estado)) return estado
+  // CONFORME es la puerta de entrada real a Seguimiento. Algunas ventas
+  // históricas conservan PROGRAMADO como estado global, pero operativamente
+  // ya están EN EJECUCIÓN y deben reflejarse así en esta columna.
+  if (normEstado(v?.estado_supgrab) === 'conforme') return 'en_ejecucion'
+  return ''
+}
 function flujoTieneAudio(v) {
   return Boolean(v?.audio || v?.audio_url || v?.archivo_audio || v?.archivoAudio || v?.grabacion || v?.grabacion_url || v?.audio_path)
 }
@@ -777,7 +786,7 @@ export default function Jefatura() {
     noValidadas: ventasCache.filter(flujoNoValidada).length,
     grabadas: ventasCache.filter(flujoGrabada).length,
     noGrabadas: ventasCache.filter(flujoNoGrabada).length,
-    seguimiento: ventasCache.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta))).length,
+    seguimiento: ventasCache.filter(v => Boolean(estadoSeguimiento(v))).length,
   }), [ventasCache])
 
   const opcionesFlujo = useMemo(() => ({
@@ -793,7 +802,7 @@ export default function Jefatura() {
     if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
     if (filtroFlujoVentas === 'noGrabadas') lista = lista.filter(flujoNoGrabada)
     if (filtroFlujoVentas === 'seguimiento') {
-      lista = lista.filter(v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)))
+      lista = lista.filter(v => Boolean(estadoSeguimiento(v)))
     }
     if (fvEstado) lista = lista.filter(v => (v.estado || v.estado_venta || '') === fvEstado)
     if (fvValidacion) lista = lista.filter(v => estadoValidacion(v) === fvValidacion)
@@ -854,7 +863,7 @@ export default function Jefatura() {
       ['VALIDACIÓN',        v => estadoValidacion(v)],
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
-      ['SEGUIMIENTO',       v => FLUJO_SEGUIMIENTO.has(normEstado(v.estado || v.estado_venta)) ? flujoLabelEstado(v.estado || v.estado_venta) : '-'],
+      ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
@@ -1405,7 +1414,7 @@ export default function Jefatura() {
                       <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
-                      const enSeg = FLUJO_SEGUIMIENTO.has(estado)
+                      const estadoSeg = estadoSeguimiento(v)
                       const pInfo = estadoProg(v.estado_prog)
                       const pSt   = PROG_STYLES[pInfo.key] || PROG_STYLES.PENDIENTE
                       const fpParts = (v.fecha_prog || '').split(' ')
@@ -1427,7 +1436,7 @@ export default function Jefatura() {
                               {v.usuario_prog && <div style={{fontSize:'10px',color:'#6b7280',marginTop:'2px',whiteSpace:'nowrap'}}>Por: {v.usuario_prog.split(' ').slice(0,2).join(' ').toLocaleUpperCase('es-PE')}</div>}
                             </div>
                           </td>
-                          <td>{enSeg ? <span className="flujo-info">{flujoLabelEstado(v.estado || v.estado_venta)}</span> : '—'}</td>
+                          <td>{estadoSeg ? <span className="flujo-info">{flujoLabelEstado(estadoSeg)}</span> : '—'}</td>
                           <td>
                             <div className="venta-actions">
                               <button type="button" className="venta-action-btn" onClick={()=>setMediaVenta(v)}>Archivos</button>
