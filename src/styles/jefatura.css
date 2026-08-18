@@ -1262,10 +1262,7 @@ button.export-kpi-card:hover {
 .flujo-tabla .tabla th:nth-child(9),  .flujo-tabla .tabla td:nth-child(9)  { width: 100px; }
 .flujo-tabla .tabla th:nth-child(10), .flujo-tabla .tabla td:nth-child(10) { width: 138px; }
 .flujo-tabla .tabla th:nth-child(11), .flujo-tabla .tabla td:nth-child(11) {
-  width: 120px; overflow: hidden; text-overflow: ellipsis;
-}
-.flujo-tabla .tabla th:nth-child(12), .flujo-tabla .tabla td:nth-child(12) {
-  width: 300px; overflow: visible; text-overflow: clip;
+  width: 420px; overflow: visible; text-overflow: clip;
 }
 
 /* Botones de Acciones más compactos, solo dentro de Ventas generales —
@@ -1290,10 +1287,33 @@ button.export-kpi-card:hover {
   overflow: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+  scrollbar-width: auto;
+  scrollbar-color: #475569 #e2e8f0;
 }
 
 .flujo-tabla-scroll .tabla {
-  min-width: 1450px;
+  width: 1900px;
+  min-width: 1900px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar {
+  width: 14px;
+  height: 16px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar-thumb {
+  background: #475569;
+  border: 3px solid #e2e8f0;
+  border-radius: 999px;
+}
+
+.flujo-tabla-scroll::-webkit-scrollbar-thumb:hover {
+  background: #1e293b;
 }
 
 .flujo-tabla-scroll .tabla thead th {
