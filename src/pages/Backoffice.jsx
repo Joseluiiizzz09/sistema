@@ -1329,7 +1329,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       const regsDate = baseData[fecha] || []
       regsDate.forEach(reg => {
         const asignaciones = reg.historial.filter(h=>h?.asesor&&!['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase()))
-        const ultimaEntrada = asignaciones[asignaciones.length - 1]
+        const ultimaEntrada = ultimaAsignacionReg(reg)
         const fechaAsignacion = normalizarFecha(ultimaEntrada?.fecha) || fecha
         const horaAsignacion = ultimaEntrada?.hora || reg.horaAsig || '00:00'
         let ultimaAsig = new Date(fechaAsignacion+'T'+horaAsignacion+':00')
@@ -2330,7 +2330,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                       <td><span className={`tipif-badge ${tipifBadgeClass(l.estado)}`}>{l.estado||'NUEVO'}</span></td>
                                       <td style={{fontSize:12}}>{l.asesor||'—'}{l.histAsesores.length>0&&<div style={{fontSize:9,color:'#9ca3af',marginTop:1}} title={l.histAsesores.join(' → ')}>Tuvo: {l.histAsesores.join(', ')}</div>}</td>
                                       <td style={{textAlign:'center'}}><span style={{display:'inline-block',minWidth:22,padding:'1px 7px',borderRadius:99,fontSize:11,fontWeight:700,background:nRot>0?'#fef3c7':'#f3f4f6',color:nRot>0?'#92400e':'#9ca3af'}} title={`${nRot} rotación(es)`}>{nRot}</span></td>
-                                      <td className="hora-color"><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(l.fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></td>
+                                      <td className="hora-color" style={{color:l.fechaAsignacion===fechaHoy()?'#ef4444':'#111827'}}><span style={{display:'block',whiteSpace:'nowrap'}}>{formatFecha(l.fechaAsignacion)}</span><span style={{display:'block',whiteSpace:'nowrap'}}>{l.ultimaAsig.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></td>
                                       <td className={!rotAsesor?'':tiempo?'timer-ok':'timer-fail'}>{tiempo!==false?`Hace ${rotTxt(l.ultimaAsig)}`:rotFaltanTxt(mins)}</td>
                                       <td>{!rotAsesor?'—':sinRepetir?<span className="check-ok">OK</span>:<span className="check-fail">Ya tuvo</span>}</td>
                                       <td>{!rotAsesor?'—':apto?<span className="badge-apto">Apto</span>:<span className="badge-noapto">No apto</span>}</td>
