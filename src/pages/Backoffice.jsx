@@ -38,7 +38,7 @@ function CampanaSelect({ value, onChange, plain }) {
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
-const BO_SECCIONES = ['base', 'registro-individual', 'carga-masiva', 'rendimiento', 'avance']
+const BO_SECCIONES = ['base', 'carga-masiva', 'rendimiento', 'avance']
 
 const PERU_TIME_ZONE = 'America/Lima'
 const PERU_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -357,9 +357,6 @@ function BoNavIcon({ tipo }) {
   )
   if (tipo === 'carga') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 16V8m0 0-3 3m3-3 3 3"/></svg>
-  )
-  if (tipo === 'registro') return (
-    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
   )
   if (tipo === 'rotacion') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-7a4 4 0 0 0-4 4v1"/><path d="m17 4 3 3-3 3"/><path d="M4 17h7a4 4 0 0 0 4-4v-1"/><path d="m7 20-3-3 3-3"/></svg>
@@ -2199,7 +2196,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         <aside className={`bo-sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Principal</div>
           <button className={`bo-nav${seccion==='base'&&!rotPanelOpen?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
-          <button className={`bo-nav${seccion==='registro-individual'?' active':''}`} onClick={()=>irSeccion('registro-individual')}><BoNavIcon tipo="registro" /> <span>Registro individual</span></button>
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
           <button className={`bo-nav${seccion==='base'&&rotPanelOpen?' active':''}`} onClick={abrirRotacionInteligente}><BoNavIcon tipo="rotacion" /> <span>Rotación inteligente</span></button>
           <div className="sidebar-sep">Reportes</div>
@@ -2409,6 +2405,44 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <span>Ver tipif. vendedor</span>
               </label>
               <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
+            </div>
+
+            {/* FORMULARIO AGREGAR INDIVIDUAL */}
+            <div className="bo-panel" style={{marginBottom:14}}>
+              <div className="bo-panel-title">
+                + Agregar registro individual —&nbsp;
+                <span style={{fontSize:10,color:'#374151',fontWeight:600,textTransform:'none',letterSpacing:0}}>{formatFecha(fechaActiva)}</span>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:10}}>
+                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
+                <div className="bo-input-group"><label>Departamento</label>
+                  <select className="form-select" value={form.dpto} onChange={e=>setForm(p=>({...p,dpto:e.target.value,prov:'',distrito:''}))}>
+                    <option value="">— Seleccionar —</option>
+                    {dptos.map(d=><option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="bo-input-group"><label>Provincia</label>
+                  <select className="form-select" value={form.prov} onChange={e=>setForm(p=>({...p,prov:e.target.value,distrito:''}))}>
+                    <option value="">— Seleccionar —</option>
+                    {provs.map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="bo-input-group"><label>Distrito</label>
+                  <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
+                    <option value="">— Seleccionar —</option>
+                    {distritos.map(d=><option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
+                  {altasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue dado de alta anteriormente ({altasPreviasN1.slice(0,3).map(a=>`${formatFecha(a.fecha)}${a.hora?` ${a.hora}`:''}`).join(', ')}). Puedes agregarlo.</small>}
+                </div>
+                <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
+              </div>
+              <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
+                <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
+              </div>
             </div>
 
             <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:10,margin:'0 0 10px'}}>
@@ -2810,45 +2844,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
               </div>
             </div>
             </>}
-          </section>
-
-          {/* ══ SECCIÓN: REGISTRO INDIVIDUAL ══════════════════════════════════ */}
-          <section className={`bo-seccion${seccion==='registro-individual'?'':' hidden'}`}>
-            <div className="bo-seccion-header">
-              <div>
-                <h2>Agregar registro individual</h2>
-                <p className="bo-sub">Registra un contacto con número telefónico, usuario de WhatsApp o ambos.</p>
-              </div>
-            </div>
-
-            <div className="fecha-nav-row" style={{marginBottom:16}}>
-              <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha destino:</span>
-              <div className="fecha-nav-ctrl">
-                <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
-                <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
-                  {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
-                </select>
-                <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
-              </div>
-              <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
-            </div>
-
-            <div className="bo-panel" style={{marginBottom:14}}>
-              <div className="bo-panel-title">Datos del nuevo registro</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14,marginBottom:18}}>
-                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
-                <div className="bo-input-group"><label>Departamento</label><select className="form-select" value={form.dpto} onChange={e=>setForm(p=>({...p,dpto:e.target.value,prov:'',distrito:''}))}><option value="">— Seleccionar —</option>{dptos.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-                <div className="bo-input-group"><label>Provincia</label><select className="form-select" value={form.prov} onChange={e=>setForm(p=>({...p,prov:e.target.value,distrito:''}))}><option value="">— Seleccionar —</option>{provs.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
-                <div className="bo-input-group"><label>Distrito</label><select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}><option value="">— Seleccionar —</option>{distritos.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />{altasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue dado de alta anteriormente ({altasPreviasN1.slice(0,3).map(a=>`${formatFecha(a.fecha)}${a.hora?` ${a.hora}`:''}`).join(', ')}). Puedes agregarlo.</small>}</div>
-                <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
-                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
-              </div>
-              <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:14,borderTop:'1px solid #eef2f7'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
-                <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
-              </div>
-            </div>
           </section>
 
           {/* ══ SECCIÓN: CARGA MASIVA ══════════════════════════════════════════ */}
