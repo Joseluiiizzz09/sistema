@@ -379,7 +379,7 @@ body{
 .bo-root .base-toolbar .fecha-nav-row{flex:0 0 auto;margin-bottom:0;flex-wrap:nowrap;}
 .bo-root .base-toolbar .base-filtros{flex:1 1 auto;margin-bottom:0;min-width:0;flex-wrap:nowrap;background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;}
 .bo-root .base-toolbar .base-filtro-numero{min-width:190px;}
-.bo-root .base-orden-btn{flex:0 0 auto;height:33px;border:0;border-radius:9px;padding:0 13px;color:#fff;font:700 10px inherit;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(124,58,237,.2);}
+.bo-root .base-orden-btn{flex:0 0 auto;height:28px;border:0;border-radius:7px;padding:0 10px;color:#fff;font-family:inherit;font-size:9px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap;box-shadow:0 2px 7px rgba(124,58,237,.2);}
 @media(max-width:1250px){.bo-root .base-toolbar{flex-wrap:wrap;}.bo-root .base-toolbar .base-filtros{flex-wrap:wrap;width:100%;}}
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}
 .bo-root .base-filtros .base-filtro-numero{flex-basis:210px;min-width:180px;}
