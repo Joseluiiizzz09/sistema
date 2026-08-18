@@ -396,7 +396,7 @@ body{
 .bo-root .base-tabla-wrap{
   overflow-x:auto;
   overflow-y:auto;
-  max-height:calc(100vh - 260px);min-height:380px;
+  height:calc(100vh - 244px);min-height:480px;max-height:none;
   scrollbar-width:thin;scrollbar-color:var(--brand) #e2e8f0;
 }
 .bo-root .base-tabla-wrap::-webkit-scrollbar{width:6px;height:6px;}
