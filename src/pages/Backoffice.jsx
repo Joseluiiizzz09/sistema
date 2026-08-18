@@ -2336,16 +2336,18 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             {!rotPanelOpen && <>
             <div className="base-toolbar">
               {/* NAVEGADOR DE FECHA */}
-              <div className="fecha-nav-row">
-                <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha activa:</span>
-                <div className="fecha-nav-ctrl">
-                  <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
-                  <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
-                    {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
-                  </select>
-                  <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
+              <div className="base-fecha-grupo">
+                <label>Fecha activa</label>
+                <div className="fecha-nav-row">
+                  <div className="fecha-nav-ctrl">
+                    <button className="fnav-btn" onClick={()=>navegarFecha(-1)} disabled={prevDis}>←</button>
+                    <select className="fnav-select" value={fechaActiva} onChange={e=>setFechaActiva(e.target.value)}>
+                      {fechaPestanas.map(f=><option key={f} value={f}>{formatFecha(f)} ({fechaCantidades[f] ?? (baseData[f]||[]).length})</option>)}
+                    </select>
+                    <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
+                  </div>
+                  <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
                 </div>
-                <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
               </div>
 
               {/* BÚSQUEDA Y FILTROS AL COSTADO DE LA FECHA */}
@@ -2357,11 +2359,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /><span>Ver tipif. vendedor</span></label>
                 <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
               </div>
-            </div>
-
-            <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:10,margin:'0 0 10px'}}>
-              {ordenDiarioActivo&&<span style={{fontSize:11,color:'#64748b',fontWeight:600}}>Aplicado a toda la base del {formatFecha(fechaActiva)}</span>}
               <button type="button"
+                className="base-orden-btn"
                 onClick={()=>{
                   const activar = !ordenDiarioActivo
                   setOrdenDiarioActivo(activar)
@@ -2370,7 +2369,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   setBasePage(1)
                   if (activar) setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
                 }}
-                style={{border:'none',borderRadius:9,padding:'8px 13px',fontFamily:'inherit',fontSize:11,fontWeight:700,cursor:'pointer',color:'#fff',background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)',boxShadow:'0 3px 10px rgba(124,58,237,.2)'}}>
+                style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
               </button>
             </div>
