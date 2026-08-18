@@ -2184,6 +2184,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2.5"/><path d="M7 3v12"/></svg>
           </button>
         </div>
+        <div className="bo-topbar-stats" aria-label="Resumen de la base">
+          <div className="bo-topbar-stat"><strong>{statsBase.total}</strong><span>Total</span></div>
+          <div className="bo-topbar-stat green"><strong>{statsBase.ventas}</strong><span>Ventas</span></div>
+          <div className="bo-topbar-stat blue"><strong>{statsBase.asignados}</strong><span>Asignados</span></div>
+          <div className="bo-topbar-stat orange"><strong>{statsBase.sinAsignar}</strong><span>Sin asignar</span></div>
+          <div className="bo-topbar-stat purple"><strong>{statsBase.rotaciones}</strong><span>Rotaciones</span></div>
+        </div>
         <div className="topbar-right">
           <JefaturaViewControls><span className="bo-usuario">{sesion?.nombre || 'Back Data'}</span></JefaturaViewControls>
           <CambiarAreaMenu />
@@ -2337,15 +2344,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             )}
 
             {!rotPanelOpen && <>
-            {/* ESTADÍSTICAS */}
-            <div className="base-stats">
-              <div className="base-stat"><div className="base-stat-num">{statsBase.total}</div><div className="base-stat-label">Total</div></div>
-              <div className="base-stat"><div className="base-stat-num green">{statsBase.ventas}</div><div className="base-stat-label">Ventas</div></div>
-              <div className="base-stat"><div className="base-stat-num blue">{statsBase.asignados}</div><div className="base-stat-label">Asignados</div></div>
-              <div className="base-stat"><div className="base-stat-num orange">{statsBase.sinAsignar}</div><div className="base-stat-label">Sin asignar</div></div>
-              <div className="base-stat"><div className="base-stat-num purple">{statsBase.rotaciones}</div><div className="base-stat-label">Rotaciones</div></div>
-            </div>
-
             {/* NAVEGADOR DE FECHA */}
             <div className="fecha-nav-row">
               <span style={{fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>Fecha activa:</span>
