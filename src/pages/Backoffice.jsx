@@ -2601,6 +2601,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                     <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n2)} title="Copiar N2"><CopyIcon /></button>
                                   </div>
                                 )}
+                                {r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
                               </div>
                             </td>
 
@@ -2652,7 +2653,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                     <NotebookIcon/>
                                   </button>
                                 )}
-                                {r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
                                 {tipifEfectiva(r)==='SIN COBERTURA'&&(r.distritoSinCobertura||r.coordenadasSinCobertura)&&(
                                   <button type="button" className="btn-dni-cuaderno btn-cobertura-cuaderno"
                                     title="Ver distrito y coordenadas"
