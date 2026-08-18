@@ -166,6 +166,13 @@ function estadoValidacion(v) {
   const propio = ESTADOS_PROPIOS_VALIDACION.has(e) ? e : 'venta'
   return propio.replace(/_/g, ' ').toUpperCase()
 }
+function coincideFiltroValidacion(v, filtro) {
+  const estado = estadoValidacion(v)
+  if (filtro === 'validado') return estado === 'VALIDADO'
+  if (filtro === 'no_validado') return estado !== 'VALIDADO' && estado !== 'VENTA'
+  if (filtro === 'ventas') return estado === 'VENTA'
+  return true
+}
 function estadoGrabacion(v) {
   const g = (v?.estado_grab || '').trim()
   return g || 'PENDIENTE'
@@ -791,7 +798,6 @@ export default function Jefatura() {
 
   const opcionesFlujo = useMemo(() => ({
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
-    validaciones: opcionesUnicas(ventasCache.map(estadoValidacion)),
     grabaciones: opcionesUnicas(ventasCache.map(estadoGrabacion)),
   }), [ventasCache])
 
@@ -805,7 +811,7 @@ export default function Jefatura() {
       lista = lista.filter(v => Boolean(estadoSeguimiento(v)))
     }
     if (fvEstado) lista = lista.filter(v => (v.estado || v.estado_venta || '') === fvEstado)
-    if (fvValidacion) lista = lista.filter(v => estadoValidacion(v) === fvValidacion)
+    if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
     if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
@@ -1367,7 +1373,7 @@ export default function Jefatura() {
               <div className="filtros-titulo">Filtros avanzados</div>
               <div className="filtros-grid filtros-grid-ventas">
                 <label><span>Estado actual</span><select value={fvEstado} onChange={e=>setFvEstado(e.target.value)}><option value="">Todos</option>{opcionesFlujo.estados.map(x=><option key={x}>{x}</option>)}</select></label>
-                <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.validaciones.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
                 <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.grabaciones.map(x=><option key={x}>{x}</option>)}</select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
