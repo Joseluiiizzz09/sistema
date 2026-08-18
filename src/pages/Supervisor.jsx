@@ -294,6 +294,13 @@ export default function Supervisor() {
     return vv.sort((a,b)=>(b._fecha+b._hora).localeCompare(a._fecha+a._hora))
   }, [todasVentas, filtroAsesor, filtroEstado, filtroFecha, tablaSearch])
 
+  // Siempre muestra el total real de hoy para la sala, independientemente de
+  // los filtros aplicados sobre la lista histórica.
+  const ventasHoySala = useMemo(
+    () => todasVentas.filter(v => v._fecha === fechaHoy()).length,
+    [todasVentas]
+  )
+
   const ventasTotalPaginas = Math.max(1, Math.ceil(ventasTabla.length / ventasPorPagina))
   const ventasPaginaSegura = Math.min(ventasPagina, ventasTotalPaginas)
   const ventasPaginaData = ventasTabla.slice((ventasPaginaSegura-1)*ventasPorPagina, ventasPaginaSegura*ventasPorPagina)
@@ -654,7 +661,10 @@ export default function Supervisor() {
             <div className="sec-header">
               <div><h2>Ventas de mi Sala</h2><p>Mes actual por defecto ? usa filtros para ver otros periodos</p></div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="btn-filtrar" onClick={()=>{ setPanelNV(v=>!v); if(!panelNV) setNvForm({...NV_DEFAULT,fecha:fechaHoy()}) }}>+ Registrar venta</button>
+                <div aria-label={`${ventasHoySala} ventas registradas hoy`} style={{display:'flex',alignItems:'center',gap:10,background:'#fff',border:'1px solid #fecaca',borderRadius:12,padding:'8px 14px',boxShadow:'0 4px 14px rgba(220,38,38,.08)'}}>
+                  <span style={{fontSize:11,fontWeight:800,color:'#991b1b',textTransform:'uppercase',letterSpacing:.5}}>Ventas de hoy</span>
+                  <strong style={{minWidth:30,textAlign:'center',fontSize:18,lineHeight:1,color:'#fff',background:'#dc2626',borderRadius:9,padding:'7px 9px'}}>{ventasHoySala}</strong>
+                </div>
               </div>
             </div>
 
