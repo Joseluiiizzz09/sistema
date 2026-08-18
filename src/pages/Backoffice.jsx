@@ -2201,6 +2201,21 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           <div className="sidebar-sep">Reportes</div>
           <button className={`bo-nav${seccion==='rendimiento'?' active':''}`} onClick={()=>irSeccion('rendimiento')}><BoNavIcon tipo="rendimiento" /> <span>Rendimiento</span></button>
           <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><BoNavIcon tipo="avance" /> <span>Avance Asesores</span></button>
+          <div className="bo-sidebar-registro">
+            <div className="sidebar-sep">Agregar registro</div>
+            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain /></div>
+            <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" inputMode="numeric" /></div>
+            <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" inputMode="numeric" /></div>
+            <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
+            <div className="bo-input-group"><label>Departamento</label><select className="form-select" value={form.dpto} onChange={e=>setForm(p=>({...p,dpto:e.target.value,prov:'',distrito:''}))}><option value="">— Seleccionar —</option>{dptos.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+            <div className="bo-input-group"><label>Provincia</label><select className="form-select" value={form.prov} onChange={e=>setForm(p=>({...p,prov:e.target.value,distrito:''}))}><option value="">— Seleccionar —</option>{provs.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
+            <div className="bo-input-group"><label>Distrito</label><select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}><option value="">— Seleccionar —</option>{distritos.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+            {altasPreviasN1.length > 0 && <small className="bo-sidebar-registro-aviso">Número registrado anteriormente. Puedes agregarlo.</small>}
+            <div className="bo-sidebar-registro-acciones">
+              <button className="bo-btn-limpiar" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
+              <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar</button>
+            </div>
+          </div>
         </aside>
 
         <main className="bo-main">
@@ -2405,44 +2420,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <span>Ver tipif. vendedor</span>
               </label>
               <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
-            </div>
-
-            {/* FORMULARIO AGREGAR INDIVIDUAL */}
-            <div className="bo-panel" style={{marginBottom:14}}>
-              <div className="bo-panel-title">
-                + Agregar registro individual —&nbsp;
-                <span style={{fontSize:10,color:'#374151',fontWeight:600,textTransform:'none',letterSpacing:0}}>{formatFecha(fechaActiva)}</span>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:10}}>
-                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
-                <div className="bo-input-group"><label>Departamento</label>
-                  <select className="form-select" value={form.dpto} onChange={e=>setForm(p=>({...p,dpto:e.target.value,prov:'',distrito:''}))}>
-                    <option value="">— Seleccionar —</option>
-                    {dptos.map(d=><option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="bo-input-group"><label>Provincia</label>
-                  <select className="form-select" value={form.prov} onChange={e=>setForm(p=>({...p,prov:e.target.value,distrito:''}))}>
-                    <option value="">— Seleccionar —</option>
-                    {provs.map(p=><option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div className="bo-input-group"><label>Distrito</label>
-                  <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
-                    <option value="">— Seleccionar —</option>
-                    {distritos.map(d=><option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} />
-                  {altasPreviasN1.length > 0 && <small style={{color:'#7c3aed',fontWeight:700,lineHeight:1.25}}>Aviso: este número fue dado de alta anteriormente ({altasPreviasN1.slice(0,3).map(a=>`${formatFecha(a.fecha)}${a.hora?` ${a.hora}`:''}`).join(', ')}). Puedes agregarlo.</small>}
-                </div>
-                <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
-                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
-              </div>
-              <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
-                <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
-              </div>
             </div>
 
             <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:10,margin:'0 0 10px'}}>
