@@ -860,6 +860,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           derivadoPor2: l.derivado_por_2_nombre || '',
           createdAt: l.created_at || '',
           asesor:     l.asesor_nombre || '',
+          _asesorId:  l.asesor_id == null ? null : Number(l.asesor_id),
           horaAsig:   l.hora_asig || '',
           sinAsignar: !!l.sin_asignar,
           rotaciones: cantidadRotaciones(l),
@@ -983,7 +984,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     // Evita que varios usuarios saturen la API con consultas simultaneas. Los
     // cambios locales siguen siendo inmediatos y la sincronizacion remota se
     // confirma en el siguiente ciclo.
-    const t = setVisibleInterval(cargarLeads, 5000)
+    const t = setVisibleInterval(cargarLeads, 2000)
     const tv = setVisibleInterval(cargarEstadosVentas, 15000)
 
     // Al regresar a la ventana no esperamos al siguiente ciclo del polling.
@@ -1268,13 +1269,18 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
     setRotandoManual(true)
     try {
-      const res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, motivo }) })
+      const res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+        asesor_nombre:rotModalAsesor, motivo,
+        asesor_id_esperado:reg._asesorId ?? null,
+        rotaciones_esperadas:cantidadRotaciones(reg),
+      }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
       // Actualización optimista: el backend ahora UPDATE (mismo ID), no crea duplicado.
       // histOpen[regId] se preserva; el polling sincronizará en ≤3s.
       updateReg(modalRotar.regId, {
         asesor:     rotModalAsesor,
+        _asesorId:  data.asesor_id == null ? reg._asesorId : Number(data.asesor_id),
         horaAsig:   horaAhora(),
         sinAsignar: false,
         tipifBack:  '',
@@ -1290,6 +1296,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       const mensaje = error.message || 'Error de conexión al rotar'
       setRotModalError(mensaje)
       mostrarToast(mensaje)
+      // Si otro usuario ganó la carrera, reemplaza de inmediato la copia local
+      // obsoleta con el estado confirmado por el servidor.
+      await cargarLeads()
     } finally {
       setRotandoManual(false)
     }
@@ -1351,18 +1360,27 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       const reg = l._reg
       if (!reg._backendId) continue
       try {
-        const respuesta = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, motivo:'Rotacion masiva' }) })
+        const respuesta = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+          asesor_nombre:asesorActual, motivo:'Rotacion masiva',
+          asesor_id_esperado:reg._asesorId ?? null,
+          rotaciones_esperadas:cantidadRotaciones(reg),
+        }) })
         const data = await respuesta.json().catch(() => ({}))
         if (respuesta.ok && data.ok) {
           updateReg(reg.id, {
             asesor:data.asesor||asesorActual, horaAsig:hora, horaAsigDisplay:hora,
+            _asesorId:data.asesor_id == null ? reg._asesorId : Number(data.asesor_id),
             rotaciones:Number(data.rotaciones ?? (cantidadRotaciones(reg)+1)),
             historial:Array.isArray(data.historial)?data.historial:reg.historial,
             sinAsignar:false, _tipifVend:'', _tipifHora:'',
           })
           res.push({ tel:reg.n1, asesor:asesorActual, hora })
+        } else {
+          res.push({ tel:reg.n1, error:data.mensaje || 'El registro cambió antes de rotarlo' })
         }
-      } catch {}
+      } catch {
+        res.push({ tel:reg.n1, error:'No se pudo sincronizar la rotación' })
+      }
     }
     await cargarLeads()
     setRotResultado(res)
@@ -2226,7 +2244,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                       <div className="rot-resultado show" style={{marginBottom:12}}>
                         <div className="rot-resultado-title">Rotación ejecutada</div>
                         {rotResultado.map((r,i)=>(
-                          <div key={i} className="rot-res-item"><div className="rot-res-dot" /><strong>{r.tel}</strong> → <strong>{r.asesor}</strong> · {r.hora}</div>
+                          <div key={i} className="rot-res-item"><div className="rot-res-dot" /><strong>{r.tel}</strong>{r.error ? <> · {r.error}</> : <> → <strong>{r.asesor}</strong> · {r.hora}</>}</div>
                         ))}
                       </div>
                     )}
