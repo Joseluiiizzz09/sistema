@@ -332,7 +332,7 @@ export default function SupGrabaciones() {
                 <option value="sin_revisar">En revisión</option>
                 <option value="aprobado">Aprobado</option>
                 <option value="observado">Observado</option>
-                <option value="conforme">Conforme</option>
+                <option value="conforme">Audio subido</option>
                 <option value="no_conforme">No conforme</option>
                 <option value="programado">Programado</option>
               </select>
