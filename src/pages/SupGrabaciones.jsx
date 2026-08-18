@@ -121,7 +121,7 @@ export default function SupGrabaciones() {
           .filter(v => {
             const grab = (v.estado_grab || '').toLowerCase()
             const revision = (v.estado_supgrab || '').toLowerCase()
-            return revision !== '' || grab === 'grabado'
+            return revision !== 'conforme' && (revision !== '' || grab === 'grabado')
           })
           .map(v => ({
             ...v,
@@ -266,11 +266,13 @@ export default function SupGrabaciones() {
       })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
-      // Conserva el registro en el historial de esta área. El backend mantiene
-      // en paralelo el envío a Programación o el retorno a Grabaciones.
-      setVentas(list => list.map(x =>
-        x.id === modalRevisar.id ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial } : x
-      ))
+      // CONFORME completa esta etapa y pasa a Seguimiento; los demás resultados
+      // permanecen visibles aquí como historial operativo.
+      setVentas(list => estadoRevision === 'conforme'
+        ? list.filter(x => x.id !== modalRevisar.id)
+        : list.map(x => x.id === modalRevisar.id
+          ? { ...x, estadoRev: estadoRevision, obsSup: nuevoHistorial }
+          : x))
       setGuardando(false)  // CAMBIO 3: liberar botón antes de cerrar para que el siguiente modal arranque desbloqueado
       cerrarModalRevisar()
       setPagina(1)
