@@ -297,7 +297,7 @@ export default function Jefatura() {
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
-  const [porPaginaFlujo, setPorPaginaFlujo] = useState(25)
+  const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
   /* filtros avanzados — Seguimiento en campo (se combinan con filtroSeg) */
   const [fsAsesor,    setFsAsesor]    = useState('')
@@ -1209,7 +1209,7 @@ export default function Jefatura() {
                 <span className="tabla-title">Ventas en seguimiento</span>
                 <span className="tabla-count">{ventasSegFiltradas.length} registros</span>
               </div>
-              <div style={{overflowX:'auto'}}>
+              <div className="flujo-tabla-scroll">
                 <table className="tabla seguimiento-tabla">
                   <colgroup>
                     <col style={{width:'145px'}} />
@@ -1456,7 +1456,7 @@ export default function Jefatura() {
                 <span>Mostrando {ventasFlujoFiltradas.length ? (paginaFlujo - 1) * porPaginaFlujo + 1 : 0}–{Math.min(paginaFlujo * porPaginaFlujo, ventasFlujoFiltradas.length)} de {ventasFlujoFiltradas.length}</span>
                 <div>
                   <select value={porPaginaFlujo} onChange={e=>setPorPaginaFlujo(Number(e.target.value))} aria-label="Registros por página">
-                    {[25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
+                    {[18,25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
                   </select>
                   <button type="button" onClick={()=>setPaginaFlujo(p=>Math.max(1,p-1))} disabled={paginaFlujo<=1}>‹</button>
                   <strong>Página {paginaFlujo} de {totalPaginasFlujo}</strong>

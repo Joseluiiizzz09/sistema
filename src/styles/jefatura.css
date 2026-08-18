@@ -1284,6 +1284,24 @@ button.export-kpi-card:hover {
   color: #111827;
 }
 
+.flujo-tabla-scroll {
+  max-height: calc(100vh - 310px);
+  min-height: 300px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.flujo-tabla-scroll .tabla {
+  min-width: 1450px;
+}
+
+.flujo-tabla-scroll .tabla thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
 .flujo-estado,
 .flujo-ok,
 .flujo-warn,
