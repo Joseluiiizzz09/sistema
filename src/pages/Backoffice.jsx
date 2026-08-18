@@ -2229,16 +2229,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
 
           {/* ══ SECCIÓN: BASE ══════════════════════════════════════════════════ */}
           <section className={`bo-seccion${seccion==='base'?'':' hidden'}`}>
-            {!rotPanelOpen && <div className="bo-seccion-header">
-              <div>
-                <h2>Base de Llamadas</h2>
-                <p className="bo-sub">Gestiona y asigna contactos. La tipificación del vendedor se actualiza automáticamente.</p>
-              </div>
-              <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
-              </div>
-            </div>}
-
             {/* PANEL ROTACIÓN */}
             {rotPanelOpen && (
               <div style={{marginBottom:14}}>
@@ -2355,13 +2345,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <button className="fnav-btn" onClick={()=>navegarFecha(1)} disabled={nextDis}>→</button>
               </div>
               <span className="fnav-count">{idx+1} / {fechaPestanas.length}</span>
-              <div className="fecha-add-wrap">
-                <input type="date" value={calPicker} onChange={e=>setCalPicker(e.target.value)} className="fecha-add-input" />
-                <button className="fecha-add-btn" onClick={agregarFechaCalendario}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Agregar fecha
-                </button>
-              </div>
             </div>
 
             {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
