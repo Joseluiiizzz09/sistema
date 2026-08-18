@@ -2438,20 +2438,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 </div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
-                <div className="bo-input-group"><label>Dirección</label><input className="form-control" value={form.direccion} onChange={e=>setForm(p=>({...p,direccion:e.target.value}))} placeholder="Dirección del cliente" /></div>
-                <div className="bo-input-group"><label>Coordenadas</label><input className="form-control" value={form.coordenadas} onChange={e=>setForm(p=>({...p,coordenadas:e.target.value}))} placeholder="Latitud, longitud" /></div>
-                <div className="bo-input-group"><label>Observación Back</label><input className="form-control" value={form.obsBack} onChange={e=>setForm(p=>({...p,obsBack:e.target.value}))} placeholder="Información para el asesor" maxLength={2000} /></div>
-                <div className="bo-input-group"><label>Tipif. Back</label>
-                  <select className="form-select" value={form.tipifBack} onChange={e=>setForm(p=>({...p,tipifBack:e.target.value}))}>
-                    <option value="">— Sin tipificación —</option>
-                    {TIPIF_BACK_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="bo-input-group"><label>Asesor</label>
-                  <AsesorBuscador value={form.asesor} asesores={asesores}
-                    onChange={v=>setForm(p=>({...p,asesor:v}))}
-                    className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
-                </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
                 <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',dpto:'',prov:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',tipoContacto:'LLAMADA',direccion:'',coordenadas:'',obsBack:'',tipifBack:'',asesor:''})}>Limpiar</button>
