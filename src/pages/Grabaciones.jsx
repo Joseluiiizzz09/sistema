@@ -88,6 +88,7 @@ function mapVenta(v) {
     // ese historial parseable caen a created_at como último recurso.
     _fechaGrab:       fechaValidacion || fechaRaw || fechaHoy(),
     _estadoGrab:      v.estado_grab   || 'pendiente',
+    _estadoSupGrab:   String(v.estado_supgrab || '').toLowerCase(),
     _grabAudio:       v.audio_path    || null,
     _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
     _grabObs:         v.observacion   || '',
@@ -593,6 +594,7 @@ export default function Grabaciones() {
               <colgroup>
                 <col style={{width:330}} />
                 <col style={{width:150}} />
+                <col style={{width:130}} />
                 <col style={{width:120}} />
                 <col style={{width:250}} />
                 <col style={{width:120}} />
@@ -610,6 +612,7 @@ export default function Grabaciones() {
                 <tr>
                   <th style={{width:330,minWidth:330}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
+                  <th style={{width:130}}>RESULTADO SUP.</th>
                   <th style={{width:120}}>FECHA</th>
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
                   <th style={{width:90}}>DNI / DOC.</th>
@@ -626,7 +629,7 @@ export default function Grabaciones() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr><td colSpan={14} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
+                  ? <tr><td colSpan={15} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
                       const esAnterior = v._fechaGrab < hoy
                       const tieneAudio = !!v._grabAudio
@@ -645,6 +648,13 @@ export default function Grabaciones() {
                             </div>
                           </td>
                           <td><span className={`badge-grab ${eg.cls}`}>{eg.id==='grabando' && v.grabando_por_nombre ? `GRABANDO ${primerNombre(v.grabando_por_nombre).toUpperCase()}` : eg.label}</span></td>
+                          <td>
+                            {v._estadoSupGrab === 'observado'
+                              ? <span className="badge-grab bg-observado">OBSERVADO</span>
+                              : v._estadoSupGrab === 'no_conforme'
+                                ? <span className="badge-grab" style={{background:'#fef2f2',color:'#b91c1c',border:'1px solid #fca5a5'}}>NO CONFORME</span>
+                                : <span style={{color:'#9ca3af'}}>—</span>}
+                          </td>
                           <td>
                             <span style={{color:'#185FA5',fontWeight:700,fontSize:11}}>{formatF(v.fechaIngreso)}</span>
                             {esAnterior && <span className="badge-anterior">ANTERIOR</span>}
