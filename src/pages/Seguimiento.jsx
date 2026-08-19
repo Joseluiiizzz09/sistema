@@ -141,13 +141,13 @@ function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
         <div className="filtro-estado-panel">
           <label className="filtro-estado-item filtro-estado-todos">
             <input type="checkbox" checked={todos} onChange={() => onChange([])} />
-            Todos los estados
+            <span>Todos los estados</span>
           </label>
           <div className="filtro-estado-divider" />
           {opciones.map(o => (
             <label key={o.id} className="filtro-estado-item">
               <input type="checkbox" checked={seleccionados.includes(o.id)} onChange={() => toggleUno(o.id)} />
-              {o.label}
+              <span>{o.label}</span>
             </label>
           ))}
         </div>
