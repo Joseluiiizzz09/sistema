@@ -616,7 +616,8 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
-                <col style={{ width: 230 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 90 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 100 }} />
@@ -627,18 +628,17 @@ export default function Seguimiento() {
                 <col style={{ width: 200 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 160 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 170 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 140 }} />
                 <col style={{ width: 140 }} />
               </colgroup>
               <thead>
                 <tr>
                   <th className="th-acc">ACCIÓN</th>
                   <th className="th-est">ESTADO</th>
+                  <th className="th-tramo">TRAMO</th>
                   <th>SOT</th>
                   <th>OBS. PROGRAMACIÓN</th>
                   <th className="th-fecha">FECHA</th>
@@ -649,12 +649,10 @@ export default function Seguimiento() {
                   <th className="th-coord">COORDENADAS</th>
                   <th className="th-vend">VENDEDOR</th>
                   <th>SALA</th>
-                  <th className="th-superv">SUPERVIS.</th>
                   <th className="th-hogar">CLARO HOGAR</th>
                   <th className="th-olt">OLT</th>
                   <th className="th-plan">PLAN</th>
                   <th className="th-codigo">TEL. CONT.</th>
-                  <th className="th-tramo">TRAMO</th>
                   <th className="th-comment">COMENTARIO</th>
                   <th className="th-motivo">MOTIVO</th>
                 </tr>
@@ -679,6 +677,9 @@ export default function Seguimiento() {
                         <span className={`badge-seg ${est.cls}`} onClick={() => abrirModalEstado(v)} style={{ cursor: 'pointer' }} title="Click para cambiar estado">
                           {est.label}
                         </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {v._tramo ? <span className="badge-tramo">{v._tramo}</span> : '--'}
                       </td>
                       <td style={{ textAlign:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
@@ -706,14 +707,10 @@ export default function Seguimiento() {
                       <td style={{ fontSize: '9px', color: '#6b7280' }}>{v.coordenadas || '--'}</td>
                       <td style={{ fontWeight: 600, color: '#7C3AED', fontSize: '10px' }}>{v.asesor_nombre || v.vendedor || '--'}</td>
                       <td style={{ fontWeight: 600, fontSize: '10px' }}>{v.sala || '--'}</td>
-                      <td style={{ fontSize: '10px' }}>{v.supervisor || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.claro_hogar || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.tecnologia || '--'}</td>
                       <td className="td-wrap" style={{ fontSize: '10px' }}>{v.paquete || '--'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '10px' }}>{v.telefonoContacto || '--'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        {v._tramo ? <span className="badge-tramo">{v._tramo}</span> : '--'}
-                      </td>
                       <td className="td-wrap" style={{ fontSize: '10px', background: 'rgba(255,255,200,.4)' }}>{v._comentario || '--'}</td>
                       <td>
                         {motCls

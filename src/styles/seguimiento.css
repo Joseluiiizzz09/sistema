@@ -314,6 +314,7 @@ body{
   font-size:10px;font-weight:700;white-space:nowrap;letter-spacing:.2px;transition:all .15s var(--sp);
 }
 .badge-grab:hover,.badge-estado:hover,.badge-seg:hover{transform:scale(1.06);cursor:pointer;}
+.td-estado .badge-seg{white-space:normal;text-align:center;line-height:1.2;font-size:9px;padding:3px 6px;max-width:100%;}
 .bg-grabado{background:#ecfdf5;color:#065f46;}
 .bg-pendiente{background:#fffbeb;color:#78350f;}
 .bg-observado{background:#f5f3ff;color:#4c1d95;}
