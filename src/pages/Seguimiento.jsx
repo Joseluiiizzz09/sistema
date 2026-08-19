@@ -90,18 +90,20 @@ function mapearEstado(e) {
   return m[est] || 'ejecucion'
 }
 
-function PaginacionDias({ dias, pagina, onChange }) {
-  const totalDias = dias.length
-  const paginaSegura = Math.min(Math.max(pagina, 1), Math.max(totalDias, 1))
+function Paginacion({ total, pagina, porPagina, onChange }) {
+  const totalPags = Math.max(1, Math.ceil(total / porPagina))
+  let ini = Math.max(1, pagina - 3)
+  let fin2 = Math.min(totalPags, ini + 6)
+  if (fin2 - ini < 6) ini = Math.max(1, fin2 - 6)
+  const pages = []
+  for (let i = ini; i <= fin2; i++) pages.push(i)
   return (
     <div className="pag-btns">
-      <button className="pag-btn" onClick={() => onChange(paginaSegura - 1)} disabled={paginaSegura === 1 || totalDias === 0} title="Día más reciente">&#8249;</button>
-      <select value={totalDias ? paginaSegura : ''} disabled={totalDias === 0}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{height:27,border:'1px solid #dbe2ea',borderRadius:7,background:'#fff',color:'#374151',fontSize:11,fontWeight:700,padding:'0 8px',fontFamily:'inherit'}}>
-        {dias.map((dia, i) => <option key={dia} value={i + 1}>{formatF(dia)} · día {i + 1} de {totalDias}</option>)}
-      </select>
-      <button className="pag-btn" onClick={() => onChange(paginaSegura + 1)} disabled={paginaSegura === totalDias || totalDias === 0} title="Día anterior">&#8250;</button>
+      <button className="pag-btn" onClick={() => onChange(pagina - 1)} disabled={pagina === 1}>&#8249;</button>
+      {ini > 1 && <><button className="pag-btn" onClick={() => onChange(1)}>1</button>{ini > 2 && <span style={{ padding: '0 3px', color: '#9ca3af' }}>...</span>}</>}
+      {pages.map(p => <button key={p} className={`pag-btn${p === pagina ? ' active' : ''}`} onClick={() => onChange(p)}>{p}</button>)}
+      {fin2 < totalPags && <>{fin2 < totalPags - 1 && <span style={{ padding: '0 3px', color: '#9ca3af' }}>...</span>}<button className="pag-btn" onClick={() => onChange(totalPags)}>{totalPags}</button></>}
+      <button className="pag-btn" onClick={() => onChange(pagina + 1)} disabled={pagina === totalPags}>&#8250;</button>
     </div>
   )
 }
@@ -125,6 +127,7 @@ export default function Seguimiento() {
   const [fHasta, setFHasta]       = useState('')
   const [busqueda, setBusqueda]   = useState('')
   const [pagina, setPagina]       = useState(1)
+  const [porPagina, setPorPagina] = useState(18)
 
   // Modal cambiar estado
   const [modalEstado, setModalEstado]       = useState(null)
@@ -211,52 +214,55 @@ export default function Seguimiento() {
     setPagina(1)
   }
 
-  const ventasFiltradas = useMemo(() => {
+  // Filtro compartido: `incluirEstado` se desactiva para las métricas (leyenda/KPIs),
+  // asi el rango de fecha y demas filtros los acotan pero no se colapsan al elegir un estado.
+  const filtrarVenta = useCallback((v, incluirEstado) => {
     const fEst = filtroLeyenda || fEstado
-    let base = ventas.filter(v => {
-      if (fEst     && v._estadoSeg !== fEst) return false
-      if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
-      if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
-      if (fTramo   && v._tramo !== fTramo) return false
-      const f = fTipoFecha === 'programados'
-        ? String(v.fecha_programada || '').slice(0, 10)
-        : (v.fechaIngreso || '')
-      if (fDesde && f < fDesde) return false
-      if (fHasta && f > fHasta) return false
-      if (busqueda) {
-        const b = busqueda.toLowerCase()
-        if (![
-          v.nombreApellidos, v.dni, v.telefonoContacto, v.vendedor,
-          v.distrito, v._comentario, v.sot,
-        ].some(x => String(x || '').toLowerCase().includes(b))) return false
-      }
-      return true
-    })
+    if (incluirEstado && fEst && v._estadoSeg !== fEst) return false
+    if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
+    if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
+    if (fTramo   && v._tramo !== fTramo) return false
+    const f = fTipoFecha === 'programados'
+      ? String(v.fecha_programada || '').slice(0, 10)
+      : (v.fechaIngreso || '')
+    if (fDesde && f < fDesde) return false
+    if (fHasta && f > fHasta) return false
+    if (busqueda) {
+      const b = busqueda.toLowerCase()
+      if (![
+        v.nombreApellidos, v.dni, v.telefonoContacto, v.vendedor,
+        v.distrito, v._comentario, v.sot,
+      ].some(x => String(x || '').toLowerCase().includes(b))) return false
+    }
+    return true
+  }, [filtroLeyenda, fEstado, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
+
+  const ventasEnRango = useMemo(() => ventas.filter(v => filtrarVenta(v, false)), [ventas, filtrarVenta])
+
+  const ventasFiltradas = useMemo(() => {
+    let base = ventasEnRango.filter(v => filtrarVenta(v, true))
     base.sort((a, b) => {
       const oa = ORD_EST[a._estadoSeg] ?? 5
       const ob = ORD_EST[b._estadoSeg] ?? 5
       return oa !== ob ? oa - ob : (b.fechaIngreso || '').localeCompare(a.fechaIngreso || '')
     })
     return base
-  }, [ventas, filtroLeyenda, fEstado, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
+  }, [ventasEnRango, filtrarVenta])
 
   const kpis = useMemo(() => ({
-    total:     ventas.length,
-    ejecucion: ventas.filter(v => v._estadoSeg === 'ejecucion').length,
-    instalado: ventas.filter(v => v._estadoSeg === 'instalado').length,
-    rechazo:   ventas.filter(v => v._estadoSeg === 'rechazo').length,
-    caida:     ventas.filter(v => v._estadoSeg === 'caida').length,
-    tecnico:   ventas.filter(v => v._estadoSeg === 'tecnico').length,
-    nuevos:    ESTADOS.slice(6, 12).reduce((acc, e) => ({ ...acc, [e.id]: ventas.filter(v => v._estadoSeg === e.id).length }), {}),
-  }), [ventas])
+    total:     ventasEnRango.length,
+    ejecucion: ventasEnRango.filter(v => v._estadoSeg === 'ejecucion').length,
+    instalado: ventasEnRango.filter(v => v._estadoSeg === 'instalado').length,
+    rechazo:   ventasEnRango.filter(v => v._estadoSeg === 'rechazo').length,
+    caida:     ventasEnRango.filter(v => v._estadoSeg === 'caida').length,
+    tecnico:   ventasEnRango.filter(v => v._estadoSeg === 'tecnico').length,
+    nuevos:    ESTADOS.slice(6, 12).reduce((acc, e) => ({ ...acc, [e.id]: ventasEnRango.filter(v => v._estadoSeg === e.id).length }), {}),
+  }), [ventasEnRango])
 
-  const diasVentas = useMemo(() => Array.from(new Set(
-    ventasFiltradas.map(v => v.fechaIngreso).filter(Boolean),
-  )).sort((a, b) => b.localeCompare(a)), [ventasFiltradas])
-  const paginaDia = Math.min(Math.max(pagina, 1), Math.max(diasVentas.length, 1))
-  const diaActivo = diasVentas[paginaDia - 1] || ''
-  const ventasPag = diaActivo ? ventasFiltradas.filter(v => v.fechaIngreso === diaActivo) : []
   const totalPag  = ventasFiltradas.length
+  const inicio    = (pagina - 1) * porPagina
+  const fin       = Math.min(inicio + porPagina, totalPag)
+  const ventasPag = ventasFiltradas.slice(inicio, fin)
 
   function limpiarFiltros() {
     setFiltroLeyenda(''); setFEstado(''); setFVendedor(''); setFDistrito('')
@@ -530,14 +536,21 @@ export default function Seguimiento() {
           <div className="tabla-header">
             <div className="tabla-header-left">
               <span className="tabla-title">Registros de seguimiento</span>
-              <span className="tabla-count">{ventasPag.length} ventas</span>
-              {diaActivo && <span className="pag-info-top">{formatF(diaActivo)} · día {paginaDia} de {diasVentas.length} · {totalPag} ventas filtradas</span>}
+              <span className="tabla-count">{totalPag} registros</span>
+              {totalPag > 0 && <span className="pag-info-top">Mostrando {inicio + 1}–{fin} de {totalPag}</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="text" className="tabla-search" value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
                 placeholder="Buscar nombre, DNI, vendedor o SOT..." />
-              <PaginacionDias dias={diasVentas} pagina={paginaDia} onChange={setPagina} />
+              <div className="pag-size">
+                <select value={porPagina} onChange={e => { setPorPagina(parseInt(e.target.value) || 18); setPagina(1) }}>
+                  <option value="18">18 / pág.</option>
+                  <option value="30">30 / pág.</option>
+                  <option value="50">50 / pág.</option>
+                  <option value="100">100 / pág.</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -658,8 +671,8 @@ export default function Seguimiento() {
           </div>
 
           <div className="paginacion">
-            <span className="pag-info">{diaActivo ? `${ventasPag.length} ventas del ${formatF(diaActivo)}` : ''}</span>
-            <PaginacionDias dias={diasVentas} pagina={paginaDia} onChange={p => { setPagina(p); document.querySelector('.tabla-scroll')?.scrollTo(0, 0) }} />
+            <span className="pag-info">{totalPag > 0 ? `Mostrando ${inicio + 1}–${fin} de ${totalPag}` : ''}</span>
+            <Paginacion total={totalPag} pagina={pagina} porPagina={porPagina} onChange={p => { setPagina(p); document.querySelector('.tabla-scroll')?.scrollTo(0, 0) }} />
           </div>
         </div>
       </div>
