@@ -38,6 +38,11 @@ function fechaHoy() {
 }
 function horaAhora() { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function formatF(f)  { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
+function formatHora(f) {
+  if (!f) return '—'
+  const m = String(f).match(/[T\s](\d{2}):(\d{2})/)
+  return m ? `${m[1]}:${m[2]}` : '—'
+}
 function fechaPeruDesdeMs(ms) {
   const d = new Date(ms)
   if (Number.isNaN(d.getTime())) return ''
@@ -89,6 +94,7 @@ function mapVenta(v) {
     _fechaGrab:       fechaValidacion || fechaRaw || fechaHoy(),
     _estadoGrab:      v.estado_grab   || 'pendiente',
     _estadoSupGrab:   String(v.estado_supgrab || '').toLowerCase(),
+    _horaSupResultado:v.fecha_sup_resultado || '',
     _grabAudio:       v.audio_path    || null,
     _grabNombre:      v.audio_path    ? v.audio_path.split('/').pop() : '',
     _grabObs:         v.observacion   || '',
@@ -595,6 +601,7 @@ export default function Grabaciones() {
                 <col style={{width:330}} />
                 <col style={{width:150}} />
                 <col style={{width:130}} />
+                <col style={{width:90}} />
                 <col style={{width:120}} />
                 <col style={{width:250}} />
                 <col style={{width:120}} />
@@ -613,6 +620,7 @@ export default function Grabaciones() {
                   <th style={{width:330,minWidth:330}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
                   <th style={{width:130}}>RESULTADO SUP.</th>
+                  <th style={{width:90}}>HORA</th>
                   <th style={{width:120}}>FECHA</th>
                   <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
                   <th style={{width:90}}>DNI / DOC.</th>
@@ -629,7 +637,7 @@ export default function Grabaciones() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr><td colSpan={15} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
+                  ? <tr><td colSpan={16} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
                       const esAnterior = v._fechaGrab < hoy
                       const tieneAudio = !!v._grabAudio
@@ -654,6 +662,9 @@ export default function Grabaciones() {
                               : v._estadoSupGrab === 'no_conforme'
                                 ? <span className="badge-grab" style={{background:'#fef2f2',color:'#b91c1c',border:'1px solid #fca5a5'}}>NO CONFORME</span>
                                 : <span style={{color:'#9ca3af'}}>—</span>}
+                          </td>
+                          <td style={{fontFamily:'monospace',fontSize:11,fontWeight:700,color:'#dc2626'}}>
+                            {['no_conforme','observado'].includes(v._estadoSupGrab) ? formatHora(v._horaSupResultado) : '—'}
                           </td>
                           <td>
                             <span style={{color:'#185FA5',fontWeight:700,fontSize:11}}>{formatF(v.fechaIngreso)}</span>
