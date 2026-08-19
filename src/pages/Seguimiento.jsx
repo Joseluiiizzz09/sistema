@@ -25,7 +25,7 @@ const ESTADOS = [
   { id: 'rechazo_mesa', label: 'RECHAZO EN MESA', cls: 'bs-rechazo-mesa', fila: 'fila-rech' },
 ]
 
-const MOTIVOS_CAIDA = ['FRAUDE','EXCESO DE ACOMETIDA','INFRAESTRUCTURA','RED SATURADA','EDIFICIO NO LIBERADO']
+const MOTIVOS_CAIDA = ['FRAUDE','EXCESO DE ACOMETIDA','INFRAESTRUCTURA','RED SATURADA','EDIFICIO NO LIBERADO','SERVICIO ACTIVO','AUDIO']
 const MOTIVOS_RECH  = ['MALA OFERTA','NO DESEA','FALTA DE CONTACTO','SOT CON ERRORES DE SISTEMA','RED SATURADA','FACILIDADES TECNICAS DEL CLIENTE','MAL INGRESO DIRECCION']
 const TRAMOS        = ['AM 1','AM 2','PM 1','PM 2','PM 3']
 const RESULTADOS    = ['Contactado -- conforme','Contactado -- con problema','No contesta','Buzon de voz','Numero equivocado','Solicita rellamada','SE LEVANTO','MASIVO ENVIADO','DERIVADO A GRABAR','DERIVADO A AGILIZAR','En Agenda']
