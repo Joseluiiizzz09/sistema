@@ -2088,7 +2088,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
     const todosReg = Object.entries(baseData).flatMap(([fecha,regs])=>(regs||[]).map(r=>({...r,_rendFechaBase:fecha})))
       .filter(r => String(r.campana||'').toUpperCase().replace(/[\s-]+/g,'') !== 'ASCW')
-    const ventasPeriodo = Object.values(ventasPorNumero).filter(v => fechaIncluida(v.created_at))
+    const todasVentas = Object.values(ventasPorNumero)
+    const ventasPeriodo = todasVentas.filter(v => fechaIncluida(v.created_at))
     const estadosCaidos = new Set(['CAIDA','RECHAZO','RECHAZO_CAMPO','RECHAZO CAMPO','RECHAZO_MESA','RECHAZO MESA','RECHAZADA','RECHAZADO','ANULADA','SERVICIO_ACTIVO','SERVICIO ACTIVO'])
     const validacionesCaidas = new Set(['CORTA LLAMADA','BUZON DE VOZ','CORREGIR','FRAUDE','MALA OFERTA','NO CONTESTA','NO DESEA','SERVICIO ACTIVO'])
     const estadosInstalados = new Set(['INSTALADO','INSTALADO_NO_VALIDADO','INSTALADO NO VALIDADO','REASIGNACION'])
@@ -2120,10 +2121,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         const validacion = String(v.estado_validacion||'').trim().toUpperCase().replace(/_/g,' ')
         return !estadosCaidos.has(estado) && !validacionesCaidas.has(validacion)
       })
-      const instaladas = vigentes.filter(v => estadosInstalados.has(String(v.estado||'').trim().toUpperCase())).length
-      const cerradas = vigentes.length - instaladas
-      const ventas = cerradas + instaladas
+      const instaladasPeriodo = vigentes.filter(v => estadosInstalados.has(String(v.estado||'').trim().toUpperCase())).length
+      const cerradas = vigentes.length - instaladasPeriodo
+      const ventas = cerradas + instaladasPeriodo
       const conversion = leads > 0 ? Math.round((ventas / leads) * 100) : 0
+      // Columna "Instaladas": total historico del asesor (no del periodo
+      // filtrado arriba), usando la fecha real de instalacion del historial.
+      const instaladas = todasVentas.filter(v =>
+        String(v.asesor_nombre||'').trim().toUpperCase() === nombreNorm && v.fecha_instalado
+      ).length
       return { nombre:a.nombre, usuario:a.usuario||'', sala:a.sala||'', leads, ventas, cerradas, instaladas, conversion }
     })
     data.sort((a,b)=>rendOrden==='leads'
