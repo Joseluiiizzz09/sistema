@@ -239,6 +239,16 @@ function esLeadProhibido(reg) {
   const limite = resumenSinCoberturaHoy(reg)
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
 }
+// Motivo real por el que la rotacion manual esta bloqueada -- no siempre es
+// la tipificacion actual (ej. un lead que llego al limite de SIN COBERTURA
+// puede mostrar otra tipificacion mas reciente encima).
+function razonBloqueoRotacion(reg) {
+  const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
+  if (TIPIF_PROHIBIDAS_ROTACION.has(tipif)) return `Prohibido: ${tipif}`
+  const limite = resumenSinCoberturaHoy(reg)
+  if (limite.aplica && limite.rotaciones >= 2) return 'Límite de 2 rotaciones por SIN COBERTURA hoy'
+  return 'Prohibido'
+}
 function esVentaCaidaInterna(reg) {
   return String(reg?.tipifInterna || '').trim().toUpperCase() === 'VENTA CAIDA'
 }
@@ -1274,7 +1284,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     if (!found) return
     const { reg } = found
     if (esRotacionManualProhibida(reg)) {
-      mostrarToast(`N1 ${reg.n1} no se puede rotar: ${reg._tipifVend}`)
+      mostrarToast(`N1 ${reg.n1} no se puede rotar — ${razonBloqueoRotacion(reg)}`)
       return
     }
     setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
@@ -2672,7 +2682,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                   {detAbierto?'▲':'⋯'}
                                 </button>
                                 <button className="btn-rotar btn-rotar-sm" disabled={rotacionManualBloqueada}
-                                  title={rotacionManualBloqueada?`Prohibido: ${tipifActual}`:(esVentaCaidaInterna(r)?'Rotar venta caída manualmente':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
+                                  title={rotacionManualBloqueada?razonBloqueoRotacion(r):(esVentaCaidaInterna(r)?'Rotar venta caída manualmente':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 </button>
                                 <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">
