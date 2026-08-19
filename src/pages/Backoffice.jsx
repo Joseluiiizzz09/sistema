@@ -195,19 +195,14 @@ function ultimaAsignacionReg(reg) {
   })
 }
 
-function resumenSinCoberturaHoy(reg) {
-  const hoy = fechaHoy()
-  const historial = Array.isArray(reg?.historial) ? reg.historial : []
-  const tuvoSinCobertura = (
-    String(reg?._tipifVend || '').trim().toUpperCase() === 'SIN COBERTURA'
-    && normalizarFecha(reg?.fecha) === hoy
-  ) || historial.some(h => normalizarFecha(h?.fecha) === hoy && [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
+// SIN COBERTURA es un estado tecnico de la direccion (no hay servicio ahi),
+// no algo que "expire" en un dia. Si el registro paso por SIN COBERTURA en
+// cualquier momento de su historial (o es su tipif actual), se considera
+// marcado sin importar que tan reciente sea.
+function tuvoSinCoberturaAlgunaVez(reg, hist) {
+  if (String(reg?._tipifVend || '').trim().toUpperCase() === 'SIN COBERTURA') return true
+  return (hist || []).some(h => [h?.tipif, h?.tipif_vend, h?.tipifVendAntes]
     .some(v => String(v || '').trim().toUpperCase() === 'SIN COBERTURA'))
-  const rotaciones = historial.filter(h =>
-    (String(h?.tipo || '').trim().toUpperCase() === 'ROTACION' || Boolean(h?.reasignadoPor))
-    && normalizarFecha(h?.fecha) === hoy
-  ).length
-  return { aplica:tuvoSinCobertura, rotaciones }
 }
 
 function grupoPrioridadLead(reg) {
@@ -236,18 +231,10 @@ function resaltadoPorVenta(venta) {
 }
 function esLeadProhibido(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
-  const limite = resumenSinCoberturaHoy(reg)
-  return TIPIF_PROHIBIDAS_ROTACION.has(tipif) || (limite.aplica && limite.rotaciones >= 2)
+  return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
 }
-// Motivo real por el que la rotacion manual esta bloqueada -- no siempre es
-// la tipificacion actual (ej. un lead que llego al limite de SIN COBERTURA
-// puede mostrar otra tipificacion mas reciente encima).
 function razonBloqueoRotacion(reg) {
-  const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
-  if (TIPIF_PROHIBIDAS_ROTACION.has(tipif)) return `Prohibido: ${tipif}`
-  const limite = resumenSinCoberturaHoy(reg)
-  if (limite.aplica && limite.rotaciones >= 2) return 'Límite de 2 rotaciones por SIN COBERTURA hoy'
-  return 'Prohibido'
+  return `Prohibido: ${String(tipifEfectiva(reg) || '').trim().toUpperCase()}`
 }
 function esVentaCaidaInterna(reg) {
   return String(reg?.tipifInterna || '').trim().toUpperCase() === 'VENTA CAIDA'
@@ -282,6 +269,10 @@ function tipifEfectiva(reg) {
   // NO ROTAR es una regla estructural del duplicado diario y prevalece sobre
   // eventos historicos que ese registro hubiera recibido por error.
   if (propia === 'NO ROTAR') return 'NO ROTAR'
+  // SIN COBERTURA se mantiene fijo en la base principal aunque el asesor
+  // actual lo siga trabajando con otra tipificacion en su propia base --
+  // solo una venta real (arriba) lo libera.
+  if (tuvoSinCoberturaAlgunaVez(reg, hist)) return 'SIN COBERTURA'
   // Mientras no exista venta, la tipificación cronológica más reciente gana,
   // incluso si la dejó un asesor que ya no es el titular actual.
   if (eventos.length) {
@@ -2548,10 +2539,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                          )
                          const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
                          const claseDuplicadoDia = ocurrenciaDia >= 4 ? 'num-duplicado-limite' : (ocurrenciaDia >= 2 ? 'num-duplicado' : '')
-                         const claseNumero = r.tipifInterna ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
+                         // Sin venta real, SIN COBERTURA se muestra fija en la base principal
+                         // igual que una tipificacion interna (badge de solo lectura).
+                         const esSinCoberturaFija = !r.tipifInterna && tipifActual === 'SIN COBERTURA'
+                         const claseNumero = (r.tipifInterna || esSinCoberturaFija) ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
                          const estiloInterno = r.tipifInterna
                            ? {color:r.tipifInternaColor,background:r.tipifInterna==='INSTALADO'?'#e0f2fe':r.tipifInterna==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
-                           : undefined
+                           : esSinCoberturaFija
+                             ? {color:'#b91c1c',background:'#fee2e2'}
+                             : undefined
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2577,7 +2573,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
+                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(r.tipifInterna?tooltipTipificacionInterna(r):esSinCoberturaFija?'SIN COBERTURA':(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
                                   {(r.n1 || r.usuarioWhatsapp) && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1 || r.usuarioWhatsapp)} title={r.n1?'Copiar N1':'Copiar usuario de WhatsApp'}><CopyIcon /></button>}
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
@@ -2623,6 +2619,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
                                 {r.tipifInterna
                                   ? <span className="tipif-interna-badge" style={estiloInterno} title={tooltipTipificacionInterna(r)}>{r.tipifInterna}</span>
+                                  : esSinCoberturaFija
+                                  ? <span className="tipif-interna-badge" style={estiloInterno} title="SIN COBERTURA — se mantiene fija hasta que exista una venta real">SIN COBERTURA</span>
                                   : <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
                                       style={estiloTipifVend(tipifEfectiva(r))}>
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
