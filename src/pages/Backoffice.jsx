@@ -216,6 +216,7 @@ function resumenSinCoberturaHoy(reg) {
 function grupoPrioridadLead(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
   if (tipif === 'VENTA CERRADA') return 2
+  if (tipif === 'VENTA CAIDA') return 3
   if (tipif === 'SIN COBERTURA') return 1
   return 0
 }
@@ -2080,12 +2081,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
 
   useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
+  // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
+  // la base operativa principal.
+  const registrosParaConteo = registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() !== 'VENTA CAIDA')
   const statsBase = {
-    total:      registrosBusquedaGlobal.length,
-    ventas:     registrosBusquedaGlobal.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
-    asignados:  registrosBusquedaGlobal.filter(r=>r.asesor&&r.asesor!=='').length,
-    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar).length,
-    rotaciones: registrosBusquedaGlobal.reduce((s,r)=>s+r.rotaciones,0),
+    total:      registrosParaConteo.length,
+    ventas:     registrosParaConteo.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
+    asignados:  registrosParaConteo.filter(r=>r.asesor&&r.asesor!=='').length,
+    sinAsignar: registrosParaConteo.filter(r=>r.sinAsignar).length,
+    rotaciones: registrosParaConteo.reduce((s,r)=>s+r.rotaciones,0),
   }
 
   const rendData = useMemo(() => {
