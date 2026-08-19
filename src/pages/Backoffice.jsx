@@ -15,19 +15,37 @@ import '../styles/backoffice.css'
 // ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
 function CampanaSelect({ value, onChange, plain }) {
   const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
+  const [manualConfirmada, setManualConfirmada] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
   if (manual) {
+    if (manualConfirmada && String(value || '').trim()) {
+      return (
+        <div style={{display:'flex',flexDirection:'column',gap:4,width:'100%',minWidth:0}}>
+          <div style={{width:'100%',padding:'7px 8px',border:'1px solid #86efac',borderRadius:8,background:'#f0fdf4',color:'#166534',fontSize:11,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={value}>✓ {value}</div>
+          <div style={{display:'flex',justifyContent:'space-between',gap:4}}>
+            <button type="button" onClick={()=>setManualConfirmada(false)} style={{width:'auto',border:'none',background:'transparent',padding:'2px 0',cursor:'pointer',color:'#2563eb',fontSize:10}}>Editar</button>
+            <button type="button" onClick={()=>{ setManual(false); setManualConfirmada(false); onChange('') }} style={{width:'auto',border:'none',background:'transparent',padding:'2px 0',cursor:'pointer',color:'#6b7280',fontSize:10}}>↩ Volver a lista</button>
+          </div>
+        </div>
+      )
+    }
     return (
-      <div style={{display:'flex',gap:6,alignItems:'center',width:'100%',minWidth:0}}>
+      <div style={{display:'flex',flexDirection:'column',gap:4,width:'100%',minWidth:0}}>
         <input className={plain?undefined:'form-control'} value={value} autoFocus placeholder="Escribe la campaña"
-          onChange={e=>onChange(e.target.value)} style={{flex:'1 1 0',width:0,minWidth:0}} />
-        <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); onChange('') }}
-          style={{flex:'0 0 auto',width:'auto',border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
+          onChange={e=>{ setManualConfirmada(false); onChange(e.target.value) }}
+          onKeyDown={e=>{ if(e.key==='Enter' && String(value || '').trim()){ e.preventDefault(); setManualConfirmada(true) } }}
+          style={{width:'100%',minWidth:0}} />
+        <div style={{display:'flex',justifyContent:'space-between',gap:4}}>
+          <button type="button" disabled={!String(value || '').trim()} onClick={()=>setManualConfirmada(true)}
+            style={{width:'auto',border:'none',background:'transparent',padding:'2px 0',cursor:String(value || '').trim()?'pointer':'not-allowed',color:String(value || '').trim()?'#15803d':'#9ca3af',fontSize:10,fontWeight:700}}>✓ Usar campaña</button>
+          <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); setManualConfirmada(false); onChange('') }}
+            style={{width:'auto',border:'none',background:'transparent',padding:'2px 0',cursor:'pointer',color:'#6b7280',fontSize:10,whiteSpace:'nowrap'}}>↩ lista</button>
+        </div>
       </div>
     )
   }
   return (
     <select className={plain?undefined:'form-control'} value={CAMPANAS.includes(value)?value:''}
-      onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); onChange('') } else onChange(v) }}>
+      onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); setManualConfirmada(false); onChange('') } else onChange(v) }}>
       <option value="">— Selecciona —</option>
       {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
       <option value="__OTRO__">Otro (escribir a mano)…</option>
