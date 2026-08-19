@@ -271,7 +271,12 @@ function tipifPrevioHistorial(historial) {
 // Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
-  if (String(reg?.tipifInterna || '').trim()) return String(reg.tipifInterna).trim()
+  // tipifInternaMostrada ya contempla la recuperacion: si el asesor tipifico
+  // VENTA CERRADA tras una caida, debe tratarse como cerrada en todos lados
+  // (conteos, exclusion de la base operativa, boton "Ver VENTA CAIDA"), no
+  // solo en el badge visual.
+  const interna = tipifInternaMostrada(reg)
+  if (String(interna || '').trim()) return String(interna).trim()
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
   // Una venta realmente creada tiene prioridad definitiva. No basta con haber
