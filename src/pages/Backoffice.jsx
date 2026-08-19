@@ -2087,6 +2087,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       return true
     }
     const todosReg = Object.entries(baseData).flatMap(([fecha,regs])=>(regs||[]).map(r=>({...r,_rendFechaBase:fecha})))
+      .filter(r => String(r.campana||'').toUpperCase().replace(/[\s-]+/g,'') !== 'ASCW')
     const ventasPeriodo = Object.values(ventasPorNumero).filter(v => fechaIncluida(v.created_at))
     const estadosCaidos = new Set(['CAIDA','RECHAZO','RECHAZO_CAMPO','RECHAZO CAMPO','RECHAZO_MESA','RECHAZO MESA','RECHAZADA','RECHAZADO','ANULADA','SERVICIO_ACTIVO','SERVICIO ACTIVO'])
     const validacionesCaidas = new Set(['CORTA LLAMADA','BUZON DE VOZ','CORREGIR','FRAUDE','MALA OFERTA','NO CONTESTA','NO DESEA','SERVICIO ACTIVO'])
@@ -2100,13 +2101,17 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       // Leads realmente entregados al asesor en el periodo. No se usa el asesor
       // proyectado de una venta, porque puede atribuirle leads que nunca recibió.
       const nombreNorm = String(a.nombre||'').trim().toUpperCase()
+      // Solo cuenta clientes que fueron asignados una unica vez (sin rotar),
+      // para no inflar el conteo con leads que pasaron por varios asesores.
       const leads = todosReg.filter(r => {
         const asignaciones = (Array.isArray(r.historial) ? r.historial : []).filter(h =>
           h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase())
         )
-        if (asignaciones.length) return asignaciones.some(h =>
-          String(h.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(h.fecha || r._rendFechaBase)
-        )
+        if (asignaciones.length) {
+          if (asignaciones.length !== 1) return false
+          const h = asignaciones[0]
+          return String(h.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(h.fecha || r._rendFechaBase)
+        }
         return String(r.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(r._rendFechaBase)
       }).length
       const ventasAsesor = ventasPeriodo.filter(v => String(v.asesor_nombre||'').trim().toUpperCase() === nombreNorm)
