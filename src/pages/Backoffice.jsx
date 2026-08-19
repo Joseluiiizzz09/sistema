@@ -148,6 +148,9 @@ function formatFechaHoraInterna(valor) {
 }
 function tooltipTipificacionInterna(reg) {
   if (!reg?.tipifInterna) return ''
+  if (esVentaCaidaInterna(reg) && tipifInternaMostrada(reg) === 'VENTA CERRADA') {
+    return 'VENTA CERRADA · el asesor volvió a tipificar tras la caída'
+  }
   return [
     `${reg.tipifInterna} · ${reg.tipifInternaArea || 'CRM'}`,
     reg.tipifInternaMotivo ? `Motivo: ${reg.tipifInternaMotivo}` : '',
@@ -239,6 +242,15 @@ function esLeadProhibido(reg) {
 }
 function esVentaCaidaInterna(reg) {
   return String(reg?.tipifInterna || '').trim().toUpperCase() === 'VENTA CAIDA'
+}
+// Si el CRM marca VENTA CAIDA pero el asesor ya volvio a tipificar VENTA
+// CERRADA (recupero la venta), esa tipificacion manda visualmente sobre
+// el estado caido de la venta real.
+function tipifInternaMostrada(reg) {
+  if (esVentaCaidaInterna(reg) && normalizarTipifVend((reg?._tipifVend || '').trim()).toUpperCase() === 'VENTA CERRADA') {
+    return 'VENTA CERRADA'
+  }
+  return reg?.tipifInterna || ''
 }
 function esRotacionManualProhibida(reg) {
   // Una venta caída puede recibir un nuevo vendedor únicamente desde el
@@ -2528,10 +2540,16 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                          )
                          const estadoNumero = esReingreso ? resaltadoPorVenta(ventasPorNumero[normalizarNumero(r.n1)]) : null
                          const claseDuplicadoDia = ocurrenciaDia >= 4 ? 'num-duplicado-limite' : (ocurrenciaDia >= 2 ? 'num-duplicado' : '')
-                         const claseNumero = r.tipifInterna ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
-                         const estiloInterno = r.tipifInterna
-                           ? {color:r.tipifInternaColor,background:r.tipifInterna==='INSTALADO'?'#e0f2fe':r.tipifInterna==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
+                         const tipifInternaVisible = tipifInternaMostrada(r)
+                         const claseNumero = tipifInternaVisible ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
+                         const estiloInterno = tipifInternaVisible
+                           ? {color:tipifInternaVisible==='VENTA CAIDA'?r.tipifInternaColor:'#008b32',background:tipifInternaVisible==='INSTALADO'?'#e0f2fe':tipifInternaVisible==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
                            : undefined
+                         // Con VENTA CAIDA la celda de Tipif. Vendedor se mantiene editable
+                         // (el asesor puede volver a tipificar); solo CERRADA/INSTALADO quedan
+                         // como badge de solo lectura.
+                         const tipifVendCeldaEditable = esVentaCaidaInterna(r)
+                         const valorTipifVendCelda = tipifVendCeldaEditable ? normalizarTipifVend((r._tipifVend||'').trim()) : tipifEfectiva(r)
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2557,7 +2575,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(r.tipifInterna?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
+                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(tipifInternaVisible?tooltipTipificacionInterna(r):(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
                                   {(r.n1 || r.usuarioWhatsapp) && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1 || r.usuarioWhatsapp)} title={r.n1?'Copiar N1':'Copiar usuario de WhatsApp'}><CopyIcon /></button>}
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
@@ -2601,10 +2619,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             {/* Tipif. Vendedor */}
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
-                                {r.tipifInterna
+                                {r.tipifInterna && !tipifVendCeldaEditable
                                   ? <span className="tipif-interna-badge" style={estiloInterno} title={tooltipTipificacionInterna(r)}>{r.tipifInterna}</span>
-                                  : <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                      style={estiloTipifVend(tipifEfectiva(r))}>
+                                  : <select className="bo-sel-compact sel-tipif-vend" value={valorTipifVendCelda} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                      style={estiloTipifVend(valorTipifVendCelda)} title={tipifVendCeldaEditable?'Venta caída en el CRM — puedes volver a tipificar (ej. VENTA CERRADA si la recuperaste)':''}>
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                       {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                     </select>}
