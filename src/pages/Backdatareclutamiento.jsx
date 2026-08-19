@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
 import '../styles/Backdatareclutamiento.css'
@@ -436,6 +436,7 @@ export default function Backdatareclutamiento() {
   }, [])
 
   const cargandoLeadsRef = useRef(false)
+  const firmaLeadsRef = useRef('')
   const cargarLeads = useCallback(async () => {
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoLeadsRef.current = true
@@ -446,6 +447,7 @@ export default function Backdatareclutamiento() {
       if (!data.ok) return
       // Si hubo una acción local durante el fetch, esta respuesta ya es vieja: descartar.
       if (mutGenRef.current !== gen) return
+      if (!responseChanged(firmaLeadsRef, data.data) && Object.keys(pendingRef.current).length === 0) return
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {

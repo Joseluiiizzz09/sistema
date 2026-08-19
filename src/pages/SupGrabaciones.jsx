@@ -5,7 +5,7 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
@@ -77,6 +77,7 @@ export default function SupGrabaciones() {
   const [busqueda, setBusqueda]   = useState('')
   const [pagina, setPagina]       = useState(1)
   const [porPagina, setPorPagina] = useState(18)
+  const firmaVentasRef = useRef('')
 
   const [modalRevisar, setModalRevisar]       = useState(null)
   const [estadoRevision, setEstadoRevision]   = useState('')
@@ -113,7 +114,7 @@ export default function SupGrabaciones() {
     try {
       const res  = await fetch(`${API}/ventas?area=supgrabaciones`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) {
+      if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         setVentas(data.data
           // Historial operativo de Supervisión: una venta que ingresó aquí
           // permanece visible aunque luego continúe en Programación o vuelva

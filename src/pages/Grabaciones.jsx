@@ -5,7 +5,7 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
@@ -192,13 +192,14 @@ export default function Grabaciones() {
 
   // ── API ──────────────────────────────────────────────────────────────────
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
   const cargarVentas = useCallback(async () => {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas?estado=validado`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) {
+      if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         setVentas(data.data
           .filter(v => {
             const e  = (v.estado||'').toLowerCase()

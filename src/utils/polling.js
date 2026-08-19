@@ -1,5 +1,7 @@
-const MIN_POLL_DELAY = 5000
-const INTERACTION_GRACE = 1200
+// Las tablas son grandes: consultar cada 1-2 segundos reconstruía cientos de
+// filas durante toda la sesión aunque no hubiera cambios.
+const MIN_POLL_DELAY = 15000
+const INTERACTION_GRACE = 3000
 
 let ultimaInteraccion = 0
 let listenersInstalados = false
@@ -29,4 +31,19 @@ export function setVisibleInterval(task, delay) {
       running = false
     }
   }, intervalo)
+}
+
+// Evita setState y renderizados completos cuando el servidor devuelve la
+// misma colección. Solo conserva una firma pequeña, no una copia de los datos.
+export function responseChanged(ref, data) {
+  const json = JSON.stringify(data ?? null)
+  let hash = 2166136261
+  for (let i = 0; i < json.length; i++) {
+    hash ^= json.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  const firma = `${json.length}:${hash >>> 0}`
+  if (ref.current === firma) return false
+  ref.current = firma
+  return true
 }

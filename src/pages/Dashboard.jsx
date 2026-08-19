@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
@@ -295,6 +295,8 @@ export default function Dashboard() {
   // Refs para acceso sin stale closure
   const ventasRef  = useRef([])
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
+  const firmaFrasesRef = useRef('')
   const grafRef    = useRef({ desde: fechaHoy(), hasta: fechaHoy() })
   const toastTimer = useRef(null)
   const [toast, setToast] = useState('')
@@ -347,6 +349,7 @@ export default function Dashboard() {
   const ultEditRef = useRef(0)
   const pendTipRef = useRef({})   // {id: {estado?, obs?, ts}} — mantiene lo recién editado hasta que el server lo confirme
   const cargandoLeadsRef = useRef(false)
+  const firmaLeadsRef = useRef('')
   const cargarLeadsAsesor = useCallback(async () => {
     if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden)
@@ -359,6 +362,7 @@ export default function Dashboard() {
       })
       const data = await res.json()
       if (!data.ok) return
+      if (!responseChanged(firmaLeadsRef, data.data) && Object.keys(pendTipRef.current).length === 0) return
       const hoy = fechaHoy()
       const asesorIdVista = Number(vistaJefatura ? asesorObjetivo?.id : sesion?.id)
       const asesorNombreVista = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
@@ -473,7 +477,7 @@ export default function Dashboard() {
     try {
       const res  = await fetch(`${API}/ventas${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) {
+      if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         ventasRef.current = data.data
         setVentasSubidas(data.data)
         setVentasMostradas(data.data)
@@ -493,7 +497,8 @@ export default function Dashboard() {
       const url = sala ? `${API}/frases?sala=${encodeURIComponent(sala)}` : `${API}/frases`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
-      setFrases(data.ok && data.data?.length ? data.data : [])
+      const frases = data.ok && data.data?.length ? data.data : []
+      if (responseChanged(firmaFrasesRef, frases)) setFrases(frases)
     } catch(e) { setFrases([]) }
   }, [vistaJefatura, asesorObjetivo?.sala])
 

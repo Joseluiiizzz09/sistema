@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
@@ -879,9 +879,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
       // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
       if (mutGenRef.current !== gen) return
-      const firmaRespuesta = JSON.stringify(data.data)
-      if (firmaRespuesta === ultimaRespuestaLeadsRef.current && Object.keys(pendingRef.current).length === 0) return
-      ultimaRespuestaLeadsRef.current = firmaRespuesta
+      if (!responseChanged(ultimaRespuestaLeadsRef, data.data) && Object.keys(pendingRef.current).length === 0) return
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {
