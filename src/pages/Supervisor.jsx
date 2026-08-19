@@ -8,7 +8,7 @@ import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
 
@@ -318,6 +318,8 @@ export default function Supervisor() {
 
   // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cargandoDatosRef = useRef(false)
+  const firmaAsesoresRef = useRef('')
+  const firmaVentasRef = useRef('')
   const cargarDatos = useCallback(async () => {
     if (cargandoDatosRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoDatosRef.current = true
@@ -327,8 +329,8 @@ export default function Supervisor() {
         fetch(`${API}/ventas?alcance=sala`, { headers: ncHeaders() }),
       ])
       const [dU, dV] = await Promise.all([rU.json(), rV.json()])
-      if (dU.ok) setAsesores(dU.data.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo))
-      if (dV.ok) setVentas(dV.data.map(v => ({
+      if (dU.ok && responseChanged(firmaAsesoresRef, dU.data)) setAsesores(dU.data.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo))
+      if (dV.ok && responseChanged(firmaVentasRef, dV.data)) setVentas(dV.data.map(v => ({
         ...v,
         asesor:   v.asesor_nombre || '',
         n1:       v.telefono1 || '',

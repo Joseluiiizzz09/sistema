@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboardreclutamiento.css'
@@ -273,6 +273,8 @@ export default function DashboardReclutamiento() {
   // Refs para acceso sin stale closure
   const ventasRef  = useRef([])
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
+  const firmaFrasesRef = useRef('')
   const grafRef    = useRef({ desde: fechaHoy(), hasta: fechaHoy() })
   const toastTimer = useRef(null)
   const [toast, setToast] = useState('')
@@ -324,6 +326,7 @@ export default function DashboardReclutamiento() {
   // ── API: Leads ───────────────────────────────────────────────────────────
   const ultEditRef = useRef(0)
   const cargandoLeadsRef = useRef(false)
+  const firmaLeadsRef = useRef('')
   const cargarLeadsAsesor = useCallback(async () => {
     if (Date.now() - ultEditRef.current < 1500) return  // pausa breve tras editar (evita parpadeo)
     if (cargandoLeadsRef.current) return  // evita polls solapados (respuestas fuera de orden)
@@ -332,6 +335,7 @@ export default function DashboardReclutamiento() {
       const res  = await fetch(`${API}/leads-reclutamiento${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) return
+      if (!responseChanged(firmaLeadsRef, data.data)) return
       const hoy = fechaHoy()
       const leadsAsignados = data.data.filter(l => {
         const historial = Array.isArray(l.historial) ? l.historial : []
@@ -377,7 +381,7 @@ export default function DashboardReclutamiento() {
     try {
       const res  = await fetch(`${API}/ventas-reclutamiento${filtroAsesor}`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) {
+      if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         ventasRef.current = data.data
         setVentasSubidas(data.data)
         setVentasMostradas(data.data)
@@ -397,7 +401,8 @@ export default function DashboardReclutamiento() {
       const url = sala ? `${API}/frases?sala=${encodeURIComponent(sala)}` : `${API}/frases`
       const res  = await fetch(url, { headers: ncHeaders() })
       const data = await res.json()
-      setFrases(data.ok && data.data?.length ? data.data : [])
+      const frases = data.ok && data.data?.length ? data.data : []
+      if (responseChanged(firmaFrasesRef, frases)) setFrases(frases)
     } catch(e) { setFrases([]) }
   }, [vistaJefatura, asesorObjetivo?.sala])
 

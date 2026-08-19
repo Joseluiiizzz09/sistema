@@ -9,7 +9,7 @@ import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
 import '../styles/jefatura.css'
@@ -450,9 +450,7 @@ export default function Jefatura() {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok) {
-        const firma = JSON.stringify(data.data)
-        if (firma === firmaVentasRef.current) return
-        firmaVentasRef.current = firma
+        if (!responseChanged(firmaVentasRef, data.data)) return
         setVentasCache(data.data.map(v => ({ ...v, _fecha: (v.created_at || '').split(' ')[0] })))
       }
     } catch { console.error('Error cargando ventas') }

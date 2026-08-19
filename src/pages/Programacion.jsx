@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import '../styles/programacion.css'
 
 const BADGE_CLS = {
@@ -108,6 +108,7 @@ export default function Programacion() {
   }
 
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
   const cargarVentas = useCallback(async () => {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
@@ -115,6 +116,7 @@ export default function Programacion() {
       const res  = await fetch(`${API}/ventas?programacion=1`, { headers: ncHeaders() })
       const data = await res.json()
       if (!data.ok) { mostrarToast('Error cargando ventas'); return }
+      if (!responseChanged(firmaVentasRef, data.data)) return
       setVentas(data.data.filter(v => {
         const e = (v.estado || '').toUpperCase()
         return e !== 'VENTA' && e !== ''

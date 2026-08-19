@@ -6,7 +6,7 @@ import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import { API, ncHeaders } from '../services/api'
-import { setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval } from '../utils/polling'
 import '../styles/seguimiento.css'
 
 const ESTADOS = [
@@ -217,13 +217,14 @@ export default function Seguimiento() {
   }
 
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
   const cargarVentas = useCallback(async () => {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) {
+      if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         setVentas(data.data
           .filter(v => {
             return String(v.estado_supgrab || '').trim().toLowerCase() === 'conforme'
