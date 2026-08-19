@@ -1034,13 +1034,10 @@ export default function Dashboard() {
   const kpiLlamadas   = llamadas
   const kpiVentas     = vHoy.length
 
-  // Instaladas y caidas del periodo seleccionado arriba (no del dia de venta):
-  // una venta puede venderse un dia y quedar instalada o caida en otro dia.
-  const periodoDesde = grafDesde || hoy
-  const periodoHasta = grafHasta || hoy
-  const enPeriodo = fecha => fecha && fecha >= periodoDesde && fecha <= periodoHasta
-  const kpiInstaladas = ventasSubidas.filter(v => enPeriodo(normalizarFecha(v.fecha_instalado))).length
-  const kpiCaidas     = ventasSubidas.filter(v => enPeriodo(normalizarFecha(v.fecha_caida))).length
+  // Instaladas y caidas: total global (historico), no se filtran por el
+  // periodo del grafico ni por la fecha de venta.
+  const kpiInstaladas = ventasSubidas.filter(v => v.fecha_instalado).length
+  const kpiCaidas     = ventasSubidas.filter(v => v.fecha_caida).length
   const totalResultado = kpiInstaladas + kpiCaidas
   const kpiEfect      = totalResultado ? Math.round(kpiInstaladas / totalResultado * 100) : 0
   const kpiPct        = Math.min(Math.round(kpiVentas / META_DIARIA * 100), 100)
