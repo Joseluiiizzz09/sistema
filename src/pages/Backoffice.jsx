@@ -1947,6 +1947,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     sin_cobertura: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
     no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
+    venta_caida: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CAIDA'),
   }
   const campanasFiltroBase = [...new Set(registrosBusquedaGlobal.map(r=>String(r.campana||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const salasFiltroBase = [...new Set(asesores.map(a=>String(a.sala||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
@@ -2826,6 +2827,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     ['sin_cobertura','SIN COBERTURA',gruposProtegidos.sin_cobertura.length,'#dc2626'],
                     ['no_tocar','NO TOCAR',gruposProtegidos.no_tocar.length,'#9f1239'],
                     ['venta_cerrada','VENTA CERRADA',gruposProtegidos.venta_cerrada.length,'#16a34a'],
+                    ['venta_caida','VENTA CAIDA',gruposProtegidos.venta_caida.length,'#a64d79'],
                   ].map(([id,label,total,color]) => (
                     <button key={id} type="button" onClick={()=>setGrupoProtegidoVisible(prev=>prev===id?'':id)}
                       style={{border:`1px solid ${color}`,color:grupoProtegidoVisible===id?'#fff':color,background:grupoProtegidoVisible===id?color:'#fff',borderRadius:8,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>
