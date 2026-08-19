@@ -108,6 +108,54 @@ function Paginacion({ total, pagina, porPagina, onChange }) {
   )
 }
 
+function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
+  const [abierto, setAbierto] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    function onClickFuera(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setAbierto(false)
+    }
+    document.addEventListener('mousedown', onClickFuera)
+    return () => document.removeEventListener('mousedown', onClickFuera)
+  }, [])
+
+  const todos = seleccionados.length === 0
+  function toggleUno(id) {
+    onChange(seleccionados.includes(id) ? seleccionados.filter(x => x !== id) : [...seleccionados, id])
+  }
+
+  const label = todos
+    ? 'Todos los estados'
+    : seleccionados.length === 1
+      ? (opciones.find(o => o.id === seleccionados[0])?.label || '1 seleccionado')
+      : `${seleccionados.length} estados seleccionados`
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative' }}>
+      <button type="button" className="filtro-estado-btn" onClick={() => setAbierto(o => !o)}>
+        <span>{label}</span>
+        <span style={{ marginLeft: 6, opacity: .6 }}>▾</span>
+      </button>
+      {abierto && (
+        <div className="filtro-estado-panel">
+          <label className="filtro-estado-item filtro-estado-todos">
+            <input type="checkbox" checked={todos} onChange={() => onChange([])} />
+            Todos los estados
+          </label>
+          <div className="filtro-estado-divider" />
+          {opciones.map(o => (
+            <label key={o.id} className="filtro-estado-item">
+              <input type="checkbox" checked={seleccionados.includes(o.id)} onChange={() => toggleUno(o.id)} />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Seguimiento() {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
@@ -118,7 +166,7 @@ export default function Seguimiento() {
   const [filtroLeyenda, setFiltroLeyenda] = useState(() => {
     try { return sessionStorage.getItem(SEG_FILTRO_KEY) || '' } catch { return '' }
   })
-  const [fEstado, setFEstado]     = useState('')
+  const [fEstados, setFEstados]   = useState([])
   const [fVendedor, setFVendedor] = useState('')
   const [fDistrito, setFDistrito] = useState('')
   const [fTramo, setFTramo]       = useState('')
@@ -210,15 +258,28 @@ export default function Seguimiento() {
   function toggleLeyenda(id) {
     const next = filtroLeyenda === id ? '' : id
     setFiltroLeyenda(next)
+    if (next) setFEstados([])
     try { sessionStorage.setItem(SEG_FILTRO_KEY, next) } catch {}
+    setPagina(1)
+  }
+
+  function cambiarFEstados(ids) {
+    setFEstados(ids)
+    setFiltroLeyenda('')
+    try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
     setPagina(1)
   }
 
   // Filtro compartido: `incluirEstado` se desactiva para las métricas (leyenda/KPIs),
   // asi el rango de fecha y demas filtros los acotan pero no se colapsan al elegir un estado.
   const filtrarVenta = useCallback((v, incluirEstado) => {
-    const fEst = filtroLeyenda || fEstado
-    if (incluirEstado && fEst && v._estadoSeg !== fEst) return false
+    if (incluirEstado) {
+      if (filtroLeyenda) {
+        if (v._estadoSeg !== filtroLeyenda) return false
+      } else if (fEstados.length && !fEstados.includes(v._estadoSeg)) {
+        return false
+      }
+    }
     if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
     if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
     if (fTramo   && v._tramo !== fTramo) return false
@@ -235,7 +296,7 @@ export default function Seguimiento() {
       ].some(x => String(x || '').toLowerCase().includes(b))) return false
     }
     return true
-  }, [filtroLeyenda, fEstado, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
+  }, [filtroLeyenda, fEstados, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
 
   const ventasEnRango = useMemo(() => ventas.filter(v => filtrarVenta(v, false)), [ventas, filtrarVenta])
 
@@ -265,7 +326,7 @@ export default function Seguimiento() {
   const ventasPag = ventasFiltradas.slice(inicio, fin)
 
   function limpiarFiltros() {
-    setFiltroLeyenda(''); setFEstado(''); setFVendedor(''); setFDistrito('')
+    setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFDistrito('')
     setFTramo(''); setFTipoFecha('fecha'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
     try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
   }
@@ -490,10 +551,7 @@ export default function Seguimiento() {
           <div className="filtros-grid">
             <div className="fg">
               <label>Estado</label>
-              <select value={fEstado} onChange={e => { setFEstado(e.target.value); setPagina(1) }}>
-                <option value="">Todos los estados</option>
-                {ESTADOS.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
+              <FiltroEstadoMultiple opciones={ESTADOS} seleccionados={fEstados} onChange={cambiarFEstados} />
             </div>
             <div className="fg">
               <label>Vendedor</label>
