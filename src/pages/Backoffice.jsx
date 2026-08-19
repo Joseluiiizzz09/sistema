@@ -782,6 +782,7 @@ export default function Backoffice() {
   // backend los confirme (o pasen 8s), evitando el parpadeo al valor viejo.
   const pendingRef = useRef({})
   const cargandoLeadsRef = useRef(false)
+  const ultimaRespuestaLeadsRef = useRef('')
   const mutGenRef = useRef(0)   // se incrementa en cada acción local; descarta respuestas de polls viejos
   function marcarPendiente(id, campos) {
     if (!campos || typeof campos !== 'object' || Array.isArray(campos)) return
@@ -866,6 +867,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       // Si hubo una acción local (rotar/eliminar/asignar) durante el fetch, esta
       // respuesta ya es vieja: descartarla para no pisar el cambio (evita parpadeo).
       if (mutGenRef.current !== gen) return
+      const firmaRespuesta = JSON.stringify(data.data)
+      if (firmaRespuesta === ultimaRespuestaLeadsRef.current && Object.keys(pendingRef.current).length === 0) return
+      ultimaRespuestaLeadsRef.current = firmaRespuesta
       const nuevoBase = {}
       const nuevasFechas = []
       data.data.forEach(l => {

@@ -9,6 +9,7 @@ import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
+import { setVisibleInterval } from '../utils/polling'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
 import '../styles/jefatura.css'
@@ -391,13 +392,19 @@ export default function Jefatura() {
   }, [])
 
   const cargandoVentasRef = useRef(false)
+  const firmaVentasRef = useRef('')
   const cargarVentasCache = useCallback(async () => {
     if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
     cargandoVentasRef.current = true
     try {
       const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok) setVentasCache(data.data.map(v => ({ ...v, _fecha: (v.created_at || '').split(' ')[0] })))
+      if (data.ok) {
+        const firma = JSON.stringify(data.data)
+        if (firma === firmaVentasRef.current) return
+        firmaVentasRef.current = firma
+        setVentasCache(data.data.map(v => ({ ...v, _fecha: (v.created_at || '').split(' ')[0] })))
+      }
     } catch { console.error('Error cargando ventas') }
     finally { cargandoVentasRef.current = false }
   }, [])
@@ -523,9 +530,7 @@ export default function Jefatura() {
     cargarUsuarios()
     cargarVentasCache()
     agregarLog('Sesión iniciada', 'Panel de Jefatura')
-    const iv = setInterval(async () => {
-      await cargarVentasCache()
-    }, 3000)
+    const iv = setVisibleInterval(cargarVentasCache, 5000)
     return () => clearInterval(iv)
   }, [cargarUsuarios, cargarVentasCache])
 
