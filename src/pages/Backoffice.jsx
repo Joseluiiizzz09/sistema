@@ -214,6 +214,7 @@ function grupoPrioridadLead(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
   if (tipif === 'VENTA CERRADA') return 2
   if (tipif === 'VENTA CAIDA') return 3
+  if (tipif === 'INSTALADO') return 4
   if (tipif === 'SIN COBERTURA') return 1
   return 0
 }
@@ -1937,6 +1938,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
     venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
     venta_caida: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CAIDA'),
+    instalado: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'INSTALADO'),
   }
   const campanasFiltroBase = [...new Set(registrosBusquedaGlobal.map(r=>String(r.campana||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const salasFiltroBase = [...new Set(asesores.map(a=>String(a.sala||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
@@ -2071,7 +2073,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
 
   // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
   // la base operativa principal.
-  const registrosParaConteo = registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() !== 'VENTA CAIDA')
+  const registrosParaConteo = registrosBusquedaGlobal.filter(r => !['VENTA CAIDA','INSTALADO'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
   const statsBase = {
     total:      registrosParaConteo.length,
     ventas:     registrosParaConteo.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
@@ -2819,6 +2821,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     ['no_tocar','NO TOCAR',gruposProtegidos.no_tocar.length,'#9f1239'],
                     ['venta_cerrada','VENTA CERRADA',gruposProtegidos.venta_cerrada.length,'#16a34a'],
                     ['venta_caida','VENTA CAIDA',gruposProtegidos.venta_caida.length,'#a64d79'],
+                    ['instalado','INSTALADO',gruposProtegidos.instalado.length,'#0369a1'],
                   ].map(([id,label,total,color]) => (
                     <button key={id} type="button" onClick={()=>setGrupoProtegidoVisible(prev=>prev===id?'':id)}
                       style={{border:`1px solid ${color}`,color:grupoProtegidoVisible===id?'#fff':color,background:grupoProtegidoVisible===id?color:'#fff',borderRadius:8,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>
