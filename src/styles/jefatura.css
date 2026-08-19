@@ -1073,6 +1073,13 @@ button.export-kpi-card:hover {
   transition: all .18s;
 }
 
+.filtros-grid-ventas select,
+.filtros-grid-ventas select option,
+.filtros-grid-ventas .filtro-estado-btn,
+.filtros-grid-ventas .filtro-estado-item {
+  text-transform: uppercase;
+}
+
 .filtros-grid select:focus,
 .filtros-grid input:focus {
   outline: none;

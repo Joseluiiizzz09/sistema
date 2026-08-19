@@ -260,6 +260,10 @@ function descargarExcel(filas, columnas, nombreArchivo) {
 
 // Filtro de estado multi-seleccion (estilo Excel), igual al de /seguimiento
 // pero con una lista plana de strings en vez de {id,label}.
+function textoFiltroMayuscula(valor) {
+  return String(valor || '').replace(/_/g, ' ').toLocaleUpperCase('es-PE')
+}
+
 function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
   const [abierto, setAbierto] = useState(false)
   const boxRef = useRef(null)
@@ -278,10 +282,10 @@ function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
   }
 
   const label = todos
-    ? 'Todos'
+    ? 'TODOS'
     : seleccionados.length === 1
-      ? seleccionados[0]
-      : `${seleccionados.length} estados seleccionados`
+      ? textoFiltroMayuscula(seleccionados[0])
+      : `${seleccionados.length} ESTADOS SELECCIONADOS`
 
   return (
     <div ref={boxRef} style={{ position: 'relative' }}>
@@ -293,13 +297,13 @@ function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
         <div className="filtro-estado-panel">
           <label className="filtro-estado-item filtro-estado-todos">
             <input type="checkbox" checked={todos} onChange={() => onChange([])} />
-            <span>Todos</span>
+            <span>TODOS</span>
           </label>
           <div className="filtro-estado-divider" />
           {opciones.map(o => (
             <label key={o} className="filtro-estado-item">
               <input type="checkbox" checked={seleccionados.includes(o)} onChange={() => toggleUno(o)} />
-              <span>{o}</span>
+              <span>{textoFiltroMayuscula(o)}</span>
             </label>
           ))}
         </div>
@@ -1426,8 +1430,8 @@ export default function Jefatura() {
               <div className="filtros-titulo">Filtros avanzados</div>
               <div className="filtros-grid filtros-grid-ventas">
                 <label><span>Estado actual</span><FiltroEstadoMultiple opciones={opcionesFlujo.estados} seleccionados={fvEstados} onChange={setFvEstados} /></label>
-                <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
-                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.grabaciones.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">TODAS</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
+                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option>{opcionesFlujo.grabaciones.map(x=><option key={x} value={x}>{textoFiltroMayuscula(x)}</option>)}</select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
