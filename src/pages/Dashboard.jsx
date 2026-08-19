@@ -202,16 +202,18 @@ function generarRangoFechas(desde, hasta) {
 
 function asignacionesVigentesDelAsesor(historial, asesorNombre) {
   const eventos = Array.isArray(historial) ? historial : []
-  const nombre = String(asesorNombre || '').trim().toUpperCase()
+  const normalizarAsesor = valor => String(valor || '').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ')
+  const nombre = normalizarAsesor(asesorNombre)
   const ultimoRetiro = eventos.reduce((indice, evento, i) => {
     const esRetiro = String(evento?.tipo || '').trim().toUpperCase() === 'QUITAR_ASIGNACION'
-    const retirado = String(evento?.asesorQuitado || '').trim().toUpperCase()
+    const retirado = normalizarAsesor(evento?.asesorQuitado || evento?.asesor_quitado)
     return esRetiro && (!nombre || retirado === nombre) ? i : indice
   }, -1)
   return eventos.slice(ultimoRetiro + 1).filter(evento =>
     evento?.fecha && evento?.asesor
     && !['TIPIF_VEND','TIPIF_BACK','DERIVADO','QUITAR_ASIGNACION'].includes(String(evento.tipo || '').trim().toUpperCase())
-    && (!nombre || String(evento.asesor).trim().toUpperCase() === nombre)
+    && (!nombre || normalizarAsesor(evento.asesor) === nombre)
   )
 }
 
