@@ -1382,6 +1382,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         if (!tipifActual || tipifActual === 'NUEVO') return
         // VENTA CAIDA se recupera únicamente mediante rotación manual.
         if (esVentaCaidaInterna(reg)) return
+        // SIN COBERTURA solo puede pasar por 2 asesores más vía Rotación
+        // Inteligente (3 rotaciones en total, incluida la asignación inicial).
+        // Rotación manual no tiene este límite.
+        if (tipifActual === 'SIN COBERTURA' && cantidadRotaciones(reg) >= 3) return
         if (TIPIF_EXCLUIDAS_ROTACION.has(tipifActual) || esLeadProhibido(reg)) return
         const nNorm = normalizarNumero(reg.n1)
         // Protección VERDE/CELESTE/ROJO/AMARILLO: cualquier lead con venta activa/rechazada → no rota
