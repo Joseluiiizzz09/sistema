@@ -17,11 +17,11 @@ function CampanaSelect({ value, onChange, plain }) {
   const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
   if (manual) {
     return (
-      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+      <div style={{display:'flex',gap:6,alignItems:'center',width:'100%',minWidth:0}}>
         <input className={plain?undefined:'form-control'} value={value} autoFocus placeholder="Escribe la campaña"
-          onChange={e=>onChange(e.target.value)} style={{flex:1,minWidth:0}} />
+          onChange={e=>onChange(e.target.value)} style={{flex:'1 1 0',width:0,minWidth:0}} />
         <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); onChange('') }}
-          style={{border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
+          style={{flex:'0 0 auto',width:'auto',border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
       </div>
     )
   }
