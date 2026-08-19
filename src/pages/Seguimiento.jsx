@@ -536,16 +536,6 @@ export default function Seguimiento() {
           ))}
         </div>
 
-        {/* KPI STRIP */}
-        <div className="kpi-strip">
-          <div className="kpi-item k-total"><div><div className="kpi-num">{kpis.total}</div>     <div className="kpi-label">Total</div></div></div>
-          <div className="kpi-item k-ejec"> <div><div className="kpi-num">{kpis.ejecucion}</div> <div className="kpi-label">En ejecución</div></div></div>
-          <div className="kpi-item k-inst"> <div><div className="kpi-num">{kpis.instalado}</div> <div className="kpi-label">Instalados</div></div></div>
-          <div className="kpi-item k-rech"> <div><div className="kpi-num">{kpis.rechazo}</div>   <div className="kpi-label">Rechazos</div></div></div>
-          <div className="kpi-item k-caida"><div><div className="kpi-num">{kpis.caida}</div>     <div className="kpi-label">Caídas</div></div></div>
-          <div className="kpi-item k-tec">  <div><div className="kpi-num">{kpis.tecnico}</div>   <div className="kpi-label">Técnicos en casa</div></div></div>
-        </div>
-
         {/* FILTROS */}
         <div className="filtros-panel">
           <div className="filtros-titulo">Filtros avanzados</div>
