@@ -66,7 +66,8 @@ function normalizarFecha(f) {
 }
 
 function esVentaInstalada(venta) {
-  return String(venta?.estado || '').trim().toUpperCase() === 'INSTALADO'
+  const estado = String(venta?.estado || '').trim().toUpperCase().replace(/_/g, ' ')
+  return estado === 'INSTALADO' || estado === 'INSTALADO NO VALIDADO' || estado === 'REASIGNACION'
 }
 
 function fechaHoyFormateada() {
