@@ -1031,13 +1031,17 @@ export default function Dashboard() {
   // ── KPIs computados ───────────────────────────────────────────────────────
   const hoy           = fechaHoy()
   const vHoy          = ventasSubidas.filter(v => normalizarFecha(v.created_at) === hoy)
-  const iHoy          = vHoy.filter(esVentaInstalada)
-  const noInstHoy     = vHoy.filter(v => !esVentaInstalada(v))
   const kpiLlamadas   = llamadas
   const kpiVentas     = vHoy.length
-  const kpiInstaladas = iHoy.length
-  const kpiNoInst     = noInstHoy.length
-  const totalResultado = kpiInstaladas + kpiNoInst
+
+  // Instaladas y caidas del periodo seleccionado arriba (no del dia de venta):
+  // una venta puede venderse un dia y quedar instalada o caida en otro dia.
+  const periodoDesde = grafDesde || hoy
+  const periodoHasta = grafHasta || hoy
+  const enPeriodo = fecha => fecha && fecha >= periodoDesde && fecha <= periodoHasta
+  const kpiInstaladas = ventasSubidas.filter(v => enPeriodo(normalizarFecha(v.fecha_instalado))).length
+  const kpiCaidas     = ventasSubidas.filter(v => enPeriodo(normalizarFecha(v.fecha_caida))).length
+  const totalResultado = kpiInstaladas + kpiCaidas
   const kpiEfect      = totalResultado ? Math.round(kpiInstaladas / totalResultado * 100) : 0
   const kpiPct        = Math.min(Math.round(kpiVentas / META_DIARIA * 100), 100)
   const ultimaSyncTexto = ultimaSync
@@ -1193,7 +1197,7 @@ export default function Dashboard() {
           <div className="rend-kpi rend-kpi-verde">  <div className="rend-kpi-icon" /><div className="rend-kpi-valor">{kpiVentas}</div>     <div className="rend-kpi-label">Ventas hoy</div></div>
           <div className="rend-kpi rend-kpi-morado"> <div className="rend-kpi-icon" /><div className="rend-kpi-valor">{kpiInstaladas}</div> <div className="rend-kpi-label">Instaladas</div></div>
           <div className="rend-kpi rend-kpi-naranja"><div className="rend-kpi-icon" /><div className="rend-kpi-valor">{kpiEfect}%</div>     <div className="rend-kpi-label">Efectividad</div></div>
-          <div className="rend-kpi rend-kpi-rojo">   <div className="rend-kpi-icon" /><div className="rend-kpi-valor">{kpiNoInst}</div>     <div className="rend-kpi-label">No instaladas</div></div>
+          <div className="rend-kpi rend-kpi-rojo">   <div className="rend-kpi-icon" /><div className="rend-kpi-valor">{kpiCaidas}</div>     <div className="rend-kpi-label">Caídas</div></div>
         </div>
 
         <div className="rend-meta">
