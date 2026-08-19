@@ -258,6 +258,56 @@ function descargarExcel(filas, columnas, nombreArchivo) {
   XLSX.writeFile(libro, nombreArchivo)
 }
 
+// Filtro de estado multi-seleccion (estilo Excel), igual al de /seguimiento
+// pero con una lista plana de strings en vez de {id,label}.
+function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
+  const [abierto, setAbierto] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    function onClickFuera(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setAbierto(false)
+    }
+    document.addEventListener('mousedown', onClickFuera)
+    return () => document.removeEventListener('mousedown', onClickFuera)
+  }, [])
+
+  const todos = seleccionados.length === 0
+  function toggleUno(valor) {
+    onChange(seleccionados.includes(valor) ? seleccionados.filter(x => x !== valor) : [...seleccionados, valor])
+  }
+
+  const label = todos
+    ? 'Todos'
+    : seleccionados.length === 1
+      ? seleccionados[0]
+      : `${seleccionados.length} estados seleccionados`
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative' }}>
+      <button type="button" className="filtro-estado-btn" onClick={() => setAbierto(o => !o)}>
+        <span>{label}</span>
+        <span style={{ marginLeft: 6, opacity: .6 }}>▾</span>
+      </button>
+      {abierto && (
+        <div className="filtro-estado-panel">
+          <label className="filtro-estado-item filtro-estado-todos">
+            <input type="checkbox" checked={todos} onChange={() => onChange([])} />
+            <span>Todos</span>
+          </label>
+          <div className="filtro-estado-divider" />
+          {opciones.map(o => (
+            <label key={o} className="filtro-estado-item">
+              <input type="checkbox" checked={seleccionados.includes(o)} onChange={() => toggleUno(o)} />
+              <span>{o}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Jefatura() {
   const navigate = useNavigate()
   const { sesion, logout, refrescarSesion } = useAuth()
@@ -296,7 +346,7 @@ export default function Jefatura() {
   const [busqFlujoVentas, setBusqFlujoVentas] = useState('')
 
   /* filtros avanzados — Ventas generales (se combinan con filtroFlujoVentas/busqFlujoVentas) */
-  const [fvEstado,     setFvEstado]     = useState('')
+  const [fvEstados,    setFvEstados]    = useState([])
   const [fvValidacion, setFvValidacion] = useState('')
   const [fvGrabacion,  setFvGrabacion]  = useState('')
   const [fvAsesor,     setFvAsesor]     = useState('')
@@ -815,7 +865,7 @@ export default function Jefatura() {
     if (filtroFlujoVentas === 'seguimiento') {
       lista = lista.filter(v => Boolean(estadoSeguimiento(v)))
     }
-    if (fvEstado) lista = lista.filter(v => (v.estado || v.estado_venta || '') === fvEstado)
+    if (fvEstados.length) lista = lista.filter(v => fvEstados.includes(v.estado || v.estado_venta || ''))
     if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
     if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
@@ -844,7 +894,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstado, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -852,13 +902,13 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstado, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
     setFiltroFlujoVentas('todas')
     setBusqFlujoVentas('')
-    setFvEstado(''); setFvValidacion(''); setFvGrabacion('')
+    setFvEstados([]); setFvValidacion(''); setFvGrabacion('')
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
     setFvDesde(''); setFvHasta('')
   }
@@ -1377,7 +1427,7 @@ export default function Jefatura() {
             <div className="filtros-avanzados">
               <div className="filtros-titulo">Filtros avanzados</div>
               <div className="filtros-grid filtros-grid-ventas">
-                <label><span>Estado actual</span><select value={fvEstado} onChange={e=>setFvEstado(e.target.value)}><option value="">Todos</option>{opcionesFlujo.estados.map(x=><option key={x}>{x}</option>)}</select></label>
+                <label><span>Estado actual</span><FiltroEstadoMultiple opciones={opcionesFlujo.estados} seleccionados={fvEstados} onChange={setFvEstados} /></label>
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">Todas</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
                 <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">Todas</option>{opcionesFlujo.grabaciones.map(x=><option key={x}>{x}</option>)}</select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
