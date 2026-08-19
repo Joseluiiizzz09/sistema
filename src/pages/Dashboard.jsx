@@ -200,6 +200,21 @@ function generarRangoFechas(desde, hasta) {
   return fechas
 }
 
+function asignacionesVigentesDelAsesor(historial, asesorNombre) {
+  const eventos = Array.isArray(historial) ? historial : []
+  const nombre = String(asesorNombre || '').trim().toUpperCase()
+  const ultimoRetiro = eventos.reduce((indice, evento, i) => {
+    const esRetiro = String(evento?.tipo || '').trim().toUpperCase() === 'QUITAR_ASIGNACION'
+    const retirado = String(evento?.asesorQuitado || '').trim().toUpperCase()
+    return esRetiro && (!nombre || retirado === nombre) ? i : indice
+  }, -1)
+  return eventos.slice(ultimoRetiro + 1).filter(evento =>
+    evento?.fecha && evento?.asesor
+    && !['TIPIF_VEND','TIPIF_BACK','DERIVADO','QUITAR_ASIGNACION'].includes(String(evento.tipo || '').trim().toUpperCase())
+    && (!nombre || String(evento.asesor).trim().toUpperCase() === nombre)
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Dashboard() {
   const { sesion, logout, refrescarSesion } = useAuth()
@@ -346,18 +361,21 @@ export default function Dashboard() {
       const asesorNombreVista = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
       const leadsAsignados = data.data.filter(l => {
         const historial = Array.isArray(l.historial) ? l.historial : []
-        const asignaciones = historial.filter(h =>
-          h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND' &&
-          (!asesorNombreVista || String(h.asesor).trim() === asesorNombreVista)
-        )
+        const asignaciones = asignacionesVigentesDelAsesor(historial, asesorNombreVista)
         const ultimaAsignacion = asignaciones[asignaciones.length - 1]
 
         // La fecha del lead identifica la base de origen. Para el asesor
         // importa cuándo recibió el registro. El fallback mantiene compatibles
         // los registros antiguos que todavía no tienen historial.
-        return ultimaAsignacion?.fecha
-          ? normalizarFecha(ultimaAsignacion.fecha) === hoy
-          : normalizarFecha(l.fecha) === hoy
+        if (ultimaAsignacion?.fecha) return normalizarFecha(ultimaAsignacion.fecha) === hoy
+
+        // Compatibilidad con leads antiguos sin historial: solo pertenecen al
+        // asesor si continúa siendo el titular actual. Si se usó “Quitar”, no
+        // deben reaparecer por el simple hecho de que el lead fue creado hoy.
+        const esTitularActual = asesorIdVista
+          ? Number(l.asesor_id) === asesorIdVista
+          : Boolean(asesorNombreVista) && String(l.asesor_nombre || '').trim().toUpperCase() === asesorNombreVista.toUpperCase()
+        return historial.length === 0 && esTitularActual && normalizarFecha(l.fecha) === hoy
       })
       setClientes(prev => {
         const ea = {}
@@ -395,10 +413,7 @@ export default function Dashboard() {
             obs = l.obs_asesor_personal ?? ent?.obsAsesorAntes ?? ''
           }
           const historial = Array.isArray(l.historial) ? l.historial : []
-          const asignacionesDelAsesor = historial.filter(h =>
-            h?.fecha && h?.asesor && h.tipo !== 'TIPIF_VEND' &&
-            (!miNombre || String(h.asesor).trim() === miNombre)
-          )
+          const asignacionesDelAsesor = asignacionesVigentesDelAsesor(historial, miNombre)
           const asignacionDelAsesor = asignacionesDelAsesor[asignacionesDelAsesor.length - 1]
           const horaAsignacion = asignacionDelAsesor?.hora || (soyActual ? l.hora_asig : '') || ''
           const fechaAsignacion = normalizarFecha(asignacionDelAsesor?.fecha || l.fecha) || ''
