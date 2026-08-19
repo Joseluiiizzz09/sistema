@@ -2545,11 +2545,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                          const estiloInterno = tipifInternaVisible
                            ? {color:tipifInternaVisible==='VENTA CAIDA'?r.tipifInternaColor:'#008b32',background:tipifInternaVisible==='INSTALADO'?'#e0f2fe':tipifInternaVisible==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
                            : undefined
-                         // Con VENTA CAIDA la celda de Tipif. Vendedor se mantiene editable
-                         // (el asesor puede volver a tipificar); solo CERRADA/INSTALADO quedan
-                         // como badge de solo lectura.
-                         const tipifVendCeldaEditable = esVentaCaidaInterna(r)
-                         const valorTipifVendCelda = tipifVendCeldaEditable ? normalizarTipifVend((r._tipifVend||'').trim()) : tipifEfectiva(r)
                          return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             {/* # */}
@@ -2619,10 +2614,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             {/* Tipif. Vendedor */}
                             <td>
                               <div style={{display:'flex',alignItems:'center',gap:2}}>
-                                {r.tipifInterna && !tipifVendCeldaEditable
-                                  ? <span className="tipif-interna-badge" style={estiloInterno} title={tooltipTipificacionInterna(r)}>{r.tipifInterna}</span>
-                                  : <select className="bo-sel-compact sel-tipif-vend" value={valorTipifVendCelda} onChange={e=>guardarTipif(r.id,e.target.value)}
-                                      style={estiloTipifVend(valorTipifVendCelda)} title={tipifVendCeldaEditable?'Venta caída en el CRM — puedes volver a tipificar (ej. VENTA CERRADA si la recuperaste)':''}>
+                                {r.tipifInterna
+                                  ? <span className="tipif-interna-badge" style={estiloInterno} title={tooltipTipificacionInterna(r)}>{tipifInternaMostrada(r)}</span>
+                                  : <select className="bo-sel-compact sel-tipif-vend" value={tipifEfectiva(r)} onChange={e=>guardarTipif(r.id,e.target.value)}
+                                      style={estiloTipifVend(tipifEfectiva(r))}>
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                       {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                     </select>}
