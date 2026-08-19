@@ -2109,16 +2109,21 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       // Leads realmente entregados al asesor en el periodo. No se usa el asesor
       // proyectado de una venta, porque puede atribuirle leads que nunca recibió.
       const nombreNorm = String(a.nombre||'').trim().toUpperCase()
-      // Solo cuenta clientes que fueron asignados una unica vez (sin rotar),
-      // para no inflar el conteo con leads que pasaron por varios asesores.
+      // Solo cuenta el cliente para el asesor que lo tuvo PRIMERO. Si se rota
+      // despues a otro asesor, ese segundo (o tercero, etc.) no lo cuenta --
+      // pero el primero si conserva su credito, sin importar cuantas veces
+      // se haya rotado despues.
       const leads = todosReg.filter(r => {
         const asignaciones = (Array.isArray(r.historial) ? r.historial : []).filter(h =>
           h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO'].includes(String(h.tipo||'').toUpperCase())
         )
         if (asignaciones.length) {
-          if (asignaciones.length !== 1) return false
-          const h = asignaciones[0]
-          return String(h.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(h.fecha || r._rendFechaBase)
+          const primera = asignaciones.reduce((antes, actual) => {
+            const claveAntes  = `${normalizarFecha(antes?.fecha)} ${String(antes?.hora || '').padStart(5,'0')}`
+            const claveActual = `${normalizarFecha(actual?.fecha)} ${String(actual?.hora || '').padStart(5,'0')}`
+            return claveActual < claveAntes ? actual : antes
+          })
+          return String(primera.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(primera.fecha || r._rendFechaBase)
         }
         return String(r.asesor||'').trim().toUpperCase() === nombreNorm && fechaIncluida(r._rendFechaBase)
       }).length
