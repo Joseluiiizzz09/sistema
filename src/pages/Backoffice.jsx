@@ -371,22 +371,60 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, cla
   )
 }
 
-function FiltroEncabezado({ label, value, options, onChange, pending }) {
+function FiltroEncabezado({ label, value, options, onChange, pending, searchable }) {
   const [open, setOpen] = useState(false)
-  return open ? (
-    <select autoFocus value={value} onBlur={()=>setOpen(false)}
-      onChange={e=>{ onChange(e.target.value); setOpen(false) }}
-      aria-label={`Filtrar ${label}`}
-      style={{width:'100%',minWidth:0,padding:'4px 3px',border:'1px solid #475569',borderRadius:5,background:'#fff',color:'#111827',fontSize:9,fontFamily:'inherit'}}>
-      <option value="">Todos</option>
-      {pending && <option value="__pendiente__">Pendiente</option>}
-      {options.map(op=><option key={op} value={op}>{op}</option>)}
-    </select>
-  ) : (
-    <button type="button" className={`th-sort-btn${value?' th-sort-active':''}`}
-      onClick={()=>setOpen(true)} title={`Filtrar por ${label}`} aria-label={`Filtrar por ${label}`}>
-      {value==='__pendiente__' ? 'Pendiente' : value || label} <span style={{fontSize:9}}>▼</span>
-    </button>
+  const [q, setQ] = useState('')
+  const [pos, setPos] = useState({ top:0, left:0, width:220 })
+  const btnRef = useRef(null)
+  const boxRef = useRef(null)
+  const opcionesBase = [...new Set(options.filter(Boolean))]
+  const opciones = pending ? ['__pendiente__', ...opcionesBase] : opcionesBase
+  const visibles = opciones.filter(op=>!q || String(op).toLowerCase().includes(q.toLowerCase()))
+  const etiqueta = op => op === '__pendiente__' ? 'Pendiente' : op
+  useEffect(()=>{
+    if (!open) return
+    function cerrar(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target) && btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', cerrar)
+    return ()=>document.removeEventListener('mousedown', cerrar)
+  }, [open])
+  function abrir() {
+    const r = btnRef.current.getBoundingClientRect()
+    const width = Math.max(r.width, searchable ? 245 : 215)
+    setPos({ top:r.bottom + 4, left:Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), width })
+    setQ('')
+    setOpen(v=>!v)
+  }
+  function alternar(op) {
+    onChange(value.includes(op) ? value.filter(v=>v!==op) : [...value, op])
+  }
+  const resumen = value.length === 0 ? label : value.length === 1 ? etiqueta(value[0]) : `${label} (${value.length})`
+  return (
+    <>
+      <button ref={btnRef} type="button" className={`th-sort-btn${value.length?' th-sort-active':''}`}
+        onClick={abrir} title={`Filtrar por ${label}`} aria-label={`Filtrar por ${label}`} aria-expanded={open}>
+        {resumen} <span style={{fontSize:9}}>▼</span>
+      </button>
+      {open && createPortal(
+        <div ref={boxRef} onKeyDown={e=>{ if(e.key==='Escape') setOpen(false) }}
+          style={{position:'fixed',top:pos.top,left:pos.left,width:pos.width,zIndex:10000,background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,boxShadow:'0 12px 32px rgba(15,23,42,.2)',padding:'8px 10px',color:'#111827'}}>
+          {searchable && <div style={{position:'relative',marginBottom:7}}>
+            <span aria-hidden="true" style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',fontSize:12,color:'#64748b'}}>🔍</span>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder={`Buscar ${label.toLowerCase()}…`}
+              style={{width:'100%',padding:'7px 8px 7px 28px',border:'1px solid #cbd5e1',borderRadius:7,outline:'none',fontSize:12,boxSizing:'border-box'}} />
+          </div>}
+          <label style={{display:'flex',alignItems:'center',gap:7,padding:'6px 3px 8px',fontSize:11,fontWeight:800,borderBottom:'1px solid #e5e7eb',cursor:'pointer'}}>
+            <input type="checkbox" checked={value.length===0} onChange={()=>onChange([])} /> Todos
+          </label>
+          <div style={{maxHeight:searchable?154:220,overflowY:'auto',scrollbarGutter:'stable',paddingTop:3}}>
+            {visibles.map(op=><label key={op} style={{display:'flex',alignItems:'center',gap:7,padding:'6px 3px',fontSize:11,cursor:'pointer',whiteSpace:'normal'}}>
+              <input type="checkbox" checked={value.includes(op)} onChange={()=>alternar(op)} /> {etiqueta(op)}
+            </label>)}
+            {visibles.length===0 && <div style={{padding:'8px 3px',fontSize:11,color:'#94a3b8'}}>Sin resultados</div>}
+          </div>
+        </div>, document.body)}
+    </>
   )
 }
 
@@ -556,7 +594,7 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tipBack1:'', tipBack2:'', tipVend:'', asesor:'', campana:'', sala:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
+  const [filtros, setFiltros] = useState({ tipBack1:[], tipBack2:[], tipVend:[], asesor:[], campana:[], sala:[], numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [basePage, setBasePage] = useState(1)
@@ -2017,27 +2055,26 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     // usuario filtra, la búsqueda incluye todo el alcance (ventas y protegidos).
     // Si abre un grupo protegido, los demás filtros también se respetan.
     const hayFiltroConsulta = Boolean(
-      filtros.tipBack1 || filtros.tipBack2 || filtros.tipVend || filtros.asesor || filtros.campana || filtros.sala || filtros.numero ||
+      filtros.tipBack1.length || filtros.tipBack2.length || filtros.tipVend.length || filtros.asesor.length || filtros.campana.length || filtros.sala.length || filtros.numero ||
       filtros.desde || filtros.hasta || filtros.global
     )
     const fuente = ordenDiarioActivo
-      ? (filtros.tipVend ? registrosBusquedaGlobal : registrosOperativos)
+      ? (filtros.tipVend.length ? registrosBusquedaGlobal : registrosOperativos)
       : grupoProtegidoVisible
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
     const filtered = fuente.filter(r => {
-      if (filtros.tipBack1 && String(r.tipifBack||'').trim().toUpperCase() !== filtros.tipBack1.toUpperCase()) return false
-      if (filtros.tipBack2 && String(r.tipifBack2||'').trim().toUpperCase() !== filtros.tipBack2.toUpperCase()) return false
-      if (filtros.tipVend) {
-        if (filtros.tipVend === '__pendiente__') {
-          if ((tipifEfectiva(r)||'').trim() !== '') return false
-        } else {
-          if ((tipifEfectiva(r)||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
-        }
+      if (filtros.tipBack1.length && !filtros.tipBack1.some(v=>v.toUpperCase()===String(r.tipifBack||'').trim().toUpperCase())) return false
+      if (filtros.tipBack2.length && !filtros.tipBack2.some(v=>v.toUpperCase()===String(r.tipifBack2||'').trim().toUpperCase())) return false
+      if (filtros.tipVend.length) {
+        const tipVendActual = String(tipifEfectiva(r)||'').trim().toUpperCase()
+        const coincidePendiente = !tipVendActual && filtros.tipVend.includes('__pendiente__')
+        const coincideTipif = filtros.tipVend.some(v=>v!=='__pendiente__' && v.toUpperCase()===tipVendActual)
+        if (!coincidePendiente && !coincideTipif) return false
       }
-      if (filtros.asesor && String(r.asesor||'').trim().toUpperCase() !== filtros.asesor.toUpperCase()) return false
-      if (filtros.campana && String(r.campana||'').trim().toUpperCase() !== filtros.campana.toUpperCase()) return false
-      if (filtros.sala && salaDeRegistro(r) !== filtros.sala.toUpperCase()) return false
+      if (filtros.asesor.length && !filtros.asesor.some(v=>v.toUpperCase()===String(r.asesor||'').trim().toUpperCase())) return false
+      if (filtros.campana.length && !filtros.campana.some(v=>v.toUpperCase()===String(r.campana||'').trim().toUpperCase())) return false
+      if (filtros.sala.length && !filtros.sala.some(v=>v.toUpperCase()===salaDeRegistro(r))) return false
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero) && !(r.usuarioWhatsapp||'').toLowerCase().includes(filtros.numero.toLowerCase())) return false
       return true
     })
@@ -2470,7 +2507,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <div className="bo-input-group base-filtro-fecha"><label>Hasta</label><input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined} onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} /></div>
                 <label className="toggle-col base-filtro-toggle base-filtro-global"><input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} /><span>Buscar global</span></label>
                 <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /><span>Ver tipif. vendedor</span></label>
-                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tipBack1:'',tipBack2:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
+                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
               </div>
               <button type="button"
                 className="base-orden-btn"
@@ -2480,7 +2517,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   setTableSort({col:null,dir:null})
                   setGrupoProtegidoVisible('')
                   setBasePage(1)
-                  if (activar) setFiltros({tipBack1:'',tipBack2:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
+                  if (activar) setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,verTipVend:true})
                 }}
                 style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
@@ -2511,17 +2548,14 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     <th><FiltroEncabezado label="Tipif. Back 1" value={filtros.tipBack1} options={TIPIF_BACK_OPTIONS} onChange={tipBack1=>setFiltros(p=>({...p,tipBack1}))} /></th>
                     <th><FiltroEncabezado label="Tipif. Back 2" value={filtros.tipBack2} options={TIPIF_BACK_OPTIONS} onChange={tipBack2=>setFiltros(p=>({...p,tipBack2}))} /></th>
                     <th>
-                      <AsesorBuscador value={filtros.asesor} asesores={asesores}
-                        className={`th-sort-btn${filtros.asesor?' th-sort-active':''}`}
-                        plain
-                        placeholderText="Asesor asignado ▾" emptyLabel="Todos los asesores"
+                      <FiltroEncabezado label="Asesor asignado" value={filtros.asesor} options={asesores.map(a=>a.nombre)} searchable
                         onChange={asesor=>setFiltros(p=>({...p,asesor}))} />
                     </th>
                     <th>
                       <FiltroEncabezado label="Tipif. Vendedor" value={filtros.tipVend} options={tipifVendDisponibles} pending
                         onChange={tipVend=>{
                           setFiltros(p=>({...p,tipVend,desde:'',hasta:'',global:false}))
-                          setOrdenDiarioActivo(Boolean(tipVend))
+                          setOrdenDiarioActivo(tipVend.length > 0)
                           setGrupoProtegidoVisible('')
                         }} />
                     </th>
