@@ -345,15 +345,18 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, cla
     <>
       <button ref={btnRef} type="button" disabled={disabled} onClick={abrir} title={title}
         className={className !== undefined ? className : (plain ? undefined : 'bo-sel-compact sel-asesor-tabla')}
-        style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:'#fff', color:value?'#111827':'#64748b', fontWeight:value?700:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        style={{ textAlign:'left', width:'100%', cursor: disabled?'default':'pointer', background:plain?'transparent':'#fff', color:plain?'inherit':(value?'#111827':'#64748b'), fontWeight:value?700:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
         {value || placeholderText || '— Asignar asesor —'}
       </button>
       {open && createPortal(
         <div ref={boxRef} style={{ position:'fixed', top:pos.top, left:pos.left, width:pos.width, zIndex:9999, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.16)', padding:8 }}>
-          <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar asesor…"
-            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
-            style={{ width:'100%', padding:'6px 8px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, marginBottom:6, boxSizing:'border-box' }} />
-          <div style={{ maxHeight:210, overflowY:'auto' }}>
+          <div style={{ position:'relative', marginBottom:6 }}>
+            <span aria-hidden="true" style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#64748b' }}>🔍</span>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar asesor…"
+              onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
+              style={{ width:'100%', padding:'7px 8px 7px 28px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, boxSizing:'border-box' }} />
+          </div>
+          <div style={{ maxHeight:158, overflowY:'auto', scrollbarGutter:'stable' }}>
             <div onMouseDown={e=>e.preventDefault()} onClick={()=>elegir('')} style={{ padding:'6px 8px', cursor:'pointer', fontSize:12, color:'#6b7280', borderRadius:6 }}>{emptyLabel || '— Sin asignar —'}</div>
             {lista.map(a=>(
               <div key={a.id} onMouseDown={e=>e.preventDefault()} onClick={()=>elegir(a.nombre)}
@@ -365,6 +368,25 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, cla
           </div>
         </div>, document.body)}
     </>
+  )
+}
+
+function FiltroEncabezado({ label, value, options, onChange, pending }) {
+  const [open, setOpen] = useState(false)
+  return open ? (
+    <select autoFocus value={value} onBlur={()=>setOpen(false)}
+      onChange={e=>{ onChange(e.target.value); setOpen(false) }}
+      aria-label={`Filtrar ${label}`}
+      style={{width:'100%',minWidth:0,padding:'4px 3px',border:'1px solid #475569',borderRadius:5,background:'#fff',color:'#111827',fontSize:9,fontFamily:'inherit'}}>
+      <option value="">Todos</option>
+      {pending && <option value="__pendiente__">Pendiente</option>}
+      {options.map(op=><option key={op} value={op}>{op}</option>)}
+    </select>
+  ) : (
+    <button type="button" className={`th-sort-btn${value?' th-sort-active':''}`}
+      onClick={()=>setOpen(true)} title={`Filtrar por ${label}`} aria-label={`Filtrar por ${label}`}>
+      {value==='__pendiente__' ? 'Pendiente' : value || label} <span style={{fontSize:9}}>▼</span>
+    </button>
   )
 }
 
@@ -534,10 +556,9 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', campana:'', sala:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
+  const [filtros, setFiltros] = useState({ tipBack1:'', tipBack2:'', tipVend:'', asesor:'', campana:'', sala:'', numero:'', desde:'', hasta:'', global:false, verTipVend:true })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
-  const [tipifHeaderOpen, setTipifHeaderOpen] = useState(false)
   const [basePage, setBasePage] = useState(1)
   const [basePageSize, setBasePageSize] = useState(25)
   const [grupoProtegidoVisible, setGrupoProtegidoVisible] = useState('')
@@ -1944,13 +1965,20 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     venta_caida: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CAIDA'),
     instalado: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'INSTALADO'),
   }
-  const campanasFiltroBase = [...new Set(registrosBusquedaGlobal.map(r=>String(r.campana||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
-  const salasFiltroBase = [...new Set(asesores.map(a=>String(a.sala||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const todosLosRegistrosBase = Object.values(baseData).flat()
+  const campanasFiltroBase = [...new Set([
+    ...CAMPANAS,
+    ...todosLosRegistrosBase.map(r=>String(r.campana||'').trim()).filter(Boolean),
+  ])].sort((a,b)=>a.localeCompare(b,'es'))
   const salaDeRegistro = reg => {
     const asesorNorm = String(reg?.asesor || '').trim().toUpperCase()
     if (!asesorNorm) return 'SIN ASIGNAR'
     return String(asesores.find(a=>String(a.nombre||'').trim().toUpperCase()===asesorNorm)?.sala || 'SIN SALA').trim().toUpperCase()
   }
+  const salasFiltroBase = [...new Set([
+    ...asesores.map(a=>String(a.sala||'').trim()).filter(Boolean),
+    ...todosLosRegistrosBase.map(salaDeRegistro).filter(Boolean),
+  ])].sort((a,b)=>a.localeCompare(b,'es'))
 
   async function guardarTipifBack2(id, nuevoValor) {
     const found = findReg(id); if (!found) return
@@ -1989,7 +2017,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     // usuario filtra, la búsqueda incluye todo el alcance (ventas y protegidos).
     // Si abre un grupo protegido, los demás filtros también se respetan.
     const hayFiltroConsulta = Boolean(
-      filtros.tip || filtros.tipVend || filtros.asesor || filtros.campana || filtros.sala || filtros.numero ||
+      filtros.tipBack1 || filtros.tipBack2 || filtros.tipVend || filtros.asesor || filtros.campana || filtros.sala || filtros.numero ||
       filtros.desde || filtros.hasta || filtros.global
     )
     const fuente = ordenDiarioActivo
@@ -1998,7 +2026,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
     const filtered = fuente.filter(r => {
-      if (filtros.tip && !`${r.tipifBack||''} ${r.tipifBack2||''}`.toUpperCase().includes(filtros.tip.toUpperCase())) return false
+      if (filtros.tipBack1 && String(r.tipifBack||'').trim().toUpperCase() !== filtros.tipBack1.toUpperCase()) return false
+      if (filtros.tipBack2 && String(r.tipifBack2||'').trim().toUpperCase() !== filtros.tipBack2.toUpperCase()) return false
       if (filtros.tipVend) {
         if (filtros.tipVend === '__pendiente__') {
           if ((tipifEfectiva(r)||'').trim() !== '') return false
@@ -2006,7 +2035,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           if ((tipifEfectiva(r)||'').toUpperCase() !== filtros.tipVend.toUpperCase()) return false
         }
       }
-      if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
+      if (filtros.asesor && String(r.asesor||'').trim().toUpperCase() !== filtros.asesor.toUpperCase()) return false
       if (filtros.campana && String(r.campana||'').trim().toUpperCase() !== filtros.campana.toUpperCase()) return false
       if (filtros.sala && salaDeRegistro(r) !== filtros.sala.toUpperCase()) return false
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero) && !(r.usuarioWhatsapp||'').toLowerCase().includes(filtros.numero.toLowerCase())) return false
@@ -2073,7 +2102,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tipBack1, filtros.tipBack2, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
   // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
   // la base operativa principal.
@@ -2211,9 +2240,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       </th>
     )
   }
-  const tipifVendDisponibles = [...new Set(registrosBusquedaGlobal
-    .map(r => String(tipifEfectiva(r) || '').trim())
-    .filter(Boolean))]
+  const tipifVendDisponibles = [...new Set([
+    ...TIPIF_FILTRO_OPCIONES,
+    ...todosLosRegistrosBase.map(r => String(tipifEfectiva(r) || '').trim()).filter(Boolean),
+  ])]
     .sort((a,b) => a.localeCompare(b, 'es'))
   const rotStatAptos   = allRotLeads.filter(l=>rotApto(l,rotAsesor).apto).length
   const rotVistaAsignacion = rotAsesor
@@ -2440,7 +2470,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <div className="bo-input-group base-filtro-fecha"><label>Hasta</label><input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined} onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} /></div>
                 <label className="toggle-col base-filtro-toggle base-filtro-global"><input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} /><span>Buscar global</span></label>
                 <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /><span>Ver tipif. vendedor</span></label>
-                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
+                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tipBack1:'',tipBack2:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
               </div>
               <button type="button"
                 className="base-orden-btn"
@@ -2450,7 +2480,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   setTableSort({col:null,dir:null})
                   setGrupoProtegidoVisible('')
                   setBasePage(1)
-                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
+                  if (activar) setFiltros({tipBack1:'',tipBack2:'',tipVend:'',asesor:'',campana:'',sala:'',numero:'',desde:'',hasta:'',global:false,verTipVend:true})
                 }}
                 style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
@@ -2475,36 +2505,27 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>#</th><th>Campaña</th><th>N1 / N2</th>
-                    <th>Tipif. Back 1</th><th>Tipif. Back 2</th>
+                    <th>#</th>
+                    <th><FiltroEncabezado label="Campaña" value={filtros.campana} options={campanasFiltroBase} onChange={campana=>setFiltros(p=>({...p,campana}))} /></th>
+                    <th>N1 / N2</th>
+                    <th><FiltroEncabezado label="Tipif. Back 1" value={filtros.tipBack1} options={TIPIF_BACK_OPTIONS} onChange={tipBack1=>setFiltros(p=>({...p,tipBack1}))} /></th>
+                    <th><FiltroEncabezado label="Tipif. Back 2" value={filtros.tipBack2} options={TIPIF_BACK_OPTIONS} onChange={tipBack2=>setFiltros(p=>({...p,tipBack2}))} /></th>
                     <th>
-                      <button type="button" className={`th-sort-btn${tableSort.col==='asesor'?' th-sort-active':''}`}
-                        onClick={()=>cycleSort('asesor')} title="Mostrar primero los leads sin asignar" aria-label="Ordenar por asesor asignado">
-                        Asesor asignado<SortIcon active={tableSort.col==='asesor'} direction={tableSort.col==='asesor'?(tableSort.dir==='sin_asignar'?'up':'down'):null}/>
-                      </button>
+                      <AsesorBuscador value={filtros.asesor} asesores={asesores}
+                        className={`th-sort-btn${filtros.asesor?' th-sort-active':''}`}
+                        plain
+                        placeholderText="Asesor asignado ▾" emptyLabel="Todos los asesores"
+                        onChange={asesor=>setFiltros(p=>({...p,asesor}))} />
                     </th>
                     <th>
-                      {tipifHeaderOpen
-                        ?<select autoFocus value={filtros.tipVend}
-                            onBlur={()=>setTipifHeaderOpen(false)}
-                            onChange={e=>{
-                              setFiltros(p=>({...p,tipVend:e.target.value,desde:'',hasta:'',global:false}))
-                              setOrdenDiarioActivo(true)
-                              setGrupoProtegidoVisible('')
-                              setBasePage(1)
-                              setTipifHeaderOpen(false)
-                            }}
-                            style={{width:'100%',minWidth:0,padding:'4px 3px',border:'1px solid #475569',borderRadius:5,background:'#fff',color:'#111827',fontSize:9,fontFamily:'inherit'}}>
-                            <option value="">Todas</option>
-                            <option value="__pendiente__">Pendiente</option>
-                            {tipifVendDisponibles.map(t=><option key={t} value={t}>{t}</option>)}
-                          </select>
-                        :<button type="button" className={`th-sort-btn${filtros.tipVend?' th-sort-active':''}`}
-                            onClick={()=>setTipifHeaderOpen(true)} title="Filtrar por tipificación" aria-label="Filtrar por tipificación de vendedor">
-                            {filtros.tipVend==='__pendiente__'?'Pendiente':filtros.tipVend||'Tipif. Vendedor'} <span style={{fontSize:9}}>▼</span>
-                          </button>}
+                      <FiltroEncabezado label="Tipif. Vendedor" value={filtros.tipVend} options={tipifVendDisponibles} pending
+                        onChange={tipVend=>{
+                          setFiltros(p=>({...p,tipVend,desde:'',hasta:'',global:false}))
+                          setOrdenDiarioActivo(Boolean(tipVend))
+                          setGrupoProtegidoVisible('')
+                        }} />
                     </th>
-                    <th>Sala</th>
+                    <th><FiltroEncabezado label="Sala" value={filtros.sala} options={salasFiltroBase} onChange={sala=>setFiltros(p=>({...p,sala}))} /></th>
                     <th>
                       <button type="button" className={`th-sort-btn${tableSort.col==='hora'?' th-sort-active':''}`}
                         onClick={()=>cycleSort('hora')} title="Ordenar por hora" aria-label="Ordenar por hora"
