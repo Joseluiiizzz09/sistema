@@ -607,24 +607,24 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
-                <col style={{ width: 100 }} />
-                <col style={{ width: 190 }} />
                 <col style={{ width: 120 }} />
+                <col style={{ width: 190 }} />
                 <col style={{ width: 90 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 75 }} />
+                <col style={{ width: 220 }} />
+                <col style={{ width: 250 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 150 }} />
+                <col style={{ width: 240 }} />
+                <col style={{ width: 220 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 120 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 180 }} />
-                <col style={{ width: 220 }} />
-                <col style={{ width: 100 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 200 }} />
-                <col style={{ width: 200 }} />
-                <col style={{ width: 120 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 170 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 140 }} />
+                <col style={{ width: 160 }} />
               </colgroup>
               <thead>
                 <tr>

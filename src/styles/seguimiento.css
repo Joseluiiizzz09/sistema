@@ -673,8 +673,8 @@ body{
 .kpi-item.k-tec{border-left-color:#ec4899!important;}
 
 .seguimiento-ventas-tabla {
-  width: 2750px !important;
-  min-width: 2750px !important;
+  width: 2925px !important;
+  min-width: 2925px !important;
   table-layout: fixed !important;
 }
 
@@ -691,13 +691,6 @@ body{
   max-width: 260px !important;
   overflow: visible !important;
   white-space: nowrap !important;
-}
-
-.seguimiento-ventas-tabla th:nth-child(2),
-.seguimiento-ventas-tabla td:nth-child(2) {
-  width: 230px !important;
-  min-width: 230px !important;
-  max-width: 230px !important;
 }
 
 .seguimiento-ventas-tabla .seg-acciones {
