@@ -6,7 +6,6 @@ export const CAMPANAS = [
   'A - SCW',
   'ADRI',
   'KEV',
-  'CAMP YOPI',
   'EMER',
   'FABIAN',
   'GOOGLE',
