@@ -607,11 +607,12 @@ export default function Seguimiento() {
             <table className="tabla seguimiento-ventas-tabla">
               <colgroup>
                 <col style={{ width: 260 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 190 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 190 }} />
-                <col style={{ width: 100 }} />
+                <col style={{ width: 180 }} />
                 <col style={{ width: 220 }} />
                 <col style={{ width: 100 }} />
                 <col style={{ width: 120 }} />
@@ -628,11 +629,12 @@ export default function Seguimiento() {
               <thead>
                 <tr>
                   <th className="th-acc">ACCIÓN</th>
-                  <th className="th-est">ESTADO</th>
-                  <th className="th-tramo">TRAMO</th>
-                  <th>SOT</th>
+                  <th className="th-fecha">FECHA PREVENTA</th>
                   <th>OBS. PROGRAMACIÓN</th>
-                  <th className="th-fecha">FECHA</th>
+                  <th className="th-est">ESTADO</th>
+                  <th>SOT</th>
+                  <th className="th-tramo">TRAMO</th>
+                  <th className="th-comment">COMENTARIO</th>
                   <th className="th-cliente">NOMBRE Y APELLIDOS</th>
                   <th className="th-dni">DNI</th>
                   <th className="th-dist">DISTRITO</th>
@@ -644,7 +646,6 @@ export default function Seguimiento() {
                   <th className="th-olt">OLT</th>
                   <th className="th-plan">PLAN</th>
                   <th className="th-codigo">TEL. CONT.</th>
-                  <th className="th-comment">COMENTARIO</th>
                   <th className="th-motivo">MOTIVO</th>
                 </tr>
               </thead>
@@ -664,13 +665,19 @@ export default function Seguimiento() {
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
                         </div>
                       </td>
+                      <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>
+                      <td>
+                        <ProgramacionInfoCell
+                          fecha={v.fecha_programada}
+                          soloFecha
+                          soloFechaLabel="Fecha programada:"
+                          onEdit={() => abrirModalProgramacion(v)}
+                        />
+                      </td>
                       <td className="td-estado">
                         <span className={`badge-seg ${est.cls}`} onClick={() => abrirModalEstado(v)} style={{ cursor: 'pointer' }} title="Click para cambiar estado">
                           {est.label}
                         </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {v._tramo ? <span className="badge-tramo">{v._tramo}</span> : '--'}
                       </td>
                       <td style={{ textAlign:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
@@ -682,15 +689,10 @@ export default function Seguimiento() {
                           </button>
                         </div>
                       </td>
-                      <td>
-                        <ProgramacionInfoCell
-                          fecha={v.fecha_programada}
-                          soloFecha
-                          soloFechaLabel="Fecha programada:"
-                          onEdit={() => abrirModalProgramacion(v)}
-                        />
+                      <td style={{ textAlign: 'center' }}>
+                        {v._tramo ? <span className="badge-tramo">{v._tramo}</span> : '--'}
                       </td>
-                      <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>
+                      <td className="td-wrap" style={{ fontSize: '10px', background: 'rgba(255,255,200,.4)' }}>{v._comentario || '--'}</td>
                       <td style={{ fontWeight: 600 }}>{v.nombreApellidos || '--'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '10px' }}>{v.dni || '--'}</td>
                       <td style={{ fontSize: '10px' }}>{v.distrito || '--'}</td>
@@ -702,7 +704,6 @@ export default function Seguimiento() {
                       <td style={{ fontSize: '10px' }}>{v.tecnologia || '--'}</td>
                       <td className="td-wrap" style={{ fontSize: '10px' }}>{v.paquete || '--'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '10px' }}>{v.telefonoContacto || '--'}</td>
-                      <td className="td-wrap" style={{ fontSize: '10px', background: 'rgba(255,255,200,.4)' }}>{v._comentario || '--'}</td>
                       <td>
                         {motCls
                           ? <span className={`badge-motivo ${motCls}`}>{v._motivoRech}</span>
