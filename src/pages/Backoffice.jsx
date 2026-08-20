@@ -123,7 +123,7 @@ function claseTipifBack(valor) {
   const clave = String(valor || '').trim().toUpperCase().replace(/\s+/g, '-')
   return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
 }
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
 const TIPIF_FILTRO_OPCIONES = [...TIPIF_VEND_OPCIONES, 'INSTALADO', 'VENTA CAIDA']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
@@ -315,6 +315,13 @@ function estiloTipifVend(v) {
     : { flex:1, minWidth:0, background:'#fff', color:'inherit', fontWeight:'inherit', border:'1px solid #e5e7eb' }
 }
 
+function SearchIcon({ size=14 }) {
+  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+}
+
 // Selector de asesor con búsqueda integrada (escribe para filtrar la lista)
 function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, className, placeholderText, emptyLabel }) {
   const [open, setOpen] = useState(false)
@@ -351,7 +358,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, plain, cla
       {open && createPortal(
         <div ref={boxRef} style={{ position:'fixed', top:pos.top, left:pos.left, width:pos.width, zIndex:9999, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.16)', padding:8 }}>
           <div style={{ position:'relative', marginBottom:6 }}>
-            <span aria-hidden="true" style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#64748b' }}>🔍</span>
+            <span style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'#64748b', display:'inline-flex', pointerEvents:'none' }}><SearchIcon size={13} /></span>
             <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar asesor…"
               onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); if(lista[0]) elegir(lista[0].nombre) } else if(e.key==='Escape') setOpen(false) }}
               style={{ width:'100%', padding:'7px 8px 7px 28px', border:'1px solid #e5e7eb', borderRadius:7, outline:'none', fontSize:12, boxSizing:'border-box' }} />
@@ -410,7 +417,7 @@ function FiltroEncabezado({ label, value, options, onChange, pending, searchable
         <div ref={boxRef} onKeyDown={e=>{ if(e.key==='Escape') setOpen(false) }}
           style={{position:'fixed',top:pos.top,left:pos.left,width:pos.width,zIndex:10000,background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,boxShadow:'0 12px 32px rgba(15,23,42,.2)',padding:'8px 10px',color:'#111827'}}>
           {searchable && <div style={{position:'relative',marginBottom:7}}>
-            <span aria-hidden="true" style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',fontSize:12,color:'#64748b'}}>🔍</span>
+            <span style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',color:'#64748b',display:'inline-flex',pointerEvents:'none'}}><SearchIcon size={13} /></span>
             <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder={`Buscar ${label.toLowerCase()}…`}
               style={{width:'100%',padding:'7px 8px 7px 28px',border:'1px solid #cbd5e1',borderRadius:7,outline:'none',fontSize:12,boxSizing:'border-box'}} />
           </div>}
