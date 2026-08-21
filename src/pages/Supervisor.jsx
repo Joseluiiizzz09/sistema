@@ -24,6 +24,7 @@ const ESTADOS_VENTA = [
   { id:'instalado',     label:'Instalado',        cls:'be-instalado',  dot:'#2563eb', bg:'#eff6ff', border:'1px solid rgba(96,165,250,.35)' },
   { id:'caida',         label:'Caída',            cls:'be-caida',      dot:'#b91c1c', bg:'#fee2e2', border:'1px solid rgba(248,113,113,.35)' },
   { id:'rechazo_campo', label:'Rechazo Campo',    cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
+  { id:'rechazo_mesa',  label:'Rechazo en Mesa',  cls:'be-rechazocampo', dot:'#c2410c', bg:'#fff7ed', border:'1px solid rgba(251,146,60,.38)' },
   { id:'tecnico_casa',  label:'Técnico en Casa',  cls:'be-observado',  dot:'#be185d', bg:'#fce7f3', border:'1px solid rgba(244,114,182,.45)' },
   { id:'levantar_sot', label:'Levantar SOT', cls:'be-rechazocampo', dot:'#c2410c' },
   { id:'tecnicos_camino', label:'Técnicos en Camino', cls:'be-observado', dot:'#be185d' },
@@ -148,6 +149,7 @@ function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   if(s==='instalado')     return 'instalado'
   if(s==='caida')         return 'caida'
   if(s==='rechazo_campo') return 'rechazo_campo'
+  if(s==='rechazo_mesa') return 'rechazo_mesa'
   if(s==='tecnico_casa')  return 'tecnico_casa'
   if(s==='levantar_sot') return 'levantar_sot'
   if(s==='tecnicos_camino') return 'tecnicos_camino'

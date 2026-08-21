@@ -166,6 +166,7 @@ function BadgeVS({ e, sup, estadoGrab, grabandoPorNombre }) {
     'reasignacion': { cls:'vs-badge-ejecucion', label:'REASIGNACION' },
     'derivado_planta_externa': { cls:'vs-badge-rechazocampo', label:'DERIVADO A PLANTA EXTERNA' },
     'rechazo_campo': { cls:'vs-badge-rechazocampo', label:'RECHAZO EN CAMPO' },
+    'rechazo_mesa': { cls:'vs-badge-rechazocampo', label:'RECHAZO EN MESA' },
     'no_validado':   { cls:'vs-badge-observado',   label:'NO VALIDADO' },
     'instalado':     { cls:'vs-badge-instalado',   label:'INSTALADO' },
     'caida':         { cls:'vs-badge-caida',       label:'CAIDA' },

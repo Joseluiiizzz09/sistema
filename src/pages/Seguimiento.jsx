@@ -320,7 +320,10 @@ export default function Seguimiento() {
     rechazo:   ventasEnRango.filter(v => v._estadoSeg === 'rechazo').length,
     caida:     ventasEnRango.filter(v => v._estadoSeg === 'caida').length,
     tecnico:   ventasEnRango.filter(v => v._estadoSeg === 'tecnico').length,
-    nuevos:    ESTADOS.slice(6, 12).reduce((acc, e) => ({ ...acc, [e.id]: ventasEnRango.filter(v => v._estadoSeg === e.id).length }), {}),
+    adicionales: ESTADOS.slice(5).reduce((acc, e) => ({
+      ...acc,
+      [e.id]: ventasEnRango.filter(v => v._estadoSeg === e.id).length,
+    }), {}),
   }), [ventasEnRango])
 
   const totalPag  = ventasFiltradas.length
@@ -548,7 +551,7 @@ export default function Seguimiento() {
             { id: 'rechazo',   label: 'RECHAZO EN CAMPO', cnt: kpis.rechazo,   cls: 'l-rech'    },
             { id: 'caida',     label: 'CAÍDA',            cnt: kpis.caida,     cls: 'l-caida'   },
             { id: 'tecnico',   label: 'TÉCNICOS EN CASA', cnt: kpis.tecnico,   cls: 'l-tecnico' },
-            ...ESTADOS.slice(6, 12).map(e => ({ id:e.id, label:e.label, cnt:kpis.nuevos[e.id] || 0, cls:'l-ejec' })),
+            ...ESTADOS.slice(5).map(e => ({ id:e.id, label:e.label, cnt:kpis.adicionales[e.id] || 0, cls:'l-ejec' })),
           ].map(item => (
             <div
               key={item.id}
