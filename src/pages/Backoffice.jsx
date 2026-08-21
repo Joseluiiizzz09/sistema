@@ -1342,7 +1342,16 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       mostrarToast(`N1 ${reg.n1} no se puede rotar — ${razonBloqueoRotacion(reg)}`)
       return
     }
-    setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
+    const ultimaAsignacion = ultimaAsignacionReg(reg)
+    const puedeReactivarMismo = Boolean(reg.asesor)
+      && normalizarFecha(ultimaAsignacion?.fecha || reg.fecha) < fechaHoy()
+    setModalRotar({
+      open:true,
+      regId:id,
+      desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`,
+      asesorActual:reg.asesor,
+      puedeReactivarMismo,
+    })
     setRotModalAsesor('')
     setRotBusqueda('')
     setRotModalMotivo('')
@@ -1376,6 +1385,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     try {
       let res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
         asesor_nombre:rotModalAsesor, motivo,
+        reactivacion_manual:true,
         asesor_id_esperado:reg._asesorId ?? null,
         rotaciones_esperadas:cantidadRotaciones(reg),
       }) })
@@ -1395,6 +1405,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         }
         res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
           asesor_nombre:rotModalAsesor, motivo,
+          reactivacion_manual:true,
           asesor_id_esperado:actual.asesor_id ?? null,
           rotaciones_esperadas:Number(actual.rotaciones || 0),
         }) })
@@ -3458,7 +3469,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <h3>Rotar lead manualmente</h3>
             <p>{modalRotar.desc}</p>
             {(() => {
-              const disponibles = asesores.filter(a => a.nombre !== modalRotar.asesorActual)
+              const disponibles = asesores.filter(a =>
+                a.nombre !== modalRotar.asesorActual || modalRotar.puedeReactivarMismo
+              )
               const filtrados = disponibles.filter(a => (a.nombre||'').toLowerCase().includes(rotBusqueda.trim().toLowerCase()))
               return (
                 <div style={{border:`1px solid ${rotModalAsesor?'#e5e7eb':'#ef4444'}`, borderRadius:10, padding:8, marginBottom:10}}>
@@ -3472,7 +3485,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     {filtrados.map(a=>(
                       <div key={a.id} onClick={()=>{ setRotModalAsesor(a.nombre); setRotModalError('') }}
                         style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
-                        {a.nombre}
+                        {a.nombre}{a.nombre === modalRotar.asesorActual ? ' — REACTIVAR HOY' : ''}
                       </div>
                     ))}
                     {filtrados.length===0 && <div style={{padding:'8px 9px', fontSize:12, color:'#9ca3af'}}>Sin resultados</div>}
@@ -3484,7 +3497,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             {rotModalError && <div role="alert" style={{marginTop:8,padding:'9px 11px',border:'1px solid #fecaca',borderRadius:8,background:'#fef2f2',color:'#b91c1c',fontSize:12,fontWeight:650}}>{rotModalError}</div>}
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>{rotandoManual ? 'Rotando...' : 'Rotar ahora'}</button>
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>
+                {rotandoManual
+                  ? (rotModalAsesor === modalRotar.asesorActual ? 'Reactivando...' : 'Rotando...')
+                  : (rotModalAsesor === modalRotar.asesorActual ? 'Reactivar hoy' : 'Rotar ahora')}
+              </button>
             </div>
           </div>
         </div>
