@@ -1342,15 +1342,22 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       mostrarToast(`N1 ${reg.n1} no se puede rotar — ${razonBloqueoRotacion(reg)}`)
       return
     }
-    const ultimaAsignacion = ultimaAsignacionReg(reg)
-    const puedeReactivarMismo = Boolean(reg.asesor)
-      && normalizarFecha(ultimaAsignacion?.fecha || reg.fecha) < fechaHoy()
+    const asignaciones = (Array.isArray(reg.historial) ? reg.historial : []).filter(h =>
+      h?.asesor && !['TIPIF_VEND','TIPIF_BACK','DERIVADO','QUITAR_ASIGNACION'].includes(String(h?.tipo || '').toUpperCase())
+    )
+    const asesoresReactivables = [...new Set(asignaciones
+      .filter(h => normalizarFecha(h?.fecha) < fechaHoy())
+      .filter(h => !asignaciones.some(otra =>
+        String(otra?.asesor || '').trim().toUpperCase() === String(h?.asesor || '').trim().toUpperCase()
+        && normalizarFecha(otra?.fecha) === fechaHoy()
+      ))
+      .map(h => String(h.asesor).trim()))]
     setModalRotar({
       open:true,
       regId:id,
       desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`,
       asesorActual:reg.asesor,
-      puedeReactivarMismo,
+      asesoresReactivables,
     })
     setRotModalAsesor('')
     setRotBusqueda('')
@@ -3469,8 +3476,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <h3>Rotar lead manualmente</h3>
             <p>{modalRotar.desc}</p>
             {(() => {
+              const esReactivable = nombre => (modalRotar.asesoresReactivables || [])
+                .some(n => n.toUpperCase() === String(nombre || '').trim().toUpperCase())
               const disponibles = asesores.filter(a =>
-                a.nombre !== modalRotar.asesorActual || modalRotar.puedeReactivarMismo
+                a.nombre !== modalRotar.asesorActual || esReactivable(a.nombre)
               )
               const filtrados = disponibles.filter(a => (a.nombre||'').toLowerCase().includes(rotBusqueda.trim().toLowerCase()))
               return (
@@ -3485,7 +3494,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     {filtrados.map(a=>(
                       <div key={a.id} onClick={()=>{ setRotModalAsesor(a.nombre); setRotModalError('') }}
                         style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
-                        {a.nombre}{a.nombre === modalRotar.asesorActual ? ' — REACTIVAR HOY' : ''}
+                        {a.nombre}{esReactivable(a.nombre) ? ' — REACTIVAR HOY' : ''}
                       </div>
                     ))}
                     {filtrados.length===0 && <div style={{padding:'8px 9px', fontSize:12, color:'#9ca3af'}}>Sin resultados</div>}
@@ -3499,8 +3508,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>
                 {rotandoManual
-                  ? (rotModalAsesor === modalRotar.asesorActual ? 'Reactivando...' : 'Rotando...')
-                  : (rotModalAsesor === modalRotar.asesorActual ? 'Reactivar hoy' : 'Rotar ahora')}
+                  ? ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reactivando...' : 'Rotando...')
+                  : ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reactivar hoy' : 'Rotar ahora')}
               </button>
             </div>
           </div>
