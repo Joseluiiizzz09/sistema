@@ -249,6 +249,9 @@ function permiteOtraDireccion(reg) {
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
   return Number(reg?.venta_confirmada) === 1 || ['VENTA CERRADA', 'INSTALADO'].includes(tipif)
 }
+function tieneCicloVentaAbierto(reg) {
+  return Number(reg?.cicloAbiertoId || 0) > 0
+}
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
 // La base principal la muestra mientras el asesor actual todavía no coloca la suya.
 function tipifPrevioHistorial(historial) {
@@ -1355,7 +1358,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     if (!found) return
     const { reg } = found
     const otraDireccionDisponible = permiteOtraDireccion(reg)
-    if (esRotacionManualProhibida(reg) && !otraDireccionDisponible) {
+    if (esRotacionManualProhibida(reg) && !otraDireccionDisponible && !tieneCicloVentaAbierto(reg)) {
       mostrarToast(`N1 ${reg.n1} no se puede rotar — ${razonBloqueoRotacion(reg)}`)
       return
     }
@@ -1428,7 +1431,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       } finally { setRotandoManual(false) }
       return
     }
-    if (esRotacionManualProhibida(reg)) {
+    if (esRotacionManualProhibida(reg) && !tieneCicloVentaAbierto(reg)) {
       mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       return
@@ -2662,7 +2665,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                            ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
                            : 'SIN ASIGNAR'
                          const esExclusiva = Boolean(r.tipifInterna) || TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
-                         const rotacionManualBloqueada = esRotacionManualProhibida(r) && !permiteOtraDireccion(r)
+                         const rotacionManualBloqueada = esRotacionManualProhibida(r) && !permiteOtraDireccion(r) && !tieneCicloVentaAbierto(r)
                          const detAbierto  = !!detOpen[r.id]
                          const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
                          const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
@@ -2810,7 +2813,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                   {detAbierto?'▲':'⋯'}
                                 </button>
                                 <button className="btn-rotar btn-rotar-sm" disabled={rotacionManualBloqueada}
-                                  title={rotacionManualBloqueada?razonBloqueoRotacion(r):(esVentaCaidaInterna(r)?'Rotar venta caída manualmente':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
+                                  title={rotacionManualBloqueada?razonBloqueoRotacion(r):(tieneCicloVentaAbierto(r)?'Reasignar manualmente el ciclo pendiente de otra dirección':(esVentaCaidaInterna(r)?'Rotar venta caída manualmente':'Rotar'))} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 </button>
                                 <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">
