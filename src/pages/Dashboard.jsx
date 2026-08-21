@@ -451,6 +451,8 @@ export default function Dashboard() {
             zona:     l.distrito || l.provincia || l.departamento || '--',
             horaAsig: horaAsignacion,
             _fechaAsig: fechaAsignacion,
+            instanciaVentaNumero: Number(l.instancia_venta_numero || l.ciclo_abierto_numero || 0),
+            instanciaTipo: l.instancia_tipo || l.ciclo_abierto_tipo || '',
             estado,
             derivadoPor: l.derivado_por_nombre || '',
             obs,
@@ -1127,7 +1129,7 @@ export default function Dashboard() {
               </tr>
             ) : clientes.filter(c => !filtroNumero || `${c.telefono} ${c.telefono2} ${c.usuarioWhatsapp}`.toLowerCase().includes(filtroNumero.toLowerCase())).map((c) => (
               <tr key={c.id}>
-                <td>{c.telefono ? <div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div> : '--'}</td>
+                <td>{c.telefono ? <div><div className="dash-numero-copiar"><span>{c.telefono}</span><button type="button" onClick={()=>copiarNumero(c.telefono)} title="Copiar teléfono" aria-label={`Copiar ${c.telefono}`}><CopyIcon /></button></div>{c.instanciaTipo==='OTRA_DIRECCION'&&<span style={{display:'inline-block',marginTop:3,padding:'2px 6px',borderRadius:999,background:'#ede9fe',color:'#6d28d9',fontSize:9,fontWeight:800}}>OTRA DIRECCIÓN{c.instanciaVentaNumero?` · ${c.instanciaVentaNumero}`:''}</span>}</div> : '--'}</td>
                 <td>{c.telefono2 ? <div className="dash-numero-copiar secundario"><span>{c.telefono2}</span><button type="button" onClick={()=>copiarNumero(c.telefono2)} title="Copiar teléfono 2" aria-label={`Copiar ${c.telefono2}`}><CopyIcon /></button></div> : '--'}</td>
                 <td>{c.usuarioWhatsapp ? <div className="dash-numero-copiar secundario"><span>@{c.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(c.usuarioWhatsapp)} title="Copiar usuario de WhatsApp" aria-label={`Copiar ${c.usuarioWhatsapp}`}><CopyIcon /></button></div> : '--'}</td>
                 <td><span className="dash-obs-back" title={c.obsBack}>{c.obsBack || '--'}</span></td>

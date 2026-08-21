@@ -1468,6 +1468,12 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         data = await res.json().catch(() => ({}))
       }
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el registro')
+      if (data.nueva_instancia) {
+        setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+        mostrarToast(data.mensaje || `Nuevo formulario asignado a ${rotModalAsesor}`)
+        await cargarLeads()
+        return
+      }
       // Actualización optimista: el backend ahora UPDATE (mismo ID), no crea duplicado.
       // histOpen[regId] se preserva; el polling sincronizará en ≤3s.
       updateReg(modalRotar.regId, {
