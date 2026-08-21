@@ -670,8 +670,8 @@ body{
 .fila-ejec:hover td,.fila-inst:hover td,.fila-caida:hover td,.fila-rech:hover td,.fila-tecnico:hover td{background:#f8fafc!important;}
 
 /* Codex pass 2: acciones en una sola linea y tecnico rosa */
-.tabla th.th-acc{min-width:300px;width:300px;}
-.tabla td:first-child:has(.seg-acciones){min-width:300px;width:300px;overflow:visible;white-space:nowrap;}
+.tabla th.th-acc{min-width:325px;width:325px;}
+.tabla td:first-child:has(.seg-acciones){min-width:325px;width:325px;overflow:visible;white-space:nowrap;}
 .seg-acciones{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:4px!important;max-width:none!important;min-width:max-content;}
 .seg-acciones .btn-acc{height:26px;padding:0 8px;border-radius:8px;font-size:10.5px;line-height:1;}
 .seg-acciones .btn-fotos{height:26px;min-height:26px;padding:0 8px;border-radius:8px;font-size:10.5px;white-space:nowrap;}
@@ -681,8 +681,8 @@ body{
 .kpi-item.k-tec{border-left-color:#ec4899!important;}
 
 .seguimiento-ventas-tabla {
-  width: 2965px !important;
-  min-width: 2965px !important;
+  width: 2990px !important;
+  min-width: 2990px !important;
   table-layout: fixed !important;
 }
 
@@ -694,9 +694,9 @@ body{
 
 .seguimiento-ventas-tabla th:first-child,
 .seguimiento-ventas-tabla td:first-child {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: 325px !important;
+  min-width: 325px !important;
+  max-width: 325px !important;
   overflow: visible !important;
   white-space: nowrap !important;
 }
