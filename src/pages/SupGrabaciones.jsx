@@ -247,7 +247,7 @@ export default function SupGrabaciones() {
           ...(estadoRevision === 'conforme'
             ? {
                 // CAMBIO 5: solo enviar estado si la venta aún no ha avanzado más allá de VALIDADO
-                ...( ['VENTA','GRABADO','APROBADO','VALIDADO'].includes((modalRevisar.estado || '').toUpperCase())
+                ...( ['VENTA','GRABADO','APROBADO','VALIDADO','PROGRAMADO'].includes((modalRevisar.estado || '').toUpperCase())
                   ? { estado: 'EN_EJECUCION' } : {} ),
                 estado_supgrab: 'conforme',
                 estado_grab: 'grabado',
