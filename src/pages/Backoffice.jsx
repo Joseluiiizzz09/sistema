@@ -700,8 +700,6 @@ export default function Backoffice() {
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
   const [rotModalTipo,  setRotModalTipo]  = useState('ROTACION')
-  const [rotModalDireccion,setRotModalDireccion]= useState('')
-  const [rotModalDistrito,setRotModalDistrito]= useState('')
   const [rotModalError, setRotModalError] = useState('')
   const [rotandoManual, setRotandoManual] = useState(false)
 
@@ -1395,8 +1393,6 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     setRotBusqueda('')
     setRotModalMotivo('')
     setRotModalTipo(otraDireccionDisponible ? 'OTRA_DIRECCION' : 'ROTACION')
-    setRotModalDireccion('')
-    setRotModalDistrito('')
     setRotModalError('')
   }
 
@@ -1418,23 +1414,16 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       return
     }
     if (rotModalTipo === 'OTRA_DIRECCION') {
-      if (!rotModalDireccion.trim() || !rotModalDistrito.trim()) {
-        setRotModalError('Ingresa la nueva dirección y el distrito.')
-        return
-      }
       setRotandoManual(true)
       try {
         const res = await fetch(`${API}/leads/${reg._backendId}/otra-direccion`, {method:'POST', headers:ncHeaders(), body:JSON.stringify({
           asesor_nombre:rotModalAsesor,
-          direccion:rotModalDireccion.trim(),
-          distrito:rotModalDistrito.trim(),
           motivo:rotModalMotivo.trim() || 'Otra dirección',
         })})
         const data = await res.json().catch(()=>({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo habilitar otra dirección')
         updateReg(modalRotar.regId, {
           asesor:rotModalAsesor, _asesorId:Number(data.asesor_id || reg._asesorId || 0) || null,
-          direccion:rotModalDireccion.trim(), distrito:rotModalDistrito.trim(),
           tipifBack:'', tipifBack2:'', _tipifVend:'', _tipifHora:'', tipifInterna:'',
           cicloAbiertoId:Number(data.ciclo_id || 0), cicloAbiertoNumero:Number(data.numero_ciclo || 0),
           cicloAbiertoTipo:'OTRA_DIRECCION', historial:data.historial || reg.historial,
@@ -3577,15 +3566,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 </div>
               )
             })()}
-            {rotModalTipo === 'OTRA_DIRECCION' && <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
-              <input value={rotModalDireccion} onChange={e=>setRotModalDireccion(e.target.value)} placeholder="Nueva dirección *" style={{width:'100%',padding:'10px 11px',border:'1px solid #d1d5db',borderRadius:8,fontSize:12}} />
-              <input value={rotModalDistrito} onChange={e=>setRotModalDistrito(e.target.value)} placeholder="Distrito *" style={{width:'100%',padding:'10px 11px',border:'1px solid #d1d5db',borderRadius:8,fontSize:12}} />
-            </div>}
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             {rotModalError && <div role="alert" style={{marginTop:8,padding:'9px 11px',border:'1px solid #fecaca',borderRadius:8,background:'#fef2f2',color:'#b91c1c',fontSize:12,fontWeight:650}}>{rotModalError}</div>}
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual || (rotModalTipo==='OTRA_DIRECCION' && (!rotModalDireccion.trim() || !rotModalDistrito.trim()))}>
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>
                 {rotModalTipo==='OTRA_DIRECCION' ? (rotandoManual?'Habilitando...':'Habilitar otra dirección') : rotandoManual
                   ? ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase())
                     ? 'Reactivando...'
