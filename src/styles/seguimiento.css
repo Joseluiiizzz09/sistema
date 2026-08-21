@@ -418,9 +418,11 @@ body{
 .btn-acc-estado:hover{background:#ede9fe;}
 .btn-acc-agenda{border-color:rgba(8,145,178,.3);background:#f0fdfa;color:#134e4a;}
 .btn-acc-agenda:hover{background:#ccfbf1;}
-.btn-acc-wa{border-color:rgba(22,163,74,.3);background:#f0fdf4;color:#14532d;}
+.btn-acc-wa{border-color:rgba(22,163,74,.3);background:#f0fdf4;color:#16a34a;display:inline-flex;align-items:center;justify-content:center;padding:0;width:26px;}
 .btn-acc-wa:hover{background:#dcfce7;}
 .btn-acc-wa:disabled{opacity:.6;cursor:not-allowed;}
+.btn-acc-wa-spin{width:12px;height:12px;border:2px solid rgba(22,163,74,.3);border-top-color:#16a34a;border-radius:50%;animation:btn-acc-wa-spin .7s linear infinite;}
+@keyframes btn-acc-wa-spin{to{transform:rotate(360deg);}}
 .btn-acc-edit{height:26px;padding:0 10px;background:#f8fafc;color:var(--ink-2);border:1px solid var(--line-2);border-radius:7px;font-size:11px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .16s var(--sp);white-space:nowrap;}
 .btn-acc-edit:hover{background:var(--brand-soft);color:var(--brand);border-color:rgba(229,62,62,.3);transform:scale(1.04);}
 .btn-acc-toggle{height:26px;padding:0 10px;border:none;border-radius:7px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .16s var(--sp);white-space:nowrap;}

@@ -686,7 +686,13 @@ export default function Seguimiento() {
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
                           <button className="btn-acc btn-acc-wa" onClick={() => enviarWhatsapp(v)} disabled={enviandoWA.has(v.id)} title="Enviar mensaje de WhatsApp de seguimiento">
-                            {enviandoWA.has(v.id) ? 'Enviando...' : 'WhatsApp'}
+                            {enviandoWA.has(v.id) ? (
+                              <span className="btn-acc-wa-spin" aria-hidden="true" />
+                            ) : (
+                              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                                <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.77.46 3.45 1.27 4.9L2 22l5.25-1.28c1.4.76 2.99 1.18 4.79 1.18 5.52 0 10-4.48 10-10s-4.48-10-10-10zm5.86 14.2c-.25.7-1.24 1.28-2.03 1.45-.55.12-1.26.21-3.66-.79-3.07-1.27-5.05-4.39-5.2-4.59-.15-.2-1.24-1.65-1.24-3.15s.78-2.23 1.06-2.53c.28-.3.6-.37.8-.37.2 0 .4 0 .58.01.19.01.44-.07.68.53.25.6.85 2.08.92 2.23.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.38-.44.51-.15.15-.3.31-.13.61.17.3.76 1.26 1.64 2.04 1.13.99 2.08 1.3 2.38 1.45.3.15.48.13.65-.07.18-.2.75-.86.95-1.16.2-.3.4-.25.66-.15.27.1 1.73.82 2.03.97.3.15.5.22.57.35.08.13.08.75-.17 1.44z"/>
+                              </svg>
+                            )}
                           </button>
                         </div>
                       </td>
