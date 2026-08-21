@@ -209,6 +209,7 @@ export default function Seguimiento() {
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
+  const [enviandoWA, setEnviandoWA] = useState(() => new Set())
 
   function mostrarToast(msg) {
     setToastMsg(msg)
@@ -426,6 +427,27 @@ export default function Seguimiento() {
     } catch (e) { console.error(e); mostrarToast('No se pudo actualizar la SOT'); setSotModal(prev => prev ? { ...prev, guardando: false } : prev); return }
     setVentas(list => list.map(v => v.id === sotModal.id ? { ...v, sot: valor } : v))
     setSotModal(null)
+  }
+
+  async function enviarWhatsapp(v) {
+    if (enviandoWA.has(v.id)) return
+    setEnviandoWA(prev => new Set(prev).add(v.id))
+    try {
+      const res  = await fetch(`${API}/ventas/${v.id}/enviar-seguimiento-whatsapp`, {
+        method: 'POST', headers: ncHeaders(),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        mostrarToast(data.mensaje || 'No se pudo enviar el mensaje de WhatsApp')
+        return
+      }
+      mostrarToast('Mensaje de WhatsApp enviado')
+    } catch (e) {
+      console.error(e)
+      mostrarToast('No se pudo enviar el mensaje de WhatsApp')
+    } finally {
+      setEnviandoWA(prev => { const s = new Set(prev); s.delete(v.id); return s })
+    }
   }
 
   // MODAL OBS / LLAMADA
@@ -663,6 +685,9 @@ export default function Seguimiento() {
                           <button className="btn-acc btn-acc-agenda" onClick={() => abrirModalAgenda(v)} title="Agendar">Agenda</button>
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
+                          <button className="btn-acc btn-acc-wa" onClick={() => enviarWhatsapp(v)} disabled={enviandoWA.has(v.id)} title="Enviar mensaje de WhatsApp de seguimiento">
+                            {enviandoWA.has(v.id) ? 'Enviando...' : 'WhatsApp'}
+                          </button>
                         </div>
                       </td>
                       <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>
