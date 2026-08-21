@@ -244,6 +244,10 @@ function esRotacionManualProhibida(reg) {
   // botón de rotación manual. La rotación inteligente conserva sus filtros.
   return !esVentaCaidaInterna(reg) && esLeadProhibido(reg)
 }
+function permiteOtraDireccion(reg) {
+  const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
+  return Number(reg?.venta_confirmada) === 1 || ['VENTA CERRADA', 'INSTALADO'].includes(tipif)
+}
 // Tipificación que dejó el asesor anterior (registrada en el historial al rotar/reasignar).
 // La base principal la muestra mientras el asesor actual todavía no coloca la suya.
 function tipifPrevioHistorial(historial) {
@@ -257,8 +261,19 @@ function tipifPrevioHistorial(historial) {
 // Tipificación efectiva a mostrar en la base principal: la del asesor actual si ya
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
-  if (String(reg?.tipifInterna || '').trim()) return String(reg.tipifInterna).trim()
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
+  // Un ciclo de OTRA DIRECCION vuelve a abrir el mismo lead. Mientras esté
+  // abierto no debe heredar la venta/instalación del ciclo anterior.
+  if (Number(reg?.cicloAbiertoId || 0) > 0) {
+    const apertura = [...hist].reverse().find(h =>
+      h?.tipo === 'CICLO_VENTA' && h?.accion === 'ASIGNACION' &&
+      Number(h?.cicloId || 0) === Number(reg.cicloAbiertoId)
+    )
+    const posteriores = hist.filter(h => h?.tipo === 'TIPIF_VEND' && (!apertura?.ts || Number(h?.ts || 0) > Number(apertura.ts)))
+    if (posteriores.length) return normalizarTipifVend(posteriores.reduce((a,b)=>(Number(b.ts||0)>Number(a.ts||0)?b:a)).tipif)
+    return normalizarTipifVend(String(reg?._tipifVend || '').trim())
+  }
+  if (String(reg?.tipifInterna || '').trim()) return String(reg.tipifInterna).trim()
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
   // Una venta realmente creada tiene prioridad definitiva. No basta con haber
   // pulsado la tipificación en el Dashboard: debe existir la venta en la API.
@@ -684,6 +699,9 @@ export default function Backoffice() {
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
+  const [rotModalTipo,  setRotModalTipo]  = useState('ROTACION')
+  const [rotModalDireccion,setRotModalDireccion]= useState('')
+  const [rotModalDistrito,setRotModalDistrito]= useState('')
   const [rotModalError, setRotModalError] = useState('')
   const [rotandoManual, setRotandoManual] = useState(false)
 
@@ -830,12 +848,15 @@ export default function Backoffice() {
       h.motivo === 'Asignacion inicial' || h.motivo === 'Carga inicial' ||
       h.motivo === 'Importacion masiva'
     )
+    const actorHistorial = hist.find(h => h.realizadoPor || h.reasignadoPor || h.rotadoPor || h.registradoPor)
     setOrigenModal({
       n1: r.n1,
       campana: r.campana,
-      cargadoPor: entrada?.asignadoPor || entrada?.cargadoPor || null,
-      fecha: entrada?.fecha || null,
-      hora: entrada?.hora || null,
+      cargadoPor: r.creadoPorNombre || entrada?.asignadoPor || entrada?.cargadoPor || actorHistorial?.realizadoPor || actorHistorial?.reasignadoPor || actorHistorial?.rotadoPor || actorHistorial?.registradoPor || null,
+      usuario: r.creadoPorUsuario || entrada?.cargadoPorUsuario || actorHistorial?.realizadoPorUsuario || '',
+      ip: r.creadoDesdeIp || entrada?.ip || actorHistorial?.ip || '',
+      fecha: entrada?.fecha || actorHistorial?.fecha || normalizarFecha(r.createdAt) || null,
+      hora: entrada?.hora || actorHistorial?.hora || (String(r.createdAt||'').match(/T(\d{2}:\d{2})/)?.[1] || null),
     })
   }
 
@@ -963,6 +984,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           derivadoPor: l.derivado_por_nombre || '',
           derivadoPor2: l.derivado_por_2_nombre || '',
           createdAt: l.created_at || '',
+          creadoPorNombre: l.creado_por_nombre || '',
+          creadoPorUsuario: l.creado_por_usuario || '',
+          creadoDesdeIp: l.creado_desde_ip || '',
+          ciclosVenta: Number(l.ciclos_venta || 0),
+          cicloAbiertoId: Number(l.ciclo_abierto_id || 0),
+          cicloAbiertoNumero: Number(l.ciclo_abierto_numero || 0),
+          cicloAbiertoTipo: l.ciclo_abierto_tipo || '',
           asesor:     l.asesor_nombre || '',
           _asesorId:  l.asesor_id == null ? null : Number(l.asesor_id),
           horaAsig:   l.hora_asig || '',
@@ -1338,7 +1366,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const found = findReg(id)
     if (!found) return
     const { reg } = found
-    if (esRotacionManualProhibida(reg)) {
+    const otraDireccionDisponible = permiteOtraDireccion(reg)
+    if (esRotacionManualProhibida(reg) && !otraDireccionDisponible) {
       mostrarToast(`N1 ${reg.n1} no se puede rotar — ${razonBloqueoRotacion(reg)}`)
       return
     }
@@ -1360,10 +1389,14 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       asesorActual:reg.asesor,
       asesoresReactivables,
       asesoresReasignables,
+      otraDireccionDisponible,
     })
     setRotModalAsesor('')
     setRotBusqueda('')
     setRotModalMotivo('')
+    setRotModalTipo(otraDireccionDisponible ? 'OTRA_DIRECCION' : 'ROTACION')
+    setRotModalDireccion('')
+    setRotModalDistrito('')
     setRotModalError('')
   }
 
@@ -1378,18 +1411,50 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       return
     }
     const { reg } = found
-    if (esRotacionManualProhibida(reg)) {
-      mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
-      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
-      return
-    }
-    const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     if (!reg._backendId) {
       const mensaje = 'Espera a que el registro termine de guardarse antes de rotarlo.'
       setRotModalError(mensaje)
       mostrarToast(mensaje)
       return
     }
+    if (rotModalTipo === 'OTRA_DIRECCION') {
+      if (!rotModalDireccion.trim() || !rotModalDistrito.trim()) {
+        setRotModalError('Ingresa la nueva dirección y el distrito.')
+        return
+      }
+      setRotandoManual(true)
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}/otra-direccion`, {method:'POST', headers:ncHeaders(), body:JSON.stringify({
+          asesor_nombre:rotModalAsesor,
+          direccion:rotModalDireccion.trim(),
+          distrito:rotModalDistrito.trim(),
+          motivo:rotModalMotivo.trim() || 'Otra dirección',
+        })})
+        const data = await res.json().catch(()=>({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo habilitar otra dirección')
+        updateReg(modalRotar.regId, {
+          asesor:rotModalAsesor, _asesorId:Number(data.asesor_id || reg._asesorId || 0) || null,
+          direccion:rotModalDireccion.trim(), distrito:rotModalDistrito.trim(),
+          tipifBack:'', tipifBack2:'', _tipifVend:'', _tipifHora:'', tipifInterna:'',
+          cicloAbiertoId:Number(data.ciclo_id || 0), cicloAbiertoNumero:Number(data.numero_ciclo || 0),
+          cicloAbiertoTipo:'OTRA_DIRECCION', historial:data.historial || reg.historial,
+          sinAsignar:false, horaAsig:horaAhora(),
+        })
+        setModalRotar({open:false,regId:null,desc:'',asesorActual:''})
+        mostrarToast(data.mensaje || `Venta ${data.numero_ciclo} habilitada para otra dirección`)
+        await cargarLeads()
+      } catch(error) {
+        setRotModalError(error.message || 'Error de conexión')
+        mostrarToast(error.message || 'Error al habilitar otra dirección')
+      } finally { setRotandoManual(false) }
+      return
+    }
+    if (esRotacionManualProhibida(reg)) {
+      mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
+      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+      return
+    }
+    const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     setRotandoManual(true)
     try {
       let res = await fetch(`${API}/leads/${reg._backendId}/rotar`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
@@ -2618,7 +2683,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                            ? (asesores.find(a => String(a.nombre || '').trim().toUpperCase() === asesorActualNorm)?.sala || 'SIN SALA')
                            : 'SIN ASIGNAR'
                          const esExclusiva = Boolean(r.tipifInterna) || TIPIF_PROHIBIDAS_ROTACION.has(String(tipifActual||'').trim().toUpperCase())
-                         const rotacionManualBloqueada = esRotacionManualProhibida(r)
+                         const rotacionManualBloqueada = esRotacionManualProhibida(r) && !permiteOtraDireccion(r)
                          const detAbierto  = !!detOpen[r.id]
                          const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
                          const esReingreso = Object.entries(baseData).some(([fecha, regs]) =>
@@ -2671,6 +2736,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                   </div>
                                 )}
                                 {r.n1 && r.usuarioWhatsapp && <div className="num-secondary"><span>@{r.usuarioWhatsapp}</span><button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario de WhatsApp"><CopyIcon /></button></div>}
+                                {r.cicloAbiertoNumero>0 && <div style={{marginTop:3,fontSize:8,fontWeight:800,color:'#7c3aed'}}>VENTA {r.cicloAbiertoNumero} · OTRA DIRECCIÓN</div>}
                               </div>
                             </td>
 
@@ -3477,6 +3543,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           <div className="modal-box">
             <h3>Rotar lead manualmente</h3>
             <p>{modalRotar.desc}</p>
+            {modalRotar.otraDireccionDisponible && (
+              <div style={{padding:'10px 12px',border:'1px solid #c4b5fd',borderRadius:10,background:'#f5f3ff',color:'#5b21b6',fontSize:12,fontWeight:700,marginBottom:10}}>
+                OTRA DIRECCIÓN — abrirá una venta independiente conservando un solo lead.
+              </div>
+            )}
             {(() => {
               const esReactivable = nombre => (modalRotar.asesoresReactivables || [])
                 .some(n => n.toUpperCase() === String(nombre || '').trim().toUpperCase())
@@ -3506,12 +3577,16 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 </div>
               )
             })()}
+            {rotModalTipo === 'OTRA_DIRECCION' && <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+              <input value={rotModalDireccion} onChange={e=>setRotModalDireccion(e.target.value)} placeholder="Nueva dirección *" style={{width:'100%',padding:'10px 11px',border:'1px solid #d1d5db',borderRadius:8,fontSize:12}} />
+              <input value={rotModalDistrito} onChange={e=>setRotModalDistrito(e.target.value)} placeholder="Distrito *" style={{width:'100%',padding:'10px 11px',border:'1px solid #d1d5db',borderRadius:8,fontSize:12}} />
+            </div>}
             <textarea value={rotModalMotivo} onChange={e=>setRotModalMotivo(e.target.value)} placeholder="Motivo de la rotación (opcional)..." />
             {rotModalError && <div role="alert" style={{marginTop:8,padding:'9px 11px',border:'1px solid #fecaca',borderRadius:8,background:'#fef2f2',color:'#b91c1c',fontSize:12,fontWeight:650}}>{rotModalError}</div>}
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
-              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>
-                {rotandoManual
+              <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual || (rotModalTipo==='OTRA_DIRECCION' && (!rotModalDireccion.trim() || !rotModalDistrito.trim()))}>
+                {rotModalTipo==='OTRA_DIRECCION' ? (rotandoManual?'Habilitando...':'Habilitar otra dirección') : rotandoManual
                   ? ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase())
                     ? 'Reactivando...'
                     : ((modalRotar.asesoresReasignables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reasignando...' : 'Rotando...'))
@@ -3714,6 +3789,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Número</span>
                 <strong style={{fontSize:13}}>{origenModal.n1||'—'}</strong>
               </div>
+              {origenModal.usuario&&<div style={{display:'flex',gap:8,alignItems:'baseline'}}><span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Usuario</span><strong style={{fontSize:13}}>{origenModal.usuario}</strong></div>}
+              {origenModal.ip&&<div style={{display:'flex',gap:8,alignItems:'baseline'}}><span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>IP de carga</span><strong style={{fontSize:12}}>{origenModal.ip}</strong></div>}
               <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
                 <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Campaña</span>
                 <strong style={{fontSize:13}}>{origenModal.campana||'—'}</strong>
