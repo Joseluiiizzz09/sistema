@@ -245,6 +245,7 @@ function esRotacionManualProhibida(reg) {
   return !esVentaCaidaInterna(reg) && esLeadProhibido(reg)
 }
 function permiteOtraDireccion(reg) {
+  if (Number(reg?.cicloAbiertoId || 0) > 0) return false
   const tipif = String(tipifEfectiva(reg) || '').trim().toUpperCase()
   return Number(reg?.venta_confirmada) === 1 || ['VENTA CERRADA', 'INSTALADO'].includes(tipif)
 }
@@ -262,17 +263,6 @@ function tipifPrevioHistorial(historial) {
 // tipificó; de lo contrario, la que dejó el asesor anterior (derivada del historial).
 function tipifEfectiva(reg) {
   const hist = Array.isArray(reg?.historial) ? reg.historial : []
-  // Un ciclo de OTRA DIRECCION vuelve a abrir el mismo lead. Mientras esté
-  // abierto no debe heredar la venta/instalación del ciclo anterior.
-  if (Number(reg?.cicloAbiertoId || 0) > 0) {
-    const apertura = [...hist].reverse().find(h =>
-      h?.tipo === 'CICLO_VENTA' && h?.accion === 'ASIGNACION' &&
-      Number(h?.cicloId || 0) === Number(reg.cicloAbiertoId)
-    )
-    const posteriores = hist.filter(h => h?.tipo === 'TIPIF_VEND' && (!apertura?.ts || Number(h?.ts || 0) > Number(apertura.ts)))
-    if (posteriores.length) return normalizarTipifVend(posteriores.reduce((a,b)=>(Number(b.ts||0)>Number(a.ts||0)?b:a)).tipif)
-    return normalizarTipifVend(String(reg?._tipifVend || '').trim())
-  }
   if (String(reg?.tipifInterna || '').trim()) return String(reg.tipifInterna).trim()
   const eventos = hist.filter(h => h?.tipo === 'TIPIF_VEND' && h.ts != null)
   // Una venta realmente creada tiene prioridad definitiva. No basta con haber
@@ -1424,7 +1414,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo habilitar otra dirección')
         updateReg(modalRotar.regId, {
           asesor:rotModalAsesor, _asesorId:Number(data.asesor_id || reg._asesorId || 0) || null,
-          tipifBack:'', tipifBack2:'', _tipifVend:'', _tipifHora:'', tipifInterna:'',
+          tipifBack:'', tipifBack2:'', _tipifVend:'', _tipifHora:'',
           cicloAbiertoId:Number(data.ciclo_id || 0), cicloAbiertoNumero:Number(data.numero_ciclo || 0),
           cicloAbiertoTipo:'OTRA_DIRECCION', historial:data.historial || reg.historial,
           sinAsignar:false, horaAsig:horaAhora(),
