@@ -188,6 +188,8 @@ export default function Validacion() {
   const [modalEst,      setModalEst]      = useState({ open:false, id:null })
   const [tipSel,        setTipSel]        = useState('')
   const [nuevaObsModal, setNuevaObsModal] = useState('')
+  const [guardandoTipificacion, setGuardandoTipificacion] = useState(false)
+  const guardandoTipificacionRef = useRef(false)
 
   // ── Modal historial ──
   const [modalObs, setModalObs] = useState({ open:false, id:null })
@@ -207,10 +209,10 @@ export default function Validacion() {
   const cargandoVentasRef = useRef(false)
   const firmaVentasRef = useRef('')
   const cargarVentas = useCallback(async () => {
-    if (cargandoVentasRef.current) return  // evita polls solapados (respuestas fuera de orden que causan parpadeo)
+    if (cargandoVentasRef.current || guardandoTipificacionRef.current) return
     cargandoVentasRef.current = true
     try {
-      const res  = await fetch(`${API}/ventas`, { headers: ncHeaders() })
+      const res  = await fetch(`${API}/ventas/validacion-listado`, { headers: ncHeaders() })
       const data = await res.json()
       if (data.ok && responseChanged(firmaVentasRef, data.data)) setVentas(data.data.map(mapVenta))
     } catch(e) { console.error('Error cargando ventas:', e) }
@@ -278,6 +280,7 @@ export default function Validacion() {
   }
 
   async function guardarTipificacion() {
+    if (guardandoTipificacionRef.current) return
     const v = ventas.find(x => x.id === modalEst.id)
     if (!v) return
 
@@ -286,6 +289,8 @@ export default function Validacion() {
       return
     }
 
+    guardandoTipificacionRef.current = true
+    setGuardandoTipificacion(true)
     try {
       const res = await fetch(`${API}/ventas/${v.id}/tipificar-validacion`, {
         method: 'PATCH',
@@ -325,6 +330,9 @@ export default function Validacion() {
       mostrarToast('Tipificación guardada')
     } catch(e) {
       mostrarToast('Error conectando al servidor')
+    } finally {
+      guardandoTipificacionRef.current = false
+      setGuardandoTipificacion(false)
     }
   }
 
@@ -621,7 +629,9 @@ export default function Validacion() {
 
               <div className="modal-btns">
                 <button className="btn-cancelar-modal" onClick={()=>setModalEst({open:false,id:null})}>Cancelar</button>
-                <button className="btn-guardar" onClick={guardarTipificacion}>Guardar</button>
+                <button className="btn-guardar" onClick={guardarTipificacion} disabled={guardandoTipificacion}>
+                  {guardandoTipificacion ? 'Guardando...' : 'Guardar'}
+                </button>
               </div>
             </div>
           </div>
