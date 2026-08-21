@@ -1352,12 +1352,14 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         && normalizarFecha(otra?.fecha) === fechaHoy()
       ))
       .map(h => String(h.asesor).trim()))]
+    const asesoresReasignables = [...new Set(asignaciones.map(h => String(h.asesor).trim()))]
     setModalRotar({
       open:true,
       regId:id,
       desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`,
       asesorActual:reg.asesor,
       asesoresReactivables,
+      asesoresReasignables,
     })
     setRotModalAsesor('')
     setRotBusqueda('')
@@ -3478,9 +3480,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             {(() => {
               const esReactivable = nombre => (modalRotar.asesoresReactivables || [])
                 .some(n => n.toUpperCase() === String(nombre || '').trim().toUpperCase())
-              const disponibles = asesores.filter(a =>
-                a.nombre !== modalRotar.asesorActual || esReactivable(a.nombre)
-              )
+              const esReasignable = nombre => (modalRotar.asesoresReasignables || [])
+                .some(n => n.toUpperCase() === String(nombre || '').trim().toUpperCase())
+              const disponibles = asesores
               const filtrados = disponibles.filter(a => (a.nombre||'').toLowerCase().includes(rotBusqueda.trim().toLowerCase()))
               return (
                 <div style={{border:`1px solid ${rotModalAsesor?'#e5e7eb':'#ef4444'}`, borderRadius:10, padding:8, marginBottom:10}}>
@@ -3494,7 +3496,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     {filtrados.map(a=>(
                       <div key={a.id} onClick={()=>{ setRotModalAsesor(a.nombre); setRotModalError('') }}
                         style={{padding:'7px 9px', cursor:'pointer', fontSize:13, borderRadius:7, fontWeight:a.nombre===rotModalAsesor?700:400, background:a.nombre===rotModalAsesor?'#fef2f2':'transparent', color:a.nombre===rotModalAsesor?'#b91c1c':'#111827'}}>
-                        {a.nombre}{esReactivable(a.nombre) ? ' — REACTIVAR HOY' : ''}
+                        {a.nombre}{esReactivable(a.nombre)
+                          ? ' — REACTIVAR HOY'
+                          : (esReasignable(a.nombre) ? ' — REASIGNAR MANUALMENTE' : '')}
                       </div>
                     ))}
                     {filtrados.length===0 && <div style={{padding:'8px 9px', fontSize:12, color:'#9ca3af'}}>Sin resultados</div>}
@@ -3508,8 +3512,12 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor || rotandoManual}>
                 {rotandoManual
-                  ? ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reactivando...' : 'Rotando...')
-                  : ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reactivar hoy' : 'Rotar ahora')}
+                  ? ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase())
+                    ? 'Reactivando...'
+                    : ((modalRotar.asesoresReasignables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reasignando...' : 'Rotando...'))
+                  : ((modalRotar.asesoresReactivables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase())
+                    ? 'Reactivar hoy'
+                    : ((modalRotar.asesoresReasignables || []).some(n => n.toUpperCase() === rotModalAsesor.toUpperCase()) ? 'Reasignar manualmente' : 'Rotar ahora'))}
               </button>
             </div>
           </div>
