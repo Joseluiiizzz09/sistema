@@ -274,7 +274,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                       <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
                       <td className="calidad-gestion-cell">
                         <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => abrirCalidad(cliente)}>
-                          <span>{puedeEditarCalidad ? 'Gestionar calidad' : 'Ver calidad'}</span><small>{resumenCalidad(cliente)}</small>
+                          <span>Gestionar calidad</span><small>{resumenCalidad(cliente)}</small>
                         </button>
                       </td>
                       <td><button className="calidad-historial-btn" onClick={() => abrirHistorial(cliente)}>Historial</button></td>
