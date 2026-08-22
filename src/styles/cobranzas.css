@@ -707,3 +707,4 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 /* Supervisión y Calidad comparten exactamente la misma apariencia; solo cambia el permiso de escritura. */
 .calidad-modal select:disabled{cursor:default;opacity:1;-webkit-text-fill-color:currentColor}
 .calidad-modal textarea:disabled{cursor:default;opacity:1;color:#475569;background:#f8fafc}
+.cobranzas-vendedor{min-width:165px;color:#334155!important;font-weight:800}

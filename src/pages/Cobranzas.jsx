@@ -98,7 +98,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       if (desde && fecha < desde) return false
       if (hasta && fecha > hasta) return false
       if (!texto) return true
-      return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.paquete]
+      return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
     })
   }, [clientes, busqueda, desde, hasta])
@@ -257,14 +257,14 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>ESTADO FINAL</th><th>FECHA DE TRATAMIENTO</th><th>COMENTARIO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>ESTADO FINAL</th><th>FECHA DE TRATAMIENTO</th><th>COMENTARIO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
                     <td>{(paginaSegura - 1) * PAGE_SIZE + index + 1}</td>
                     <td className="cobranzas-name">{cliente.nombre || '—'}</td>
                     <td>{cliente.dni || '—'}</td><td>{cliente.sot || '—'}</td>
-                    <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td>
+                    <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
                     {esCalidad && <>
@@ -281,8 +281,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                     </>}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 14 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCalidad ? 14 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 15 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCalidad ? 15 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
