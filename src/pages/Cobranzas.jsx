@@ -188,6 +188,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
     return total
   }, { llamadas_dia:0, pendiente:0, satisfecho:0, regular:0, insatisfecho:0, observado:0, no_reconoce_servicio:0, baja:0 }), [rendimiento])
 
+  // Distribución visual del resumen: se calcula con los mismos totales ya cargados (sin nuevas consultas).
+  const distribucionRendimiento = useMemo(() => {
+    const criticos = totalesRendimiento.insatisfecho + totalesRendimiento.baja
+    const total = totalesRendimiento.satisfecho + totalesRendimiento.regular + criticos
+    if (!total) return null
+    const pct = valor => Math.round((valor / total) * 100)
+    return { satisfecho: pct(totalesRendimiento.satisfecho), regular: pct(totalesRendimiento.regular), critico: pct(criticos) }
+  }, [totalesRendimiento])
+
   function salir() { logout(); navigate('/login') }
   function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null) }
 
@@ -320,7 +329,10 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
             <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
           </nav>
-          <button className="sup-calidad-actualizar" onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
+          <div className="sup-calidad-toolbar-controls">
+            {pestanaCalidad === 'rendimiento' && <label className="sup-calidad-fecha"><span>FECHA</span><input type="date" value={fechaRendimiento} onChange={e => setFechaRendimiento(e.target.value)} /></label>}
+            <button className="sup-calidad-actualizar" onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
+          </div>
         </section>}
 
         {pestanaCalidad !== 'rendimiento' && <><section className="cobranzas-kpis">
@@ -378,8 +390,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
 
         {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <section className="sup-calidad-rendimiento">
           <header>
-            <div><span>RENDIMIENTO DEL EQUIPO</span><h2>Métricas por personal de Calidad</h2><p>Las llamadas se contabilizan cuando el usuario registra la tipificación de llamada del cliente.</p></div>
-            <label><span>FECHA</span><input type="date" value={fechaRendimiento} onChange={e => setFechaRendimiento(e.target.value)} /></label>
+            <span className="sup-calidad-eyebrow">RENDIMIENTO DEL EQUIPO</span>
+            <h2>Métricas por personal de Calidad</h2>
+            <p>Las llamadas se contabilizan cuando el usuario registra la tipificación de llamada del cliente.</p>
           </header>
           <div className="sup-calidad-resumen">
             <article><strong>{totalesRendimiento.llamadas_dia}</strong><span>LLAMADAS DEL DÍA</span></article>
@@ -387,6 +400,19 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <article><strong>{totalesRendimiento.regular}</strong><span>REGULARES</span></article>
             <article><strong>{totalesRendimiento.insatisfecho + totalesRendimiento.baja}</strong><span>CRÍTICOS</span></article>
           </div>
+          {distribucionRendimiento && <div className="sup-calidad-distribucion">
+            <div className="sup-calidad-distribucion-head">Distribución de resultados</div>
+            <div className="sup-calidad-distribucion-bar">
+              <span className="seg-satisfecho" style={{ width: `${distribucionRendimiento.satisfecho}%` }} />
+              <span className="seg-regular" style={{ width: `${distribucionRendimiento.regular}%` }} />
+              <span className="seg-critico" style={{ width: `${distribucionRendimiento.critico}%` }} />
+            </div>
+            <div className="sup-calidad-distribucion-legend">
+              <span className="leg-satisfecho">Satisfechos <b>{distribucionRendimiento.satisfecho}%</b></span>
+              <span className="leg-regular">Regulares <b>{distribucionRendimiento.regular}%</b></span>
+              <span className="leg-critico">Críticos <b>{distribucionRendimiento.critico}%</b></span>
+            </div>
+          </div>}
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="sup-calidad-metricas-grid">
             {rendimiento.map(persona => <article className="sup-calidad-persona" key={persona.id}>
