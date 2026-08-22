@@ -8,6 +8,16 @@ import '../styles/cobranzas.css'
 
 const PAGE_SIZE = 25
 
+const TIPIFICACIONES_CALIDAD = {
+  llamada: ['PENDIENTE', 'CONTESTA', 'NO CONTESTA', 'APAGADO', 'CORTA LLAMADA'],
+  whatsapp: ['PENDIENTE', 'SE ENVIA', 'TIENE', 'NO TIENE'],
+  servicio_internet: ['PENDIENTE', 'TODO CORRECTO', 'INTERMITENCIAS CON EL SERVICIO', 'NO RECONOCE LA TITULARIDAD', 'NO ES LA MISMA VELOCIDAD CONTRATADA', 'PROBLEMA SOLUCIONADO', 'OTROS'],
+  servicio_instalacion: ['PENDIENTE', 'TODO CORRECTO', 'INTERMITENCIAS CON EL SERVICIO', 'NO RECONOCE LA TITULARIDAD', 'NO ES LA MISMA VELOCIDAD CONTRATADA', 'PROBLEMA SOLUCIONADO', 'OTROS'],
+  ofrecieron_adicionales: ['PENDIENTE', 'NO', 'SI', 'SI, PERO NO SE BRINDO'],
+  adicional: ['PENDIENTE', 'IPTV', 'NETFLIX', 'STAR+', 'DISNEY+', 'OTROS', 'CRUNCHYROLL', 'REPETIDOR'],
+  estado_cliente: ['PENDIENTE', 'SATISFECHO', 'REGULAR', 'INSATISFECHO', 'OBSERVADO', 'NO RECONOCE EL SERVICIO', 'BAJA'],
+}
+
 function fechaISO(valor) {
   if (!valor) return ''
   return String(valor).slice(0, 10)
@@ -30,6 +40,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [pagina, setPagina] = useState(1)
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
+  const [guardando, setGuardando] = useState('')
+  const esCalidad = areaNombre.toLowerCase() === 'calidad'
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -71,6 +83,27 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
 
   function salir() { logout(); navigate('/login') }
   function limpiar() { setBusqueda(''); setDesde(''); setHasta('') }
+
+  async function guardarCalidad(cliente, campo, valor) {
+    const propiedad = `calidad_${campo}`
+    const anterior = cliente[propiedad] || 'PENDIENTE'
+    const clave = `${cliente.id}-${campo}`
+    setMensaje('')
+    setGuardando(clave)
+    setClientes(actuales => actuales.map(c => c.id === cliente.id ? { ...c, [propiedad]: valor } : c))
+    try {
+      const res = await fetch(`${API}/ventas/calidad/${cliente.id}`, {
+        method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ campo, valor }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar la tipificación')
+    } catch (error) {
+      setClientes(actuales => actuales.map(c => c.id === cliente.id ? { ...c, [propiedad]: anterior } : c))
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally {
+      setGuardando('')
+    }
+  }
 
   return (
     <div className="cobranzas-shell">
@@ -116,7 +149,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th></tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>LLAMADA</th><th>WTSP</th><th>SERVICIO DE INTERNET</th><th>SERVICIO DE INSTALACIÓN</th><th>SE LE OFRECIERON ADICIONALES</th><th>QUÉ ADICIONAL</th><th>ESTADO DE CLIENTE</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -126,10 +159,23 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                     <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
+                    {esCalidad && Object.entries(TIPIFICACIONES_CALIDAD).map(([campo, opciones]) => (
+                      <td className="calidad-tipif-cell" key={campo}>
+                        <select
+                          value={cliente[`calidad_${campo}`] || 'PENDIENTE'}
+                          disabled={guardando === `${cliente.id}-${campo}`}
+                          onChange={e => guardarCalidad(cliente, campo, e.target.value)}
+                          aria-label={`${campo.replaceAll('_', ' ')} de ${cliente.nombre || 'cliente'}`}
+                          className={(cliente[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}
+                        >
+                          {opciones.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
+                        </select>
+                      </td>
+                    ))}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan="8" className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan="8" className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 15 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCalidad ? 15 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
