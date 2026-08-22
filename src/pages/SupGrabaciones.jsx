@@ -239,6 +239,7 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
+    const esSegundoCiclo = ['programado', 'audio_subido'].includes(String(modalRevisar.estadoRev || '').toLowerCase())
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}?area=supgrabaciones`, {
         method: 'PATCH', headers: ncHeaders(),
@@ -254,10 +255,11 @@ export default function SupGrabaciones() {
               }
             : estadoRevision === 'no_conforme'
               ? {
-                  ...(['VALIDADO','APROBADO'].includes((modalRevisar.estado || '').toUpperCase())
-                    ? { estado: 'VALIDADO' } : {}),
+                  ...(esSegundoCiclo
+                    ? { estado: 'VALIDADO' }
+                    : (['VALIDADO','APROBADO'].includes((modalRevisar.estado || '').toUpperCase()) ? { estado: 'VALIDADO' } : {})),
                   estado_supgrab: 'no_conforme',
-                  estado_grab: 'pendiente',
+                  estado_grab: esSegundoCiclo ? 'grabando' : 'pendiente',
                 }
               : {
                   estado_supgrab: estadoRevision,
