@@ -41,6 +41,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
   const [guardando, setGuardando] = useState('')
+  const [usuariosCalidad, setUsuariosCalidad] = useState([])
+  const [clienteCalidad, setClienteCalidad] = useState(null)
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
@@ -53,6 +55,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       const json = await res.json()
       if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo cargar Cobranzas')
       setClientes(Array.isArray(json.data) ? json.data : [])
+      setUsuariosCalidad(Array.isArray(json.usuariosCalidad) ? json.usuariosCalidad : [])
     } catch (error) {
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally {
@@ -61,6 +64,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   }, [])
 
   useEffect(() => { cargar() }, [cargar])
+
+  useEffect(() => {
+    if (!clienteCalidad) return undefined
+    const cerrar = evento => { if (evento.key === 'Escape') setClienteCalidad(null) }
+    window.addEventListener('keydown', cerrar)
+    return () => window.removeEventListener('keydown', cerrar)
+  }, [clienteCalidad])
 
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
@@ -93,6 +103,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
     setMensaje('')
     setGuardando(clave)
     setClientes(actuales => actuales.map(c => c.id === cliente.id ? { ...c, [propiedad]: valor } : c))
+    setClienteCalidad(actual => actual?.id === cliente.id ? { ...actual, [propiedad]: valor } : actual)
     try {
       const res = await fetch(`${API}/ventas/calidad/${cliente.id}`, {
         method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ campo, valor }),
@@ -101,10 +112,48 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar la tipificación')
     } catch (error) {
       setClientes(actuales => actuales.map(c => c.id === cliente.id ? { ...c, [propiedad]: anterior } : c))
+      setClienteCalidad(actual => actual?.id === cliente.id ? { ...actual, [propiedad]: anterior } : actual)
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally {
       setGuardando('')
     }
+  }
+
+  async function asignarCalidad(cliente, usuarioId) {
+    const responsable = usuariosCalidad.find(usuario => String(usuario.id) === String(usuarioId))
+    if (!responsable) return
+    const anteriorId = cliente.calidad_asignado_a_id
+    const anteriorNombre = cliente.calidad_asignado_a_nombre
+    const clave = `${cliente.id}-responsable`
+    const aplicar = actual => actual?.id === cliente.id
+      ? { ...actual, calidad_asignado_a_id: responsable.id, calidad_asignado_a_nombre: responsable.nombre }
+      : actual
+    setMensaje('')
+    setGuardando(clave)
+    setClientes(actuales => actuales.map(aplicar))
+    setClienteCalidad(aplicar)
+    try {
+      const res = await fetch(`${API}/ventas/calidad/${cliente.id}/asignar`, {
+        method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ usuario_id: responsable.id }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo asignar el responsable')
+    } catch (error) {
+      const revertir = actual => actual?.id === cliente.id
+        ? { ...actual, calidad_asignado_a_id: anteriorId, calidad_asignado_a_nombre: anteriorNombre }
+        : actual
+      setClientes(actuales => actuales.map(revertir))
+      setClienteCalidad(revertir)
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally {
+      setGuardando('')
+    }
+  }
+
+  function resumenCalidad(cliente) {
+    const pendientes = Object.keys(TIPIFICACIONES_CALIDAD)
+      .filter(campo => (cliente[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE').length
+    return pendientes ? `${pendientes} PENDIENTES` : 'COMPLETADO'
   }
 
   return (
@@ -151,7 +200,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>LLAMADA</th><th>WTSP</th><th>SERVICIO DE INTERNET</th><th>SERVICIO DE INSTALACIÓN</th><th>SE LE OFRECIERON ADICIONALES</th><th>QUÉ ADICIONAL</th><th>ESTADO DE CLIENTE</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>GESTIÓN DE CALIDAD</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -161,24 +210,18 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                     <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
-                    {esCalidad && Object.entries(TIPIFICACIONES_CALIDAD).map(([campo, opciones]) => (
-                      <td className="calidad-tipif-cell" key={campo}>
-                        <select
-                          value={cliente[`calidad_${campo}`] || 'PENDIENTE'}
-                          disabled={!puedeEditarCalidad || guardando === `${cliente.id}-${campo}`}
-                          onChange={e => guardarCalidad(cliente, campo, e.target.value)}
-                          title={puedeEditarCalidad ? 'Seleccionar tipificación' : 'Vista de supervisión en tiempo real'}
-                          aria-label={`${campo.replaceAll('_', ' ')} de ${cliente.nombre || 'cliente'}`}
-                          className={`${(cliente[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}${!puedeEditarCalidad ? ' solo-lectura' : ''}`}
-                        >
-                          {opciones.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
-                        </select>
+                    {esCalidad && <>
+                      <td className="calidad-responsable">{cliente.calidad_asignado_a_nombre || 'SIN ASIGNAR'}</td>
+                      <td className="calidad-gestion-cell">
+                        <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => setClienteCalidad(cliente)}>
+                          <span>{puedeEditarCalidad ? 'Gestionar calidad' : 'Ver calidad'}</span><small>{resumenCalidad(cliente)}</small>
+                        </button>
                       </td>
-                    ))}
+                    </>}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 15 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCalidad ? 15 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 10 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCalidad ? 10 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
@@ -188,6 +231,40 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           </footer>
         </section>
       </main>
+
+      {esCalidad && clienteCalidad && (
+        <div className="calidad-modal-overlay" onMouseDown={evento => { if (evento.target === evento.currentTarget) setClienteCalidad(null) }}>
+          <section className="calidad-modal" role="dialog" aria-modal="true" aria-label={`Gestión de calidad de ${clienteCalidad.nombre || 'cliente'}`}>
+            <header>
+              <div><span>GESTIÓN DE CALIDAD</span><h2>{clienteCalidad.nombre || 'Cliente'}</h2><p>Documento: {clienteCalidad.dni || '—'} · SOT: {clienteCalidad.sot || '—'}</p></div>
+              <button onClick={() => setClienteCalidad(null)} aria-label="Cerrar">×</button>
+            </header>
+            <div className="calidad-responsable-box">
+              <label><span>RESPONSABLE DE LA LLAMADA DE CALIDAD</span>
+                <select value={clienteCalidad.calidad_asignado_a_id || ''} disabled={!puedeEditarCalidad || guardando === `${clienteCalidad.id}-responsable`} onChange={e => asignarCalidad(clienteCalidad, e.target.value)}>
+                  <option value="">— Seleccionar personal de Calidad —</option>
+                  {usuariosCalidad.map(usuario => <option value={usuario.id} key={usuario.id}>{usuario.nombre}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="calidad-modal-grid">
+              {Object.entries(TIPIFICACIONES_CALIDAD).map(([campo, opciones]) => (
+                <label key={campo}><span>{campo.replaceAll('_', ' ')}</span>
+                  <select
+                    value={clienteCalidad[`calidad_${campo}`] || 'PENDIENTE'}
+                    disabled={!puedeEditarCalidad || guardando === `${clienteCalidad.id}-${campo}`}
+                    onChange={e => guardarCalidad(clienteCalidad, campo, e.target.value)}
+                    className={(clienteCalidad[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}
+                  >
+                    {opciones.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <footer><span>{clienteCalidad.calidad_asignado_a_nombre ? `Asignado a ${clienteCalidad.calidad_asignado_a_nombre}` : 'Selecciona quién realizará la llamada'}</span><button onClick={() => setClienteCalidad(null)}>Cerrar ficha</button></footer>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
