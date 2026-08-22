@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
@@ -46,6 +46,37 @@ function claseCalidad(valor) {
   return 'informativo'
 }
 
+function FiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = false }) {
+  const [abierto, setAbierto] = useState(false)
+  const [buscar, setBuscar] = useState('')
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!abierto) return undefined
+    const cerrar = evento => { if (!ref.current?.contains(evento.target)) setAbierto(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [abierto])
+  const visibles = opciones.filter(opcion => !buscar || opcion.toLowerCase().includes(buscar.toLowerCase()))
+  const alternar = opcion => onChange(seleccionados.includes(opcion)
+    ? seleccionados.filter(valor => valor !== opcion)
+    : [...seleccionados, opcion])
+  return (
+    <div className="calidad-filtro-columna" ref={ref}>
+      <button type="button" className={seleccionados.length ? 'activo' : ''} onClick={() => setAbierto(valor => !valor)}>
+        {titulo}<span>▼</span>
+      </button>
+      {abierto && <div className="calidad-filtro-menu">
+        {buscable && <input autoFocus value={buscar} onChange={e => setBuscar(e.target.value)} placeholder={`Buscar ${titulo.toLowerCase()}…`} />}
+        <label className="calidad-filtro-todos"><input type="checkbox" checked={!seleccionados.length} onChange={() => onChange([])} /> Todos</label>
+        <div className="calidad-filtro-opciones">
+          {visibles.map(opcion => <label key={opcion}><input type="checkbox" checked={seleccionados.includes(opcion)} onChange={() => alternar(opcion)} /> {opcion}</label>)}
+          {!visibles.length && <small>Sin resultados</small>}
+        </div>
+      </div>}
+    </div>
+  )
+}
+
 export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
@@ -62,6 +93,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [comentarioCalidad, setComentarioCalidad] = useState('')
   const [historialCalidad, setHistorialCalidad] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
+  const [filtroVendedores, setFiltroVendedores] = useState([])
+  const [filtroEstados, setFiltroEstados] = useState([])
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
@@ -97,13 +130,21 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       const fecha = fechaISO(cliente.fecha_instalacion)
       if (desde && fecha < desde) return false
       if (hasta && fecha > hasta) return false
+      if (filtroVendedores.length && !filtroVendedores.includes(String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim())) return false
+      if (filtroEstados.length && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
       if (!texto) return true
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
     })
-  }, [clientes, busqueda, desde, hasta])
+  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados])
 
-  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta])
+  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados])
+
+  const vendedoresFiltro = useMemo(() => [...new Set(clientes.map(cliente => String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim()))].sort((a, b) => a.localeCompare(b, 'es')), [clientes])
+  const estadosFiltro = useMemo(() => [...new Set([
+    ...TIPIFICACIONES_CALIDAD.estado_cliente,
+    ...clientes.map(cliente => String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase()),
+  ])].sort((a, b) => a.localeCompare(b, 'es')), [clientes])
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE))
   const paginaSegura = Math.min(pagina, totalPaginas)
@@ -113,7 +154,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
 
   function salir() { logout(); navigate('/login') }
-  function limpiar() { setBusqueda(''); setDesde(''); setHasta('') }
+  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores([]); setFiltroEstados([]) }
 
   async function guardarCalidad(cliente, campo, valor) {
     const propiedad = `calidad_${campo}`
@@ -257,7 +298,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>ESTADO FINAL</th><th>FECHA DE TRATAMIENTO</th><th>COMENTARIO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>{esCalidad ? <FiltroColumna titulo="VENDEDOR" opciones={vendedoresFiltro} seleccionados={filtroVendedores} onChange={setFiltroVendedores} buscable /> : 'VENDEDOR'}</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th><FiltroColumna titulo="ESTADO FINAL" opciones={estadosFiltro} seleccionados={filtroEstados} onChange={setFiltroEstados} /></th><th>FECHA DE TRATAMIENTO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th><th>COMENTARIO</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -271,13 +312,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                       <td className="calidad-responsable">{cliente.calidad_asignado_a_nombre || 'SIN ASIGNAR'}</td>
                       <td><span className={`calidad-estado-final ${claseCalidad(cliente.calidad_estado_cliente)}`}>{cliente.calidad_estado_cliente || 'PENDIENTE'}</span></td>
                       <td className="calidad-fecha">{fechaHoraVisible(cliente.calidad_tratamiento_at)}</td>
-                      <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
                       <td className="calidad-gestion-cell">
                         <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => abrirCalidad(cliente)}>
                           <span>Gestionar calidad</span><small>{resumenCalidad(cliente)}</small>
                         </button>
                       </td>
                       <td><button className="calidad-historial-btn" onClick={() => abrirHistorial(cliente)}>Historial</button></td>
+                      <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
                     </>}
                   </tr>
                 ))}
