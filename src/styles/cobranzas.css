@@ -710,3 +710,28 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .calidad-modal select:disabled{cursor:default;opacity:1;-webkit-text-fill-color:currentColor}
 .calidad-modal textarea:disabled{cursor:default;opacity:1;color:#475569;background:#f8fafc}
 .cobranzas-vendedor{min-width:165px;color:#334155!important;font-weight:800}
+
+/* Tabla compacta a ancho completo: todas las columnas visibles sin scroll horizontal. */
+.cobranzas-table-scroll{overflow-x:hidden;overflow-y:auto}
+.cobranzas-table-card table{width:100%;min-width:0;table-layout:fixed}
+.cobranzas-table-card th,.cobranzas-table-card td{box-sizing:border-box;padding-left:9px;padding-right:9px;overflow-wrap:anywhere;word-break:normal}
+.cobranzas-table-card th{font-size:8.5px;line-height:1.2}
+.cobranzas-table-card td{font-size:10px;line-height:1.35}
+.cobranzas-table-card th:nth-child(1){width:2.5%}
+.cobranzas-table-card th:nth-child(2){width:12%}
+.cobranzas-table-card th:nth-child(3){width:5.2%}
+.cobranzas-table-card th:nth-child(4){width:4.8%}
+.cobranzas-table-card th:nth-child(5),.cobranzas-table-card th:nth-child(6){width:5.2%}
+.cobranzas-table-card th:nth-child(7){width:9%}
+.cobranzas-table-card th:nth-child(8){width:5.5%}
+.cobranzas-table-card th:nth-child(9){width:6.2%}
+.cobranzas-table-card th:nth-child(10){width:8.2%}
+.cobranzas-table-card th:nth-child(11){width:6.3%}
+.cobranzas-table-card th:nth-child(12){width:6.5%}
+.cobranzas-table-card th:nth-child(13){width:8%}
+.cobranzas-table-card th:nth-child(14){width:9.2%}
+.cobranzas-table-card th:nth-child(15){width:5.4%}
+.cobranzas-name,.cobranzas-vendedor,.calidad-responsable,.calidad-gestion-cell,.calidad-comentario-col{min-width:0;max-width:none}
+.calidad-gestion-btn{width:100%;min-width:0;padding:8px 9px}
+.calidad-historial-btn{width:100%;padding-left:5px;padding-right:5px}
+.calidad-estado-final{max-width:100%;padding:5px 7px;font-size:8px}
