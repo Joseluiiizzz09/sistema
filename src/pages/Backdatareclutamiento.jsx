@@ -372,6 +372,7 @@ export default function Backdatareclutamiento() {
   async function guardarDatosBack(id, cambios) {
     const found = findReg(id)
     if (!found) return
+    const anteriores = Object.fromEntries(Object.keys(cambios).map(clave => [clave, found.reg[clave]]))
     updateReg(id, cambios)
     if (!found.reg._backendId) return
     try {
@@ -381,8 +382,8 @@ export default function Backdatareclutamiento() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'Error al guardar')
     } catch(e) {
+      updateReg(id, anteriores)
       mostrarToast(e.message || 'No se pudieron guardar los datos')
-      cargarLeads()
     }
   }
 
@@ -430,7 +431,8 @@ export default function Backdatareclutamiento() {
   const cargarAsesores = useCallback(async () => {
     try {
       const res  = await fetch(`${API}/usuarios`, { headers: ncHeaders() })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el registro')
       if (data.ok) setAsesores(data.data.filter(u => usuarioTieneCargo(u, 'asesorreclutamiento') && u.activo).map(u => ({ id:u.id, nombre:u.nombre, usuario:u.usuario, sala:u.sala })))
     } catch(e) { console.error('Error cargando asesores:', e) }
   }, [])
@@ -617,8 +619,11 @@ export default function Backdatareclutamiento() {
           return next
         })
       }
-    } catch(e) {}
-    setForm({ campana:'', distrito:'', n1:'', n2:'', asesor:'' })
+      setForm({ campana:'', distrito:'', n1:'', n2:'', asesor:'' })
+    } catch(e) {
+      setBaseData(prev => ({ ...prev, [fecha]:(prev[fecha] || []).filter(r => r.id !== reg.id) }))
+      mostrarToast(e.message || 'No se pudo guardar el registro')
+    }
   }
 
   // ── Reasignar ────────────────────────────────────────────────────────────
@@ -634,21 +639,49 @@ export default function Backdatareclutamiento() {
     }
     if (!nuevoAsesor) {
       updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true })
-      if (reg._backendId) fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
+      if (reg._backendId) {
+        try {
+          const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo quitar la asignación')
+        } catch (e) {
+          updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar })
+          mostrarToast(e.message || 'No se pudo quitar la asignación')
+        }
+      }
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist })
-    if (reg._backendId) fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar el lead')
+      } catch (e) {
+        updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial })
+        mostrarToast(e.message || 'No se pudo reasignar el lead')
+      }
+    }
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   async function eliminarReg(id) {
     mutGenRef.current++
     const found = findReg(id)
-    if (found?.reg._backendId) fetch(`${API}/leads-reclutamiento/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
+    if (!found) return
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
     setHistOpen(prev => { const n={...prev}; delete n[id]; return n })
+    if (found.reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads-reclutamiento/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el lead')
+      } catch (e) {
+        setBaseData(prev => ({ ...prev, [found.fecha]: [found.reg, ...(prev[found.fecha] || []).filter(r => r.id !== id)] }))
+        mostrarToast(e.message || 'No se pudo eliminar el lead')
+      }
+    }
   }
 
   // ── Tipif vendedor ────────────────────────────────────────────────────────
@@ -658,7 +691,16 @@ export default function Backdatareclutamiento() {
     const { reg } = found
     const hora = horaAhora()
     updateReg(id, { _tipifVend:valor, _tipifHora:hora })
-    if (reg._backendId) fetch(`${API}/leads-reclutamiento/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
+      } catch (e) {
+        updateReg(id, { _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
+        mostrarToast(e.message || 'No se pudo guardar la tipificación')
+      }
+    }
   }
 
   // ── Modal rotación manual ─────────────────────────────────────────────────
@@ -690,8 +732,17 @@ export default function Backdatareclutamiento() {
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
     updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
-    if (reg._backendId) fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
-    setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+    try {
+      if (reg._backendId) {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:rotModalAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar el lead')
+      }
+      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
+    } catch (e) {
+      updateReg(modalRotar.regId, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, rotaciones:reg.rotaciones, historial:reg.historial })
+      mostrarToast(e.message || 'No se pudo rotar el lead')
+    }
   }
 
   // ── Rotation panel ────────────────────────────────────────────────────────
@@ -736,10 +787,19 @@ export default function Backdatareclutamiento() {
       const reg = l._reg
       const newHist = [...reg.historial, { asesor:asesorActual, hora, fecha:fechaHoy(), motivo:'Rotacion masiva' }]
       updateReg(reg.id, { asesor:asesorActual, horaAsig:hora, sinAsignar:false, rotaciones:(reg.rotaciones||0)+1, historial:newHist })
-      if (reg._backendId) fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
-      res.push({ tel:reg.n1, asesor:asesorActual, hora })
+      try {
+        if (reg._backendId) {
+          const respuesta = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:asesorActual, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+          const data = await respuesta.json().catch(() => ({}))
+          if (!respuesta.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo rotar')
+        }
+        res.push({ tel:reg.n1, asesor:asesorActual, hora })
+      } catch (e) {
+        updateReg(reg.id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, rotaciones:reg.rotaciones, historial:reg.historial })
+        res.push({ tel:reg.n1, asesor:'ERROR: '+(e.message || 'no guardado'), hora:'—' })
+      }
     }
-    setRotRotados(prev => prev + rotados.length)
+    setRotRotados(prev => prev + res.filter(item => !String(item.asesor).startsWith('ERROR:')).length)
     setRotResultado(res)
     setRotSel({})
   }

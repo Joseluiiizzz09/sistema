@@ -664,14 +664,25 @@ export default function Backoffice() {
     const bid = dniModal?.bid
     const val = String(dniModal?.editVal || '').replace(/\D/g, '')
     if (!id) return
+    const found = findReg(id)
+    const anterior = found?.reg?.obsAsesor || ''
     setBaseData(prev => {
       const next = { ...prev }
       for (const f in next) next[f] = (next[f] || []).map(r => r.id === id ? { ...r, obsAsesor: val } : r)
       return next
     })
-    if (bid) { try { await fetch(`${API}/leads/${bid}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs: val }) }) } catch(e) {} }
-    setDniModal(p => p ? { ...p, dni: val, editing: false } : null)
-    mostrarToast('DNI actualizado')
+    try {
+      if (bid) {
+        const res = await fetch(`${API}/leads/${bid}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs: val }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar el DNI')
+      }
+      setDniModal(p => p ? { ...p, dni: val, editing: false } : null)
+      mostrarToast('DNI actualizado')
+    } catch (e) {
+      updateReg(id, { obsAsesor: anterior })
+      mostrarToast(e.message || 'No se pudo actualizar el DNI')
+    }
   }
 
   // ── Rotación panel ──
@@ -797,6 +808,7 @@ export default function Backoffice() {
   async function guardarDatosBack(id, cambios) {
     const found = findReg(id)
     if (!found) return
+    const anteriores = Object.fromEntries(Object.keys(cambios).map(clave => [clave, found.reg[clave]]))
     updateReg(id, cambios)
     if (!found.reg._backendId) return
     try {
@@ -806,8 +818,8 @@ export default function Backoffice() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'Error al guardar')
     } catch(e) {
+      updateReg(id, anteriores)
       mostrarToast(e.message || 'No se pudieron guardar los datos')
-      cargarLeads()
     }
   }
 
@@ -1261,21 +1273,49 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
     if (!nuevoAsesor) {
       updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true })
-      if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
+      if (reg._backendId) {
+        try {
+          const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo quitar la asignación')
+        } catch (e) {
+          updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar })
+          mostrarToast(e.message || 'No se pudo quitar la asignación')
+        }
+      }
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'' })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar el lead')
+      } catch (e) {
+        updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial, rotaciones:reg.rotaciones, _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
+        mostrarToast(e.message || 'No se pudo reasignar el lead')
+      }
+    }
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   async function eliminarReg(id) {
     mutGenRef.current++
     const found = findReg(id)
-    if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
+    if (!found) return
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
     setHistOpen(prev => { const n={...prev}; delete n[id]; return n })
+    if (found.reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el lead')
+      } catch (e) {
+        setBaseData(prev => ({ ...prev, [found.fecha]: [found.reg, ...(prev[found.fecha] || []).filter(r => r.id !== id)] }))
+        mostrarToast(e.message || 'No se pudo eliminar el lead')
+      }
+    }
   }
 
   // Elimina una asignación individual del historial: el número desaparece de la base
