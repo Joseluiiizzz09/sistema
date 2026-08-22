@@ -48,11 +48,6 @@ const ESTADO_BD_MAP = {
 
 const SEG_FILTRO_KEY = 'nc_seguimiento_filtro'
 const ORD_EST = { caida:0, rechazo:1, rechazo_mesa:1, levantar_sot:2, derivado_planta_externa:3, tecnico:4, tecnicos_camino:5, reasignacion:6, ejecucion:7, instalado_no_validado:8, servicio_activo:9, instalado:10 }
-const ESTADOS_SEGUIMIENTO_INICIADO = new Set([
-  'programado','en_ejecucion','instalado','caida','rechazo_campo','tecnico_casa',
-  'levantar_sot','tecnicos_camino','instalado_no_validado','reasignacion',
-  'derivado_planta_externa','servicio_activo','rechazo_mesa',
-])
 
 function fechaHoy() {
   const a = new Date(), u = a.getTime() + a.getTimezoneOffset() * 60000
@@ -234,8 +229,7 @@ export default function Seguimiento() {
         setVentas(data.data
           .filter(v => {
             const conforme = String(v.estado_supgrab || '').trim().toLowerCase() === 'conforme'
-            const estado = String(v.estado || '').trim().toLowerCase()
-            return conforme || ESTADOS_SEGUIMIENTO_INICIADO.has(estado)
+            return conforme || Boolean(v.seguimiento_ingresado_at)
           })
           .map(v => ({
             ...v,
