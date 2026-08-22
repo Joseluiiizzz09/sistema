@@ -117,7 +117,9 @@
 
 .cobranzas-main {
   padding: 26px 28px 40px;
-  max-width: 1800px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   margin: auto;
   display: flex;
   flex-direction: column;
