@@ -30,6 +30,22 @@ function fechaVisible(valor) {
   return `${d}/${m}/${y}`
 }
 
+function fechaHoraVisible(valor) {
+  if (!valor) return '—'
+  const fecha = new Date(String(valor).replace(' ', 'T'))
+  if (Number.isNaN(fecha.getTime())) return fechaVisible(valor)
+  return fecha.toLocaleString('es-PE', { timeZone: 'America/Lima', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+}
+
+function claseCalidad(valor) {
+  const texto = String(valor || 'PENDIENTE').toUpperCase()
+  if (texto === 'PENDIENTE') return 'pendiente'
+  if (['CONTESTA','SE ENVIA','TIENE','TODO CORRECTO','PROBLEMA SOLUCIONADO','SI','SATISFECHO'].includes(texto)) return 'positivo'
+  if (['NO CONTESTA','APAGADO','CORTA LLAMADA','NO TIENE','INSATISFECHO','NO RECONOCE EL SERVICIO','BAJA','NO RECONOCE LA TITULARIDAD'].includes(texto)) return 'negativo'
+  if (texto.includes('INTERMITENCIA') || texto.includes('NO ES LA MISMA') || texto === 'REGULAR' || texto === 'OBSERVADO' || texto.includes('NO SE BRINDO')) return 'alerta'
+  return 'informativo'
+}
+
 export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
@@ -43,6 +59,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [guardando, setGuardando] = useState('')
   const [usuariosCalidad, setUsuariosCalidad] = useState([])
   const [clienteCalidad, setClienteCalidad] = useState(null)
+  const [comentarioCalidad, setComentarioCalidad] = useState('')
+  const [historialCalidad, setHistorialCalidad] = useState(null)
+  const [cargandoHistorial, setCargandoHistorial] = useState(false)
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
@@ -156,6 +175,44 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
     return pendientes ? `${pendientes} PENDIENTES` : 'COMPLETADO'
   }
 
+  function abrirCalidad(cliente) {
+    setClienteCalidad(cliente)
+    setComentarioCalidad(cliente.calidad_comentario || '')
+  }
+
+  async function guardarComentario(cliente) {
+    const anterior = cliente.calidad_comentario || ''
+    const comentario = comentarioCalidad.trim()
+    const clave = `${cliente.id}-comentario`
+    setGuardando(clave)
+    const aplicar = actual => actual?.id === cliente.id ? { ...actual, calidad_comentario: comentario } : actual
+    setClientes(actuales => actuales.map(aplicar)); setClienteCalidad(aplicar)
+    try {
+      const res = await fetch(`${API}/ventas/calidad/${cliente.id}/comentario`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ comentario }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar el comentario')
+    } catch (error) {
+      const revertir = actual => actual?.id === cliente.id ? { ...actual, calidad_comentario: anterior } : actual
+      setClientes(actuales => actuales.map(revertir)); setClienteCalidad(revertir)
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally { setGuardando('') }
+  }
+
+  async function abrirHistorial(cliente) {
+    setCargandoHistorial(true)
+    setHistorialCalidad({ cliente, entradas:[] })
+    try {
+      const res = await fetch(`${API}/ventas/calidad/${cliente.id}/historial`, { headers:ncHeaders() })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo cargar el historial')
+      setHistorialCalidad({ cliente, entradas:Array.isArray(json.data) ? json.data : [] })
+    } catch (error) {
+      setMensaje(error.message || 'Error conectando con el servidor'); setHistorialCalidad(null)
+    } finally { setCargandoHistorial(false) }
+  }
+
   return (
     <div className="cobranzas-shell">
       <header className="cobranzas-topbar">
@@ -200,7 +257,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>GESTIÓN DE CALIDAD</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCalidad && <><th>RESPONSABLE CALIDAD</th><th>ESTADO FINAL</th><th>FECHA DE TRATAMIENTO</th><th>COMENTARIO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -212,16 +269,20 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                     <td>{cliente.paquete || '—'}</td>
                     {esCalidad && <>
                       <td className="calidad-responsable">{cliente.calidad_asignado_a_nombre || 'SIN ASIGNAR'}</td>
+                      <td><span className={`calidad-estado-final ${claseCalidad(cliente.calidad_estado_cliente)}`}>{cliente.calidad_estado_cliente || 'PENDIENTE'}</span></td>
+                      <td className="calidad-fecha">{fechaHoraVisible(cliente.calidad_tratamiento_at)}</td>
+                      <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
                       <td className="calidad-gestion-cell">
-                        <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => setClienteCalidad(cliente)}>
+                        <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => abrirCalidad(cliente)}>
                           <span>{puedeEditarCalidad ? 'Gestionar calidad' : 'Ver calidad'}</span><small>{resumenCalidad(cliente)}</small>
                         </button>
                       </td>
+                      <td><button className="calidad-historial-btn" onClick={() => abrirHistorial(cliente)}>Historial</button></td>
                     </>}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 10 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCalidad ? 10 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 14 : 8} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCalidad ? 14 : 8} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
@@ -254,14 +315,32 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                     value={clienteCalidad[`calidad_${campo}`] || 'PENDIENTE'}
                     disabled={!puedeEditarCalidad || guardando === `${clienteCalidad.id}-${campo}`}
                     onChange={e => guardarCalidad(clienteCalidad, campo, e.target.value)}
-                    className={(clienteCalidad[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}
+                    className={claseCalidad(clienteCalidad[`calidad_${campo}`])}
                   >
                     {opciones.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
                   </select>
                 </label>
               ))}
             </div>
+            <div className="calidad-comentario-box">
+              <label><span>COMENTARIO DE CALIDAD (OPCIONAL)</span><textarea maxLength="1500" value={comentarioCalidad} disabled={!puedeEditarCalidad} onChange={e => setComentarioCalidad(e.target.value)} placeholder="Escribe aquí una observación de la gestión…" /></label>
+              {puedeEditarCalidad && <button disabled={guardando === `${clienteCalidad.id}-comentario`} onClick={() => guardarComentario(clienteCalidad)}>{guardando === `${clienteCalidad.id}-comentario` ? 'Guardando…' : 'Guardar comentario'}</button>}
+            </div>
             <footer><span>{clienteCalidad.calidad_asignado_a_nombre ? `Asignado a ${clienteCalidad.calidad_asignado_a_nombre}` : 'Selecciona quién realizará la llamada'}</span><button onClick={() => setClienteCalidad(null)}>Cerrar ficha</button></footer>
+          </section>
+        </div>
+      )}
+
+      {esCalidad && historialCalidad && (
+        <div className="calidad-modal-overlay" onMouseDown={evento => { if (evento.target === evento.currentTarget) setHistorialCalidad(null) }}>
+          <section className="calidad-modal calidad-historial-modal" role="dialog" aria-modal="true">
+            <header><div><span>HISTORIAL DE CALIDAD</span><h2>{historialCalidad.cliente.nombre || 'Cliente'}</h2><p>Registro completo de responsables, tipificaciones y comentarios</p></div><button onClick={() => setHistorialCalidad(null)}>×</button></header>
+            <div className="calidad-historial-lista">
+              {cargandoHistorial && <p>Cargando historial…</p>}
+              {!cargandoHistorial && !historialCalidad.entradas.length && <p>Este cliente todavía no tiene movimientos de Calidad.</p>}
+              {historialCalidad.entradas.map(entrada => <article key={entrada.id}><div><strong>{entrada.campo.replaceAll('_',' ').toUpperCase()}</strong><time>{fechaHoraVisible(entrada.created_at)}</time></div><p><span>{entrada.valor_anterior || '—'}</span><b>→</b><span>{entrada.valor_nuevo || '—'}</span></p><small>Gestionado por {entrada.usuario_nombre || 'Calidad'}</small></article>)}
+            </div>
+            <footer><span>{historialCalidad.entradas.length} movimientos registrados</span><button onClick={() => setHistorialCalidad(null)}>Cerrar historial</button></footer>
           </section>
         </div>
       )}
