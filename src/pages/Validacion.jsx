@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/validacion.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ export default function Validacion() {
   // ── Polling compartido: todos los validadores ven el mismo estado ──
   useEffect(() => {
     const interval = setVisibleInterval(cargarVentas, 2000)
-    return () => clearInterval(interval)
+    return () => clearVisibleInterval(interval)
   }, [cargarVentas])
 
   // ── Reset página al cambiar filtros ──

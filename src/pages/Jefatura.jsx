@@ -9,7 +9,7 @@ import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
 import '../styles/jefatura.css'
@@ -589,7 +589,7 @@ export default function Jefatura() {
     cargarVentasCache()
     agregarLog('Sesión iniciada', 'Panel de Jefatura')
     const iv = setVisibleInterval(cargarVentasCache, 5000)
-    return () => clearInterval(iv)
+    return () => clearVisibleInterval(iv)
   }, [cargarUsuarios, cargarVentasCache])
 
   useEffect(() => {

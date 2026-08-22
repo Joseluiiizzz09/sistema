@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/programacion.css'
 
 const BADGE_CLS = {
@@ -128,7 +128,7 @@ export default function Programacion() {
   useEffect(() => {
     cargarVentas()
     const timer = setVisibleInterval(cargarVentas, 1000)
-    return () => clearInterval(timer)
+    return () => clearVisibleInterval(timer)
   }, [cargarVentas])
 
   const ventasFiltradas = useMemo(() => ventas.filter(v => {

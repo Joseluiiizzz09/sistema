@@ -5,7 +5,7 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ export default function Grabaciones() {
   useEffect(() => {
     cargarVentas()
     const t = setVisibleInterval(cargarVentas, 1000)
-    return () => clearInterval(t)
+    return () => clearVisibleInterval(t)
   }, [cargarVentas])
 
   useEffect(() => {

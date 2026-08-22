@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
 import '../styles/Backdatareclutamiento.css'
@@ -532,7 +532,7 @@ export default function Backdatareclutamiento() {
     cargarLeads()
     cargarReclutados()
     const t = setVisibleInterval(cargarLeads, 1000)
-    return () => clearInterval(t)
+    return () => clearVisibleInterval(t)
   }, [cargarAsesores, cargarLeads, cargarReclutados])
 
   // BL modal reload on fecha change

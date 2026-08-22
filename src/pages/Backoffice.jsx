@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
@@ -1119,8 +1119,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     document.addEventListener('visibilitychange', refrescarAlVolver)
 
     return () => {
-      clearInterval(t)
-      clearInterval(tv)
+      clearVisibleInterval(t)
+      clearVisibleInterval(tv)
       window.removeEventListener('focus', refrescarAlEnfocar)
       document.removeEventListener('visibilitychange', refrescarAlVolver)
     }
