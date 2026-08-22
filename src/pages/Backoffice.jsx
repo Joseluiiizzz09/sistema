@@ -1592,13 +1592,43 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   function rotTxt(f) { const m=rotMins(f); if(m<60) return m+' min'; const h=Math.floor(m/60),r=m%60; return h+'h'+(r>0?' '+r+'min':'') }
   function rotFaltanTxt(mins) { const r=120-mins; if(r<=0) return ''; const h=Math.floor(r/60),m=r%60; return h>0?`Faltan ${h}h${m>0?' '+m+' min':''}`:`Faltan ${r} min` }
 
-  async function rotFinalizarWith(selToUse, asesorActual) {
+  async function validarSeleccionRotacionEnServidor(selToUse) {
+    const seleccionados = buildRotLeads().filter(l => selToUse[l.id])
+    const fechas = [...new Set(seleccionados.map(l => l.fecha).filter(Boolean))]
+    const respuestas = await Promise.all(fechas.map(async fecha => {
+      const respuesta = await fetch(`${API}/leads?fecha=${encodeURIComponent(fecha)}&_rotcheck=${Date.now()}`, {
+        headers:ncHeaders(), cache:'no-store',
+      })
+      const data = await respuesta.json().catch(() => ({}))
+      if (!respuesta.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar la lista de rotación')
+      return Array.isArray(data.data) ? data.data : []
+    }))
+    const actuales = new Map(respuestas.flat().map(l => [Number(l.id), l]))
+    const vigentes = {}
+    const omitidos = []
+    for (const lead of seleccionados) {
+      const local = lead._reg
+      const servidor = actuales.get(Number(local._backendId))
+      const mismoAsesor = servidor && Number(servidor.asesor_id || 0) === Number(local._asesorId || 0)
+      const mismasRotaciones = servidor && cantidadRotaciones(servidor) === cantidadRotaciones(local)
+      const mismaTipificacion = servidor
+        && String(servidor.tipif_vend || '').trim().toUpperCase() === String(local._tipifVend || '').trim().toUpperCase()
+      if (servidor && mismoAsesor && mismasRotaciones && mismaTipificacion) {
+        vigentes[lead.id] = true
+      } else {
+        omitidos.push({ tel:lead.tel, error:'Se actualizó antes de ejecutar; fue retirado automáticamente de la selección' })
+      }
+    }
+    return { vigentes, omitidos }
+  }
+
+  async function rotFinalizarWith(selToUse, asesorActual, resultadosPrevios = []) {
     const hora     = horaAhora()
     const allLeads = buildRotLeads()
     // Se valida otra vez al ejecutar para impedir selecciones antiguas o cambios
     // de tipificación ocurridos mientras el panel estaba abierto.
     const rotados  = allLeads.filter(l => selToUse[l.id] && rotApto(l, asesorActual).apto)
-    const res = []
+    const res = [...resultadosPrevios]
     for (const l of rotados) {
       const reg = l._reg
       if (!reg._backendId) continue
@@ -1659,9 +1689,19 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       setTimeout(() => setRotProgress(75), 400)
       setTimeout(async () => {
         try {
-          await rotFinalizarWith(selToUse, asesorActual)
+          const { vigentes, omitidos } = await validarSeleccionRotacionEnServidor(selToUse)
+          if (Object.keys(vigentes).length === 0) {
+            await cargarLeads()
+            setRotResultado(omitidos)
+            setRotSel({})
+          } else {
+            await rotFinalizarWith(vigentes, asesorActual, omitidos)
+          }
           setRotProgress(100)
           setTimeout(() => setRotProgress(0), 1000)
+        } catch (e) {
+          setRotResultado([{ tel:'Rotación', error:e.message || 'No se pudo actualizar la lista antes de ejecutar' }])
+          setRotSel({})
         } finally {
           rotandoRef.current = false
         }
