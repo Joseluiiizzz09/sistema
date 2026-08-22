@@ -41,7 +41,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
   const [guardando, setGuardando] = useState('')
-  const esCalidad = areaNombre.toLowerCase() === 'calidad'
+  // Las gestiones internas no se muestran durante el acceso directo de Jefatura:
+  // únicamente una sesión cuyo cargo real sea Calidad puede verlas y editarlas.
+  const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
 
   const cargar = useCallback(async () => {
     setCargando(true)
