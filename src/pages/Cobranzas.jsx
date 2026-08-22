@@ -41,9 +41,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
   const [guardando, setGuardando] = useState('')
-  // Las gestiones internas no se muestran durante el acceso directo de Jefatura:
-  // únicamente una sesión cuyo cargo real sea Calidad puede verlas y editarlas.
+  // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
+  const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -165,10 +165,11 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
                       <td className="calidad-tipif-cell" key={campo}>
                         <select
                           value={cliente[`calidad_${campo}`] || 'PENDIENTE'}
-                          disabled={guardando === `${cliente.id}-${campo}`}
+                          disabled={!puedeEditarCalidad || guardando === `${cliente.id}-${campo}`}
                           onChange={e => guardarCalidad(cliente, campo, e.target.value)}
+                          title={puedeEditarCalidad ? 'Seleccionar tipificación' : 'Vista de supervisión en tiempo real'}
                           aria-label={`${campo.replaceAll('_', ' ')} de ${cliente.nombre || 'cliente'}`}
-                          className={(cliente[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}
+                          className={`${(cliente[`calidad_${campo}`] || 'PENDIENTE') === 'PENDIENTE' ? 'pendiente' : ''}${!puedeEditarCalidad ? ' solo-lectura' : ''}`}
                         >
                           {opciones.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
                         </select>
