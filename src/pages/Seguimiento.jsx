@@ -5,6 +5,7 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
+import WhatsappSeguimientoBoton from '../components/WhatsappSeguimientoBoton'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/seguimiento.css'
@@ -246,6 +247,8 @@ export default function Seguimiento() {
             _audioPath:       v.audio_path   || '',
             _audioNombre:     v.audio_path ? v.audio_path.split('/').pop() : '',
             _waEnviado:       !!v.fecha_whatsapp_enviado,
+            _waFecha:         v.fecha_whatsapp_enviado || null,
+            _waPlantilla:     v.plantilla_whatsapp_enviado || null,
           }))
         )
       }
@@ -434,12 +437,13 @@ export default function Seguimiento() {
     setSotModal(null)
   }
 
-  async function enviarWhatsapp(v) {
+  async function enviarWhatsapp(v, plantilla) {
     if (enviandoWA.has(v.id)) return
     setEnviandoWA(prev => new Set(prev).add(v.id))
     try {
       const res  = await fetch(`${API}/ventas/${v.id}/enviar-seguimiento-whatsapp`, {
         method: 'POST', headers: ncHeaders(),
+        body: JSON.stringify({ plantilla }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || data.ok === false) {
@@ -447,7 +451,9 @@ export default function Seguimiento() {
         return
       }
       mostrarToast('Mensaje de WhatsApp enviado')
-      setVentas(list => list.map(x => x.id === v.id ? { ...x, _waEnviado: true } : x))
+      setVentas(list => list.map(x => x.id === v.id
+        ? { ...x, _waEnviado: true, _waFecha: new Date().toISOString(), _waPlantilla: plantilla }
+        : x))
     } catch (e) {
       console.error(e)
       mostrarToast('No se pudo enviar el mensaje de WhatsApp')
@@ -691,21 +697,12 @@ export default function Seguimiento() {
                           <button className="btn-acc btn-acc-agenda" onClick={() => abrirModalAgenda(v)} title="Agendar">Agenda</button>
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
-                          <button
-                            className={`btn-acc btn-acc-wa${v._waEnviado ? ' btn-acc-wa-enviado' : ''}`}
-                            onClick={() => enviarWhatsapp(v)}
-                            disabled={enviandoWA.has(v.id)}
-                            title={v._waEnviado ? 'Ya se envió el mensaje de seguimiento (reenviar)' : 'Enviar mensaje de WhatsApp de seguimiento'}
-                          >
-                            {enviandoWA.has(v.id) ? (
-                              <span className="btn-acc-wa-spin" aria-hidden="true" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M22 2 11 13" />
-                                <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                              </svg>
-                            )}
-                          </button>
+                          <WhatsappSeguimientoBoton
+                            enviando={enviandoWA.has(v.id)}
+                            waFecha={v._waFecha}
+                            waPlantilla={v._waPlantilla}
+                            onEnviar={(plantillaId) => enviarWhatsapp(v, plantillaId)}
+                          />
                         </div>
                       </td>
                       <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>

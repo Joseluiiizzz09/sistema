@@ -426,6 +426,11 @@ body{
 .btn-acc-wa-spin{width:12px;height:12px;border:2px solid rgba(37,99,235,.3);border-top-color:#1d4ed8;border-radius:50%;animation:btn-acc-wa-spin .7s linear infinite;}
 .btn-acc-wa-enviado .btn-acc-wa-spin{border-color:rgba(22,163,74,.3);border-top-color:#16a34a;}
 @keyframes btn-acc-wa-spin{to{transform:rotate(360deg);}}
+.wa-menu-dropdown{z-index:10000;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.18);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:170px;}
+.wa-menu-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border:0;background:transparent;border-radius:7px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;cursor:pointer;font-family:inherit;}
+.wa-menu-item:hover{background:#eff6ff;color:#1d4ed8;}
+.wa-menu-item-activo{background:#f0fdf4;color:#16a34a;}
+.wa-menu-check{color:#16a34a;font-weight:900;}
 .btn-acc-edit{height:26px;padding:0 10px;background:#f8fafc;color:var(--ink-2);border:1px solid var(--line-2);border-radius:7px;font-size:11px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .16s var(--sp);white-space:nowrap;}
 .btn-acc-edit:hover{background:var(--brand-soft);color:var(--brand);border-color:rgba(229,62,62,.3);transform:scale(1.04);}
 .btn-acc-toggle{height:26px;padding:0 10px;border:none;border-radius:7px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .16s var(--sp);white-space:nowrap;}
