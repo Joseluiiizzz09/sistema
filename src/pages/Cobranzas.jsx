@@ -81,7 +81,7 @@ function FiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = f
   )
 }
 
-export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
+export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCalidad = false }) {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
   const [clientes, setClientes] = useState([])
@@ -99,8 +99,12 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroEstados, setFiltroEstados] = useState(null)
+  const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
+  const [rendimiento, setRendimiento] = useState([])
+  const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
+  const [fechaRendimiento, setFechaRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
-  const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
+  const esCalidad = areaNombre.toLowerCase().includes('calidad') && ['calidad','supcalidad'].includes(sesion?.cargo)
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
 
   const cargar = useCallback(async () => {
@@ -121,6 +125,26 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
 
   useEffect(() => { cargar() }, [cargar])
 
+  const cargarRendimiento = useCallback(async () => {
+    if (!modoSupervisorCalidad) return
+    setCargandoRendimiento(true)
+    setMensaje('')
+    try {
+      const res = await fetch(`${API}/ventas/calidad-rendimiento?fecha=${fechaRendimiento}`, { headers:ncHeaders() })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo cargar el rendimiento')
+      setRendimiento(Array.isArray(json.data) ? json.data : [])
+    } catch (error) {
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally {
+      setCargandoRendimiento(false)
+    }
+  }, [fechaRendimiento, modoSupervisorCalidad])
+
+  useEffect(() => {
+    if (pestanaCalidad === 'rendimiento') cargarRendimiento()
+  }, [pestanaCalidad, cargarRendimiento])
+
   useEffect(() => {
     if (!clienteCalidad) return undefined
     const cerrar = evento => { if (evento.key === 'Escape') setClienteCalidad(null) }
@@ -131,6 +155,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
     return clientes.filter(cliente => {
+      if (modoSupervisorCalidad && pestanaCalidad === 'ventas' && !cliente.calidad_tratamiento_at) return false
       const fecha = fechaISO(cliente.fecha_instalacion)
       if (desde && fecha < desde) return false
       if (hasta && fecha > hasta) return false
@@ -140,7 +165,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
     })
-  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados])
+  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, modoSupervisorCalidad, pestanaCalidad])
 
   useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados])
 
@@ -156,6 +181,12 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
+  const totalesRendimiento = useMemo(() => rendimiento.reduce((total, fila) => {
+    for (const campo of ['llamadas_dia','pendiente','satisfecho','regular','insatisfecho','observado','no_reconoce_servicio','baja']) {
+      total[campo] += Number(fila[campo] || 0)
+    }
+    return total
+  }, { llamadas_dia:0, pendiente:0, satisfecho:0, regular:0, insatisfecho:0, observado:0, no_reconoce_servicio:0, baja:0 }), [rendimiento])
 
   function salir() { logout(); navigate('/login') }
   function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null) }
@@ -280,11 +311,17 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
 
       <main className="cobranzas-main">
         <section className="cobranzas-heading">
-          <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de {areaNombre}.</p></div>
-          <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
+          <div><h1>{modoSupervisorCalidad ? 'Supervisión de Calidad' : 'Clientes instalados'}</h1><p>{modoSupervisorCalidad ? 'Control de llamadas, rendimiento y ventas gestionadas por el equipo.' : `Información contractual consolidada para el área de ${areaNombre}.`}</p></div>
+          <button onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
         </section>
 
-        <section className="cobranzas-kpis">
+        {modoSupervisorCalidad && <nav className="sup-calidad-tabs" aria-label="Secciones de Super de Calidad">
+          <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
+          <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
+          <button className={pestanaCalidad === 'ventas' ? 'activo' : ''} onClick={() => setPestanaCalidad('ventas')}>Ventas Subidas</button>
+        </nav>}
+
+        {pestanaCalidad !== 'rendimiento' && <><section className="cobranzas-kpis">
           <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
           <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
           <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
@@ -298,7 +335,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
         </section>
 
         <section className="cobranzas-table-card">
-          <div className="cobranzas-table-title"><strong>Listado de clientes</strong><span>{filtrados.length} registros</span></div>
+          <div className="cobranzas-table-title"><strong>{pestanaCalidad === 'ventas' ? 'Ventas gestionadas por Calidad' : 'Llamadas de Calidad'}</strong><span>{filtrados.length} registros</span></div>
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
@@ -335,7 +372,37 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
             <span>Mostrando {visibles.length ? (paginaSegura - 1) * PAGE_SIZE + 1 : 0}–{(paginaSegura - 1) * PAGE_SIZE + visibles.length} de {filtrados.length}</span>
             <div><button disabled={paginaSegura <= 1} onClick={() => setPagina(p => p - 1)}>‹</button><b>Página {paginaSegura} de {totalPaginas}</b><button disabled={paginaSegura >= totalPaginas} onClick={() => setPagina(p => p + 1)}>›</button></div>
           </footer>
-        </section>
+        </section></>}
+
+        {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <section className="sup-calidad-rendimiento">
+          <header>
+            <div><span>RENDIMIENTO DEL EQUIPO</span><h2>Métricas por personal de Calidad</h2><p>Las llamadas se contabilizan cuando el usuario registra la tipificación de llamada del cliente.</p></div>
+            <label><span>FECHA</span><input type="date" value={fechaRendimiento} onChange={e => setFechaRendimiento(e.target.value)} /></label>
+          </header>
+          <div className="sup-calidad-resumen">
+            <article><strong>{totalesRendimiento.llamadas_dia}</strong><span>LLAMADAS DEL DÍA</span></article>
+            <article><strong>{totalesRendimiento.satisfecho}</strong><span>SATISFECHOS</span></article>
+            <article><strong>{totalesRendimiento.regular}</strong><span>REGULARES</span></article>
+            <article><strong>{totalesRendimiento.insatisfecho + totalesRendimiento.baja}</strong><span>CRÍTICOS</span></article>
+          </div>
+          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
+          <div className="sup-calidad-metricas-grid">
+            {rendimiento.map(persona => <article className="sup-calidad-persona" key={persona.id}>
+              <header><div><strong>{persona.nombre}</strong><span>{persona.cargo === 'supcalidad' ? 'SUPERVISORA DE CALIDAD' : 'PERSONAL DE CALIDAD'}</span></div><b>{Number(persona.llamadas_dia || 0)}<small>LLAMADAS</small></b></header>
+              <div>
+                <span className="m-pendiente"><b>{persona.pendiente}</b>PENDIENTE</span>
+                <span className="m-positivo"><b>{persona.satisfecho}</b>SATISFECHO</span>
+                <span className="m-alerta"><b>{persona.regular}</b>REGULAR</span>
+                <span className="m-negativo"><b>{persona.insatisfecho}</b>INSATISFECHO</span>
+                <span className="m-alerta"><b>{persona.observado}</b>OBSERVADO</span>
+                <span className="m-negativo"><b>{persona.no_reconoce_servicio}</b>NO RECONOCE</span>
+                <span className="m-negativo"><b>{persona.baja}</b>BAJA</span>
+              </div>
+            </article>)}
+            {!cargandoRendimiento && !rendimiento.length && <div className="sup-calidad-sin-datos">No hay personal activo de Calidad para mostrar.</div>}
+            {cargandoRendimiento && <div className="sup-calidad-sin-datos">Cargando métricas del equipo…</div>}
+          </div>
+        </section>}
       </main>
 
       {esCalidad && clienteCalidad && (
