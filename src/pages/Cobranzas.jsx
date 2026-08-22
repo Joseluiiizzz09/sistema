@@ -57,19 +57,23 @@ function FiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = f
     return () => document.removeEventListener('mousedown', cerrar)
   }, [abierto])
   const visibles = opciones.filter(opcion => !buscar || opcion.toLowerCase().includes(buscar.toLowerCase()))
-  const alternar = opcion => onChange(seleccionados.includes(opcion)
-    ? seleccionados.filter(valor => valor !== opcion)
-    : [...seleccionados, opcion])
+  const todosMarcados = seleccionados === null || (opciones.length > 0 && seleccionados.length === opciones.length)
+  const alternar = opcion => {
+    const actuales = todosMarcados ? [...opciones] : seleccionados
+    onChange(actuales.includes(opcion)
+      ? actuales.filter(valor => valor !== opcion)
+      : [...actuales, opcion])
+  }
   return (
     <div className="calidad-filtro-columna" ref={ref}>
-      <button type="button" className={seleccionados.length ? 'activo' : ''} onClick={() => setAbierto(valor => !valor)}>
+      <button type="button" className={!todosMarcados ? 'activo' : ''} onClick={() => setAbierto(valor => !valor)}>
         {titulo}<span>▼</span>
       </button>
       {abierto && <div className="calidad-filtro-menu">
         {buscable && <input autoFocus value={buscar} onChange={e => setBuscar(e.target.value)} placeholder={`Buscar ${titulo.toLowerCase()}…`} />}
-        <label className="calidad-filtro-todos"><input type="checkbox" checked={!seleccionados.length} onChange={() => onChange([])} /> Todos</label>
+        <label className="calidad-filtro-todos"><input type="checkbox" checked={todosMarcados} onChange={() => onChange(todosMarcados ? [] : null)} /> Todos</label>
         <div className="calidad-filtro-opciones">
-          {visibles.map(opcion => <label key={opcion}><input type="checkbox" checked={seleccionados.includes(opcion)} onChange={() => alternar(opcion)} /> {opcion}</label>)}
+          {visibles.map(opcion => <label key={opcion}><input type="checkbox" checked={todosMarcados || seleccionados.includes(opcion)} onChange={() => alternar(opcion)} /> {opcion}</label>)}
           {!visibles.length && <small>Sin resultados</small>}
         </div>
       </div>}
@@ -93,8 +97,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const [comentarioCalidad, setComentarioCalidad] = useState('')
   const [historialCalidad, setHistorialCalidad] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
-  const [filtroVendedores, setFiltroVendedores] = useState([])
-  const [filtroEstados, setFiltroEstados] = useState([])
+  const [filtroVendedores, setFiltroVendedores] = useState(null)
+  const [filtroEstados, setFiltroEstados] = useState(null)
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase() === 'calidad' && sesion?.cargo === 'calidad'
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
@@ -130,8 +134,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
       const fecha = fechaISO(cliente.fecha_instalacion)
       if (desde && fecha < desde) return false
       if (hasta && fecha > hasta) return false
-      if (filtroVendedores.length && !filtroVendedores.includes(String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim())) return false
-      if (filtroEstados.length && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
+      if (filtroVendedores !== null && !filtroVendedores.includes(String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim())) return false
+      if (filtroEstados !== null && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
       if (!texto) return true
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
@@ -154,7 +158,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
 
   function salir() { logout(); navigate('/login') }
-  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores([]); setFiltroEstados([]) }
+  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null) }
 
   async function guardarCalidad(cliente, campo, valor) {
     const propiedad = `calidad_${campo}`
@@ -261,7 +265,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
           <img className="cobranzas-logo" src="/assets/logo3.png" alt="" />
           <div>
             <img className="cobranzas-wordmark" src="/assets/krono-wordmark.png" alt="KRONO" />
-            <span>{areaNombre.toUpperCase()}</span>
+            <span>PANEL DE {areaNombre.toUpperCase()}</span>
           </div>
         </div>
         <div className="cobranzas-top-actions">
