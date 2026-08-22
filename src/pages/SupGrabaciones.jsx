@@ -13,6 +13,7 @@ const BADGE_MAP = {
   observado:    { cls: 'bg-observado',label: 'OBSERVADO'    },
   conforme:     { cls: 'bg-grabado',  label: 'CONFORME'     },
   no_conforme:  { cls: 'bg-observado',label: 'NO CONFORME'  },
+  rechazado:     { cls: 'bg-observado',label: 'RECHAZADO'     },
   programado:   { cls: 'bg-revisado', label: 'PROGRAMADO'   },
   sin_revisar:  { cls: 'bg-revisado', label: 'EN REVISION'  },
   audio_subido: { cls: 'bg-grabado',  label: 'AUDIO SUBIDO' },
@@ -253,6 +254,13 @@ export default function SupGrabaciones() {
                 estado_supgrab: 'conforme',
                 estado_grab: 'grabado',
               }
+            : estadoRevision === 'rechazado'
+              ? {
+                  estado: 'CAIDA',
+                  estado_supgrab: 'rechazado',
+                  estado_grab: 'grabado',
+                  motivo_seguimiento: 'RECHAZO POR AUDIO',
+                }
             : estadoRevision === 'no_conforme'
               ? {
                   ...(esSegundoCiclo
@@ -337,6 +345,7 @@ export default function SupGrabaciones() {
                 <option value="observado">Observado</option>
                 <option value="audio_subido">Audio subido</option>
                 <option value="no_conforme">No conforme</option>
+                <option value="rechazado">Rechazado</option>
                 <option value="programado">Programado</option>
               </select>
             </div>
@@ -436,9 +445,9 @@ export default function SupGrabaciones() {
                         </span>
                       </td>
                       <td>
-                        {['aprobado','conforme','observado','no_conforme'].includes(v.estadoRev)
+                        {['aprobado','conforme','observado','no_conforme','rechazado'].includes(v.estadoRev)
                           ? <span className={`badge-grab ${['aprobado','conforme'].includes(v.estadoRev) ? 'bg-grabado' : 'bg-observado'}`}>
-                              {['aprobado','conforme'].includes(v.estadoRev) ? 'APROBADO' : v.estadoRev === 'no_conforme' ? 'NO CONFORME' : 'OBSERVADO'}
+                              {['aprobado','conforme'].includes(v.estadoRev) ? 'APROBADO' : v.estadoRev === 'no_conforme' ? 'NO CONFORME' : v.estadoRev === 'rechazado' ? 'RECHAZADO' : 'OBSERVADO'}
                             </span>
                           : <span style={{color:'#9ca3af'}}>—</span>}
                       </td>
@@ -529,11 +538,13 @@ export default function SupGrabaciones() {
                       { id: 'conforme',     label: 'CONFORME',     border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                       { id: 'audio_subido', label: 'AUDIO SUBIDO', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                       { id: 'no_conforme',  label: 'NO CONFORME',  border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                      { id: 'rechazado',     label: 'RECHAZADO',     border: '#fb7185', bg: '#fff1f2', color: '#be123c' },
                     ]
-                  : modalRevisar.estadoRev === 'audio_subido'
+                  : ['audio_subido', 'rechazado'].includes(modalRevisar.estadoRev)
                     ? [
                         { id: 'conforme',    label: 'CONFORME',    border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                         { id: 'no_conforme', label: 'NO CONFORME', border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                        { id: 'rechazado',    label: 'RECHAZADO',    border: '#fb7185', bg: '#fff1f2', color: '#be123c' },
                       ]
                     : [
                         { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
