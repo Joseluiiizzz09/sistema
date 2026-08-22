@@ -310,16 +310,18 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       </header>
 
       <main className="cobranzas-main">
-        <section className="cobranzas-heading">
-          <div><h1>{modoSupervisorCalidad ? 'Supervisión de Calidad' : 'Clientes instalados'}</h1><p>{modoSupervisorCalidad ? 'Control de llamadas, rendimiento y ventas gestionadas por el equipo.' : `Información contractual consolidada para el área de ${areaNombre}.`}</p></div>
-          <button onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
-        </section>
+        {!modoSupervisorCalidad && <section className="cobranzas-heading">
+          <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de {areaNombre}.</p></div>
+          <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
+        </section>}
 
-        {modoSupervisorCalidad && <nav className="sup-calidad-tabs" aria-label="Secciones de Super de Calidad">
-          <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
-          <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
-          <button className={pestanaCalidad === 'ventas' ? 'activo' : ''} onClick={() => setPestanaCalidad('ventas')}>Ventas Subidas</button>
-        </nav>}
+        {modoSupervisorCalidad && <section className="sup-calidad-toolbar">
+          <nav className="sup-calidad-tabs" aria-label="Secciones de Super de Calidad">
+            <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
+            <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
+          </nav>
+          <button className="sup-calidad-actualizar" onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
+        </section>}
 
         {pestanaCalidad !== 'rendimiento' && <><section className="cobranzas-kpis">
           <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
@@ -335,7 +337,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
         </section>
 
         <section className="cobranzas-table-card">
-          <div className="cobranzas-table-title"><strong>{pestanaCalidad === 'ventas' ? 'Ventas gestionadas por Calidad' : 'Llamadas de Calidad'}</strong><span>{filtrados.length} registros</span></div>
+          <div className="cobranzas-table-title"><strong>{modoSupervisorCalidad ? 'Llamadas de Calidad' : 'Listado de clientes'}</strong><span>{filtrados.length} registros</span></div>
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
