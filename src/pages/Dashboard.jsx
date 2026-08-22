@@ -1286,6 +1286,7 @@ export default function Dashboard() {
                     tramo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.tramo_seguimiento : ''}
                     comentario={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.obs_seguimiento : ''}
                     motivo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.motivo_seguimiento : ''}
+                    expandible
                   /></td>
                   <td><ProgramacionInfoCell fecha={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.fecha_programada : ''} soloFecha /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>
