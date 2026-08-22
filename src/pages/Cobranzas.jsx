@@ -20,7 +20,7 @@ function fechaVisible(valor) {
   return `${d}/${m}/${y}`
 }
 
-export default function Cobranzas() {
+export default function Cobranzas({ areaNombre = 'Cobranzas' }) {
   const navigate = useNavigate()
   const { sesion, logout } = useAuth()
   const [clientes, setClientes] = useState([])
@@ -79,12 +79,12 @@ export default function Cobranzas() {
           <img className="cobranzas-logo" src="/assets/logo3.png" alt="" />
           <div>
             <img className="cobranzas-wordmark" src="/assets/krono-wordmark.png" alt="KRONO" />
-            <span>COBRANZAS</span>
+            <span>{areaNombre.toUpperCase()}</span>
           </div>
         </div>
         <div className="cobranzas-top-actions">
           <JefaturaViewControls>
-            <span className="cobranzas-area-badge">COBRANZAS</span>
+            <span className="cobranzas-area-badge">{areaNombre.toUpperCase()}</span>
             <span className="cobranzas-user">{sesion?.nombre || '—'}</span>
           </JefaturaViewControls>
           <CambiarAreaMenu />
@@ -94,7 +94,7 @@ export default function Cobranzas() {
 
       <main className="cobranzas-main">
         <section className="cobranzas-heading">
-          <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de Cobranzas.</p></div>
+          <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de {areaNombre}.</p></div>
           <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
         </section>
 

@@ -14,6 +14,7 @@ const Grabaciones = lazy(() => import('./pages/Grabaciones'))
 const SupGrabaciones = lazy(() => import('./pages/SupGrabaciones'))
 const Programacion = lazy(() => import('./pages/Programacion'))
 const Cobranzas = lazy(() => import('./pages/Cobranzas'))
+const Calidad = lazy(() => import('./pages/Calidad'))
 const Jefatura = lazy(() => import('./pages/Jefatura'))
 const Usuarios = lazy(() => import('./pages/Usuarios'))
 const Backdatareclutamiento = lazy(() => import('./pages/Backdatareclutamiento'))
@@ -65,6 +66,7 @@ export default function App() {
       <Route path="/sup-grabaciones" element={<PrivateRoute cargo="supgrabaciones"><SupGrabaciones /></PrivateRoute>} />
       <Route path="/programacion"  element={<PrivateRoute cargo="programacion"><Programacion /></PrivateRoute>} />
       <Route path="/cobranzas"     element={<PrivateRoute cargo="cobranzas"><Cobranzas /></PrivateRoute>} />
+      <Route path="/calidad"       element={<PrivateRoute cargo="calidad"><Calidad /></PrivateRoute>} />
       <Route path="/jefatura"      element={<PrivateRoute cargo="jefatura"><Jefatura /></PrivateRoute>} />
       <Route path="/usuarios"      element={<PrivateRoute cargo="usuarios"><Usuarios /></PrivateRoute>} />
       <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo="backreclutamiento"><Backdatareclutamiento /></PrivateRoute>} />
