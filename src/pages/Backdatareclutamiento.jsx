@@ -1099,10 +1099,6 @@ export default function Backdatareclutamiento() {
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 <span style={{fontSize:12,color:'#9ca3af',fontWeight:600}}>{statsBase.total} registros</span>
-                <button className={`btn-rot-toggle${rotPanelOpen?' abierto':''}`} onClick={()=>setRotPanelOpen(v=>!v)}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                  Rotación inteligente
-                </button>
               </div>
             </div>
 
