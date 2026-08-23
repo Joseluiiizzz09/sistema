@@ -937,3 +937,13 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranza-tipificacion-baja{border-color:#cbd5e1!important;background:#f1f5f9!important;color:#475569!important}
 .cobranza-sin-ciclo{margin:0;padding:24px 22px;text-align:center;color:#94a3b8;font-size:12px}
 @media(max-width:620px){.cobranza-datos-box{grid-template-columns:1fr}.cobranza-input-row{flex-direction:column}.cobranza-input-row button{width:100%}.cobranza-recibo-row{flex-direction:column;align-items:stretch}.cobranza-recibo-row select{width:100%}}
+.cobranza-recibo-info{gap:2px}
+.cobranza-recibo-ultima-llamada{color:#94a3b8;font-size:9px;font-style:italic}
+.cobranza-recibo-selects{display:flex;gap:8px;flex-wrap:wrap}
+.cobranza-select-llamada{width:190px;height:36px;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-size:10px;font-weight:800;outline:none;cursor:pointer;background:#f8fafc;color:#475569}
+.cobranza-select-llamada:disabled{cursor:default;opacity:1;-webkit-text-fill-color:currentColor}
+.cobranza-select-llamada.positivo{border-color:#6ee7b7;background:#ecfdf5;color:#047857}
+.cobranza-select-llamada.negativo{border-color:#fca5a5;background:#fef2f2;color:#b91c1c}
+.cobranza-select-llamada.alerta{border-color:#fdba74;background:#fff7ed;color:#c2410c}
+.cobranza-select-llamada.informativo{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
+@media(max-width:620px){.cobranza-select-llamada{width:100%}}
