@@ -46,6 +46,32 @@ function claseCalidad(valor) {
   return 'informativo'
 }
 
+// Catálogo de estados del panel de Rendimiento de Super Calidad (orden fijo,
+// usado por los KPIs, la distribución mensual y las tarjetas de personal).
+const CAMPOS_ESTADO_CALIDAD = ['pendiente', 'satisfecho', 'regular', 'insatisfecho', 'observado', 'no_reconoce_servicio', 'baja']
+const ESTADOS_CALIDAD_INFO = [
+  { key: 'pendiente', label: 'Pendiente' },
+  { key: 'satisfecho', label: 'Satisfecho' },
+  { key: 'regular', label: 'Regular' },
+  { key: 'insatisfecho', label: 'Insatisfecho' },
+  { key: 'observado', label: 'Observado' },
+  { key: 'no_reconoce_servicio', label: 'No reconoce' },
+  { key: 'baja', label: 'Baja' },
+]
+
+// Fórmula de efectividad de Calidad — no existía una definición previa en el
+// sistema (revisado en backend y frontend), así que se usa temporalmente:
+// satisfechos / gestiones cerradas × 100, donde "cerradas" excluye Pendiente.
+// Centralizada aquí: para cambiar la fórmula solo hace falta tocar esta función.
+// La lista de "cerradas" se deriva de CAMPOS_ESTADO_CALIDAD (todo menos
+// pendiente) para que ambas listas nunca puedan desincronizarse.
+const CAMPOS_CERRADOS_CALIDAD = CAMPOS_ESTADO_CALIDAD.filter(campo => campo !== 'pendiente')
+function calcularEfectividad(totales) {
+  const cerradas = CAMPOS_CERRADOS_CALIDAD.reduce((suma, campo) => suma + Number(totales?.[campo] || 0), 0)
+  const pct = cerradas ? (Number(totales?.satisfecho || 0) / cerradas) * 100 : 0
+  return { cerradas, pct }
+}
+
 function FiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = false }) {
   const [abierto, setAbierto] = useState(false)
   const [buscar, setBuscar] = useState('')
@@ -100,9 +126,14 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
-  const [rendimiento, setRendimiento] = useState([])
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
-  const [fechaRendimiento, setFechaRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
+  const [mesRendimiento, setMesRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }).slice(0, 7))
+  const [porUsuarioRendimiento, setPorUsuarioRendimiento] = useState([])
+  const [porDiaRendimiento, setPorDiaRendimiento] = useState([])
+  const [encargadoRendimiento, setEncargadoRendimiento] = useState('')
+  const canvasEvolucion = useRef(null)
+  const instEvolucion = useRef(null)
+  const peticionRendimientoRef = useRef(0)
   // Jefatura las supervisa al entrar por Accesos directos, pero solo Calidad edita.
   const esCalidad = areaNombre.toLowerCase().includes('calidad') && ['calidad','supcalidad'].includes(sesion?.cargo)
   const puedeEditarCalidad = esCalidad && !sesion?._actorJefatura
@@ -127,19 +158,29 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
 
   const cargarRendimiento = useCallback(async () => {
     if (!modoSupervisorCalidad) return
+    const [anioStr, mesStr] = mesRendimiento.split('-')
+    const anio = Number(anioStr)
+    const mes = Number(mesStr)
+    if (!Number.isInteger(anio) || !Number.isInteger(mes)) return
+    // Guarda de orden: si el usuario cambia de mes antes de que responda la
+    // petición anterior, solo se aplica la respuesta de la petición más reciente.
+    const idPeticion = ++peticionRendimientoRef.current
     setCargandoRendimiento(true)
     setMensaje('')
     try {
-      const res = await fetch(`${API}/ventas/calidad-rendimiento?fecha=${fechaRendimiento}`, { headers:ncHeaders() })
+      const res = await fetch(`${API}/ventas/calidad-rendimiento?anio=${anio}&mes=${mes}`, { headers:ncHeaders() })
       const json = await res.json()
       if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo cargar el rendimiento')
-      setRendimiento(Array.isArray(json.data) ? json.data : [])
+      if (idPeticion !== peticionRendimientoRef.current) return
+      setPorUsuarioRendimiento(Array.isArray(json.porUsuario) ? json.porUsuario : [])
+      setPorDiaRendimiento(Array.isArray(json.porDia) ? json.porDia : [])
     } catch (error) {
+      if (idPeticion !== peticionRendimientoRef.current) return
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally {
-      setCargandoRendimiento(false)
+      if (idPeticion === peticionRendimientoRef.current) setCargandoRendimiento(false)
     }
-  }, [fechaRendimiento, modoSupervisorCalidad])
+  }, [mesRendimiento, modoSupervisorCalidad])
 
   useEffect(() => {
     if (pestanaCalidad === 'rendimiento') cargarRendimiento()
@@ -181,21 +222,138 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
-  const totalesRendimiento = useMemo(() => rendimiento.reduce((total, fila) => {
-    for (const campo of ['llamadas_dia','pendiente','satisfecho','regular','insatisfecho','observado','no_reconoce_servicio','baja']) {
-      total[campo] += Number(fila[campo] || 0)
-    }
-    return total
-  }, { llamadas_dia:0, pendiente:0, satisfecho:0, regular:0, insatisfecho:0, observado:0, no_reconoce_servicio:0, baja:0 }), [rendimiento])
+  // Días reales del mes seleccionado (28/29/30/31), a partir del propio Date.
+  const diasDelMesRendimiento = useMemo(() => {
+    const [anioStr, mesStr] = mesRendimiento.split('-')
+    const anio = Number(anioStr)
+    const mes = Number(mesStr)
+    if (!Number.isInteger(anio) || !Number.isInteger(mes)) return 31
+    return new Date(anio, mes, 0).getDate()
+  }, [mesRendimiento])
 
-  // Distribución visual del resumen: se calcula con los mismos totales ya cargados (sin nuevas consultas).
+  const etiquetaMesRendimiento = useMemo(() => {
+    const [anioStr, mesStr] = mesRendimiento.split('-')
+    const anio = Number(anioStr)
+    const mes = Number(mesStr)
+    if (!Number.isInteger(anio) || !Number.isInteger(mes)) return ''
+    const nombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+    const nombre = nombres[mes - 1] || ''
+    return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`
+  }, [mesRendimiento])
+
+  // Drill-down: persona activa según el filtro de encargado (dropdown, tarjeta o ranking).
+  const personaSeleccionadaRendimiento = useMemo(
+    () => porUsuarioRendimiento.find(persona => String(persona.id) === encargadoRendimiento) || null,
+    [porUsuarioRendimiento, encargadoRendimiento]
+  )
+
+  // Totales del período: de la persona seleccionada, o sumados de todo el equipo.
+  const totalesRendimiento = useMemo(() => {
+    const base = { gestiones:0, pendiente:0, satisfecho:0, regular:0, insatisfecho:0, observado:0, no_reconoce_servicio:0, baja:0 }
+    const campos = ['gestiones', ...CAMPOS_ESTADO_CALIDAD]
+    if (personaSeleccionadaRendimiento) {
+      for (const campo of campos) base[campo] = Number(personaSeleccionadaRendimiento[campo] || 0)
+      return base
+    }
+    return porUsuarioRendimiento.reduce((total, fila) => {
+      for (const campo of campos) total[campo] += Number(fila[campo] || 0)
+      return total
+    }, base)
+  }, [porUsuarioRendimiento, personaSeleccionadaRendimiento])
+
+  const efectividadRendimiento = useMemo(() => calcularEfectividad(totalesRendimiento), [totalesRendimiento])
+
+  // Distribución del mes (7 estados): se calcula con los mismos totales ya cargados (sin nuevas consultas).
   const distribucionRendimiento = useMemo(() => {
-    const criticos = totalesRendimiento.insatisfecho + totalesRendimiento.baja
-    const total = totalesRendimiento.satisfecho + totalesRendimiento.regular + criticos
-    if (!total) return null
-    const pct = valor => Math.round((valor / total) * 100)
-    return { satisfecho: pct(totalesRendimiento.satisfecho), regular: pct(totalesRendimiento.regular), critico: pct(criticos) }
+    if (!totalesRendimiento.gestiones) return null
+    return ESTADOS_CALIDAD_INFO.map(info => ({
+      ...info,
+      cantidad: totalesRendimiento[info.key],
+      pct: Math.round((totalesRendimiento[info.key] / totalesRendimiento.gestiones) * 100),
+    }))
   }, [totalesRendimiento])
+
+  // Serie diaria para el gráfico de evolución: agrega por-usuario/por-día ya
+  // agregado en backend, sin pedir datos nuevos al cambiar de encargado.
+  const serieDiariaRendimiento = useMemo(() => {
+    const filas = encargadoRendimiento
+      ? porDiaRendimiento.filter(fila => String(fila.id) === encargadoRendimiento)
+      : porDiaRendimiento
+    const campos = ['gestiones', ...CAMPOS_ESTADO_CALIDAD]
+    const porDia = new Map()
+    for (const fila of filas) {
+      const dia = Number(fila.dia)
+      const acumulado = porDia.get(dia) || Object.fromEntries(campos.map(campo => [campo, 0]))
+      for (const campo of campos) acumulado[campo] += Number(fila[campo] || 0)
+      porDia.set(dia, acumulado)
+    }
+    return Array.from({ length: diasDelMesRendimiento }, (_, indice) => {
+      const dia = indice + 1
+      const datos = porDia.get(dia) || Object.fromEntries(campos.map(campo => [campo, 0]))
+      return { dia, gestiones: datos.gestiones, efectividad: Math.round(calcularEfectividad(datos).pct * 10) / 10 }
+    })
+  }, [porDiaRendimiento, encargadoRendimiento, diasDelMesRendimiento])
+
+  // Comparación entre encargados, de mayor a menor cantidad de gestiones.
+  const rankingRendimiento = useMemo(
+    () => [...porUsuarioRendimiento].sort((a, b) => Number(b.gestiones || 0) - Number(a.gestiones || 0)),
+    [porUsuarioRendimiento]
+  )
+
+  useEffect(() => {
+    if (!modoSupervisorCalidad || pestanaCalidad !== 'rendimiento' || !canvasEvolucion.current) return undefined
+    let cancelado = false
+    ;(async () => {
+      const { default: Chart } = await import('chart.js/auto')
+      if (cancelado || !canvasEvolucion.current) return
+      if (instEvolucion.current) { instEvolucion.current.destroy(); instEvolucion.current = null }
+      instEvolucion.current = new Chart(canvasEvolucion.current, {
+        data: {
+          labels: serieDiariaRendimiento.map(dia => String(dia.dia)),
+          datasets: [
+            {
+              type: 'bar', label: 'Gestiones', yAxisID: 'y', order: 2,
+              data: serieDiariaRendimiento.map(dia => dia.gestiones),
+              backgroundColor: 'rgba(15,23,42,.72)', borderRadius: 4, maxBarThickness: 22,
+            },
+            {
+              type: 'line', label: 'Efectividad', yAxisID: 'y1', order: 1,
+              data: serieDiariaRendimiento.map(dia => dia.efectividad),
+              borderColor: '#0f766e', backgroundColor: 'rgba(15,118,110,.08)',
+              tension: .35, pointRadius: 2, pointBackgroundColor: '#0f766e', fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: {
+              beginAtZero: true, position: 'left',
+              grid: { color: '#f1f5f9' }, ticks: { precision: 0, font: { size: 10 } },
+              title: { display: true, text: 'Gestiones', font: { size: 10, weight: '700' } },
+            },
+            y1: {
+              beginAtZero: true, min: 0, max: 100, position: 'right',
+              grid: { display: false }, ticks: { callback: valor => `${valor}%`, font: { size: 10 } },
+              title: { display: true, text: 'Efectividad', font: { size: 10, weight: '700' } },
+            },
+          },
+        },
+      })
+    })()
+    return () => {
+      cancelado = true
+      // Destruye también al salir de la pestaña Rendimiento (no solo al
+      // desmontar el componente), para no dejar un Chart.js huérfano atado
+      // a un <canvas> que ya no está en el DOM.
+      if (instEvolucion.current) { instEvolucion.current.destroy(); instEvolucion.current = null }
+    }
+  }, [serieDiariaRendimiento, modoSupervisorCalidad, pestanaCalidad])
+
+  useEffect(() => () => { instEvolucion.current?.destroy() }, [])
 
   function salir() { logout(); navigate('/login') }
   function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null) }
@@ -330,7 +488,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
           </nav>
           <div className="sup-calidad-toolbar-controls">
-            {pestanaCalidad === 'rendimiento' && <label className="sup-calidad-fecha"><span>FECHA</span><input type="date" value={fechaRendimiento} onChange={e => setFechaRendimiento(e.target.value)} /></label>}
+            {pestanaCalidad === 'rendimiento' && <>
+              <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
+              <label className="sup-calidad-encargado"><span>ENCARGADO</span>
+                <select value={encargadoRendimiento} onChange={e => setEncargadoRendimiento(e.target.value)}>
+                  <option value="">Todos los encargados</option>
+                  {porUsuarioRendimiento.map(persona => <option value={String(persona.id)} key={persona.id}>{persona.nombre}</option>)}
+                </select>
+              </label>
+            </>}
             <button className="sup-calidad-actualizar" onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
           </div>
         </section>}
@@ -390,46 +556,117 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
 
         {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <section className="sup-calidad-rendimiento">
           <header>
-            <span className="sup-calidad-eyebrow">RENDIMIENTO DEL EQUIPO</span>
-            <h2>Métricas por personal de Calidad</h2>
-            <p>Las llamadas se contabilizan cuando el usuario registra la tipificación de llamada del cliente.</p>
+            <span className="sup-calidad-eyebrow">{personaSeleccionadaRendimiento ? 'DETALLE INDIVIDUAL' : 'RENDIMIENTO DEL EQUIPO'}</span>
+            <h2>{personaSeleccionadaRendimiento ? personaSeleccionadaRendimiento.nombre : 'Métricas por personal de Calidad'}</h2>
+            <p>
+              {personaSeleccionadaRendimiento
+                ? `${personaSeleccionadaRendimiento.cargo === 'supcalidad' ? 'Supervisora de Calidad' : 'Personal de Calidad'} · ${etiquetaMesRendimiento}`
+                : `Vista mensual de todo el equipo · ${etiquetaMesRendimiento}`}
+            </p>
+            {personaSeleccionadaRendimiento && (
+              <button type="button" className="sup-rend-volver" onClick={() => setEncargadoRendimiento('')}>← Todos los encargados</button>
+            )}
           </header>
-          <div className="sup-calidad-resumen">
-            <article><strong>{totalesRendimiento.llamadas_dia}</strong><span>LLAMADAS DEL DÍA</span></article>
+
+          <div className="sup-rend-kpis">
+            <article><strong>{totalesRendimiento.gestiones}</strong><span>GESTIONES DEL MES</span></article>
             <article><strong>{totalesRendimiento.satisfecho}</strong><span>SATISFECHOS</span></article>
             <article><strong>{totalesRendimiento.regular}</strong><span>REGULARES</span></article>
-            <article><strong>{totalesRendimiento.insatisfecho + totalesRendimiento.baja}</strong><span>CRÍTICOS</span></article>
+            <article><strong>{totalesRendimiento.insatisfecho}</strong><span>INSATISFECHOS</span></article>
+            <article><strong>{totalesRendimiento.pendiente}</strong><span>PENDIENTES</span></article>
+            <article className="sup-rend-kpi-efectividad">
+              <strong>{efectividadRendimiento.pct.toFixed(1)}%</strong><span>EFECTIVIDAD</span>
+              <small>{totalesRendimiento.satisfecho} de {efectividadRendimiento.cerradas} cerradas</small>
+            </article>
           </div>
-          {distribucionRendimiento && <div className="sup-calidad-distribucion">
-            <div className="sup-calidad-distribucion-head">Distribución de resultados</div>
-            <div className="sup-calidad-distribucion-bar">
-              <span className="seg-satisfecho" style={{ width: `${distribucionRendimiento.satisfecho}%` }} />
-              <span className="seg-regular" style={{ width: `${distribucionRendimiento.regular}%` }} />
-              <span className="seg-critico" style={{ width: `${distribucionRendimiento.critico}%` }} />
+
+          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
+
+          <div className="sup-rend-grid">
+            <div className="sup-rend-chart-card">
+              <div className="sup-rend-card-title">Evolución mensual de Calidad</div>
+              <div className="sup-rend-chart-wrap"><canvas ref={canvasEvolucion} /></div>
             </div>
-            <div className="sup-calidad-distribucion-legend">
-              <span className="leg-satisfecho">Satisfechos <b>{distribucionRendimiento.satisfecho}%</b></span>
-              <span className="leg-regular">Regulares <b>{distribucionRendimiento.regular}%</b></span>
-              <span className="leg-critico">Críticos <b>{distribucionRendimiento.critico}%</b></span>
+            <div className="sup-rend-distribucion-card">
+              <div className="sup-rend-card-title">Distribución del mes</div>
+              {distribucionRendimiento ? (<>
+                <div className="sup-rend-dist-bar">
+                  {distribucionRendimiento.filter(estado => estado.pct > 0).map(estado => (
+                    <span key={estado.key} className={`seg-${estado.key}`} style={{ width: `${estado.pct}%` }} title={`${estado.label}: ${estado.cantidad} (${estado.pct}%)`} />
+                  ))}
+                </div>
+                <div className="sup-rend-dist-legend">
+                  {distribucionRendimiento.map(estado => (
+                    <span key={estado.key} className={`leg-${estado.key}`}>
+                      {estado.label}<b>{estado.cantidad}</b><small>{estado.pct}%</small>
+                    </span>
+                  ))}
+                </div>
+              </>) : <div className="sup-calidad-sin-datos">Sin gestiones registradas en este período.</div>}
+            </div>
+          </div>
+
+          {!personaSeleccionadaRendimiento && <div className="sup-rend-ranking-card">
+            <div className="sup-rend-card-title">Comparación entre encargados<span>ordenado por gestiones</span></div>
+            <div className="sup-rend-ranking-scroll">
+              <table className="sup-rend-ranking">
+                <thead><tr><th>ENCARGADO</th><th>GESTIONES</th><th>SATISFECHOS</th><th>PENDIENTES</th><th>EFECTIVIDAD</th></tr></thead>
+                <tbody>
+                  {rankingRendimiento.map(persona => {
+                    const efectividad = calcularEfectividad(persona)
+                    return (
+                      <tr key={persona.id} onClick={() => setEncargadoRendimiento(String(persona.id))}>
+                        <td className="sup-rend-ranking-nombre">{persona.nombre}</td>
+                        <td>{persona.gestiones}</td>
+                        <td>{persona.satisfecho}</td>
+                        <td>{persona.pendiente}</td>
+                        <td>
+                          <div className="sup-rend-ranking-ef">
+                            <span>{efectividad.pct.toFixed(1)}%</span>
+                            <div className="sup-rend-ranking-ef-track"><div style={{ width: `${Math.min(efectividad.pct, 100)}%` }} /></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {!cargandoRendimiento && !rankingRendimiento.length && <tr><td colSpan={5} className="cobranzas-empty">No hay personal activo de Calidad para mostrar.</td></tr>}
+                </tbody>
+              </table>
             </div>
           </div>}
-          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
-          <div className="sup-calidad-metricas-grid">
-            {rendimiento.map(persona => <article className="sup-calidad-persona" key={persona.id}>
-              <header><div><strong>{persona.nombre}</strong><span>{persona.cargo === 'supcalidad' ? 'SUPERVISORA DE CALIDAD' : 'PERSONAL DE CALIDAD'}</span></div><b>{Number(persona.llamadas_dia || 0)}<small>LLAMADAS</small></b></header>
-              <div>
-                <span className="m-pendiente"><b>{persona.pendiente}</b>PENDIENTE</span>
-                <span className="m-positivo"><b>{persona.satisfecho}</b>SATISFECHO</span>
-                <span className="m-alerta"><b>{persona.regular}</b>REGULAR</span>
-                <span className="m-negativo"><b>{persona.insatisfecho}</b>INSATISFECHO</span>
-                <span className="m-alerta"><b>{persona.observado}</b>OBSERVADO</span>
-                <span className="m-negativo"><b>{persona.no_reconoce_servicio}</b>NO RECONOCE</span>
-                <span className="m-negativo"><b>{persona.baja}</b>BAJA</span>
-              </div>
-            </article>)}
-            {!cargandoRendimiento && !rendimiento.length && <div className="sup-calidad-sin-datos">No hay personal activo de Calidad para mostrar.</div>}
+
+          {!personaSeleccionadaRendimiento && <div className="sup-calidad-metricas-grid">
+            {porUsuarioRendimiento.map(persona => {
+              const efectividad = calcularEfectividad(persona)
+              const seleccionar = () => setEncargadoRendimiento(String(persona.id))
+              return (
+                <article
+                  className="sup-calidad-persona" key={persona.id} role="button" tabIndex={0}
+                  onClick={seleccionar}
+                  onKeyDown={evento => { if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); seleccionar() } }}
+                >
+                  <header>
+                    <div><strong>{persona.nombre}</strong><span>{persona.cargo === 'supcalidad' ? 'SUPERVISORA DE CALIDAD' : 'PERSONAL DE CALIDAD'}</span></div>
+                    <b>{Number(persona.gestiones || 0)}<small>GESTIONES</small></b>
+                  </header>
+                  <div className="sup-rend-persona-efectividad">
+                    <span>Efectividad</span><strong>{efectividad.pct.toFixed(1)}%</strong><small>{persona.satisfecho} / {efectividad.cerradas} cerradas</small>
+                  </div>
+                  <div>
+                    <span className="m-pendiente"><b>{persona.pendiente}</b>PENDIENTE</span>
+                    <span className="m-positivo"><b>{persona.satisfecho}</b>SATISFECHO</span>
+                    <span className="m-alerta"><b>{persona.regular}</b>REGULAR</span>
+                    <span className="m-negativo"><b>{persona.insatisfecho}</b>INSATISFECHO</span>
+                    <span className="m-alerta"><b>{persona.observado}</b>OBSERVADO</span>
+                    <span className="m-negativo"><b>{persona.no_reconoce_servicio}</b>NO RECONOCE</span>
+                    <span className="m-negativo"><b>{persona.baja}</b>BAJA</span>
+                  </div>
+                </article>
+              )
+            })}
+            {!cargandoRendimiento && !porUsuarioRendimiento.length && <div className="sup-calidad-sin-datos">No hay personal activo de Calidad para mostrar.</div>}
             {cargandoRendimiento && <div className="sup-calidad-sin-datos">Cargando métricas del equipo…</div>}
-          </div>
+          </div>}
         </section>}
       </main>
 

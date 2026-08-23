@@ -768,59 +768,103 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .sup-calidad-tabs button{min-width:120px;height:38px;padding:0 18px;border:0;border-radius:9px;background:transparent;color:var(--cz-muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.16s ease}
 .sup-calidad-tabs button:hover{color:var(--cz-navy)}
 .sup-calidad-tabs button.activo{background:#fff;color:var(--cz-navy);box-shadow:var(--cz-shadow-sm);font-weight:900}
-.sup-calidad-toolbar-controls{display:flex;align-items:center;gap:12px}
+.sup-calidad-toolbar-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .sup-calidad-fecha{display:flex;align-items:center;gap:9px}
 .sup-calidad-fecha span{color:var(--cz-muted);font-size:9.5px;font-weight:800;letter-spacing:.5px}
 .sup-calidad-fecha input{height:38px;padding:0 12px;border:1px solid var(--cz-border);border-radius:9px;background:#f8fafc;color:var(--cz-ink);font:inherit;font-size:12px;outline:none;transition:.15s ease}
 .sup-calidad-fecha input:focus{border-color:var(--cz-navy);background:#fff;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
+.sup-calidad-encargado{display:flex;align-items:center;gap:9px}
+.sup-calidad-encargado span{color:var(--cz-muted);font-size:9.5px;font-weight:800;letter-spacing:.5px}
+.sup-calidad-encargado select{height:38px;min-width:190px;padding:0 12px;border:1px solid var(--cz-border);border-radius:9px;background:#f8fafc;color:var(--cz-ink);font:inherit;font-size:12px;font-weight:700;outline:none;cursor:pointer;transition:.15s ease}
+.sup-calidad-encargado select:focus{border-color:var(--cz-navy);background:#fff;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
 .sup-calidad-actualizar{height:40px;padding:0 22px;border:0;border-radius:10px;background:var(--cz-navy);color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(15,23,42,.18);transition:.15s ease}
 .sup-calidad-actualizar:hover:not(:disabled){background:var(--cz-navy-2);transform:translateY(-1px)}
 .sup-calidad-actualizar:disabled{opacity:.6;cursor:default;box-shadow:none}
 
 /* ---------- Encabezado del panel ---------- */
 .sup-calidad-rendimiento{overflow:hidden;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-lg);background:var(--cz-card);box-shadow:var(--cz-shadow-sm)}
-.sup-calidad-rendimiento>header{padding:22px 24px 18px;border-bottom:1px solid var(--cz-border-soft)}
+.sup-calidad-rendimiento>header{position:relative;padding:22px 130px 18px 24px;border-bottom:1px solid var(--cz-border-soft)}
 .sup-calidad-eyebrow{display:block;color:#7c3aed;font-size:9.5px;font-weight:900;letter-spacing:.7px}
 .sup-calidad-rendimiento>header h2{margin:6px 0 4px;color:var(--cz-navy);font-size:21px;font-weight:800;letter-spacing:-.3px}
 .sup-calidad-rendimiento>header p{margin:0;max-width:640px;color:var(--cz-faint);font-size:12px}
+.sup-rend-volver{position:absolute;right:24px;top:22px;height:34px;padding:0 16px;border:1px solid var(--cz-border);border-radius:999px;background:#fff;color:var(--cz-navy-2);font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:.15s ease}
+.sup-rend-volver:hover{background:var(--cz-bg);border-color:#cbd5e1}
 
-/* ---------- KPIs generales ---------- */
-.sup-calidad-resumen{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:20px 24px;background:var(--cz-bg)}
-.sup-calidad-resumen article{position:relative;overflow:hidden;padding:16px 18px;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs);transition:.18s ease}
-.sup-calidad-resumen article::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cz-navy)}
-.sup-calidad-resumen article:hover{box-shadow:var(--cz-shadow-sm);transform:translateY(-1px)}
-.sup-calidad-resumen article:nth-child(2)::before{background:#059669}
-.sup-calidad-resumen article:nth-child(3)::before{background:#d97706}
-.sup-calidad-resumen article:nth-child(4)::before{background:#dc2626}
-.sup-calidad-resumen strong{display:block;color:var(--cz-navy);font-size:28px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
-.sup-calidad-resumen span{display:block;margin-top:6px;color:var(--cz-faint);font-size:9.5px;font-weight:800;letter-spacing:.5px}
+/* ---------- KPIs mensuales ---------- */
+.sup-rend-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;padding:20px 24px;background:var(--cz-bg)}
+.sup-rend-kpis article{position:relative;overflow:hidden;padding:14px 15px;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs);transition:.18s ease}
+.sup-rend-kpis article::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cz-navy)}
+.sup-rend-kpis article:hover{box-shadow:var(--cz-shadow-sm);transform:translateY(-1px)}
+.sup-rend-kpis article:nth-child(2)::before{background:#059669}
+.sup-rend-kpis article:nth-child(3)::before{background:#d97706}
+.sup-rend-kpis article:nth-child(4)::before{background:#dc2626}
+.sup-rend-kpis article:nth-child(5)::before{background:#ca8a04}
+.sup-rend-kpis article:nth-child(6)::before{background:var(--cz-teal)}
+.sup-rend-kpis strong{display:block;color:var(--cz-navy);font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
+.sup-rend-kpis span{display:block;margin-top:5px;color:var(--cz-faint);font-size:9px;font-weight:800;letter-spacing:.4px}
+.sup-rend-kpi-efectividad strong{color:var(--cz-teal)}
+.sup-rend-kpi-efectividad small{display:block;margin-top:4px;color:var(--cz-muted);font-size:8.5px;font-weight:700}
 
-/* ---------- Distribución de resultados (derivada de los KPIs, sin datos nuevos) ---------- */
-.sup-calidad-distribucion{padding:0 24px 20px}
-.sup-calidad-distribucion-head{margin-bottom:9px;color:var(--cz-muted);font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
-.sup-calidad-distribucion-bar{display:flex;height:10px;overflow:hidden;border-radius:999px;background:var(--cz-border-soft)}
-.sup-calidad-distribucion-bar span{display:block;height:100%;transition:width .3s ease}
-.sup-calidad-distribucion-bar .seg-satisfecho{background:#10b981}
-.sup-calidad-distribucion-bar .seg-regular{background:#f59e0b}
-.sup-calidad-distribucion-bar .seg-critico{background:#ef4444}
-.sup-calidad-distribucion-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px}
-.sup-calidad-distribucion-legend span{display:flex;align-items:center;gap:6px;color:var(--cz-muted);font-size:10.5px;font-weight:700}
-.sup-calidad-distribucion-legend span::before{content:'';width:8px;height:8px;flex:0 0 auto;border-radius:50%}
-.sup-calidad-distribucion-legend b{color:var(--cz-navy);font-weight:800}
-.sup-calidad-distribucion-legend .leg-satisfecho::before{background:#10b981}
-.sup-calidad-distribucion-legend .leg-regular::before{background:#f59e0b}
-.sup-calidad-distribucion-legend .leg-critico::before{background:#ef4444}
+/* ---------- Gráfico de evolución + distribución del mes ---------- */
+.sup-rend-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:20px 24px 0}
+.sup-rend-chart-card,.sup-rend-distribucion-card{padding:17px 19px;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs)}
+.sup-rend-card-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;color:var(--cz-navy);font-size:12.5px;font-weight:800}
+.sup-rend-card-title span{color:var(--cz-faint);font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+.sup-rend-chart-wrap{position:relative;height:280px}
+
+.sup-rend-dist-bar{display:flex;height:14px;overflow:hidden;border-radius:999px;background:var(--cz-border-soft)}
+.sup-rend-dist-bar span{display:block;height:100%;transition:width .3s ease}
+.sup-rend-dist-bar .seg-pendiente{background:#eab308}
+.sup-rend-dist-bar .seg-satisfecho{background:#10b981}
+.sup-rend-dist-bar .seg-regular{background:#f59e0b}
+.sup-rend-dist-bar .seg-insatisfecho{background:#ef4444}
+.sup-rend-dist-bar .seg-observado{background:#fb923c}
+.sup-rend-dist-bar .seg-no_reconoce_servicio{background:#fda4af}
+.sup-rend-dist-bar .seg-baja{background:#94a3b8}
+.sup-rend-dist-legend{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+.sup-rend-dist-legend span{display:flex;align-items:center;gap:7px;color:var(--cz-muted);font-size:11px;font-weight:700}
+.sup-rend-dist-legend span::before{content:'';width:8px;height:8px;flex:0 0 auto;border-radius:50%}
+.sup-rend-dist-legend b{margin-left:auto;color:var(--cz-navy);font-weight:800}
+.sup-rend-dist-legend small{min-width:34px;color:var(--cz-faint);font-size:9.5px;font-weight:700;text-align:right}
+.sup-rend-dist-legend .leg-pendiente::before{background:#eab308}
+.sup-rend-dist-legend .leg-satisfecho::before{background:#10b981}
+.sup-rend-dist-legend .leg-regular::before{background:#f59e0b}
+.sup-rend-dist-legend .leg-insatisfecho::before{background:#ef4444}
+.sup-rend-dist-legend .leg-observado::before{background:#fb923c}
+.sup-rend-dist-legend .leg-no_reconoce_servicio::before{background:#fda4af}
+.sup-rend-dist-legend .leg-baja::before{background:#94a3b8}
+
+/* ---------- Ranking / comparación entre encargados ---------- */
+.sup-rend-ranking-card{margin:16px 24px 0;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs);overflow:hidden}
+.sup-rend-ranking-card .sup-rend-card-title{margin:0;padding:15px 19px;border-bottom:1px solid var(--cz-border-soft)}
+.sup-rend-ranking-scroll{overflow-x:auto}
+.sup-rend-ranking{width:100%;min-width:520px;border-collapse:collapse}
+.sup-rend-ranking th{position:sticky;top:0;padding:10px 14px;background:var(--cz-navy);color:#cbd5e1;text-align:left;font-size:9px;font-weight:800;letter-spacing:.4px}
+.sup-rend-ranking th:not(:first-child),.sup-rend-ranking td:not(:first-child){text-align:right}
+.sup-rend-ranking td{padding:11px 14px;border-bottom:1px solid var(--cz-border-soft);color:#475569;font-size:12px}
+.sup-rend-ranking tbody tr{cursor:pointer;transition:background-color .12s ease}
+.sup-rend-ranking tbody tr:hover td{background:#f6faf9}
+.sup-rend-ranking-nombre{color:var(--cz-navy);font-weight:800;text-align:left!important}
+.sup-rend-ranking-ef{display:flex;align-items:center;justify-content:flex-end;gap:9px}
+.sup-rend-ranking-ef span{min-width:44px;color:var(--cz-navy);font-weight:800}
+.sup-rend-ranking-ef-track{width:64px;height:6px;border-radius:999px;background:var(--cz-border-soft);overflow:hidden}
+.sup-rend-ranking-ef-track div{height:100%;background:var(--cz-teal);border-radius:999px}
 
 /* ---------- Tarjetas de personal ---------- */
 .sup-calidad-metricas-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:20px 24px 26px}
-.sup-calidad-persona{overflow:hidden;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs);transition:.18s ease}
-.sup-calidad-persona:hover{box-shadow:var(--cz-shadow-sm);transform:translateY(-1px)}
+.sup-calidad-persona{overflow:hidden;border:1px solid var(--cz-border-soft);border-radius:var(--cz-radius-md);background:#fff;box-shadow:var(--cz-shadow-xs);transition:.18s ease;cursor:pointer;text-align:left}
+.sup-calidad-persona:hover{box-shadow:var(--cz-shadow-sm);transform:translateY(-1px);border-color:#cbd5e1}
+.sup-calidad-persona:focus-visible{outline:2px solid var(--cz-teal);outline-offset:2px}
 
 .sup-calidad-persona>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 19px;background:#fafbfd;border-bottom:1px solid var(--cz-border-soft)}
 .sup-calidad-persona>header strong{display:block;color:var(--cz-navy);font-size:15.5px;font-weight:800;letter-spacing:-.2px}
 .sup-calidad-persona>header span{display:inline-block;margin-top:7px;padding:3px 9px;border-radius:999px;background:#f3e8ff;color:#7c3aed;font-size:8.5px;font-weight:800;letter-spacing:.5px}
 .sup-calidad-persona>header>b{display:flex;flex:0 0 auto;flex-direction:column;align-items:center;justify-content:center;min-width:78px;padding:9px 14px;border:1px solid var(--cz-border);border-radius:12px;background:#fff;color:var(--cz-navy);font-size:24px;font-weight:800;line-height:1}
 .sup-calidad-persona>header>b small{margin-top:5px;color:var(--cz-faint);font-size:7.5px;font-weight:800;letter-spacing:.6px}
+
+.sup-rend-persona-efectividad{display:flex;align-items:baseline;gap:8px;padding:11px 19px;background:var(--cz-teal-soft);border-bottom:1px solid var(--cz-border-soft);font-size:10.5px;font-weight:700;color:var(--cz-muted)}
+.sup-rend-persona-efectividad strong{color:var(--cz-teal);font-size:15px;font-weight:800}
+.sup-rend-persona-efectividad small{margin-left:auto;color:var(--cz-faint);font-size:9.5px;font-weight:700}
 
 .sup-calidad-persona>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 10px;padding:15px 18px 17px;border-top:1px solid var(--cz-border-soft)}
 .sup-calidad-persona>div>span{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 4px 7px 10px;border-left:2px solid var(--cz-border);text-align:left;font-size:8.5px;font-weight:800;letter-spacing:.3px;color:var(--cz-muted)}
@@ -836,8 +880,11 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 
 .sup-calidad-sin-datos{grid-column:1/-1;padding:56px 20px;text-align:center;color:var(--cz-faint);font-size:12.5px}
 
+@media(max-width:1200px){
+  .sup-rend-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sup-rend-grid{grid-template-columns:1fr}
+}
 @media(max-width:900px){
-  .sup-calidad-resumen{grid-template-columns:repeat(2,1fr)}
   .sup-calidad-metricas-grid{grid-template-columns:1fr}
 }
 @media(max-width:620px){
@@ -845,12 +892,16 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
   .sup-calidad-tabs{width:100%;box-sizing:border-box}
   .sup-calidad-tabs button{min-width:0;flex:1;padding:0 5px;font-size:10.5px}
   .sup-calidad-toolbar-controls{width:100%;justify-content:flex-end}
-  .sup-calidad-fecha{flex:1}
-  .sup-calidad-fecha input{width:100%}
-  .sup-calidad-resumen{grid-template-columns:1fr 1fr}
+  .sup-calidad-fecha,.sup-calidad-encargado{flex:1;min-width:130px}
+  .sup-calidad-fecha input,.sup-calidad-encargado select{width:100%;min-width:0}
+  .sup-rend-kpis{grid-template-columns:1fr 1fr;padding:16px}
+  .sup-rend-grid{padding:16px 16px 0}
+  .sup-rend-ranking-card{margin:16px}
+  .sup-calidad-rendimiento>header{padding:20px 20px 16px}
+  .sup-rend-volver{position:static;display:block;margin-top:12px}
 }
 @media(max-width:480px){
   .sup-calidad-persona>div{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sup-calidad-persona>header{flex-wrap:wrap}
-  .sup-calidad-distribucion-legend{gap:8px 14px}
+  .sup-rend-kpis{grid-template-columns:1fr 1fr}
 }
