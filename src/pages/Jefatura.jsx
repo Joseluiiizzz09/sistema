@@ -385,9 +385,9 @@ export default function Jefatura() {
   const [masivoSeleccion, setMasivoSeleccion] = useState(() => new Set())
   const [masivoFiltros, setMasivoFiltros] = useState({ campana: '', distrito: '', desde: '', hasta: '' })
   const [masivoCantidadInput, setMasivoCantidadInput] = useState('')
-  const [masivoCatalogos, setMasivoCatalogos] = useState({ campanas: [], distritos: [] })
+  const [masivoCatalogos, setMasivoCatalogos] = useState({ campanas: [], tipificaciones: [] })
   const [filtroMasivoCampanas, setFiltroMasivoCampanas] = useState(null)
-  const [filtroMasivoDistritos, setFiltroMasivoDistritos] = useState(null)
+  const [filtroMasivoTipificaciones, setFiltroMasivoTipificaciones] = useState(null)
   const [masivoModoFecha, setMasivoModoFecha] = useState('rango')
   const [masivoCopiando, setMasivoCopiando] = useState(false)
 
@@ -569,7 +569,7 @@ export default function Jefatura() {
       setMasivoSeleccion(new Set())
       setMasivoCatalogos({
         campanas: Array.isArray(data.filtros?.campanas) ? data.filtros.campanas : [],
-        distritos: Array.isArray(data.filtros?.distritos) ? data.filtros.distritos : [],
+        tipificaciones: Array.isArray(data.filtros?.tipificaciones) ? data.filtros.tipificaciones : [],
       })
     } catch (error) {
       setMasivoLeads([])
@@ -589,8 +589,8 @@ export default function Jefatura() {
 
   const masivoLeadsFiltrados = useMemo(() => masivoLeads.filter(l =>
     (filtroMasivoCampanas === null || filtroMasivoCampanas.includes(l.campana)) &&
-    (filtroMasivoDistritos === null || filtroMasivoDistritos.includes(l.distrito))
-  ), [masivoLeads, filtroMasivoCampanas, filtroMasivoDistritos])
+    (filtroMasivoTipificaciones === null || filtroMasivoTipificaciones.includes((l.tipif_vend && l.tipif_vend.trim()) || 'SIN TIPIFICAR'))
+  ), [masivoLeads, filtroMasivoCampanas, filtroMasivoTipificaciones])
 
   function masivoSeleccionarPrimerosN() {
     const n = Number(masivoCantidadInput)
@@ -1555,7 +1555,7 @@ export default function Jefatura() {
                 {masivoModoFecha === 'rango' && (
                   <label><span>Fecha hasta</span><input type="date" value={masivoFiltros.hasta} onChange={e=>setMasivoFiltros(p=>({...p,hasta:e.target.value}))} /></label>
                 )}
-                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); setFiltroMasivoCampanas(null); setFiltroMasivoDistritos(null); setMasivoModoFecha('rango'); cargarMasivo(vacio) }}>Limpiar</button>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); setFiltroMasivoCampanas(null); setFiltroMasivoTipificaciones(null); setMasivoModoFecha('rango'); cargarMasivo(vacio) }}>Limpiar</button>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>cargarMasivo(masivoFiltros)}>Buscar</button>
               </div>
             </div>
@@ -1564,7 +1564,7 @@ export default function Jefatura() {
               <div className="filtros-titulo">Filtrar lo ya cargado (como Excel)</div>
               <div className="filtros-grid">
                 <MasivoFiltroColumna titulo="CAMPAÑA" opciones={masivoCatalogos.campanas} seleccionados={filtroMasivoCampanas} onChange={setFiltroMasivoCampanas} buscable />
-                <MasivoFiltroColumna titulo="DISTRITO" opciones={masivoCatalogos.distritos} seleccionados={filtroMasivoDistritos} onChange={setFiltroMasivoDistritos} buscable />
+                <MasivoFiltroColumna titulo="TIPIFICACIÓN DEL VENDEDOR" opciones={masivoCatalogos.tipificaciones} seleccionados={filtroMasivoTipificaciones} onChange={setFiltroMasivoTipificaciones} buscable />
               </div>
             </div>
 
