@@ -229,8 +229,8 @@ function BoNavIcon({ tipo }) {
 function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17l-1 3z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+      <path d="m14.5 7.5 3 3" fill="none" stroke="currentColor" strokeWidth="1.8"/>
     </svg>
   )
 }
