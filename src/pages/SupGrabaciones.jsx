@@ -204,9 +204,16 @@ export default function SupGrabaciones() {
     setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
   }
 
+  function esSegundoCicloVenta(venta) {
+    const revision = String(venta?.estadoRev || venta?.estado_supgrab || '').trim().toLowerCase()
+    return Boolean(venta?.fecha_programado) ||
+      String(venta?.estado || '').trim().toUpperCase() === 'PROGRAMADO' ||
+      ['programado', 'audio_subido', 'no_conforme', 'conforme'].includes(revision)
+  }
+
   async function abrirModalRevisar(v) {
     setModalRevisar(v)
-    setEstadoRevision(v.estadoRev === 'programado' ? '' : (v.estadoRev || 'sin_revisar'))
+    setEstadoRevision(esSegundoCicloVenta(v) ? '' : (v.estadoRev || 'sin_revisar'))
     setRevObs('')
     setAudioSrc('')
     if (v.audioUrl) {
@@ -240,7 +247,7 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
-    const esSegundoCiclo = ['programado', 'audio_subido'].includes(String(modalRevisar.estadoRev || '').toLowerCase())
+    const esSegundoCiclo = esSegundoCicloVenta(modalRevisar)
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}?area=supgrabaciones`, {
         method: 'PATCH', headers: ncHeaders(),
@@ -276,7 +283,7 @@ export default function SupGrabaciones() {
         }),
       })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
+      if (!res.ok || !data.ok) { mostrarToast(data.mensaje || 'Error guardando'); setGuardando(false); return }
       // CONFORME completa esta etapa y pasa a Seguimiento; los demás resultados
       // permanecen visibles aquí como historial operativo.
       setVentas(list => estadoRevision === 'conforme'
@@ -533,7 +540,7 @@ export default function SupGrabaciones() {
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: '8px' }}>Resultado de revisión</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {(modalRevisar.estadoRev === 'programado'
+                {(esSegundoCicloVenta(modalRevisar)
                   ? [
                       { id: 'conforme',     label: 'CONFORME',     border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                       { id: 'audio_subido', label: 'AUDIO SUBIDO', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
