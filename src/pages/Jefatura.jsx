@@ -343,6 +343,13 @@ export default function Jefatura() {
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
   const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
   const [detalleEliminacion, setDetalleEliminacion] = useState(null)
+  const [masivoLeads, setMasivoLeads] = useState([])
+  const [masivoCargando, setMasivoCargando] = useState(false)
+  const [masivoMensaje, setMasivoMensaje] = useState('')
+  const [masivoSeleccion, setMasivoSeleccion] = useState(() => new Set())
+  const [masivoFiltros, setMasivoFiltros] = useState({ campana: '', distrito: '', desde: '', hasta: '' })
+  const [masivoCantidadInput, setMasivoCantidadInput] = useState('')
+  const [masivoCopiando, setMasivoCopiando] = useState(false)
 
 
   /* filtros persistentes */
@@ -509,6 +516,68 @@ export default function Jefatura() {
     }
   }, [])
 
+  const cargarMasivo = useCallback(async (filtros = masivoFiltros) => {
+    setMasivoCargando(true)
+    setMasivoMensaje('')
+    try {
+      const qs = new URLSearchParams()
+      Object.entries(filtros).forEach(([k, v]) => { if (v) qs.set(k, v) })
+      const res = await fetch(`${API}/leads/masivo-elegibles?${qs}`, { headers: ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar los leads')
+      setMasivoLeads(Array.isArray(data.data) ? data.data : [])
+      setMasivoSeleccion(new Set())
+    } catch (error) {
+      setMasivoLeads([])
+      setMasivoMensaje(error.message || 'Error conectando con el servidor')
+    } finally {
+      setMasivoCargando(false)
+    }
+  }, [masivoFiltros])
+
+  function masivoAlternarUno(id) {
+    setMasivoSeleccion(actual => {
+      const nuevo = new Set(actual)
+      if (nuevo.has(id)) nuevo.delete(id); else nuevo.add(id)
+      return nuevo
+    })
+  }
+
+  function masivoSeleccionarPrimerosN() {
+    const n = Number(masivoCantidadInput)
+    if (!Number.isInteger(n) || n <= 0) { setMasivoMensaje('Ingresa una cantidad válida'); return }
+    setMasivoSeleccion(new Set(masivoLeads.slice(0, n).map(l => l.id)))
+  }
+
+  async function masivoCopiarNumeros() {
+    const seleccionados = masivoLeads.filter(l => masivoSeleccion.has(l.id))
+    if (!seleccionados.length) { setMasivoMensaje('No hay leads seleccionados'); return }
+    const texto = seleccionados.map(l => l.n1).filter(Boolean).join('\n')
+    setMasivoCopiando(true)
+    setMasivoMensaje('')
+    try {
+      await navigator.clipboard.writeText(texto)
+    } catch {
+      setMasivoMensaje('No se pudo copiar al portapapeles (revisa permisos del navegador)')
+      setMasivoCopiando(false)
+      return
+    }
+    try {
+      const res = await fetch(`${API}/leads/masivo-lote`, {
+        method: 'POST', headers: ncHeaders(), body: JSON.stringify({ ids: seleccionados.map(l => l.id) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo registrar el lote')
+      const ahora = new Date().toISOString()
+      setMasivoLeads(actuales => actuales.map(l => masivoSeleccion.has(l.id) ? { ...l, masivo_lote_id: data.lote_id, masivo_fecha: ahora } : l))
+      setMasivoMensaje(`Copiados ${seleccionados.length} números al portapapeles (lote #${data.lote_id})`)
+    } catch (error) {
+      setMasivoMensaje(`Se copiaron los números, pero no se pudo dejar constancia: ${error.message || 'error de servidor'}`)
+    } finally {
+      setMasivoCopiando(false)
+    }
+  }
+
   const cargarMarketing = useCallback(async (filtros = marketingFiltros) => {
     setMarketingCarga({ cargando:true, error:'' })
     try {
@@ -599,7 +668,8 @@ export default function Jefatura() {
     if (seccion === 'reclutados-generales') cargarReclutados()
     if (seccion === 'eliminaciones') cargarEliminaciones()
     if (seccion === 'marketing-leads') cargarMarketing()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing])
+    if (seccion === 'envio-masivo') cargarMasivo()
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing, cargarMasivo])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -1135,6 +1205,7 @@ export default function Jefatura() {
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
           <div className="sidebar-sep">Operaciones</div>
           <button className={`nav-btn${seccion==='marketing-leads'?' active':''}`} onClick={()=>irSeccion('marketing-leads')}><span className="nav-dot"></span> Marketing · Leads</button>
+          <button className={`nav-btn${seccion==='envio-masivo'?' active':''}`} onClick={()=>irSeccion('envio-masivo')}><span className="nav-dot"></span> Envío masivo</button>
           <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
           <button className={`nav-btn${seccion==='seguimiento'?' active':''}`} onClick={()=>irSeccion('seguimiento')}><span className="nav-dot"></span> Seguimiento en campo</button>
           <button className={`nav-btn${seccion==='reclutados-generales'?' active':''}`} onClick={()=>irSeccion('reclutados-generales')}><span className="nav-dot"></span> Reclutados generales</button>
@@ -1387,6 +1458,70 @@ export default function Jefatura() {
                     : marketingData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
                 </table></div>
               </div>
+            </div>
+          </section>
+
+          {/* ===== ENVIO MASIVO ===== */}
+          <section className={`section${seccion==='envio-masivo'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Envío masivo</h2><p>Arma un lote de números para pegar en una plataforma externa de envío masivo. Excluye leads SIN COBERTURA y VENTA CERRADA.</p></div>
+              <button className="btn-nuevo" onClick={()=>cargarMasivo()} disabled={masivoCargando}>{masivoCargando ? 'Cargando…' : '↻ Actualizar'}</button>
+            </div>
+
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtros</div>
+              <div className="filtros-grid">
+                <label><span>Campaña</span><input type="text" value={masivoFiltros.campana} onChange={e=>setMasivoFiltros(p=>({...p,campana:e.target.value}))} placeholder="Ej. MACETA" /></label>
+                <label><span>Distrito</span><input type="text" value={masivoFiltros.distrito} onChange={e=>setMasivoFiltros(p=>({...p,distrito:e.target.value}))} placeholder="Ej. COMAS" /></label>
+                <label><span>Fecha desde</span><input type="date" value={masivoFiltros.desde} onChange={e=>setMasivoFiltros(p=>({...p,desde:e.target.value}))} /></label>
+                <label><span>Fecha hasta</span><input type="date" value={masivoFiltros.hasta} onChange={e=>setMasivoFiltros(p=>({...p,hasta:e.target.value}))} /></label>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); cargarMasivo(vacio) }}>Limpiar</button>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>cargarMasivo(masivoFiltros)}>Buscar</button>
+              </div>
+            </div>
+
+            {masivoMensaje && <div className="marketing-error">{masivoMensaje}</div>}
+
+            <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',margin:'0 0 14px'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569'}}>
+                Seleccionar los primeros
+                <input type="number" min="1" value={masivoCantidadInput} onChange={e=>setMasivoCantidadInput(e.target.value)} placeholder="Ej. 200" style={{width:90,padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:7,fontFamily:'inherit',fontSize:12}} />
+              </label>
+              <button type="button" className="flujo-clear filtro-limpiar" onClick={masivoSeleccionarPrimerosN}>Seleccionar</button>
+              <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMasivoSeleccion(new Set())}>Limpiar selección</button>
+              <span style={{fontSize:12,fontWeight:700,color:'#334155'}}>{masivoSeleccion.size} seleccionados</span>
+              <button className="btn-nuevo" style={{marginLeft:'auto'}} disabled={!masivoSeleccion.size || masivoCopiando} onClick={masivoCopiarNumeros}>
+                {masivoCopiando ? 'Copiando…' : `Copiar números (${masivoSeleccion.size})`}
+              </button>
+            </div>
+
+            <div className="tabla-wrap">
+              <div className="tabla-header"><span className="tabla-title">Leads elegibles</span><span className="tabla-count">{masivoLeads.length} registros</span></div>
+              <div style={{overflowX:'auto'}}><table className="tabla">
+                <thead><tr>
+                  <th><input type="checkbox" checked={masivoLeads.length>0 && masivoSeleccion.size===masivoLeads.length} onChange={e=>setMasivoSeleccion(e.target.checked ? new Set(masivoLeads.map(l=>l.id)) : new Set())} /></th>
+                  <th>N1</th><th>N2</th><th>Campaña</th><th>Distrito</th><th>Asesor</th><th>Fecha</th><th>Estado</th>
+                </tr></thead>
+                <tbody>
+                  {!masivoCargando && masivoLeads.map(l => (
+                    <tr key={l.id}>
+                      <td><input type="checkbox" checked={masivoSeleccion.has(l.id)} onChange={()=>masivoAlternarUno(l.id)} /></td>
+                      <td>{l.n1 || '—'}</td>
+                      <td>{l.n2 || '—'}</td>
+                      <td>{l.campana || '—'}</td>
+                      <td>{l.distrito || '—'}</td>
+                      <td>{l.asesor_nombre || '—'}</td>
+                      <td>{l.fecha ? new Date(l.fecha).toLocaleDateString('es-PE',{timeZone:'America/Lima'}) : '—'}</td>
+                      <td>{l.masivo_lote_id
+                        ? <span style={{display:'inline-block',padding:'3px 8px',borderRadius:6,background:'#fef3c7',color:'#92400e',fontSize:10,fontWeight:700}}>Lote #{l.masivo_lote_id}{l.masivo_fecha ? ` · ${new Date(l.masivo_fecha).toLocaleDateString('es-PE',{timeZone:'America/Lima'})}` : ''}</span>
+                        : <span style={{color:'#94a3b8',fontSize:10}}>Sin enviar</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {!masivoCargando && !masivoLeads.length && <tr><td colSpan="8" className="tabla-empty">Sin registros para los filtros seleccionados.</td></tr>}
+                  {masivoCargando && <tr><td colSpan="8" className="tabla-empty">Cargando leads…</td></tr>}
+                </tbody>
+              </table></div>
             </div>
           </section>
 
