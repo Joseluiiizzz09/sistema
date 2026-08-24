@@ -288,6 +288,7 @@ export default function Backdatareclutamiento() {
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
+  const [modalEditar,   setModalEditar]   = useState({ open:false, regId:null, campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
@@ -474,6 +475,8 @@ export default function Backdatareclutamiento() {
           n1:         l.n1,
           n2:         l.n2 || '',
           usuarioWhatsapp: l.usuario_whatsapp || '',
+          creadoPor: l.creado_por_nombre || '',
+          creadoEn:  l.created_at || '',
           tipo_contacto: l.tipo_contacto || 'LLAMADA',
           direccion:   l.direccion || '',
           coordenadas: l.coordenadas || '',
@@ -728,6 +731,38 @@ export default function Backdatareclutamiento() {
     setRotModalAsesor('')
     setRotBusqueda('')
     setRotModalMotivo('')
+  }
+
+  // ── Modal editar campaña/contacto ─────────────────────────────────────────
+  function abrirModalEditar(id) {
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    setModalEditar({ open:true, regId:id, campana:reg.campana==='—'?'':reg.campana, n1:reg.n1||'', n2:reg.n2||'', usuarioWhatsapp:reg.usuarioWhatsapp||'', guardando:false, error:'' })
+  }
+
+  async function guardarEdicion() {
+    const found = findReg(modalEditar.regId)
+    if (!found) return
+    const { reg } = found
+    const campana = modalEditar.campana.trim() || '—'
+    const n1 = modalEditar.n1.trim()
+    const n2 = modalEditar.n2.trim()
+    const usuarioWhatsapp = modalEditar.usuarioWhatsapp.trim().replace(/^@+/, '')
+    if (!n1 && !usuarioWhatsapp) { setModalEditar(p=>({...p, error:'Ingresa un N1 o un usuario de WhatsApp'})); return }
+    setModalEditar(p=>({...p, guardando:true, error:''}))
+    updateReg(modalEditar.regId, { campana, n1, n2, usuarioWhatsapp })
+    try {
+      if (reg._backendId) {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/datos-back`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ campana, n1, n2, usuario_whatsapp:usuarioWhatsapp }) })
+        const data = await res.json()
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar')
+      }
+      setModalEditar({ open:false, regId:null, campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
+    } catch(e) {
+      updateReg(modalEditar.regId, { campana:reg.campana, n1:reg.n1, n2:reg.n2, usuarioWhatsapp:reg.usuarioWhatsapp })
+      setModalEditar(p=>({...p, guardando:false, error:e.message || 'Error al guardar'}))
+    }
   }
 
   async function confirmarRotacion() {
@@ -1448,6 +1483,10 @@ export default function Backdatareclutamiento() {
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                   Historial
                                 </button>
+                                <button className="btn-hist" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+                                  Editar
+                                </button>
                                 <button className="btn-del" onClick={()=>eliminarReg(r.id)} title="Eliminar">
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                                 </button>
@@ -1457,6 +1496,12 @@ export default function Backdatareclutamiento() {
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
                             <td colSpan={filtros.verTipVend?11:10}>
                               <div className="historial-inner">
+                                {(r.creadoPor || r.creadoEn) && (
+                                  <div style={{fontSize:11,color:'#6b7280',marginBottom:8}}>
+                                    Registrado por <strong>{r.creadoPor || 'desconocido'}</strong>
+                                    {r.creadoEn && <> · {new Date(r.creadoEn).toLocaleString('es-PE',{timeZone:'America/Lima',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</>}
+                                  </div>
+                                )}
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
                                   const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
@@ -1816,6 +1861,23 @@ export default function Backdatareclutamiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalRotar(p=>({...p,open:false}))}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={confirmarRotacion} disabled={!rotModalAsesor}>Rotar ahora</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalEditar.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalEditar.guardando) setModalEditar(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Editar campaña / contacto</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Campaña</label><CampanaSelect value={modalEditar.campana} onChange={v=>setModalEditar(p=>({...p,campana:v}))} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>N1</label><input className="form-control" value={modalEditar.n1} onChange={e=>setModalEditar(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>N2 (opcional)</label><input className="form-control" value={modalEditar.n2} onChange={e=>setModalEditar(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Usuario WhatsApp</label><input className="form-control" value={modalEditar.usuarioWhatsapp} onChange={e=>setModalEditar(p=>({...p,usuarioWhatsapp:e.target.value}))} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
+            {modalEditar.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalEditar.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalEditar(p=>({...p,open:false}))} disabled={modalEditar.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarEdicion} disabled={modalEditar.guardando}>{modalEditar.guardando?'Guardando…':'Guardar cambios'}</button>
             </div>
           </div>
         </div>
