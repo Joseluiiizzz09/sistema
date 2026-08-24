@@ -152,14 +152,18 @@ const TIPIF_BACK_OPTIONS = ['BUZON','NO CONTESTA','DER CHAMO','VENTA CERRADA','N
 // Value interno se conserva igual al de Backoffice comercial para heredar automáticamente
 // el mismo comportamiento (bloqueo de rotación en NO TOCAR/FRAUDE); solo cambia el label visible.
 const TIPIF_VEND_OPCIONES = [
-  { value:'VENTA CERRADA', label:'Acepta propuesta' },
-  { value:'NO CONTESTA',   label:'No contesta' },
-  { value:'CORTA LLAMADA', label:'Corta llamada' },
-  { value:'AGENDADO',      label:'Agendado' },
-  { value:'NO TOCAR',      label:'No cumple perfil' },
-  { value:'FRAUDE',        label:'Provincia' },
+  { value:'VENTA CERRADA',   label:'Acepta propuesta' },
+  { value:'BUZON DE VOZ',    label:'Buzón de voz' },
+  { value:'NO TOCAR',        label:'No cumple el perfil' },
+  { value:'CORTA LLAMADA',   label:'Corta llamada' },
+  { value:'GESTION WSP',     label:'Gestión WSP' },
+  { value:'NO CONTESTA',     label:'No contesta' },
+  { value:'NO INTERESADO',   label:'No interesado' },
+  { value:'NO ROTAR',        label:'No rotar' },
+  { value:'VOLVER A LLAMAR', label:'Volver a llamar' },
+  { value:'FRAUDE',          label:'Provincia' },
 ]
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','NO ROTAR'])
 const LIMA_DISTRITOS = [
   'Ancón','Ate','Barranco','Breña','Carabayllo','Cercado de Lima','Chaclacayo','Chorrillos',
   'Cieneguilla','Comas','El Agustino','Independencia','Jesús María','La Molina','La Victoria',
@@ -175,11 +179,13 @@ function esLeadProhibido(reg) {
 }
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
-  'NO CONTESTA':['#fefce8','#854d0e'],'BUZON DE VOZ':['#e0f2fe','#0c4a6e'],'CORTA LLAMADA':['#f8fafc','#334155'],
+  'NO CONTESTA':['#fed7aa','#9a3412'],'BUZON DE VOZ':['#ccfbf1','#134e4a'],'CORTA LLAMADA':['#f8fafc','#334155'],
   'EN EJECUCION':['#dcfce7','#14532d'],'SIN COBERTURA':['#ffe4e6','#881337'],'NO CALIFICA':['#fefce8','#713f12'],
   'NO DESEA':['#ffe4e6','#7f1d1d'],'CONTACTO CON TERCEROS':['#ccfbf1','#134e4a'],'EDIFICIO NO LIBERADO':['#f5f3ff','#4c1d95'],
   'DESEA MOVIL':['#f8fafc','#1e293b'],'SERVICIO ACTIVO':['#f1f5f9','#1e293b'],'CONTESTA':['#d1fae5','#065f46'],
-  'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
+  'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],
+  'GESTION WSP':['#fef9c3','#854d0e'],'NO INTERESADO':['#fdba74','#7c2d12'],'NO ROTAR':['#f1f5f9','#334155'],
+  'VOLVER A LLAMAR':['#fef9c3','#713f12'],'FRAUDE':['#1f2937','#f9fafb'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#7c3aed','NO CONTESTA':'#9ca3af',
