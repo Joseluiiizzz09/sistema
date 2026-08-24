@@ -656,18 +656,18 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       </header>
 
       <main className="cobranzas-main">
-        {!modoSupervisorCalidad && <section className="cobranzas-heading">
+        {!esCalidad && <section className="cobranzas-heading">
           <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de {areaNombre}.</p></div>
           <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
         </section>}
 
-        {modoSupervisorCalidad && <section className="sup-calidad-toolbar">
-          <nav className="sup-calidad-tabs" aria-label="Secciones de Super de Calidad">
+        {esCalidad && <section className="sup-calidad-toolbar">
+          <nav className="sup-calidad-tabs" aria-label="Secciones de Calidad">
             <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
             <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
           </nav>
           <div className="sup-calidad-toolbar-controls">
-            {pestanaCalidad === 'rendimiento' && <>
+            {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <>
               <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
               <label className="sup-calidad-encargado"><span>ENCARGADO</span>
                 <select value={encargadoRendimiento} onChange={e => setEncargadoRendimiento(e.target.value)}>
@@ -676,28 +676,30 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                 </select>
               </label>
             </>}
-            <button className="sup-calidad-actualizar" onClick={pestanaCalidad === 'rendimiento' ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
+            <button className="sup-calidad-actualizar" onClick={(modoSupervisorCalidad && pestanaCalidad === 'rendimiento') ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
           </div>
         </section>}
 
-        {pestanaCalidad !== 'rendimiento' && <>
-        {esCalidad && <div className="kpis-calidad-dia">
+        {esCalidad && pestanaCalidad === 'rendimiento' && <>
+        <div className="kpis-calidad-dia">
           <label><span>DÍA A CONSULTAR</span><input type="date" value={fechaKpiCalidad} onChange={e => { if (e.target.value) setFechaKpiCalidad(e.target.value) }} /></label>
-        </div>}
-        <section className={esCalidad ? 'cobranzas-kpis kpis-calidad' : 'cobranzas-kpis'}>
-          {esCalidad ? <>
+        </div>
+        <section className="cobranzas-kpis kpis-calidad">
             <article><strong>{clientes.length}</strong><span>GLOBAL · INSTALADOS</span></article>
             <article className="kpi-conforme"><strong>{totalConformes}</strong><span>GLOBAL · CONFORMES</span></article>
             <article className="kpi-conforme"><strong>{pctConformidad}%</strong><span>GLOBAL · % CONFORMIDAD</span></article>
             <article><strong>{contactadosMes}</strong><span>MES · CONTACTADOS</span></article>
             <article><strong>{gestionadosDia}</strong><span>DÍA · GESTIONADOS</span></article>
             <article className="kpi-conforme"><strong>{conformesDia}</strong><span>DÍA · CONFORMES</span></article>
-          </> : <>
+        </section>
+        </>}
+
+        {pestanaCalidad !== 'rendimiento' && <>
+        {!esCalidad && <section className="cobranzas-kpis">
             <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
             <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
             <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
-          </>}
-        </section>
+        </section>}
 
         <section className="cobranzas-filtros">
           <label className="cobranzas-search"><span>BUSCAR CLIENTE</span><input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, documento, SOT, número o paquete…" /></label>
