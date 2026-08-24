@@ -980,20 +980,31 @@ export default function Backdatareclutamiento() {
       if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
       const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
       const prim  = lineas[0].split(sep)
-      const cab   = isNaN((prim[3]||'').replace(/\s/g,''))||(prim[3]||'').length<6
+      // Formato: CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1..6.
+      // Encabezado: si la columna FECHA de la primera fila no es una fecha real, es titulo.
+      const primFecha = (prim[1]||'').trim()
+      const cab = !/^\d{2}\/\d{2}\/\d{4}$/.test(primFecha) && !/^\d{4}-\d{2}-\d{2}$/.test(primFecha)
       const datos = cab ? lineas.slice(1) : lineas
       const fechaDest = legacyFecha || fechaActiva
       const usarFF = legacyUsarFecha === 'si'
       const rows   = []
       datos.forEach(linea => {
         const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
-        const n1 = c[3]||c[0]||''
-        if (!n1||n1.length<6) return
+        const contacto = (c[2]||'').replace(/\s+/g,'')
+        if (!contacto || contacto.length<4) return
+        const esNumero = /^[\d+()-]+$/.test(contacto) && contacto.replace(/\D/g,'').length >= 7
+        const n1 = esNumero ? contacto : ''
+        const usuarioWhatsapp = esNumero ? '' : contacto.replace(/^@+/, '')
         const asesoresHist = []
-        for (let i=8;i<=13;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
+        for (let i=6;i<=11;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
         let fechaFila = fechaDest
-        if (usarFF) { for(let i=0;i<c.length;i++) { const m=c[i].match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m){fechaFila=`${m[3]}-${m[2]}-${m[1]}`;break;} if(/^\d{4}-\d{2}-\d{2}$/.test(c[i])){fechaFila=c[i];break;} } }
-        rows.push({ campana:c[0]||'—', distrito:c[1]||'—', n2:c[2]||'', n1, tipifBack:c[4]||'', tipifVend:c[6]||'', hora:c[7]||'', asesores:asesoresHist, fecha:fechaFila })
+        if (usarFF) {
+          const raw = (c[1]||'').trim()
+          const m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+          if (m) fechaFila = `${m[3]}-${m[2]}-${m[1]}`
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) fechaFila = raw
+        }
+        rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifBack:c[4]||'', hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
       })
       if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
       setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
@@ -1013,8 +1024,8 @@ export default function Backdatareclutamiento() {
       if (!updates[fecha]) updates[fecha] = []
       // Permitir duplicados: no se descartan números repetidos en la carga del sistema antiguo.
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
-      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend||'', _tipifHora:r.hora||'', historial:hist })
-      leadsBackend.push({ campana:r.campana, distrito:r.distrito, n1:r.n1, n2:r.n2, tipif_back:r.tipifBack, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
+      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:'', _tipifHora:r.hora||'', historial:hist })
+      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_back:r.tipifBack||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
       importados++
     })
     setBaseData(prev => { const n={...prev}; for(const f in updates) n[f]=[...(prev[f]||[]),...updates[f]]; return n })
@@ -1698,7 +1709,8 @@ export default function Backdatareclutamiento() {
                   <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:14,marginBottom:14}}>
                     <div style={{fontSize:12,fontWeight:700,color:'#c2410c',marginBottom:4}}>Importación de sistema antiguo</div>
                     <div style={{fontSize:11,color:'#92400e',lineHeight:1.6}}>
-                      Formato: <strong>CAMPAÑA · DISTRITO · N2 · N1 · TIPIF.BACK · COMENTARIO · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
+                      Formato: <strong>CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
+                      <br/>Contacto acepta número o usuario de WhatsApp (con o sin @). Fecha en formato DD/MM/AAAA.
                     </div>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 180px',gap:12,marginBottom:12}}>
@@ -1740,7 +1752,7 @@ export default function Backdatareclutamiento() {
                       <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff'}}>
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,whiteSpace:'nowrap'}}>
                           <thead><tr style={{background:'#f9fafb',position:'sticky',top:0}}>
-                            {['#','Camp.','Dist.','N1','N2','Tipif. Back','Tipif.','Hora','Asesores','Fecha'].map(h=>(
+                            {['#','Camp.','Contacto','Observaciones','Tipif.','Hora','Asesores','Fecha'].map(h=>(
                               <th key={h} style={{padding:'5px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>{h}</th>
                             ))}
                           </tr></thead>
@@ -1749,11 +1761,9 @@ export default function Backdatareclutamiento() {
                               <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
                                 <td style={{padding:'4px 10px',color:'#9ca3af'}}>{i+1}</td>
                                 <td style={{padding:'4px 10px',fontWeight:600}}>{r.campana}</td>
-                                <td style={{padding:'4px 10px'}}>{r.distrito}</td>
-                                <td style={{padding:'4px 10px',fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{r.n1}</td>
-                                <td style={{padding:'4px 10px',fontFamily:'monospace',color:'#6b7280'}}>{r.n2||'—'}</td>
+                                <td style={{padding:'4px 10px',fontFamily:'monospace',fontWeight:700,color:'#111827'}}>{r.esNumero ? r.n1 : `@${r.usuarioWhatsapp}`}</td>
+                                <td style={{padding:'4px 10px',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={r.obs}>{r.obs||'—'}</td>
                                 <td style={{padding:'4px 10px'}}>{r.tipifBack||'—'}</td>
-                                <td style={{padding:'4px 10px'}}>{r.tipifVend||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#185FA5',fontWeight:600}}>{r.hora||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#6b7280'}}>{r.asesores.join(' → ')||'—'}</td>
                                 <td style={{padding:'4px 10px',color:'#374151'}}>{formatFecha(r.fecha)}</td>
