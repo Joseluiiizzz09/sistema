@@ -226,6 +226,15 @@ function BoNavIcon({ tipo }) {
   )
 }
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    </svg>
+  )
+}
+
 function CopyIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1441,13 +1450,13 @@ export default function Backdatareclutamiento() {
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                            <td><CampanaBadge valor={r.campana} /></td>
+                            <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar campaña"><PencilIcon /></button></div></td>
                             <td style={{fontSize:11}}>{r.distrito}</td>
                             <td>{r.n1
-                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div>
+                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
                               : r.usuarioWhatsapp
-                                ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button></div>
-                                : <span style={{color:'#ccc'}}>—</span>}
+                                ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button><button type="button" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
+                                : <div className="numero-copiar"><span style={{color:'#ccc'}}>—</span><button type="button" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>}
                             </td>
                             <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
                             <td>
