@@ -7,28 +7,32 @@ import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
-import { CAMPANAS } from '../utils/campanas'
 import '../styles/Backdatareclutamiento.css'
 
-// ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
+// ── Campañas exclusivas de Back Data Reclutamiento (no la lista de Ventas) ─
+const CAMPANAS_RECLUTAMIENTO = [
+  { valor: 'R1',      bg: '#7c3aed', color: '#fff' },
+  { valor: 'R2',      bg: '#ea580c', color: '#fff' },
+  { valor: 'R3',      bg: '#ffffff', color: '#374151', borde: '#d1d5db' },
+  { valor: 'R4',      bg: '#92400e', color: '#fff' },
+  { valor: 'R5',      bg: '#e5e7eb', color: '#374151' },
+  { valor: 'R6',      bg: '#ddd6fe', color: '#5b21b6' },
+  { valor: 'CHANCAY', bg: '#0f766e', color: '#fff' },
+]
+
+function CampanaBadge({ valor }) {
+  const info = CAMPANAS_RECLUTAMIENTO.find(c => c.valor === valor)
+  if (!info) return <strong>{valor || '—'}</strong>
+  return <span style={{display:'inline-block',padding:'3px 10px',borderRadius:6,background:info.bg,color:info.color,border:info.borde?`1px solid ${info.borde}`:'none',fontSize:11,fontWeight:800}}>{info.valor}</span>
+}
+
+// ── Selector de campaña — Back Data Reclutamiento solo maneja estas 7 ──────
 function CampanaSelect({ value, onChange, plain }) {
-  const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
-  if (manual) {
-    return (
-      <div style={{display:'flex',gap:6,alignItems:'center'}}>
-        <input className={plain?undefined:'form-control'} value={value} autoFocus placeholder="Escribe la campaña"
-          onChange={e=>onChange(e.target.value)} style={{flex:1,minWidth:0}} />
-        <button type="button" title="Volver a la lista" onClick={()=>{ setManual(false); onChange('') }}
-          style={{border:'none',background:'transparent',cursor:'pointer',color:'#6b7280',fontSize:12,whiteSpace:'nowrap'}}>↩ lista</button>
-      </div>
-    )
-  }
   return (
-    <select className={plain?undefined:'form-control'} value={CAMPANAS.includes(value)?value:''}
-      onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); onChange('') } else onChange(v) }}>
+    <select className={plain?undefined:'form-control'} value={value}
+      onChange={e=>onChange(e.target.value)}>
       <option value="">— Selecciona —</option>
-      {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
-      <option value="__OTRO__">Otro (escribir a mano)…</option>
+      {CAMPANAS_RECLUTAMIENTO.map(c=>(<option key={c.valor} value={c.valor}>{c.valor}</option>))}
     </select>
   )
 }
@@ -1369,7 +1373,7 @@ export default function Backdatareclutamiento() {
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                            <td><strong>{r.campana}</strong></td>
+                            <td><CampanaBadge valor={r.campana} /></td>
                             <td style={{fontSize:11}}>{r.distrito}</td>
                             <td><div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div></td>
                             <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
