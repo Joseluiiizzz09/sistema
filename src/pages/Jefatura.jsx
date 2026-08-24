@@ -377,6 +377,7 @@ export default function Jefatura() {
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
   const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
+  const [eliminacionRestaurandoId, setEliminacionRestaurandoId] = useState(null)
   const [detalleEliminacion, setDetalleEliminacion] = useState(null)
   const [masivoLeads, setMasivoLeads] = useState([])
   const [masivoCargando, setMasivoCargando] = useState(false)
@@ -663,6 +664,31 @@ export default function Jefatura() {
       mostrarToast(error.message || 'Error de conexión')
     } finally {
       setEliminacionBorrandoId(null)
+    }
+  }
+
+  async function restablecerRegistroEliminacion(item) {
+    if (!item?.id || item.tipo !== 'VENTA' || item.restored_at || eliminacionRestaurandoId !== null) return
+    if (!window.confirm(`¿Restablecer la venta ${item.registro_id}?\n\nLa venta volverá a aparecer en el sistema con sus datos originales.`)) return
+    setEliminacionRestaurandoId(item.id)
+    try {
+      const res = await fetch(`${API}/eliminaciones/${item.id}/restablecer`, {
+        method:'POST',
+        headers:ncHeaders(),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo restablecer la venta')
+      setEliminaciones(actuales => actuales.map(registro => registro.id === item.id
+        ? { ...registro, restored_at:new Date().toISOString(), restored_by_nombre:sesion?.nombre || 'Jefatura' }
+        : registro))
+      setDetalleEliminacion(actual => actual?.id === item.id
+        ? { ...actual, restored_at:new Date().toISOString(), restored_by_nombre:sesion?.nombre || 'Jefatura' }
+        : actual)
+      mostrarToast(data.mensaje || 'Venta restablecida correctamente')
+    } catch (error) {
+      mostrarToast(error.message || 'Error de conexión')
+    } finally {
+      setEliminacionRestaurandoId(null)
     }
   }
 
@@ -1997,6 +2023,16 @@ export default function Jefatura() {
                             >
                               Ver detalle
                             </button>
+                            {item.tipo === 'VENTA' && (
+                              <button
+                                type="button"
+                                className="venta-action-btn edit"
+                                disabled={Boolean(item.restored_at) || eliminacionRestaurandoId !== null}
+                                onClick={()=>restablecerRegistroEliminacion(item)}
+                              >
+                                {item.restored_at ? 'Restablecida' : eliminacionRestaurandoId === item.id ? 'Restableciendo...' : 'Restablecer'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="btn-eliminar-usuario"
@@ -2057,6 +2093,11 @@ export default function Jefatura() {
                 <div className="eliminacion-resumen">
                   Eliminado por <strong>{detalleEliminacion.actor_nombre}</strong> · ID {detalleEliminacion.registro_id}
                 </div>
+                {detalleEliminacion.restored_at && (
+                  <div className="eliminacion-resumen" style={{marginTop:8,borderColor:'#86efac',background:'#f0fdf4',color:'#166534'}}>
+                    Restablecida por <strong>{detalleEliminacion.restored_by_nombre || 'Jefatura'}</strong>
+                  </div>
+                )}
                 <div className="eliminacion-campos">
                   {Object.entries(snapshot).map(([campo, valor]) => (
                     <div className="eliminacion-campo" key={campo}>
@@ -2068,6 +2109,15 @@ export default function Jefatura() {
               </div>
               <div className="modal-footer">
                 <button className="btn-cancelar-m" onClick={()=>setDetalleEliminacion(null)}>Cerrar</button>
+                {detalleEliminacion.tipo === 'VENTA' && (
+                  <button
+                    className="btn-guardar-m"
+                    disabled={Boolean(detalleEliminacion.restored_at) || eliminacionRestaurandoId !== null}
+                    onClick={()=>restablecerRegistroEliminacion(detalleEliminacion)}
+                  >
+                    {detalleEliminacion.restored_at ? 'Venta restablecida' : eliminacionRestaurandoId === detalleEliminacion.id ? 'Restableciendo...' : 'Restablecer venta'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
