@@ -297,7 +297,7 @@ export default function Backdatareclutamiento() {
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
-  const [modalEditar,   setModalEditar]   = useState({ open:false, regId:null, campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
+  const [modalEditar,   setModalEditar]   = useState({ open:false, regId:null, modo:'contacto', campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
@@ -743,11 +743,11 @@ export default function Backdatareclutamiento() {
   }
 
   // ── Modal editar campaña/contacto ─────────────────────────────────────────
-  function abrirModalEditar(id) {
+  function abrirModalEditar(id, modo='contacto') {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
-    setModalEditar({ open:true, regId:id, campana:reg.campana==='—'?'':reg.campana, n1:reg.n1||'', n2:reg.n2||'', usuarioWhatsapp:reg.usuarioWhatsapp||'', guardando:false, error:'' })
+    setModalEditar({ open:true, regId:id, modo, campana:reg.campana==='—'?'':reg.campana, n1:reg.n1||'', n2:reg.n2||'', usuarioWhatsapp:reg.usuarioWhatsapp||'', guardando:false, error:'' })
   }
 
   async function guardarEdicion() {
@@ -758,7 +758,7 @@ export default function Backdatareclutamiento() {
     const n1 = modalEditar.n1.trim()
     const n2 = modalEditar.n2.trim()
     const usuarioWhatsapp = modalEditar.usuarioWhatsapp.trim().replace(/^@+/, '')
-    if (!n1 && !usuarioWhatsapp) { setModalEditar(p=>({...p, error:'Ingresa un N1 o un usuario de WhatsApp'})); return }
+    if (modalEditar.modo === 'contacto' && !n1 && !usuarioWhatsapp) { setModalEditar(p=>({...p, error:'Ingresa un N1 o un usuario de WhatsApp'})); return }
     setModalEditar(p=>({...p, guardando:true, error:''}))
     updateReg(modalEditar.regId, { campana, n1, n2, usuarioWhatsapp })
     try {
@@ -767,7 +767,7 @@ export default function Backdatareclutamiento() {
         const data = await res.json()
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar')
       }
-      setModalEditar({ open:false, regId:null, campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
+      setModalEditar({ open:false, regId:null, modo:'contacto', campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
     } catch(e) {
       updateReg(modalEditar.regId, { campana:reg.campana, n1:reg.n1, n2:reg.n2, usuarioWhatsapp:reg.usuarioWhatsapp })
       setModalEditar(p=>({...p, guardando:false, error:e.message || 'Error al guardar'}))
@@ -1450,13 +1450,13 @@ export default function Backdatareclutamiento() {
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                            <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
+                            <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'campana')} title="Editar campaña" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
                             <td style={{fontSize:11}}>{r.distrito}</td>
                             <td>{r.n1
-                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
+                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
                               : r.usuarioWhatsapp
-                                ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
-                                : <div className="numero-copiar"><span style={{color:'#ccc'}}>—</span><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto" aria-label="Editar contacto"><PencilIcon /></button></div>}
+                                ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
+                                : <div className="numero-copiar"><span style={{color:'#ccc'}}>—</span><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>}
                             </td>
                             <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
                             <td>
@@ -1878,11 +1878,15 @@ export default function Backdatareclutamiento() {
       {modalEditar.open && (
         <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalEditar.guardando) setModalEditar(p=>({...p,open:false})) }}>
           <div className="modal-box">
-            <h3>Editar campaña / contacto</h3>
-            <div className="bo-input-group" style={{marginBottom:10}}><label>Campaña</label><CampanaSelect value={modalEditar.campana} onChange={v=>setModalEditar(p=>({...p,campana:v}))} /></div>
-            <div className="bo-input-group" style={{marginBottom:10}}><label>N1</label><input className="form-control" value={modalEditar.n1} onChange={e=>setModalEditar(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
-            <div className="bo-input-group" style={{marginBottom:10}}><label>N2 (opcional)</label><input className="form-control" value={modalEditar.n2} onChange={e=>setModalEditar(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
-            <div className="bo-input-group" style={{marginBottom:10}}><label>Usuario WhatsApp</label><input className="form-control" value={modalEditar.usuarioWhatsapp} onChange={e=>setModalEditar(p=>({...p,usuarioWhatsapp:e.target.value}))} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
+            <h3>{modalEditar.modo==='campana' ? 'Editar campaña' : 'Editar contacto'}</h3>
+            {modalEditar.modo==='campana' && (
+              <div className="bo-input-group" style={{marginBottom:10}}><label>Campaña</label><CampanaSelect value={modalEditar.campana} onChange={v=>setModalEditar(p=>({...p,campana:v}))} /></div>
+            )}
+            {modalEditar.modo==='contacto' && (<>
+              <div className="bo-input-group" style={{marginBottom:10}}><label>N1</label><input className="form-control" value={modalEditar.n1} onChange={e=>setModalEditar(p=>({...p,n1:e.target.value}))} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+              <div className="bo-input-group" style={{marginBottom:10}}><label>N2 (opcional)</label><input className="form-control" value={modalEditar.n2} onChange={e=>setModalEditar(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+              <div className="bo-input-group" style={{marginBottom:10}}><label>Usuario WhatsApp</label><input className="form-control" value={modalEditar.usuarioWhatsapp} onChange={e=>setModalEditar(p=>({...p,usuarioWhatsapp:e.target.value}))} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
+            </>)}
             {modalEditar.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalEditar.error}</p>}
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalEditar(p=>({...p,open:false}))} disabled={modalEditar.guardando}>Cancelar</button>
