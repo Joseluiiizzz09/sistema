@@ -699,7 +699,7 @@ body {
 
 .tabla-usuarios-pro {
   width: 100%;
-  min-width: 1560px;
+  min-width: 1440px;
   table-layout: fixed;
 }
 
@@ -711,16 +711,16 @@ body {
 
 .tabla-usuarios-pro th:nth-child(1),
 .tabla-usuarios-pro td:nth-child(1) {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px;
 }
 
 .tabla-usuarios-pro th:nth-child(2),
 .tabla-usuarios-pro td:nth-child(2) {
-  width: 380px;
-  min-width: 380px;
-  max-width: 380px;
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px;
   overflow: hidden;
   text-overflow: clip;
 }
@@ -732,9 +732,9 @@ body {
 
 .tabla-usuarios-pro th:nth-child(7),
 .tabla-usuarios-pro td:nth-child(7) {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  width: 350px;
+  min-width: 350px;
+  max-width: 350px;
   overflow: visible;
 }
 
