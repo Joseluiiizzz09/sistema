@@ -280,6 +280,8 @@ body{
 }
 .bo-root .numero-copiar button:hover{color:var(--brand);border-color:#fca5a5;background:#fff5f5;}
 .bo-root .numero-copiar button svg{width:13px;height:13px;}
+.bo-root .numero-copiar button.btn-editar-inline{color:#475569;}
+.bo-root .numero-copiar button.btn-editar-inline:hover{color:#2563eb;border-color:#93c5fd;background:#eff6ff;}
 .bo-root .bo-inline-select,
 .bo-root .bo-datos-ubicacion input,
 .bo-root .bo-obs-back{
