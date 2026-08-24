@@ -1188,6 +1188,29 @@ export default function Backdatareclutamiento() {
           <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
           <button className={`bo-nav${seccion==='reclutados'?' active':''}`} onClick={()=>irSeccion('reclutados')}><BoNavIcon tipo="avance" /> <span>Reclutados</span></button>
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
+          <div className="bo-sidebar-registro">
+            <div className="sidebar-sep">Agregar registro</div>
+            <div style={{fontSize:10,color:'#6b7280',fontWeight:600,margin:'-4px 0 8px'}}>{formatFecha(fechaActiva)}</div>
+            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain /></div>
+            <div className="bo-input-group"><label>Distrito</label>
+              <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
+                <option value="">— Seleccionar —</option>
+                {distritos.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group"><label>Usuario WhatsApp</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
+            <div className="bo-input-group"><label>Asesor</label>
+              <AsesorBuscador value={form.asesor} asesores={asesores}
+                onChange={v=>setForm(p=>({...p,asesor:v}))}
+                className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
+            </div>
+            <div className="bo-sidebar-registro-acciones">
+              <button className="bo-btn-limpiar" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',asesor:''})}>Limpiar</button>
+              <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar</button>
+            </div>
+          </div>
         </aside>
 
         <main className="bo-main">
@@ -1357,35 +1380,6 @@ export default function Backdatareclutamiento() {
                 <span>Ver tipif. vendedor</span>
               </label>
               <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
-            </div>
-
-            {/* FORMULARIO AGREGAR INDIVIDUAL */}
-            <div className="bo-panel" style={{marginBottom:14}}>
-              <div className="bo-panel-title">
-                + Agregar registro individual —&nbsp;
-                <span style={{fontSize:10,color:'#374151',fontWeight:600,textTransform:'none',letterSpacing:0}}>{formatFecha(fechaActiva)}</span>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:10}}>
-                <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} /></div>
-                <div className="bo-input-group"><label>Distrito</label>
-                  <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
-                    <option value="">— Seleccionar —</option>
-                    {distritos.map(d=><option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
-                <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
-                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
-                <div className="bo-input-group"><label>Asesor</label>
-                  <AsesorBuscador value={form.asesor} asesores={asesores}
-                    onChange={v=>setForm(p=>({...p,asesor:v}))}
-                    className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
-                </div>
-              </div>
-              <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',asesor:''})}>Limpiar</button>
-                <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
-              </div>
             </div>
 
             {/* TABLA BASE */}
