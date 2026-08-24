@@ -173,6 +173,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
+  const [fechaKpiCalidad, setFechaKpiCalidad] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
   const [mesRendimiento, setMesRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }).slice(0, 7))
   const [porUsuarioRendimiento, setPorUsuarioRendimiento] = useState([])
@@ -284,8 +285,11 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   // KPIs de Calidad: global (todos los instalados vigentes) y del día (gestionados hoy).
   const esConforme = c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'SATISFECHO'
   const totalConformes = clientes.filter(esConforme).length
-  const gestionadosHoy = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === hoy).length
-  const conformesHoy = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === hoy && esConforme(c)).length
+  const pctConformidad = clientes.length ? Math.round((totalConformes / clientes.length) * 100) : 0
+  const mesActualKpi = hoy.slice(0, 7)
+  const contactadosMes = clientes.filter(c => fechaISO(c.calidad_tratamiento_at).slice(0, 7) === mesActualKpi).length
+  const gestionadosDia = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === fechaKpiCalidad).length
+  const conformesDia = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === fechaKpiCalidad && esConforme(c)).length
   // Días reales del mes seleccionado (28/29/30/31), a partir del propio Date.
   const diasDelMesRendimiento = useMemo(() => {
     const [anioStr, mesStr] = mesRendimiento.split('-')
@@ -676,12 +680,18 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           </div>
         </section>}
 
-        {pestanaCalidad !== 'rendimiento' && <><section className={esCalidad ? 'cobranzas-kpis kpis-calidad' : 'cobranzas-kpis'}>
+        {pestanaCalidad !== 'rendimiento' && <>
+        {esCalidad && <div className="kpis-calidad-dia">
+          <label><span>DÍA A CONSULTAR</span><input type="date" value={fechaKpiCalidad} onChange={e => { if (e.target.value) setFechaKpiCalidad(e.target.value) }} /></label>
+        </div>}
+        <section className={esCalidad ? 'cobranzas-kpis kpis-calidad' : 'cobranzas-kpis'}>
           {esCalidad ? <>
             <article><strong>{clientes.length}</strong><span>GLOBAL · INSTALADOS</span></article>
             <article className="kpi-conforme"><strong>{totalConformes}</strong><span>GLOBAL · CONFORMES</span></article>
-            <article><strong>{gestionadosHoy}</strong><span>HOY · GESTIONADOS</span></article>
-            <article className="kpi-conforme"><strong>{conformesHoy}</strong><span>HOY · CONFORMES</span></article>
+            <article className="kpi-conforme"><strong>{pctConformidad}%</strong><span>GLOBAL · % CONFORMIDAD</span></article>
+            <article><strong>{contactadosMes}</strong><span>MES · CONTACTADOS</span></article>
+            <article><strong>{gestionadosDia}</strong><span>DÍA · GESTIONADOS</span></article>
+            <article className="kpi-conforme"><strong>{conformesDia}</strong><span>DÍA · CONFORMES</span></article>
           </> : <>
             <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
             <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
