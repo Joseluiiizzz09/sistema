@@ -281,6 +281,11 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
+  // KPIs de Calidad: global (todos los instalados vigentes) y del día (gestionados hoy).
+  const esConforme = c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'SATISFECHO'
+  const totalConformes = clientes.filter(esConforme).length
+  const gestionadosHoy = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === hoy).length
+  const conformesHoy = clientes.filter(c => fechaISO(c.calidad_tratamiento_at) === hoy && esConforme(c)).length
   // Días reales del mes seleccionado (28/29/30/31), a partir del propio Date.
   const diasDelMesRendimiento = useMemo(() => {
     const [anioStr, mesStr] = mesRendimiento.split('-')
@@ -671,10 +676,17 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           </div>
         </section>}
 
-        {pestanaCalidad !== 'rendimiento' && <><section className="cobranzas-kpis">
-          <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
-          <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
-          <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
+        {pestanaCalidad !== 'rendimiento' && <><section className={esCalidad ? 'cobranzas-kpis kpis-calidad' : 'cobranzas-kpis'}>
+          {esCalidad ? <>
+            <article><strong>{clientes.length}</strong><span>GLOBAL · INSTALADOS</span></article>
+            <article className="kpi-conforme"><strong>{totalConformes}</strong><span>GLOBAL · CONFORMES</span></article>
+            <article><strong>{gestionadosHoy}</strong><span>HOY · GESTIONADOS</span></article>
+            <article className="kpi-conforme"><strong>{conformesHoy}</strong><span>HOY · CONFORMES</span></article>
+          </> : <>
+            <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
+            <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
+            <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
+          </>}
         </section>
 
         <section className="cobranzas-filtros">

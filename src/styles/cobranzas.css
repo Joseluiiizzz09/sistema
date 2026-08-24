@@ -175,6 +175,9 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
+.cobranzas-kpis.kpis-calidad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
 .cobranzas-kpis article {
   padding: 20px 22px;
@@ -195,6 +198,7 @@
 }
 .cobranzas-kpis article:hover { box-shadow: var(--cz-shadow-md); transform: translateY(-2px); }
 .cobranzas-kpis article:nth-child(2)::before { background: #2563eb; }
+.cobranzas-kpis article.kpi-conforme::before { background: #16a34a; }
 .cobranzas-kpis article:nth-child(3)::before { background: #7c3aed; }
 
 .cobranzas-kpis strong {
