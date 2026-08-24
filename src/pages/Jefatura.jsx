@@ -115,6 +115,41 @@ function ModuloIcon({ tipo, size = 24 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{display:'block', margin:'auto', flex:'0 0 auto'}}>{trazos[tipo] || trazos.activity}</svg>
 }
 
+// Filtro estilo Excel: checkbox por opción + "Todos" para marcar/desmarcar en bloque.
+// seleccionados === null significa "todos" (sin filtro); un array es la selección puntual.
+function MasivoFiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = false }) {
+  const [abierto, setAbierto] = useState(false)
+  const [buscar, setBuscar] = useState('')
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!abierto) return undefined
+    const cerrar = evento => { if (!ref.current?.contains(evento.target)) setAbierto(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [abierto])
+  const visibles = opciones.filter(opcion => !buscar || opcion.toLowerCase().includes(buscar.toLowerCase()))
+  const todosMarcados = seleccionados === null || (opciones.length > 0 && seleccionados.length === opciones.length)
+  const alternar = opcion => {
+    const actuales = todosMarcados ? [...opciones] : seleccionados
+    onChange(actuales.includes(opcion) ? actuales.filter(v => v !== opcion) : [...actuales, opcion])
+  }
+  return (
+    <div className="masivo-filtro-columna" ref={ref}>
+      <button type="button" className={!todosMarcados ? 'activo' : ''} onClick={() => setAbierto(v => !v)}>
+        {titulo}<span>▼</span>
+      </button>
+      {abierto && <div className="masivo-filtro-menu">
+        {buscable && <input autoFocus value={buscar} onChange={e => setBuscar(e.target.value)} placeholder={`Buscar ${titulo.toLowerCase()}…`} />}
+        <label className="masivo-filtro-todos"><input type="checkbox" checked={todosMarcados} onChange={() => onChange(todosMarcados ? [] : null)} /> Todos</label>
+        <div className="masivo-filtro-opciones">
+          {visibles.map(opcion => <label key={opcion}><input type="checkbox" checked={todosMarcados || seleccionados.includes(opcion)} onChange={() => alternar(opcion)} /> {opcion}</label>)}
+          {!visibles.length && <small>Sin resultados</small>}
+        </div>
+      </div>}
+    </div>
+  )
+}
+
 /* ── helpers puros ── */
 function fechaHoy()    { return new Date().toISOString().split('T')[0] }
 function horaAhora()   { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
@@ -350,6 +385,8 @@ export default function Jefatura() {
   const [masivoFiltros, setMasivoFiltros] = useState({ campana: '', distrito: '', desde: '', hasta: '' })
   const [masivoCantidadInput, setMasivoCantidadInput] = useState('')
   const [masivoCatalogos, setMasivoCatalogos] = useState({ campanas: [], distritos: [] })
+  const [filtroMasivoCampanas, setFiltroMasivoCampanas] = useState(null)
+  const [filtroMasivoDistritos, setFiltroMasivoDistritos] = useState(null)
   const [masivoCopiando, setMasivoCopiando] = useState(false)
 
 
@@ -548,10 +585,15 @@ export default function Jefatura() {
     })
   }
 
+  const masivoLeadsFiltrados = useMemo(() => masivoLeads.filter(l =>
+    (filtroMasivoCampanas === null || filtroMasivoCampanas.includes(l.campana)) &&
+    (filtroMasivoDistritos === null || filtroMasivoDistritos.includes(l.distrito))
+  ), [masivoLeads, filtroMasivoCampanas, filtroMasivoDistritos])
+
   function masivoSeleccionarPrimerosN() {
     const n = Number(masivoCantidadInput)
     if (!Number.isInteger(n) || n <= 0) { setMasivoMensaje('Ingresa una cantidad válida'); return }
-    setMasivoSeleccion(new Set(masivoLeads.slice(0, n).map(l => l.id)))
+    setMasivoSeleccion(new Set(masivoLeadsFiltrados.slice(0, n).map(l => l.id)))
   }
 
   async function masivoCopiarNumeros() {
@@ -1476,12 +1518,18 @@ export default function Jefatura() {
             <div className="filtros-avanzados">
               <div className="filtros-titulo">Filtros</div>
               <div className="filtros-grid">
-                <label><span>Campaña</span><select value={masivoFiltros.campana} onChange={e=>setMasivoFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{masivoCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label><span>Distrito</span><select value={masivoFiltros.distrito} onChange={e=>setMasivoFiltros(p=>({...p,distrito:e.target.value}))}><option value="">Todos los distritos</option>{masivoCatalogos.distritos.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <label><span>Fecha desde</span><input type="date" value={masivoFiltros.desde} onChange={e=>setMasivoFiltros(p=>({...p,desde:e.target.value}))} /></label>
                 <label><span>Fecha hasta</span><input type="date" value={masivoFiltros.hasta} onChange={e=>setMasivoFiltros(p=>({...p,hasta:e.target.value}))} /></label>
-                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); cargarMasivo(vacio) }}>Limpiar</button>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); setFiltroMasivoCampanas(null); setFiltroMasivoDistritos(null); cargarMasivo(vacio) }}>Limpiar</button>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>cargarMasivo(masivoFiltros)}>Buscar</button>
+              </div>
+            </div>
+
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtrar lo ya cargado (como Excel)</div>
+              <div className="filtros-grid">
+                <MasivoFiltroColumna titulo="CAMPAÑA" opciones={masivoCatalogos.campanas} seleccionados={filtroMasivoCampanas} onChange={setFiltroMasivoCampanas} buscable />
+                <MasivoFiltroColumna titulo="DISTRITO" opciones={masivoCatalogos.distritos} seleccionados={filtroMasivoDistritos} onChange={setFiltroMasivoDistritos} buscable />
               </div>
             </div>
 
@@ -1501,14 +1549,14 @@ export default function Jefatura() {
             </div>
 
             <div className="tabla-wrap">
-              <div className="tabla-header"><span className="tabla-title">Leads elegibles</span><span className="tabla-count">{masivoLeads.length} registros</span></div>
+              <div className="tabla-header"><span className="tabla-title">Leads elegibles</span><span className="tabla-count">{masivoLeadsFiltrados.length} registros</span></div>
               <div style={{overflowX:'auto'}}><table className="tabla">
                 <thead><tr>
-                  <th><input type="checkbox" checked={masivoLeads.length>0 && masivoSeleccion.size===masivoLeads.length} onChange={e=>setMasivoSeleccion(e.target.checked ? new Set(masivoLeads.map(l=>l.id)) : new Set())} /></th>
+                  <th><input type="checkbox" checked={masivoLeadsFiltrados.length>0 && masivoSeleccion.size===masivoLeadsFiltrados.length} onChange={e=>setMasivoSeleccion(e.target.checked ? new Set(masivoLeadsFiltrados.map(l=>l.id)) : new Set())} /></th>
                   <th>N1</th><th>N2</th><th>Campaña</th><th>Distrito</th><th>Asesor</th><th>Fecha</th><th>Estado</th>
                 </tr></thead>
                 <tbody>
-                  {!masivoCargando && masivoLeads.map(l => (
+                  {!masivoCargando && masivoLeadsFiltrados.map(l => (
                     <tr key={l.id}>
                       <td><input type="checkbox" checked={masivoSeleccion.has(l.id)} onChange={()=>masivoAlternarUno(l.id)} /></td>
                       <td>{l.n1 || (l.usuario_whatsapp ? <span title="Sin número — usuario de WhatsApp">@{l.usuario_whatsapp}</span> : '—')}</td>
@@ -1523,7 +1571,7 @@ export default function Jefatura() {
                       </td>
                     </tr>
                   ))}
-                  {!masivoCargando && !masivoLeads.length && <tr><td colSpan="8" className="tabla-empty">Sin registros para los filtros seleccionados.</td></tr>}
+                  {!masivoCargando && !masivoLeadsFiltrados.length && <tr><td colSpan="8" className="tabla-empty">Sin registros para los filtros seleccionados.</td></tr>}
                   {masivoCargando && <tr><td colSpan="8" className="tabla-empty">Cargando leads…</td></tr>}
                 </tbody>
               </table></div>
