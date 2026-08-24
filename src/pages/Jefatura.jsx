@@ -557,7 +557,7 @@ export default function Jefatura() {
   async function masivoCopiarNumeros() {
     const seleccionados = masivoLeads.filter(l => masivoSeleccion.has(l.id))
     if (!seleccionados.length) { setMasivoMensaje('No hay leads seleccionados'); return }
-    const texto = seleccionados.map(l => l.n1).filter(Boolean).join('\n')
+    const texto = seleccionados.map(l => l.n1 || (l.usuario_whatsapp ? `@${l.usuario_whatsapp}` : '')).filter(Boolean).join('\n')
     setMasivoCopiando(true)
     setMasivoMensaje('')
     try {
@@ -1511,7 +1511,7 @@ export default function Jefatura() {
                   {!masivoCargando && masivoLeads.map(l => (
                     <tr key={l.id}>
                       <td><input type="checkbox" checked={masivoSeleccion.has(l.id)} onChange={()=>masivoAlternarUno(l.id)} /></td>
-                      <td>{l.n1 || '—'}</td>
+                      <td>{l.n1 || (l.usuario_whatsapp ? <span title="Sin número — usuario de WhatsApp">@{l.usuario_whatsapp}</span> : '—')}</td>
                       <td>{l.n2 || '—'}</td>
                       <td>{l.campana || '—'}</td>
                       <td>{l.distrito || '—'}</td>
