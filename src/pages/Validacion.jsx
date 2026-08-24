@@ -172,6 +172,7 @@ export default function Validacion() {
 
   // ── Data ──
   const [ventas, setVentas] = useState([])
+  const [errorCarga, setErrorCarga] = useState('')
 
   // ── Filtros ──
   const [fEstado,  setFEstado]  = useState('')
@@ -214,8 +215,13 @@ export default function Validacion() {
     try {
       const res  = await fetch(`${API}/ventas/validacion-listado`, { headers: ncHeaders() })
       const data = await res.json()
-      if (data.ok && responseChanged(firmaVentasRef, data.data)) setVentas(data.data.map(mapVenta))
-    } catch(e) { console.error('Error cargando ventas:', e) }
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || `Error HTTP ${res.status}`)
+      setErrorCarga('')
+      if (responseChanged(firmaVentasRef, data.data)) setVentas(data.data.map(mapVenta))
+    } catch(e) {
+      console.error('Error cargando ventas:', e)
+      setErrorCarga('No se pudo cargar el listado de ventas. Reintentando automáticamente…')
+    }
     finally { cargandoVentasRef.current = false }
   }, [])
 
@@ -223,7 +229,7 @@ export default function Validacion() {
 
   // ── Polling compartido: todos los validadores ven el mismo estado ──
   useEffect(() => {
-    const interval = setVisibleInterval(cargarVentas, 2000)
+    const interval = setVisibleInterval(cargarVentas, 10000)
     return () => clearVisibleInterval(interval)
   }, [cargarVentas])
 
@@ -372,6 +378,12 @@ export default function Validacion() {
             <p>Gestiona y valida las ventas del sistema · Mes actual por defecto</p>
           </div>
         </div>
+
+        {errorCarga && (
+          <div role="alert" style={{marginBottom:12,padding:'10px 14px',border:'1px solid #fecaca',borderRadius:10,background:'#fff1f2',color:'#b91c1c',fontWeight:700,fontSize:13}}>
+            {errorCarga}
+          </div>
+        )}
 
         {/* KPI STRIP */}
         <div className="kpi-strip">
