@@ -349,6 +349,7 @@ export default function Jefatura() {
   const [masivoSeleccion, setMasivoSeleccion] = useState(() => new Set())
   const [masivoFiltros, setMasivoFiltros] = useState({ campana: '', distrito: '', desde: '', hasta: '' })
   const [masivoCantidadInput, setMasivoCantidadInput] = useState('')
+  const [masivoCatalogos, setMasivoCatalogos] = useState({ campanas: [], distritos: [] })
   const [masivoCopiando, setMasivoCopiando] = useState(false)
 
 
@@ -527,6 +528,10 @@ export default function Jefatura() {
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar los leads')
       setMasivoLeads(Array.isArray(data.data) ? data.data : [])
       setMasivoSeleccion(new Set())
+      setMasivoCatalogos({
+        campanas: Array.isArray(data.filtros?.campanas) ? data.filtros.campanas : [],
+        distritos: Array.isArray(data.filtros?.distritos) ? data.filtros.distritos : [],
+      })
     } catch (error) {
       setMasivoLeads([])
       setMasivoMensaje(error.message || 'Error conectando con el servidor')
@@ -1471,8 +1476,8 @@ export default function Jefatura() {
             <div className="filtros-avanzados">
               <div className="filtros-titulo">Filtros</div>
               <div className="filtros-grid">
-                <label><span>Campaña</span><input type="text" value={masivoFiltros.campana} onChange={e=>setMasivoFiltros(p=>({...p,campana:e.target.value}))} placeholder="Ej. MACETA" /></label>
-                <label><span>Distrito</span><input type="text" value={masivoFiltros.distrito} onChange={e=>setMasivoFiltros(p=>({...p,distrito:e.target.value}))} placeholder="Ej. COMAS" /></label>
+                <label><span>Campaña</span><select value={masivoFiltros.campana} onChange={e=>setMasivoFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{masivoCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Distrito</span><select value={masivoFiltros.distrito} onChange={e=>setMasivoFiltros(p=>({...p,distrito:e.target.value}))}><option value="">Todos los distritos</option>{masivoCatalogos.distritos.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <label><span>Fecha desde</span><input type="date" value={masivoFiltros.desde} onChange={e=>setMasivoFiltros(p=>({...p,desde:e.target.value}))} /></label>
                 <label><span>Fecha hasta</span><input type="date" value={masivoFiltros.hasta} onChange={e=>setMasivoFiltros(p=>({...p,hasta:e.target.value}))} /></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); cargarMasivo(vacio) }}>Limpiar</button>
