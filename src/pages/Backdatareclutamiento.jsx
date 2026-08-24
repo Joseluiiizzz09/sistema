@@ -255,7 +255,7 @@ export default function Backdatareclutamiento() {
   const [fechaActiva,   setFechaActiva]   = useState(fechaHoy())
 
   // ── Form (agregar registro) ──
-  const [form,     setForm]     = useState({ campana:'', distrito:'', n1:'', n2:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
+  const [form,     setForm]     = useState({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
   const [n1Error,  setN1Error]  = useState(false)
   const [calPicker,   setCalPicker]   = useState('')
   const [cmCalPicker, setCmCalPicker] = useState('')
@@ -467,6 +467,7 @@ export default function Backdatareclutamiento() {
           distrito:   l.distrito || '—',
           n1:         l.n1,
           n2:         l.n2 || '',
+          usuarioWhatsapp: l.usuario_whatsapp || '',
           tipo_contacto: l.tipo_contacto || 'LLAMADA',
           direccion:   l.direccion || '',
           coordenadas: l.coordenadas || '',
@@ -595,7 +596,8 @@ export default function Backdatareclutamiento() {
   // ── Form (agregar registro individual) ───────────────────────────────────
   async function agregarRegistro() {
     const n1 = form.n1.trim()
-    if (!n1) { setN1Error(true); mostrarToast('El campo N1 es obligatorio'); return }
+    const usuarioWhatsapp = form.usuarioWhatsapp.trim().replace(/^@+/, '')
+    if (!n1 && !usuarioWhatsapp) { setN1Error(true); mostrarToast('Ingresa un N1 o un usuario de WhatsApp'); return }
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
     const distrito = form.distrito || '—'
@@ -604,14 +606,14 @@ export default function Backdatareclutamiento() {
     const hora     = asesor ? horaAhora() : ''
     const fecha    = fechaActiva
     const reg = {
-      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, asesor, horaAsig:hora,
+      id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, usuarioWhatsapp, asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
     setBaseData(prev => ({ ...prev, [fecha]: [reg, ...(prev[fecha] || [])] }))
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
-      const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, departamento:'Lima', provincia:'Lima', distrito, n1, n2, asesor_nombre:asesor, fecha, hora_asig:hora }) })
+      const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, departamento:'Lima', provincia:'Lima', distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json()
       const bid  = data.ids?.[0] || data.id
       if (bid) {
@@ -623,7 +625,7 @@ export default function Backdatareclutamiento() {
           return next
         })
       }
-      setForm({ campana:'', distrito:'', n1:'', n2:'', asesor:'' })
+      setForm({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', asesor:'' })
     } catch(e) {
       setBaseData(prev => ({ ...prev, [fecha]:(prev[fecha] || []).filter(r => r.id !== reg.id) }))
       mostrarToast(e.message || 'No se pudo guardar el registro')
@@ -847,41 +849,60 @@ export default function Backdatareclutamiento() {
     return set
   }
 
+  function obtenerUsuariosWhatsappExistentes() {
+    const set = new Set()
+    for (const f in baseData) (baseData[f]||[]).forEach(r => { if(r.usuarioWhatsapp) set.add(String(r.usuarioWhatsapp).toLowerCase()) })
+    return set
+  }
+
   function previsualizarMasiva() {
     const raw = masivaNums.trim()
-    if (!raw) { mostrarToast('Pega numeros primero'); return }
-    const numsRaw = raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=7)
-    if (!numsRaw.length) { mostrarToast('No se encontraron numeros validos'); return }
-    const lote = masivaLote === '0' ? numsRaw.length : (parseInt(masivaLote) || 10)
-    const numsLote   = numsRaw.slice(0, lote)
-    const existentes = obtenerN1Existentes()
+    if (!raw) { mostrarToast('Pega numeros o usuarios de WhatsApp primero'); return }
+    // Acepta tanto numeros de telefono como usuarios de WhatsApp (para leads que
+    // ocultan su numero y solo muestran su @usuario). Se clasifica cada linea:
+    // si son solo digitos/simbolos de telefono va a N1, si tiene letras va a
+    // usuario de WhatsApp.
+    const itemsRaw = raw.split(/[\n,;]+/).map(n=>n.trim().replace(/\s+/g,'')).filter(n=>n.length>=4)
+    if (!itemsRaw.length) { mostrarToast('No se encontraron numeros o usuarios validos'); return }
+    const lote = masivaLote === '0' ? itemsRaw.length : (parseInt(masivaLote) || 10)
+    const itemsLote = itemsRaw.slice(0, lote)
+    const existentesN1 = obtenerN1Existentes()
+    const existentesUsuario = obtenerUsuariosWhatsappExistentes()
     const vistos = new Set()
     const filas  = []
-    numsLote.forEach(n => {
+    itemsLote.forEach(item => {
+      const esNumero = /^[\d+()-]+$/.test(item) && item.replace(/\D/g,'').length >= 7
+      const n1 = esNumero ? item : ''
+      const usuarioWhatsapp = esNumero ? '' : item.replace(/^@+/, '')
+      const clave = esNumero ? n1 : usuarioWhatsapp.toLowerCase()
       let dup=false, motivo=''
-      if (vistos.has(n)) { dup=true; motivo='Repetido en la lista' }
-      else if (existentes.has(n)) { dup=true; motivo='Ya esta en el sistema' }
-      vistos.add(n)
-      filas.push({ n1:n, dup, motivo })
+      if (vistos.has(clave)) { dup=true; motivo='Repetido en la lista' }
+      else if (esNumero && existentesN1.has(n1)) { dup=true; motivo='Ya esta en el sistema' }
+      else if (!esNumero && existentesUsuario.has(clave)) { dup=true; motivo='Ya esta en el sistema' }
+      vistos.add(clave)
+      filas.push({ n1, usuarioWhatsapp, esNumero, dup, motivo })
     })
     setMasivaFilas(filas)
     setInclDup(false)
   }
 
   async function ejecutarCargaMasiva() {
-    const lista = (inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)).map(f=>f.n1)
-    if (!lista.length) { mostrarToast('No hay numeros para cargar'); return }
+    const lista = inclDup ? masivaFilas : masivaFilas.filter(f=>!f.dup)
+    if (!lista.length) { mostrarToast('No hay numeros o usuarios para cargar'); return }
     const campana = masivaCamp.trim() || '—'
     const asesor  = masivaAsesor
     const hora    = asesor ? horaAhora() : ''
     const fecha   = fechaActiva
     const leadsParaBackend = []
     const nuevosRegs = []
-    lista.forEach(n1 => {
-      if ((baseData[fecha]||[]).find(r=>r.n1===n1)) return
-      const reg = { id:idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
+    lista.forEach(f => {
+      const yaExiste = f.esNumero
+        ? (baseData[fecha]||[]).find(r=>r.n1===f.n1)
+        : (baseData[fecha]||[]).find(r=>r.usuarioWhatsapp===f.usuarioWhatsapp)
+      if (yaExiste) return
+      const reg = { id:idCntRef.current++, _backendId:null, campana, distrito:'—', n1:f.n1, n2:'', usuarioWhatsapp:f.usuarioWhatsapp, tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
       nuevosRegs.push(reg)
-      leadsParaBackend.push({ campana, distrito:'—', n1, n2:'', tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora })
+      leadsParaBackend.push({ campana, distrito:'—', n1:f.n1||null, n2:'', usuario_whatsapp:f.usuarioWhatsapp||null, tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora })
     })
     if (nuevosRegs.length) {
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevosRegs] }))
@@ -1335,8 +1356,9 @@ export default function Backdatareclutamiento() {
                     {distritos.map(d=><option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="bo-input-group"><label>N1 *</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
                 <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
+                <div className="bo-input-group"><label>Usuario WhatsApp</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
                 <div className="bo-input-group"><label>Asesor</label>
                   <AsesorBuscador value={form.asesor} asesores={asesores}
                     onChange={v=>setForm(p=>({...p,asesor:v}))}
@@ -1344,7 +1366,7 @@ export default function Backdatareclutamiento() {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',asesor:''})}>Limpiar</button>
+                <button className="bo-btn-limpiar btn btn-sm" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',asesor:''})}>Limpiar</button>
                 <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar registro</button>
               </div>
             </div>
@@ -1375,7 +1397,12 @@ export default function Backdatareclutamiento() {
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
                             <td><CampanaBadge valor={r.campana} /></td>
                             <td style={{fontSize:11}}>{r.distrito}</td>
-                            <td><div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div></td>
+                            <td>{r.n1
+                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button></div>
+                              : r.usuarioWhatsapp
+                                ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button></div>
+                                : <span style={{color:'#ccc'}}>—</span>}
+                            </td>
                             <td>{r.n2 ? <div className="numero-copiar secundario"><span>{r.n2}</span><button type="button" onClick={()=>copiarNumero(r.n2)} title="Copiar N2" aria-label={`Copiar ${r.n2}`}><CopyIcon /></button></div> : <span style={{color:'#ccc'}}>—</span>}</td>
                             <td>
                               <AsesorBuscador value={r.asesor} asesores={asesores} disabled={esExclusiva}
@@ -1553,7 +1580,7 @@ export default function Backdatareclutamiento() {
                   <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,marginBottom:10}}>
                     <div className="bo-input-group" style={{margin:0}}>
                       <label>Pegar lista de N1 (uno por línea, o separados por coma)</label>
-                      <textarea value={masivaNums} onChange={e=>setMasivaNums(e.target.value)} rows={8} placeholder={'987654321\n976543210\n965432109'} />
+                      <textarea value={masivaNums} onChange={e=>setMasivaNums(e.target.value)} rows={8} placeholder={'987654321\n976543210\nusuario_whatsapp_sin_numero'} />
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:160}}>
                       <div className="bo-input-group" style={{margin:0}}><label>Campaña</label><CampanaSelect value={masivaCamp} onChange={setMasivaCamp} plain /></div>
@@ -1589,7 +1616,7 @@ export default function Backdatareclutamiento() {
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                           <thead><tr style={{background:'#f9fafb'}}>
                             <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>#</th>
-                            <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>N1</th>
+                            <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>N1 / Usuario</th>
                             <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>Campaña</th>
                             <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>Fecha</th>
                             <th style={{padding:'6px 10px',textAlign:'left',color:'#6b7280',fontSize:9,textTransform:'uppercase'}}>Estado</th>
@@ -1598,7 +1625,7 @@ export default function Backdatareclutamiento() {
                             {masivaFilas.map((f,i)=>(
                               <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:f.dup?'#fef2f2':''}}>
                                 <td style={{padding:'5px 10px',color:'#9ca3af'}}>{i+1}</td>
-                                <td style={{padding:'5px 10px',fontFamily:'monospace',fontWeight:600}}>{f.n1}</td>
+                                <td style={{padding:'5px 10px',fontFamily:'monospace',fontWeight:600}}>{f.esNumero ? f.n1 : `@${f.usuarioWhatsapp}`}</td>
                                 <td style={{padding:'5px 10px',color:'#374151'}}>{masivaCamp||'—'}</td>
                                 <td style={{padding:'5px 10px',color:'#374151'}}>{formatFecha(fechaActiva)}</td>
                                 <td style={{padding:'5px 10px'}}>
