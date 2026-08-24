@@ -36,7 +36,7 @@ const CARGOS = [
   { id:'backreclutamiento',   label:'Back Data Reclutaminto',  cls:'bc-backreclutamiento'   },
   { id:'asesorreclutamiento', label:'Asesor de Reclutamiento', cls:'bc-asesorreclutamiento' },
 ]
-const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
+const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
 
 const SEG_MAP = {
   en_ejecucion:'ejecucion',
@@ -222,7 +222,7 @@ function flujoLabelEstado(estado) {
   })[e] || (estado || 'Venta subida')
 }
 
-const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', pass:'', pass2:'' }
+const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', salaManual:true, pass:'', pass2:'' }
 
 // Valores únicos y ordenados para poblar selects dinámicos (Asesor/Sala/Distrito/Plan) —
 // nunca hardcodeados, siempre derivados de los datos reales ya cargados.
@@ -637,7 +637,7 @@ export default function Jefatura() {
       destroy('salas')
       const mesUsar   = mesReporte || mesActual()
       const ventasMes = ventasCache.filter(v => v._fecha && v._fecha.startsWith(mesUsar))
-      const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
+      const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&(v.estado||'').toLowerCase()==='instalado').length
@@ -661,8 +661,8 @@ export default function Jefatura() {
       destroy('diario')
       const dias = []
       for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().split('T')[0]) }
-      const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
-      const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e']
+      const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
+      const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e','#eab308']
       const datasets = salas.map((s,i) => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return { label:s, data:dias.map(d=>ventasCache.filter(v=>v._fecha===d&&nombres.includes(v.asesor_nombre||'')).length), borderColor:colors[i], backgroundColor:colors[i]+'22', fill:true, tension:.4, borderWidth:2, pointRadius:4 }
@@ -985,7 +985,8 @@ export default function Jefatura() {
   function abrirModalEditar(u) {
     setEditandoId(u.id)
     const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo) || ''
-    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, sala:u.sala||'', pass:'', pass2:'' })
+    const salaActual = String(u.sala || '').trim()
+    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, sala:salaActual, salaManual:!salaActual || !SALAS.includes(salaActual), pass:'', pass2:'' })
     setModErrores({}); setModalUsu(true)
   }
   function cerrarModalUsu() { setModalUsu(false); setEditandoId(null); setModForm(MOD_FORM_VACIO); setModErrores({}) }
@@ -1653,6 +1654,7 @@ export default function Jefatura() {
                 { id:'SALA 4', label:'Sala 4' },
                 { id:'SALA CHANCAY', label:'Sala Chancay' },
                 { id:'SALA 5', label:'Sala 5' },
+                { id:'SALA 6', label:'Sala 6' },
               ].map(tab => (
                 <button key={tab.id}
                   className={`sala-tab${salaReporte===tab.id?' active':''}`}
@@ -1906,10 +1908,21 @@ export default function Jefatura() {
               </div>
               <div className="modal-campo">
                 <label>Sala / Equipo</label>
-                <select value={modForm.sala} onChange={e=>setField('sala',e.target.value)}>
-                  <option value="">— Sin sala —</option>
+                <select value={modForm.salaManual ? '__AGREGAR__' : modForm.sala} onChange={e=>{
+                  if (e.target.value === '__AGREGAR__') setModForm(f=>({...f,sala:'',salaManual:true}))
+                  else setModForm(f=>({...f,sala:e.target.value,salaManual:false}))
+                }}>
+                  <option value="__AGREGAR__">— Agregar sala —</option>
                   {SALAS.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
+                {modForm.salaManual && <input
+                  value={modForm.sala}
+                  onChange={e=>setField('sala',e.target.value.toUpperCase())}
+                  placeholder="Escribir nombre de la sala"
+                  autoFocus
+                  maxLength={80}
+                  style={{marginTop:'8px'}}
+                />}
               </div>
               <div className="modal-sep">Contraseña</div>
               <div className={`modal-campo${modErrores.pass?' error':''}`}>
