@@ -194,11 +194,9 @@ function flujoValidada(v) {
   return Boolean(e) && e !== 'venta' && !flujoNoValidada(v)
 }
 function flujoGrabada(v) {
-  return FLUJO_GRABADA.has(normEstado(v?.estado || v?.estado_venta))
-    || normEstado(v?.estado_grab) === 'grabado'
-    || flujoTieneAudio(v)
+  return estadoGrabacion(v) === 'GRABADO'
 }
-function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
+function flujoNoGrabada(v) { return estadoGrabacion(v) === 'NO GRABADO' }
 const ESTADOS_PROPIOS_VALIDACION = new Set([
   'venta','validado','no_validado','corta_llamada','fraude','no_desea',
   'no_contesta','buzon_voz','servicio_activo','corregir','mala_oferta',
@@ -218,8 +216,14 @@ function coincideFiltroValidacion(v, filtro) {
   return true
 }
 function estadoGrabacion(v) {
-  const g = (v?.estado_grab || '').trim()
-  return g || 'PENDIENTE'
+  // Grabación solo empieza después de VALIDADO. Una tipificación negativa de
+  // Validación prevalece sobre estados operativos antiguos que pudieran haber
+  // quedado en la fila (por ejemplo CORREGIR + GRABANDO).
+  if (estadoValidacion(v) !== 'VALIDADO') return 'NO GRABADO'
+  const g = normEstado(v?.estado_grab)
+  if (g === 'grabado' || g === 'grabada') return 'GRABADO'
+  if (g === 'grabando' || g.startsWith('grabando_')) return 'GRABANDO'
+  return 'NO GRABADO'
 }
 function flujoLabelEstado(estado) {
   const e = normEstado(estado)
@@ -413,6 +417,7 @@ export default function Jefatura() {
   const [fvDistrito,   setFvDistrito]   = useState('')
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
+  const [fvDia,        setFvDia]        = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
   const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
@@ -1007,7 +1012,6 @@ export default function Jefatura() {
 
   const opcionesFlujo = useMemo(() => ({
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
-    grabaciones: opcionesUnicas(ventasCache.map(estadoGrabacion)),
   }), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
@@ -1025,10 +1029,11 @@ export default function Jefatura() {
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
-    if (fvDesde || fvHasta) {
+    if (fvDia || fvDesde || fvHasta) {
       lista = lista.filter(v => {
         const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
         if (!f) return false
+        if (fvDia && f !== fvDia) return false
         if (fvDesde && f < fvDesde) return false
         if (fvHasta && f > fvHasta) return false
         return true
@@ -1048,7 +1053,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1056,7 +1061,7 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
@@ -1064,7 +1069,7 @@ export default function Jefatura() {
     setBusqFlujoVentas('')
     setFvEstados([]); setFvValidacion(''); setFvGrabacion('')
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
-    setFvDesde(''); setFvHasta('')
+    setFvDia(''); setFvDesde(''); setFvHasta('')
   }
 
   function exportarVentasExcel() {
@@ -1663,10 +1668,11 @@ export default function Jefatura() {
               <div className="filtros-grid filtros-grid-ventas">
                 <label><span>Estado actual</span><FiltroEstadoMultiple opciones={opcionesFlujo.estados} seleccionados={fvEstados} onChange={setFvEstados} /></label>
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">TODAS</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
-                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option>{opcionesFlujo.grabaciones.map(x=><option key={x} value={x}>{textoFiltroMayuscula(x)}</option>)}</select></label>
+                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option><option value="GRABADO">GRABADO</option><option value="GRABANDO">GRABANDO</option><option value="NO GRABADO">NO GRABADO</option></select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
+                <label><span>Fecha del día</span><input type="date" value={fvDia} onChange={e=>setFvDia(e.target.value)}/></label>
                 <label><span>Fecha desde</span><input type="date" value={fvDesde} onChange={e=>setFvDesde(e.target.value)}/></label>
                 <label><span>Fecha hasta</span><input type="date" value={fvHasta} onChange={e=>setFvHasta(e.target.value)}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
