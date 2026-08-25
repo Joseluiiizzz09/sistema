@@ -665,6 +665,19 @@ export default function Backdatareclutamiento() {
     }
   }
 
+  async function guardarFechaEntrevista(id, valorAnterior, valorNuevo) {
+    if (valorNuevo === (valorAnterior||'')) return
+    actualizarEntrevistaLocal(id, { fecha_entrevista: valorNuevo })
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ fecha_entrevista: valorNuevo||null }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la fecha de entrevista')
+    } catch(e) {
+      actualizarEntrevistaLocal(id, { fecha_entrevista: valorAnterior||'' })
+      mostrarToast(e.message || 'No se pudo guardar la fecha de entrevista')
+    }
+  }
+
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
@@ -2041,32 +2054,33 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Fecha agendamiento</th><th>Turno</th><th>Campaña</th><th>Postulante</th><th>Número</th><th>Número ref</th>
-                    <th>Tipificación</th><th>Observación</th><th>Agendado por</th><th>Registrado</th>
+                    <th>Fecha de registro</th><th>Campaña</th><th>Agendado por</th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
+                    <th>Tipificación</th><th>Observación</th><th>Fecha de agendamiento</th><th>Fecha de entrevista</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargandoEntrevistas ? (
-                    <tr><td colSpan="10" className="reclutados-empty">Cargando entrevistas...</td></tr>
+                    <tr><td colSpan="11" className="reclutados-empty">Cargando entrevistas...</td></tr>
                   ) : entrevistasFiltradas.length === 0 ? (
-                    <tr><td colSpan="10" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
+                    <tr><td colSpan="11" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
                   ) : entrevistasFiltradas.map(en => (
                     <tr key={en.id}>
-                      <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
-                      <td>{en.turno}</td>
+                      <td>{normalizarFecha(en.created_at) || '—'}</td>
                       <td><CampanaBadge valor={en.campana} /></td>
+                      <td className="reclutados-reclutador">{en.creado_por_nombre || '—'}</td>
+                      <td>{en.turno}</td>
                       <td className="reclutados-nombre">{en.nombre_postulante}</td>
                       <td>{en.numero}</td>
                       <td>{en.numero_ref || '—'}</td>
                       <td>
                         <select value={en.tipificacion||''} onChange={e=>guardarTipifEntrevista(en.id,e.target.value)} style={estiloTipifEntrevista(en.tipificacion)}>
-                          <option value="">— Pendiente —</option>
-                          {TIPIF_ENTREVISTA_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                          <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
+                          {TIPIF_ENTREVISTA_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                         </select>
                       </td>
                       <td><input className="form-control" defaultValue={en.observacion||''} onBlur={e=>guardarObservacionEntrevista(en.id, en.observacion||'', e.target.value.trim())} placeholder="Comentario…" style={{minWidth:160,fontSize:11}} /></td>
-                      <td className="reclutados-reclutador">{en.creado_por_nombre || '—'}</td>
-                      <td>{normalizarFecha(en.created_at) || '—'}</td>
+                      <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
+                      <td><input type="date" className="form-control" defaultValue={String(en.fecha_entrevista||'').slice(0,10)} onBlur={e=>guardarFechaEntrevista(en.id, String(en.fecha_entrevista||'').slice(0,10), e.target.value)} /></td>
                     </tr>
                   ))}
                 </tbody>
