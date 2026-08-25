@@ -177,6 +177,16 @@ function esLeadProhibido(reg) {
   const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
 }
+// El postulante aceptó la propuesta (VENTA CERRADA) pero la entrevista se
+// tipificó como que no continuó — señal para desbloquear la rotación manual
+// aunque el tipif_vend siga bloqueado, igual que Backoffice con VENTA CAIDA.
+const TIPIF_ENTREVISTA_NO_CONTINUA = new Set(['DESISTE','FALTA','NO CONTESTA'])
+function esEntrevistaCaida(reg) {
+  return TIPIF_ENTREVISTA_NO_CONTINUA.has(String(reg?.entrevistaTipif || '').trim().toUpperCase())
+}
+function esRotacionManualProhibida(reg) {
+  return !esEntrevistaCaida(reg) && esLeadProhibido(reg)
+}
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
   'NO CONTESTA':['#fed7aa','#9a3412'],'BUZON DE VOZ':['#ccfbf1','#134e4a'],'CORTA LLAMADA':['#f8fafc','#334155'],
@@ -559,6 +569,7 @@ export default function Backdatareclutamiento() {
           rotaciones: l.rotaciones || 0,
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
+          entrevistaTipif: l.entrevista_tipificacion || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
         }
         // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
@@ -887,7 +898,7 @@ export default function Backdatareclutamiento() {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
-    if (esLeadProhibido(reg)) {
+    if (esRotacionManualProhibida(reg)) {
       mostrarToast(`N1 ${reg.n1} no se puede rotar: ${reg._tipifVend}`)
       return
     }
@@ -934,7 +945,7 @@ export default function Backdatareclutamiento() {
     const found = findReg(modalRotar.regId)
     if (!found) return
     const { reg } = found
-    if (esLeadProhibido(reg)) {
+    if (esRotacionManualProhibida(reg)) {
       mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
       setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
       return
@@ -1617,6 +1628,7 @@ export default function Backdatareclutamiento() {
                     ? <tr><td colSpan={filtros.verTipVend?11:10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
+                        const rotacionManualBloqueada = esRotacionManualProhibida(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
@@ -1654,9 +1666,9 @@ export default function Backdatareclutamiento() {
                             </td>
                             <td>
                               <div className="acciones-cell">
-                                <button className="btn-rotar" disabled={esExclusiva} title={esExclusiva?`Número prohibido: ${r._tipifVend}`:'Rotar'} onClick={()=>abrirModalRotar(r.id)}>
+                                <button className="btn-rotar" disabled={rotacionManualBloqueada} title={rotacionManualBloqueada?`Número prohibido: ${r._tipifVend}`:(esExclusiva?'Rotación manual habilitada: el postulante no continuó con la entrevista':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                  {esExclusiva?'Prohibido':'Rotar'}
+                                  {rotacionManualBloqueada?'Prohibido':'Rotar'}
                                 </button>
                                 <button className="btn-hist" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
