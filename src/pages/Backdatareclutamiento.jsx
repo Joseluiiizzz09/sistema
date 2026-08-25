@@ -264,6 +264,12 @@ const TIPIF_DIA_CAPACITACION_OPCIONES = ['DESISTE','ASISTE','FALTA']
 // Mismas salas ya usadas en Jefatura.
 const SALAS_CAPACITACION = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
 
+// Etiquetas legibles para el historial/trazabilidad de Capacitación.
+const CAMPOS_CAPACITACION_LABELS = {
+  dia1_tipif: 'Día 1', dia2_tipif: 'Día 2', dia3_tipif: 'Día 3', dia4_tipif: 'Día 4', dia5_tipif: 'Día 5',
+  sala: 'Sala', tipificacion_final: 'Tipificación final', fecha_inicio_capacitador: 'Fecha de inicio (capacitador)',
+}
+
 // Tipificación final, se asigna desde el día 3 (OJT) en adelante.
 const TIPIF_FINAL_CAPACITACION_OPCIONES = ['INGRESO','ALTA','DESISTE','DESAPROBADO']
 const TIPIF_FINAL_CAPACITACION_COLORES = {
@@ -378,6 +384,7 @@ export default function Backdatareclutamiento() {
 
   // ── Historial ──
   const [histOpen, setHistOpen] = useState({})
+  const [histOpenCapacitacion, setHistOpenCapacitacion] = useState({})
 
   // ── Rotación panel ──
   const [rotPanelOpen,  setRotPanelOpen]  = useState(false)
@@ -746,6 +753,7 @@ export default function Backdatareclutamiento() {
       const res = await fetch(`${API}/leads-reclutamiento/capacitaciones/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ [campo]: valorNuevo }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar')
+      if (Array.isArray(data.historial)) actualizarCapacitacionLocal(id, { historial:data.historial })
     } catch(e) {
       actualizarCapacitacionLocal(id, { [campo]: valorAnterior||'' })
       mostrarToast(e.message || 'No se pudo guardar')
@@ -895,14 +903,15 @@ export default function Backdatareclutamiento() {
       return
     }
     if (!nuevoAsesor) {
-      updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true })
+      const nuevoHist = [...reg.historial, { tipo:'QUITAR_ASIGNACION', asesorQuitado:reg.asesor, quitadoPor:sesion?.nombre||'Usuario', hora, fecha:fechaHoy() }]
+      updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true, historial:nuevoHist })
       if (reg._backendId) {
         try {
-          const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) })
+          const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'', historial:nuevoHist }) })
           const data = await res.json().catch(() => ({}))
           if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo quitar la asignación')
         } catch (e) {
-          updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar })
+          updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial })
           mostrarToast(e.message || 'No se pudo quitar la asignación')
         }
       }
@@ -1805,37 +1814,48 @@ export default function Backdatareclutamiento() {
                                 {(() => {
                                   const hist = r.historial||[]
                                   const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
-                                  if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
-                                  return cola.map((h,ci)=>{
-                                    const sig = cola[ci+1]
-                                    const tipif = ci===cola.length-1
-                                      ? (r._tipifVend || '')
-                                      : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
-                                    const asignadoPor = h.tipo==='ROTACION'
-                                      ? (h.rotadoPor || '—')
-                                      : (h.reasignadoPor || h.motivo || '—')
-                                    const nombreAsesor = String(h.asesor||'').trim().toUpperCase()
-                                    const tipsAsesor = hist
-                                      .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
-                                      .sort((a,b)=>(a.ts||0)-(b.ts||0))
-                                    return (
-                                      <div key={ci} className="hist-item" style={{alignItems:'flex-start'}}>
-                                        <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length],marginTop:4}} />
-                                        <div style={{lineHeight:1.5}}>
-                                          <div><strong>{h.asesor||'—'}</strong> <span className="hora-cell">{h.hora||'—'}</span> <span style={{color:'#9ca3af'}}>{h.fecha||''}</span></div>
-                                          <div style={{display:'flex',flexWrap:'wrap',gap:'4px 14px',margin:'2px 0'}}>
-                                            {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
-                                              <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
-                                                <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
-                                                <strong style={{color:'#065f46'}}>{labelTipifVend(t.tipif)||'—'}</strong>
-                                              </span>
-                                            )) : <span style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{labelTipifVend(tipif)||'—'}</strong></span>}
+                                  const retiros = hist.filter(h => h?.tipo === 'QUITAR_ASIGNACION')
+                                  return (<>
+                                    {!cola.length
+                                      ? <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
+                                      : cola.map((h,ci)=>{
+                                        const sig = cola[ci+1]
+                                        const tipif = ci===cola.length-1
+                                          ? (r._tipifVend || '')
+                                          : (sig && sig.tipifVendAntes!=null ? sig.tipifVendAntes : '')
+                                        const asignadoPor = h.tipo==='ROTACION'
+                                          ? (h.rotadoPor || '—')
+                                          : (h.reasignadoPor || h.motivo || '—')
+                                        const nombreAsesor = String(h.asesor||'').trim().toUpperCase()
+                                        const tipsAsesor = hist
+                                          .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
+                                          .sort((a,b)=>(a.ts||0)-(b.ts||0))
+                                        return (
+                                          <div key={ci} className="hist-item" style={{alignItems:'flex-start'}}>
+                                            <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length],marginTop:4}} />
+                                            <div style={{lineHeight:1.5}}>
+                                              <div><strong>{h.asesor||'—'}</strong> <span className="hora-cell">{h.hora||'—'}</span> <span style={{color:'#9ca3af'}}>{h.fecha||''}</span></div>
+                                              <div style={{display:'flex',flexWrap:'wrap',gap:'4px 14px',margin:'2px 0'}}>
+                                                {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
+                                                  <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
+                                                    <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
+                                                    <strong style={{color:'#065f46'}}>{labelTipifVend(t.tipif)||'—'}</strong>
+                                                  </span>
+                                                )) : <span style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{labelTipifVend(tipif)||'—'}</strong></span>}
+                                              </div>
+                                              <div style={{fontSize:11,color:'#6b7280'}}>Asignado por: {asignadoPor}</div>
+                                            </div>
                                           </div>
-                                          <div style={{fontSize:11,color:'#6b7280'}}>Asignado por: {asignadoPor}</div>
-                                        </div>
+                                        )
+                                      })
+                                    }
+                                    {retiros.map((h,ri)=>(
+                                      <div key={`retiro-${ri}`} style={{fontSize:11,color:'#991b1b',marginTop:8,padding:'6px 8px',background:'#fef2f2',borderRadius:6,borderLeft:'3px solid #ef4444'}}>
+                                        <strong>{h.quitadoPor || 'Usuario'}</strong> quitó la asignación de <strong>{h.asesorQuitado || '—'}</strong>
+                                        {h.hora ? ` · ${h.hora}` : ''}{h.fecha ? ` · ${h.fecha}` : ''}
                                       </div>
-                                    )
-                                  })
+                                    ))}
+                                  </>)
                                 })()}
                                 <div style={{marginTop:10, textAlign:'right'}}>
                                   <button type="button"
@@ -2226,15 +2246,15 @@ export default function Backdatareclutamiento() {
                     <th>Fecha de inicio</th><th>Fecha de inicio (capacitador)</th>
                     <th>Día 1</th><th>Día 2</th><th>Día 3</th><th>Día 4</th><th>Día 5</th>
                     <th>Sala</th><th>Tipificación final</th>
-                    <th>Fecha de registro</th>
+                    <th>Fecha de registro</th><th>Historial</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargandoCapacitaciones ? (
-                    <tr><td colSpan="14" className="reclutados-empty">Cargando capacitaciones...</td></tr>
+                    <tr><td colSpan="15" className="reclutados-empty">Cargando capacitaciones...</td></tr>
                   ) : capacitacionesFiltradas.length === 0 ? (
-                    <tr><td colSpan="14" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
-                  ) : capacitacionesFiltradas.map(c => (
+                    <tr><td colSpan="15" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
+                  ) : capacitacionesFiltradas.flatMap(c => ([
                     <tr key={c.id}>
                       <td><CampanaBadge valor={c.campana} /></td>
                       <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
@@ -2251,7 +2271,7 @@ export default function Backdatareclutamiento() {
                         </td>
                       ))}
                       <td>
-                        <select value={c.sala||''} onChange={e=>guardarCampoCapacitacion(c.id,'sala',c.sala||'',e.target.value)}>
+                        <select value={c.sala||''} onChange={e=>guardarCampoCapacitacion(c.id,'sala',c.sala||'',e.target.value)} style={{fontSize:11,padding:'4px 6px',borderRadius:6,fontFamily:'inherit',maxWidth:120,cursor:'pointer',border:'1px solid #e5e7eb',background:'#fff'}}>
                           <option value="">— Selecciona —</option>
                           {SALAS_CAPACITACION.map(s=><option key={s} value={s}>{s}</option>)}
                         </select>
@@ -2263,8 +2283,33 @@ export default function Backdatareclutamiento() {
                         </select>
                       </td>
                       <td>{normalizarFecha(c.created_at) || '—'}</td>
-                    </tr>
-                  ))}
+                      <td>
+                        <button type="button" className="btn-hist btn-hist-sm" onClick={()=>setHistOpenCapacitacion(p=>({...p,[c.id]:!p[c.id]}))} title="Historial">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </button>
+                      </td>
+                    </tr>,
+                    <tr key={`hist-cap-${c.id}`} className={`historial-row${histOpenCapacitacion[c.id]?' open':''}`}>
+                      <td colSpan={15}>
+                        <div className="historial-inner">
+                          <div className="hist-label">Trazabilidad — {c.nombre_postulante}</div>
+                          {!(c.historial||[]).length
+                            ? <div style={{fontSize:11,color:'#ccc'}}>Sin cambios registrados.</div>
+                            : (c.historial||[]).slice().reverse().map((h,hi)=>(
+                              <div key={hi} className="hist-item" style={{alignItems:'flex-start'}}>
+                                <div className="hist-dot" style={{background:DOT_COLORS[hi%DOT_COLORS.length],marginTop:4}} />
+                                <div style={{lineHeight:1.5}}>
+                                  <div><strong>{CAMPOS_CAPACITACION_LABELS[h.campo]||h.campo}</strong> <span className="hora-cell">{h.hora||'—'}</span> <span style={{color:'#9ca3af'}}>{h.fecha||''}</span></div>
+                                  <div style={{fontSize:11}}>{h.valor_anterior || '— Pendiente —'} <span style={{color:'#9ca3af'}}>→</span> <strong style={{color:'#065f46'}}>{h.valor_nuevo || '— Pendiente —'}</strong></div>
+                                  <div style={{fontSize:11,color:'#6b7280'}}>Modificado por: {h.usuario_nombre||'—'}</div>
+                                </div>
+                              </div>
+                            ))
+                          }
+                        </div>
+                      </td>
+                    </tr>,
+                  ]))}
                 </tbody>
               </table>
             </div>
