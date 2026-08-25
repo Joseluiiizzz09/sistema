@@ -553,6 +553,14 @@ body{
 .btn-rotar:disabled{background:#fee2e2;color:#991b1b;box-shadow:none;cursor:not-allowed;opacity:1;}
 .sel-asesor-tabla:disabled{background:#fef2f2;color:#991b1b;border-color:#fecaca;cursor:not-allowed;}
 .btn-rotar:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 4px 14px rgba(124,58,237,.4);}
+.acc-cell-compact{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;}
+.btn-acc-det{min-width:22px;height:22px;border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0 4px;font-family:inherit;}
+.btn-acc-det:hover{background:var(--brand-soft);color:var(--brand);border-color:rgba(229,62,62,.3);}
+.btn-rotar-sm{height:22px!important;padding:0 5px!important;font-size:10px!important;}
+.btn-rotar-sm svg{width:10px!important;height:10px!important;}
+.btn-hist-sm{height:22px!important;padding:0 5px!important;}
+.btn-hist-sm svg{width:10px!important;height:10px!important;}
+.acc-cell-compact .btn-del{width:22px;height:22px;}
 .btn-obs{border-color:rgba(217,119,6,.3);background:#fffbeb;}
 .btn-obs:hover{background:#fef3c7;}
 .sel-asesor-tabla{padding:4px 8px;border:1px solid var(--line-2);border-radius:7px;font-size:11px;font-family:inherit;outline:none;background:var(--surf-1);color:var(--ink);min-width:110px;cursor:pointer;transition:all .18s;}
