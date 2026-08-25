@@ -95,7 +95,7 @@ const ACCESOS_MODS = [
   { nombre:'Super de Calidad', desc:'Supervisión del equipo de Calidad',icon:'quality',   path:'/sup-calidad',     color:'#7c3aed', cargo:'supcalidad' },
   { nombre:'Sup. Grabaciones', desc:'Supervisión del equipo de audio',icon:'headphones',path:'/sup-grabaciones',color:'#047857', cargo:'supgrabaciones' },
   { nombre:'Back Data Reclutaminto',        desc:'Gestión y asignación de candidatos', icon:'clipboard', path:'/backdata-reclutamiento', color:'#4338ca', cargo:'backreclutamiento' },
-  { nombre:'Sistema de Llamadas Reclutamiento', desc:'Contacto y seguimiento de postulantes', icon:'chart', path:'/reclutamiento', color:'#0e7490', cargo:'asesorreclutamiento' },
+  { nombre:'Capacitación',      desc:'Seguimiento de postulantes en capacitación', icon:'graduation', path:'/backdata-reclutamiento', color:'#0e7490', cargo:'capacitador' },
 ]
 
 function ModuloIcon({ tipo, size = 24 }) {
@@ -111,6 +111,7 @@ function ModuloIcon({ tipo, size = 24 }) {
     headphones: <><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M18 19h-2v-7h4v5a2 2 0 0 1-2 2ZM6 19H4a2 2 0 0 1-2-2v-5h4v7Z"/></>,
     wallet: <><path d="M4 6.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3v-10a3 3 0 0 1 3-3h11"/><path d="M15 11h6v5h-6a2.5 2.5 0 0 1 0-5Z"/></>,
     quality: <><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></>,
+    graduation: <><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></>,
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{display:'block', margin:'auto', flex:'0 0 auto'}}>{trazos[tipo] || trazos.activity}</svg>
 }
