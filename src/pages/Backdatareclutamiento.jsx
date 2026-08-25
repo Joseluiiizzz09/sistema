@@ -93,7 +93,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, className,
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
-const BO_SECCIONES = ['base', 'reclutados', 'carga-masiva', 'rendimiento', 'avance', 'entrevistas']
+const BO_SECCIONES = ['base', 'reclutados', 'carga-masiva', 'rendimiento', 'avance', 'entrevistas', 'capacitacion']
 
 const PERU_TIME_ZONE = 'America/Lima'
 const PERU_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -238,13 +238,13 @@ function estiloTipifVend(v) {
 // Tipificación del resultado de la entrevista (colores enviados por el usuario)
 const TIPIF_ENTREVISTA_OPCIONES = ['NO CONTESTA','DESISTE','REPROGRAMA','CORTA LLAMADA','ASISTE','EN CAMINO','FALTA']
 const TIPIF_ENTREVISTA_COLORES = {
-  'NO CONTESTA':   ['#52525b','#ffffff','#3f3f46'],
-  'DESISTE':       ['#18181b','#ffffff','#000000'],
-  'REPROGRAMA':    ['#8b5cf6','#ffffff','#7c3aed'],
-  'CORTA LLAMADA': ['#ddd6fe','#4c1d95','#c4b5fd'],
-  'ASISTE':        ['#22c55e','#ffffff','#16a34a'],
-  'EN CAMINO':     ['#f59e0b','#78350f','#ca8a04'],
-  'FALTA':         ['#ef4444','#ffffff','#dc2626'],
+  'NO CONTESTA':   ['#fef9c3','#854d0e','#fde047'],
+  'DESISTE':       ['#f1f5f9','#334155','#cbd5e1'],
+  'REPROGRAMA':    ['#dbeafe','#1d4ed8','#93c5fd'],
+  'CORTA LLAMADA': ['#ffedd5','#c2410c','#fdba74'],
+  'ASISTE':        ['#dcfce7','#166534','#86efac'],
+  'EN CAMINO':     ['#fef3c7','#92400e','#fcd34d'],
+  'FALTA':         ['#fee2e2','#991b1b','#fca5a5'],
 }
 function estiloTipifEntrevista(v) {
   const paleta = TIPIF_ENTREVISTA_COLORES[v]
@@ -276,6 +276,9 @@ function BoNavIcon({ tipo }) {
   )
   if (tipo === 'entrevistas') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m8.5 14 2 2 4-4"/></svg>
+  )
+  if (tipo === 'capacitacion') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
   )
   return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m0-5a5 5 0 0 1 6 5"/></svg>
@@ -366,6 +369,12 @@ export default function Backdatareclutamiento() {
   const [cargandoEntrevistas,setCargandoEntrevistas] = useState(false)
   const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turno:'', desde:'', hasta:'', busqueda:'' })
   const [modalEntrevista,    setModalEntrevista]      = useState({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
+
+  // ── Capacitación (postulantes que asistieron a la entrevista) ──
+  const [capacitaciones,        setCapacitaciones]        = useState([])
+  const [cargandoCapacitaciones,setCargandoCapacitaciones] = useState(false)
+  const [filtrosCapacitacion,   setFiltrosCapacitacion]    = useState({ busqueda:'', desde:'', hasta:'' })
+  const [modalCapacitacion,     setModalCapacitacion]      = useState({ open:false, entrevistaId:null, nombrePostulante:'', numero:'', fechaInicio:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
@@ -635,6 +644,20 @@ export default function Backdatareclutamiento() {
     }
   }, [])
 
+  const cargarCapacitaciones = useCallback(async () => {
+    setCargandoCapacitaciones(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/capacitaciones`, { headers: ncHeaders() })
+      const data = await res.json()
+      setCapacitaciones(data.ok ? data.data : [])
+    } catch(e) {
+      console.error('Error cargando capacitaciones:', e)
+      setCapacitaciones([])
+    } finally {
+      setCargandoCapacitaciones(false)
+    }
+  }, [])
+
   function actualizarEntrevistaLocal(id, cambios) {
     setEntrevistas(prev => prev.map(en => en.id === id ? { ...en, ...cambios } : en))
   }
@@ -646,9 +669,57 @@ export default function Backdatareclutamiento() {
       const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipificacion: valor }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
+      if (valor === 'ASISTE') abrirModalCapacitacion(id)
     } catch(e) {
       actualizarEntrevistaLocal(id, { tipificacion: anterior })
       mostrarToast(e.message || 'No se pudo guardar la tipificación')
+    }
+  }
+
+  // ── Modal registrar capacitación (al tipificar ASISTE) ────────────────────
+  function abrirModalCapacitacion(entrevistaId) {
+    const en = entrevistas.find(e => e.id === entrevistaId)
+    if (!en) return
+    setModalCapacitacion({ open:true, entrevistaId, nombrePostulante:en.nombre_postulante||'', numero:en.numero||'', fechaInicio:'', guardando:false, error:'' })
+  }
+
+  async function guardarCapacitacion() {
+    const nombrePostulante = modalCapacitacion.nombrePostulante.trim()
+    const numero = modalCapacitacion.numero.trim()
+    const fechaInicio = modalCapacitacion.fechaInicio
+    if (!nombrePostulante) { setModalCapacitacion(p=>({...p, error:'Ingresa el nombre del postulante'})); return }
+    if (!numero) { setModalCapacitacion(p=>({...p, error:'Ingresa un número de contacto'})); return }
+    if (!fechaInicio) { setModalCapacitacion(p=>({...p, error:'Selecciona la fecha de inicio de capacitación'})); return }
+    setModalCapacitacion(p=>({...p, guardando:true, error:''}))
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${modalCapacitacion.entrevistaId}/capacitacion`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+        nombre_postulante:nombrePostulante, numero, fecha_inicio_capacitacion:fechaInicio,
+      }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo registrar la capacitación')
+      setModalCapacitacion({ open:false, entrevistaId:null, nombrePostulante:'', numero:'', fechaInicio:'', guardando:false, error:'' })
+      mostrarToast('Capacitación registrada')
+      if (seccion === 'capacitacion') cargarCapacitaciones()
+    } catch (e) {
+      setModalCapacitacion(p=>({...p, guardando:false, error:e.message || 'No se pudo registrar la capacitación'}))
+    }
+  }
+
+  function actualizarCapacitacionLocal(id, cambios) {
+    setCapacitaciones(prev => prev.map(c => c.id === id ? { ...c, ...cambios } : c))
+  }
+
+  async function guardarCampoCapacitacion(id, campo, valorAnterior, valorNuevo) {
+    if (valorNuevo === (valorAnterior||'')) return
+    if (!valorNuevo) { mostrarToast('Este campo no puede quedar vacío'); return }
+    actualizarCapacitacionLocal(id, { [campo]: valorNuevo })
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/capacitaciones/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ [campo]: valorNuevo }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar')
+    } catch(e) {
+      actualizarCapacitacionLocal(id, { [campo]: valorAnterior||'' })
+      mostrarToast(e.message || 'No se pudo guardar')
     }
   }
 
@@ -706,6 +777,7 @@ export default function Backdatareclutamiento() {
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
     if (id === 'reclutados') cargarReclutados()
     if (id === 'entrevistas') cargarEntrevistas()
+    if (id === 'capacitacion') cargarCapacitaciones()
   }
 
   useEffect(() => {
@@ -1278,6 +1350,15 @@ export default function Backdatareclutamiento() {
     return [en.nombre_postulante, en.numero, en.numero_ref, en.campana].some(v => String(v||'').toLowerCase().includes(texto))
   })
 
+  const capacitacionesFiltradas = capacitaciones.filter(c => {
+    const fecha = String(c.fecha_inicio_capacitacion||'').slice(0,10)
+    if (filtrosCapacitacion.desde && fecha < filtrosCapacitacion.desde) return false
+    if (filtrosCapacitacion.hasta && fecha > filtrosCapacitacion.hasta) return false
+    const texto = filtrosCapacitacion.busqueda.trim().toLowerCase()
+    if (!texto) return true
+    return [c.nombre_postulante, c.numero, c.campana].some(v => String(v||'').toLowerCase().includes(texto))
+  })
+
   const statsBase = {
     total:      registrosActivos.length,
     ventas:     registrosActivos.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
@@ -1412,6 +1493,7 @@ export default function Backdatareclutamiento() {
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
           </>}
           <button className={`bo-nav${seccion==='entrevistas'?' active':''}`} onClick={()=>irSeccion('entrevistas')}><BoNavIcon tipo="entrevistas" /> <span>Entrevistas</span></button>
+          <button className={`bo-nav${seccion==='capacitacion'?' active':''}`} onClick={()=>irSeccion('capacitacion')}><BoNavIcon tipo="capacitacion" /> <span>Capacitación</span></button>
           {!esSoloEntrevistas && (
           <div className="bo-sidebar-registro">
             <div className="sidebar-sep">Agregar registro</div>
@@ -2088,6 +2170,53 @@ export default function Backdatareclutamiento() {
             </div>
           </section>
 
+          {/* ══ SECCIÓN: CAPACITACIÓN ══════════════════════════════════════════ */}
+          <section className={`bo-seccion${seccion==='capacitacion'?'':' hidden'}`}>
+            <div className="bo-seccion-header">
+              <div>
+                <h2>Capacitación</h2>
+                <p className="bo-sub">Postulantes que asistieron a la entrevista y arrancan capacitación.</p>
+              </div>
+              <div className="reclutados-head-actions">
+                <span className="reclutados-count">{capacitacionesFiltradas.length} registros</span>
+                <button type="button" className="reclutados-refresh" onClick={cargarCapacitaciones}>↻ Actualizar</button>
+              </div>
+            </div>
+
+            <div className="filtros-grid" style={{marginBottom:14}}>
+              <div className="bo-input-group"><label>Buscar</label><input className="form-control" value={filtrosCapacitacion.busqueda} onChange={e=>setFiltrosCapacitacion(p=>({...p,busqueda:e.target.value}))} placeholder="Postulante, número o campaña…" /></div>
+              <div className="bo-input-group"><label>Desde</label><input type="date" className="form-control" value={filtrosCapacitacion.desde} onChange={e=>setFiltrosCapacitacion(p=>({...p,desde:e.target.value}))} /></div>
+              <div className="bo-input-group"><label>Hasta</label><input type="date" className="form-control" value={filtrosCapacitacion.hasta} onChange={e=>setFiltrosCapacitacion(p=>({...p,hasta:e.target.value}))} /></div>
+            </div>
+
+            <div className="base-tabla-wrap reclutados-tabla-wrap">
+              <table className="base-tabla reclutados-tabla">
+                <thead>
+                  <tr>
+                    <th>Campaña</th><th>Postulante</th><th>Número</th><th>Fecha de inicio</th>
+                    <th>Registrado por</th><th>Fecha de registro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cargandoCapacitaciones ? (
+                    <tr><td colSpan="6" className="reclutados-empty">Cargando capacitaciones...</td></tr>
+                  ) : capacitacionesFiltradas.length === 0 ? (
+                    <tr><td colSpan="6" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
+                  ) : capacitacionesFiltradas.map(c => (
+                    <tr key={c.id}>
+                      <td><CampanaBadge valor={c.campana} /></td>
+                      <td className="reclutados-nombre"><input className="form-control" defaultValue={c.nombre_postulante||''} onBlur={e=>guardarCampoCapacitacion(c.id,'nombre_postulante', c.nombre_postulante||'', e.target.value.trim())} style={{minWidth:160,fontSize:11,fontWeight:600}} /></td>
+                      <td><input className="form-control" defaultValue={c.numero||''} onBlur={e=>guardarCampoCapacitacion(c.id,'numero', c.numero||'', e.target.value.trim())} style={{minWidth:120,fontSize:11,fontFamily:'monospace'}} /></td>
+                      <td><input type="date" className="form-control" defaultValue={String(c.fecha_inicio_capacitacion||'').slice(0,10)} onBlur={e=>guardarCampoCapacitacion(c.id,'fecha_inicio_capacitacion', String(c.fecha_inicio_capacitacion||'').slice(0,10), e.target.value)} /></td>
+                      <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
+                      <td>{normalizarFecha(c.created_at) || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
 
         </main>
       </div>
@@ -2172,6 +2301,23 @@ export default function Backdatareclutamiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalEntrevista(p=>({...p,open:false}))} disabled={modalEntrevista.guardando}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={guardarEntrevista} disabled={modalEntrevista.guardando}>{modalEntrevista.guardando?'Guardando…':'Agendar entrevista'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL REGISTRAR CAPACITACIÓN ═════════════════════════════════════ */}
+      {modalCapacitacion.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalCapacitacion.guardando) setModalCapacitacion(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Registrar en capacitación</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Nombre del postulante</label><input className="form-control" value={modalCapacitacion.nombrePostulante} onChange={e=>setModalCapacitacion(p=>({...p,nombrePostulante:e.target.value}))} placeholder="Nombre y apellidos" /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Número (el del lead, o cambia por uno de referencia)</label><input className="form-control" value={modalCapacitacion.numero} onChange={e=>setModalCapacitacion(p=>({...p,numero:e.target.value}))} placeholder="Número de contacto" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Fecha de inicio de capacitación</label><input type="date" className="form-control" value={modalCapacitacion.fechaInicio} onChange={e=>setModalCapacitacion(p=>({...p,fechaInicio:e.target.value}))} /></div>
+            {modalCapacitacion.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalCapacitacion.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalCapacitacion(p=>({...p,open:false}))} disabled={modalCapacitacion.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarCapacitacion} disabled={modalCapacitacion.guardando}>{modalCapacitacion.guardando?'Guardando…':'Registrar'}</button>
             </div>
           </div>
         </div>
