@@ -163,6 +163,12 @@ const TIPIF_VEND_OPCIONES = [
   { value:'VOLVER A LLAMAR', label:'Volver a llamar' },
   { value:'FRAUDE',          label:'Provincia' },
 ]
+// El historial guarda el valor crudo (ej. 'VENTA CERRADA'); esto lo traduce
+// a la etiqueta que ve el usuario (ej. 'Acepta propuesta').
+function labelTipifVend(valor) {
+  const texto = String(valor || '').trim().toUpperCase()
+  return TIPIF_VEND_OPCIONES.find(t => t.value === texto)?.label || valor || ''
+}
 const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','NO ROTAR'])
 const LIMA_DISTRITOS = [
   'Ancón','Ate','Barranco','Breña','Carabayllo','Cercado de Lima','Chaclacayo','Chorrillos',
@@ -1697,9 +1703,9 @@ export default function Backdatareclutamiento() {
                                             {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
                                               <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
                                                 <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
-                                                <strong style={{color:'#065f46'}}>{t.tipif||'—'}</strong>
+                                                <strong style={{color:'#065f46'}}>{labelTipifVend(t.tipif)||'—'}</strong>
                                               </span>
-                                            )) : <span style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></span>}
+                                            )) : <span style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{labelTipifVend(tipif)||'—'}</strong></span>}
                                           </div>
                                           <div style={{fontSize:11,color:'#6b7280'}}>Asignado por: {asignadoPor}</div>
                                         </div>
