@@ -268,6 +268,7 @@ const SALAS_CAPACITACION = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','
 const CAMPOS_CAPACITACION_LABELS = {
   dia1_tipif: 'Día 1', dia2_tipif: 'Día 2', dia3_tipif: 'Día 3', dia4_tipif: 'Día 4', dia5_tipif: 'Día 5',
   sala: 'Sala', tipificacion_final: 'Tipificación final', fecha_inicio_capacitador: 'Fecha de inicio (capacitador)',
+  fecha_alta: 'Fecha de alta',
 }
 
 // Tipificación final, se asigna desde el día 3 (OJT) en adelante.
@@ -411,6 +412,7 @@ export default function Backdatareclutamiento() {
   const [cargandoCapacitaciones,setCargandoCapacitaciones] = useState(false)
   const [filtrosCapacitacion,   setFiltrosCapacitacion]    = useState({ busqueda:'', desde:'', hasta:'' })
   const [modalCapacitacion,     setModalCapacitacion]      = useState({ open:false, entrevistaId:null, nombrePostulante:'', numero:'', fechaInicio:'', guardando:false, error:'' })
+  const [modalAlta, setModalAlta] = useState({ open:false, capacitacionId:null, fechaAlta:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
@@ -756,6 +758,27 @@ export default function Backdatareclutamiento() {
     } catch(e) {
       actualizarCapacitacionLocal(id, { [campo]: valorAnterior||'' })
       mostrarToast(e.message || 'No se pudo guardar')
+    }
+  }
+
+  // ── Modal fecha de alta (al marcar Tipificación final = ALTA) ────────────
+  function abrirModalAlta(capacitacionId) {
+    setModalAlta({ open:true, capacitacionId, fechaAlta:'', guardando:false, error:'' })
+  }
+
+  async function guardarAlta() {
+    const fechaAlta = modalAlta.fechaAlta
+    if (!fechaAlta) { setModalAlta(p=>({...p, error:'Ingresa la fecha de alta'})); return }
+    setModalAlta(p=>({...p, guardando:true, error:''}))
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/capacitaciones/${modalAlta.capacitacionId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipificacion_final:'ALTA', fecha_alta:fechaAlta }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar')
+      actualizarCapacitacionLocal(modalAlta.capacitacionId, { tipificacion_final:'ALTA', fecha_alta:fechaAlta, ...(Array.isArray(data.historial)?{historial:data.historial}:{}) })
+      setModalAlta({ open:false, capacitacionId:null, fechaAlta:'', guardando:false, error:'' })
+      mostrarToast('Postulante marcado como ALTA')
+    } catch(e) {
+      setModalAlta(p=>({...p, guardando:false, error:e.message || 'No se pudo guardar'}))
     }
   }
 
@@ -2276,7 +2299,7 @@ export default function Backdatareclutamiento() {
                         </select>
                       </td>
                       <td>
-                        <select value={c.tipificacion_final||''} onChange={e=>guardarCampoCapacitacion(c.id,'tipificacion_final',c.tipificacion_final||'',e.target.value)} style={estiloTipifFinalCapacitacion(c.tipificacion_final)}>
+                        <select value={c.tipificacion_final||''} onChange={e=>{ const v=e.target.value; if (v==='ALTA' && c.tipificacion_final!=='ALTA') abrirModalAlta(c.id); else guardarCampoCapacitacion(c.id,'tipificacion_final',c.tipificacion_final||'',v) }} style={estiloTipifFinalCapacitacion(c.tipificacion_final)}>
                           <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                           {TIPIF_FINAL_CAPACITACION_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                         </select>
@@ -2414,6 +2437,21 @@ export default function Backdatareclutamiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalCapacitacion(p=>({...p,open:false}))} disabled={modalCapacitacion.guardando}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={guardarCapacitacion} disabled={modalCapacitacion.guardando}>{modalCapacitacion.guardando?'Guardando…':'Registrar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL FECHA DE ALTA ══════════════════════════════════════════════ */}
+      {modalAlta.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalAlta.guardando) setModalAlta(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Fecha de alta</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Fecha de alta</label><input type="date" className="form-control" value={modalAlta.fechaAlta} onChange={e=>setModalAlta(p=>({...p,fechaAlta:e.target.value}))} /></div>
+            {modalAlta.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalAlta.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalAlta(p=>({...p,open:false}))} disabled={modalAlta.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarAlta} disabled={modalAlta.guardando}>{modalAlta.guardando?'Guardando…':'Confirmar ALTA'}</button>
             </div>
           </div>
         </div>
