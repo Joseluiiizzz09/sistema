@@ -177,16 +177,6 @@ function esLeadProhibido(reg) {
   const tipif = String(reg?._tipifVend || reg?.tipif_vend || '').trim().toUpperCase()
   return TIPIF_PROHIBIDAS_ROTACION.has(tipif)
 }
-// El postulante aceptó la propuesta (VENTA CERRADA) pero la entrevista se
-// tipificó como que no continuó — señal para desbloquear la rotación manual
-// aunque el tipif_vend siga bloqueado, igual que Backoffice con VENTA CAIDA.
-const TIPIF_ENTREVISTA_NO_CONTINUA = new Set(['DESISTE','FALTA','NO CONTESTA'])
-function esEntrevistaCaida(reg) {
-  return TIPIF_ENTREVISTA_NO_CONTINUA.has(String(reg?.entrevistaTipif || '').trim().toUpperCase())
-}
-function esRotacionManualProhibida(reg) {
-  return !esEntrevistaCaida(reg) && esLeadProhibido(reg)
-}
 const TIPIF_VEND_STYLES = {
   'VENTA CERRADA':['#d1fae5','#065f46'],'PREVENTA':['#dbeafe','#1e40af'],'AGENDADO':['#fef3c7','#78350f'],
   'NO CONTESTA':['#fed7aa','#9a3412'],'BUZON DE VOZ':['#ccfbf1','#134e4a'],'CORTA LLAMADA':['#f8fafc','#334155'],
@@ -899,10 +889,6 @@ export default function Backdatareclutamiento() {
     const found = findReg(id)
     if (!found) return
     const { reg } = found
-    if (esRotacionManualProhibida(reg)) {
-      mostrarToast(`N1 ${reg.n1} no se puede rotar: ${reg._tipifVend}`)
-      return
-    }
     setModalRotar({ open:true, regId:id, desc:`N1: ${reg.n1} — Asesor actual: ${reg.asesor||'Sin asignar'}`, asesorActual:reg.asesor })
     setRotModalAsesor('')
     setRotBusqueda('')
@@ -946,11 +932,6 @@ export default function Backdatareclutamiento() {
     const found = findReg(modalRotar.regId)
     if (!found) return
     const { reg } = found
-    if (esRotacionManualProhibida(reg)) {
-      mostrarToast(`Rotación bloqueada: ${reg._tipifVend}`)
-      setModalRotar({ open:false, regId:null, desc:'', asesorActual:'' })
-      return
-    }
     const hora    = horaAhora()
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
     const newHist = [...reg.historial, { tipo:'ROTACION', asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo, rotadoPor:sesion?.nombre||'Usuario', tipifVendAntes:reg._tipifVend||'' }]
@@ -1629,7 +1610,6 @@ export default function Backdatareclutamiento() {
                     ? <tr><td colSpan={filtros.verTipVend?11:10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
-                        const rotacionManualBloqueada = esRotacionManualProhibida(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
@@ -1652,8 +1632,8 @@ export default function Backdatareclutamiento() {
                               <td>
                                 <div style={{display:'flex',flexDirection:'column',gap:2}}>
                                   <select className="sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)} style={estiloTipifVend(r._tipifVend)}>
-                                    <option value="">— Pendiente —</option>
-                                    {TIPIF_VEND_OPCIONES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
+                                    <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
+                                    {TIPIF_VEND_OPCIONES.map(t=><option key={t.value} value={t.value} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t.label}</option>)}
                                   </select>
                                   {r._tipifHora && <span style={{fontSize:9,color:'#9ca3af'}}>vendedor · {r._tipifHora}</span>}
                                 </div>
@@ -1670,7 +1650,7 @@ export default function Backdatareclutamiento() {
                                 <button className="btn-hist btn-hist-sm" onClick={()=>abrirModalEditar(r.id)} title="Editar campaña / contacto">
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
                                 </button>
-                                <button className="btn-rotar btn-rotar-sm" disabled={rotacionManualBloqueada} title={rotacionManualBloqueada?`Número prohibido: ${r._tipifVend}`:(esExclusiva?'Rotación manual habilitada: el postulante no continuó con la entrevista':'Rotar')} onClick={()=>abrirModalRotar(r.id)}>
+                                <button className="btn-rotar btn-rotar-sm" title="Rotar" onClick={()=>abrirModalRotar(r.id)}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 </button>
                                 <button className="btn-hist btn-hist-sm" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Historial">
