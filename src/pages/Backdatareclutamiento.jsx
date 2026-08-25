@@ -1424,45 +1424,105 @@ export default function Backdatareclutamiento() {
     XLSX.writeFile(wb, 'FORMATO_CARGA_SISTEMA_ANTIGUO_RECLUTAMIENTO.xlsx')
   }
 
-  function procesarLegacy(file) {
-    setLegacyStatus(`Leyendo ${file.name}...`)
-    const reader = new FileReader()
-    reader.onload = e => {
-      const text   = e.target.result
-      const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
-      if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
-      const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
-      const prim  = lineas[0].split(sep)
-      // Formato: CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1..6.
-      // Encabezado: si la columna FECHA de la primera fila no es una fecha real, es titulo.
-      const primFecha = (prim[1]||'').trim()
-      const cab = !/^\d{2}\/\d{2}\/\d{4}$/.test(primFecha) && !/^\d{4}-\d{2}-\d{2}$/.test(primFecha)
-      const datos = cab ? lineas.slice(1) : lineas
-      const fechaDest = legacyFecha || fechaActiva
-      const usarFF = legacyUsarFecha === 'si'
-      const rows   = []
-      datos.forEach(linea => {
-        const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
-        const contacto = (c[2]||'').replace(/\s+/g,'')
-        if (!contacto || contacto.length<4) return
-        const esNumero = /^[\d+()-]+$/.test(contacto) && contacto.replace(/\D/g,'').length >= 7
-        const n1 = esNumero ? contacto : ''
-        const usuarioWhatsapp = esNumero ? '' : contacto.replace(/^@+/, '')
-        const asesoresHist = []
-        for (let i=6;i<=11;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
-        let fechaFila = fechaDest
-        if (usarFF) {
-          const raw = (c[1]||'').trim()
-          const m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-          if (m) fechaFila = `${m[3]}-${m[2]}-${m[1]}`
-          else if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) fechaFila = raw
-        }
-        rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifBack:c[4]||'', hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
-      })
-      if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
-      setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
+  const MESES_ABREV_EN = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 }
+
+  // Convierte números seriales de Excel, DD/MM/YYYY (con o sin ceros), DD-MM-YYYY
+  // o YYYY-MM-DD a 'YYYY-MM-DD'; null si no reconoce el formato. Necesario
+  // porque una celda FECHA real de Excel no siempre llega como texto plano.
+  function parseFechaLegacyRecl(raw) {
+    if (!raw) return null
+    const s = String(raw).trim()
+    const mDMY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (mDMY) return `${mDMY[3]}-${mDMY[2].padStart(2,'0')}-${mDMY[1].padStart(2,'0')}`
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    const mDash = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+    if (mDash) return `${mDash[3]}-${mDash[2].padStart(2,'0')}-${mDash[1].padStart(2,'0')}`
+    // Excel a veces exporta la fecha como "1-Aug" o "1-Aug-26" (formato corto
+    // con mes en inglés) al convertir vía SheetJS — cubre ambos casos.
+    const mMonY = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/)
+    if (mMonY) {
+      const mes = MESES_ABREV_EN[mMonY[2].toLowerCase()]
+      if (mes) {
+        let anio = mMonY[3]
+        if (anio.length === 2) anio = (Number(anio) < 70 ? '20' : '19') + anio
+        return `${anio}-${String(mes).padStart(2,'0')}-${mMonY[1].padStart(2,'0')}`
+      }
     }
-    reader.readAsText(file, 'UTF-8')
+    const mMon = s.match(/^(\d{1,2})-([A-Za-z]{3})$/)
+    if (mMon) {
+      const mes = MESES_ABREV_EN[mMon[2].toLowerCase()]
+      if (mes) return `${new Date().getFullYear()}-${String(mes).padStart(2,'0')}-${mMon[1].padStart(2,'0')}`
+    }
+    const n = Number(s)
+    if (!isNaN(n) && n > 40000 && n < 60000) {
+      const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000)
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
+    }
+    return null
+  }
+
+  // Si el archivo es .xlsx/.xls, lo convierte a CSV vía SheetJS (misma técnica
+  // que leerArchivoComoTexto() en Backoffice.jsx) antes de parsearlo como texto
+  // — antes esto se leía como texto plano y con un .xlsx real salía basura.
+  async function leerArchivoComoTextoRecl(file) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (ext === 'xlsx' || ext === 'xls') {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = e => {
+          try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true })
+            const ws = wb.Sheets[wb.SheetNames[0]]
+            resolve(XLSX.utils.sheet_to_csv(ws))
+          } catch(err) { reject(err) }
+        }
+        reader.onerror = reject
+        reader.readAsArrayBuffer(file)
+      })
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = e => resolve(e.target.result)
+      reader.onerror = reject
+      reader.readAsText(file, 'UTF-8')
+    })
+  }
+
+  async function procesarLegacy(file) {
+    setLegacyStatus(`Leyendo ${file.name}...`)
+    let text
+    try { text = await leerArchivoComoTextoRecl(file) }
+    catch(e) { setLegacyStatus('Error leyendo el archivo'); return }
+    const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
+    if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
+    const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
+    const prim  = lineas[0].split(sep)
+    // Formato: CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1..6.
+    // Encabezado: si la columna FECHA de la primera fila no es una fecha real, es titulo.
+    const primFecha = (prim[1]||'').trim()
+    const cab = !parseFechaLegacyRecl(primFecha)
+    const datos = cab ? lineas.slice(1) : lineas
+    const fechaDest = legacyFecha || fechaActiva
+    const usarFF = legacyUsarFecha === 'si'
+    const rows   = []
+    datos.forEach(linea => {
+      const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
+      const contacto = (c[2]||'').replace(/\s+/g,'')
+      if (!contacto || contacto.length<4) return
+      const esNumero = /^[\d+()-]+$/.test(contacto) && contacto.replace(/\D/g,'').length >= 7
+      const n1 = esNumero ? contacto : ''
+      const usuarioWhatsapp = esNumero ? '' : contacto.replace(/^@+/, '')
+      const asesoresHist = []
+      for (let i=6;i<=11;i++) { const a=(c[i]||'').trim(); if(a&&a.length>1) asesoresHist.push(a) }
+      let fechaFila = fechaDest
+      if (usarFF) {
+        const parsed = parseFechaLegacyRecl((c[1]||'').trim())
+        if (parsed) fechaFila = parsed
+      }
+      rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifBack:c[4]||'', hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
+    })
+    if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
+    setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
   }
 
   async function ejecutarCargaLegacy() {
@@ -2212,6 +2272,7 @@ export default function Backdatareclutamiento() {
                     <div style={{fontSize:11,color:'#92400e',lineHeight:1.6}}>
                       Formato: <strong>CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1 · ... · ASESOR 6</strong>
                       <br/>Contacto acepta número o usuario de WhatsApp (con o sin @). Fecha en formato DD/MM/AAAA.
+                      <br/>Acepta subir el .xlsx directamente (usa la primera hoja), o .csv/.txt.
                     </div>
                   </div>
                   <button
@@ -2231,7 +2292,7 @@ export default function Backdatareclutamiento() {
                     >
                       <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:3}}>Arrastra tu base o haz clic</div>
                       <div style={{fontSize:11,color:'#9ca3af'}}>CSV exportado desde tu sistema anterior</div>
-                      <input ref={legacyInputRef} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
+                      <input ref={legacyInputRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{display:'none'}} onChange={e=>{ if(e.target.files.length) procesarLegacy(e.target.files[0]) }} />
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:8}}>
                       <div className="bo-input-group" style={{margin:0}}><label>Fecha destino</label>
