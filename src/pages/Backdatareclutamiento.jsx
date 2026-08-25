@@ -2155,7 +2155,7 @@ export default function Backdatareclutamiento() {
                       <td>{en.numero}</td>
                       <td>{en.numero_ref || '—'}</td>
                       <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
-                      <td><input type="date" className="form-control" defaultValue={String(en.fecha_entrevista||'').slice(0,10)} onBlur={e=>guardarFechaEntrevista(en.id, String(en.fecha_entrevista||'').slice(0,10), e.target.value)} /></td>
+                      <td><input type="date" className="form-control" defaultValue={String(en.fecha_entrevista||'').slice(0,10)} onBlur={e=>guardarFechaEntrevista(en.id, String(en.fecha_entrevista||'').slice(0,10), e.target.value)} style={{fontSize:11,padding:'5px 8px',minWidth:130}} /></td>
                       <td>
                         <select value={en.tipificacion||''} onChange={e=>guardarTipifEntrevista(en.id,e.target.value)} style={estiloTipifEntrevista(en.tipificacion)}>
                           <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
@@ -2207,7 +2207,7 @@ export default function Backdatareclutamiento() {
                       <td><CampanaBadge valor={c.campana} /></td>
                       <td className="reclutados-nombre"><input className="form-control" defaultValue={c.nombre_postulante||''} onBlur={e=>guardarCampoCapacitacion(c.id,'nombre_postulante', c.nombre_postulante||'', e.target.value.trim())} style={{minWidth:160,fontSize:11,fontWeight:600}} /></td>
                       <td><input className="form-control" defaultValue={c.numero||''} onBlur={e=>guardarCampoCapacitacion(c.id,'numero', c.numero||'', e.target.value.trim())} style={{minWidth:120,fontSize:11,fontFamily:'monospace'}} /></td>
-                      <td><input type="date" className="form-control" defaultValue={String(c.fecha_inicio_capacitacion||'').slice(0,10)} onBlur={e=>guardarCampoCapacitacion(c.id,'fecha_inicio_capacitacion', String(c.fecha_inicio_capacitacion||'').slice(0,10), e.target.value)} /></td>
+                      <td><input type="date" className="form-control" defaultValue={String(c.fecha_inicio_capacitacion||'').slice(0,10)} onBlur={e=>guardarCampoCapacitacion(c.id,'fecha_inicio_capacitacion', String(c.fecha_inicio_capacitacion||'').slice(0,10), e.target.value)} style={{fontSize:11,padding:'5px 8px',minWidth:130}} /></td>
                       <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
                       <td>{normalizarFecha(c.created_at) || '—'}</td>
                     </tr>
