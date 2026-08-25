@@ -19,6 +19,7 @@ export const RUTAS = {
   backreclutamiento:   '/backdata-reclutamiento',
   asesorreclutamiento: '/reclutamiento',
   entrevistas:         '/backdata-reclutamiento',
+  capacitador:         '/backdata-reclutamiento',
 }
 
 export const CARGO_LABELS = {
@@ -38,4 +39,5 @@ export const CARGO_LABELS = {
   backreclutamiento: 'Back Data Reclutaminto',
   asesorreclutamiento: 'Asesor de Reclutamiento',
   entrevistas: 'Entrevistas',
+  capacitador: 'Capacitación',
 }
