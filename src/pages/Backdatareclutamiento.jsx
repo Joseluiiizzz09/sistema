@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
@@ -1371,6 +1372,58 @@ export default function Backdatareclutamiento() {
     if (archivoInputRef.current) archivoInputRef.current.value = ''
   }
 
+  // Mismo patrón que descargarFormato() en Backoffice.jsx, adaptado al
+  // formato real de Sistema Antiguo de Reclutamiento (CAMPAÑA · FECHA ·
+  // CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1..6).
+  function descargarFormatoLegacy() {
+    const wb = XLSX.utils.book_new()
+    const HDR = ['CAMPAÑA','FECHA','CONTACTO','OBSERVACIONES','TIPIFICACIÓN','HORA','ASESOR 1','ASESOR 2','ASESOR 3','ASESOR 4','ASESOR 5','ASESOR 6']
+    const COLS = HDR.map((_,i)=>({ wch: i===0?12 : i===1?12 : i===2?18 : i===3?26 : i===4?16 : i===5?9 : 18 }))
+    // Hoja 1: plantilla vacía — solo encabezados
+    const ws1 = XLSX.utils.aoa_to_sheet([HDR])
+    ws1['!cols'] = COLS
+    ws1['!freeze'] = { xSplit: 0, ySplit: 1 }
+    ws1['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(HDR.length-1)}1` }
+    XLSX.utils.book_append_sheet(wb, ws1, 'CARGA SISTEMA ANTIGUO')
+    // Hoja 2: datos de ejemplo ficticios — mezcla números y usuario de WhatsApp
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      HDR,
+      ['R1','01/08/2026','987654321','Llamó y cortó','CORTA LLAMADA','17:11','DIEGO ALTAMINARO','ARELIS IBAÑEZ','','','',''],
+      ['R2','02/08/2026','usuario_whatsapp_ejemplo','Sin número, solo WhatsApp','NO CONTESTA','09:30','MARIA RIOS','','','','',''],
+      ['R4','03/08/2026','976543210','','BUZON','11:45','CARLOS VEGA','PEDRO LUNA','','','',''],
+      ['CHANCAY','04/08/2026','945612378','Pidió volver a llamar','AGENDADO','14:00','ANA TORRES','','','','',''],
+    ])
+    ws2['!cols'] = COLS
+    ws2['!freeze'] = { xSplit: 0, ySplit: 1 }
+    XLSX.utils.book_append_sheet(wb, ws2, 'EJEMPLO')
+    // Hoja 3: instrucciones
+    const INSTR = [
+      ['INSTRUCCIONES — CARGA SISTEMA ANTIGUO (RECLUTAMIENTO)'],
+      [''],
+      ['IMPORTANTE: No modifique el nombre ni el orden de las columnas.'],
+      [''],
+      ['Columna','Descripción','Obligatorio','Notas'],
+      ['CAMPAÑA', 'Campaña de reclutamiento', 'No', `Usar exactamente: ${CAMPANAS_RECLUTAMIENTO.map(c=>c.valor).join(' · ')}`],
+      ['FECHA','Fecha del registro','Depende','Formato recomendado: DD/MM/YYYY — ej: 01/08/2026. Solo se usa si eliges "Leer fecha de la fila" al importar.'],
+      ['CONTACTO','Número de teléfono o usuario de WhatsApp','SÍ','Si es numérico (7+ dígitos) se guarda como N1; si no, se guarda como usuario de WhatsApp (con o sin @).'],
+      ['OBSERVACIONES','Comentario libre del asesor','No','Texto libre, no se tipifica'],
+      ['TIPIFICACIÓN',`Tipificación de Back Data`,'No', TIPIF_BACK_OPTIONS.join(' · ')],
+      ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
+      ['ASESOR 1 … ASESOR 6','Historial de asesores que tuvieron este contacto','No','Nombre completo tal como aparece en el sistema'],
+      [''],
+      ['NOTAS ADICIONALES'],
+      ['— Use la hoja "CARGA SISTEMA ANTIGUO" para pegar sus datos.'],
+      ['— Use la hoja "EJEMPLO" como referencia: 4 registros con distintos formatos de contacto.'],
+      ['— CONTACTO es el único campo siempre obligatorio.'],
+      ['— Formatos de archivo aceptados al importar: .csv · .txt'],
+    ]
+    const ws3 = XLSX.utils.aoa_to_sheet(INSTR)
+    ws3['!cols'] = [{ wch:22 },{ wch:36 },{ wch:14 },{ wch:70 }]
+    ws3['!rows'] = [{ hpt:18 }]
+    XLSX.utils.book_append_sheet(wb, ws3, 'INSTRUCCIONES')
+    XLSX.writeFile(wb, 'FORMATO_CARGA_SISTEMA_ANTIGUO_RECLUTAMIENTO.xlsx')
+  }
+
   function procesarLegacy(file) {
     setLegacyStatus(`Leyendo ${file.name}...`)
     const reader = new FileReader()
@@ -2161,6 +2214,13 @@ export default function Backdatareclutamiento() {
                       <br/>Contacto acepta número o usuario de WhatsApp (con o sin @). Fecha en formato DD/MM/AAAA.
                     </div>
                   </div>
+                  <button
+                    onClick={descargarFormatoLegacy}
+                    style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px 20px',background:'#1d4ed8',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',marginBottom:14,letterSpacing:.2}}
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    DESCARGAR PLANTILLA EXCEL DE EJEMPLO
+                  </button>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 180px',gap:12,marginBottom:12}}>
                     <div
                       onClick={()=>legacyInputRef.current?.click()}
