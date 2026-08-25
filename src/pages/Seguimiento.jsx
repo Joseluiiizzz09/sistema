@@ -169,6 +169,7 @@ export default function Seguimiento() {
   })
   const [fEstados, setFEstados]   = useState([])
   const [fVendedor, setFVendedor] = useState('')
+  const [fSala, setFSala]         = useState('')
   const [fDistrito, setFDistrito] = useState('')
   const [fTramo, setFTramo]       = useState('')
   const [fTipoFecha, setFTipoFecha] = useState('fecha')
@@ -288,6 +289,7 @@ export default function Seguimiento() {
       }
     }
     if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
+    if (fSala && !(v.sala || '').toLowerCase().includes(fSala.toLowerCase())) return false
     if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
     if (fTramo   && v._tramo !== fTramo) return false
     const f = fTipoFecha === 'programados'
@@ -303,7 +305,7 @@ export default function Seguimiento() {
       ].some(x => String(x || '').toLowerCase().includes(b))) return false
     }
     return true
-  }, [filtroLeyenda, fEstados, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
+  }, [filtroLeyenda, fEstados, fVendedor, fSala, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
 
   const ventasEnRango = useMemo(() => ventas.filter(v => filtrarVenta(v, false)), [ventas, filtrarVenta])
 
@@ -336,7 +338,7 @@ export default function Seguimiento() {
   const ventasPag = ventasFiltradas.slice(inicio, fin)
 
   function limpiarFiltros() {
-    setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFDistrito('')
+    setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFSala(''); setFDistrito('')
     setFTramo(''); setFTipoFecha('fecha'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
     try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
   }
@@ -581,6 +583,10 @@ export default function Seguimiento() {
             <div className="fg">
               <label>Vendedor</label>
               <input value={fVendedor} onChange={e => { setFVendedor(e.target.value); setPagina(1) }} placeholder="Buscar vendedor..." />
+            </div>
+            <div className="fg">
+              <label>Sala</label>
+              <input value={fSala} onChange={e => { setFSala(e.target.value); setPagina(1) }} placeholder="Escribir sala..." />
             </div>
             <div className="fg">
               <label>Distrito</label>
