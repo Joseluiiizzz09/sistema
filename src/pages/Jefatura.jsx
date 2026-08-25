@@ -1052,6 +1052,7 @@ export default function Jefatura() {
     if (b) {
       lista = lista.filter(v => [
         v.nombre, v.nombre_apellidos, v.cliente, v.dni, v.documento, v.telefono, v.n1, v.n2,
+        v.telefono1, v.telefono2, v.tel_contacto, v.tel_referencia,
         v.asesor_nombre, v.asesor, v.vendedor, v.sala, v.estado, v.estado_venta, v.distrito
       ].some(x => String(x || '').toLowerCase().includes(b)))
     }
@@ -1668,7 +1669,7 @@ export default function Jefatura() {
                 className="tabla-search flujo-search"
                 value={busqFlujoVentas}
                 onChange={e=>setBusqFlujoVentas(e.target.value)}
-                placeholder="Buscar cliente, DNI, asesor, sala..."
+                placeholder="Buscar cliente, DNI, teléfono, asesor, sala..."
               />
             </div>
             <div className="filtros-avanzados">
