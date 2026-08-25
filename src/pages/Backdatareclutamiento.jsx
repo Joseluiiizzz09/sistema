@@ -164,6 +164,21 @@ const TIPIF_VEND_OPCIONES = [
   { value:'VOLVER A LLAMAR', label:'Volver a llamar' },
   { value:'FRAUDE',          label:'Provincia' },
 ]
+
+// El archivo del sistema anterior usa las etiquetas visibles, mientras que
+// la base conserva los valores internos que ya maneja el Dashboard.
+function normalizarTipifVendLegacy(valor) {
+  const texto = String(valor || '').trim().toUpperCase()
+  const equivalencias = {
+    'ACEPTA PROPUESTA':'VENTA CERRADA',
+    'BUZON':'BUZON DE VOZ',
+    'BUZÓN':'BUZON DE VOZ',
+    'NO CUMPLE EL PERFIL':'NO TOCAR',
+    'PROVINCIA':'FRAUDE',
+    'SH NO ROTAR':'NO ROTAR',
+  }
+  return equivalencias[texto] || texto
+}
 // El historial guarda el valor crudo (ej. 'VENTA CERRADA'); esto lo traduce
 // a la etiqueta que ve el usuario (ej. 'Acepta propuesta').
 function labelTipifVend(valor) {
@@ -1407,7 +1422,7 @@ export default function Backdatareclutamiento() {
       ['FECHA','Fecha del registro','Depende','Formato recomendado: DD/MM/YYYY — ej: 01/08/2026. Solo se usa si eliges "Leer fecha de la fila" al importar.'],
       ['CONTACTO','Número de teléfono o usuario de WhatsApp','SÍ','Si es numérico (7+ dígitos) se guarda como N1; si no, se guarda como usuario de WhatsApp (con o sin @).'],
       ['OBSERVACIONES','Comentario libre del asesor','No','Texto libre, no se tipifica'],
-      ['TIPIFICACIÓN',`Tipificación de Back Data`,'No', TIPIF_BACK_OPTIONS.join(' · ')],
+      ['TIPIFICACIÓN',`Tipificación del asesor`,'No', TIPIF_VEND_OPCIONES.map(t=>t.label).join(' · ')],
       ['HORA','Hora de la última gestión','No','Formato HH:MM — ejemplo: 17:11'],
       ['ASESOR 1 … ASESOR 6','Historial de asesores que tuvieron este contacto','No','Nombre completo tal como aparece en el sistema'],
       [''],
@@ -1519,7 +1534,7 @@ export default function Backdatareclutamiento() {
         const parsed = parseFechaLegacyRecl((c[1]||'').trim())
         if (parsed) fechaFila = parsed
       }
-      rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifBack:c[4]||'', hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
+      rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifVend:normalizarTipifVendLegacy(c[4]), hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
     })
     if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
     setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
@@ -1535,9 +1550,11 @@ export default function Backdatareclutamiento() {
       if (!fechaPestanas.includes(fecha)&&!nuevasFechasLocal.includes(fecha)) nuevasFechasLocal.push(fecha)
       if (!updates[fecha]) updates[fecha] = []
       // Permitir duplicados: no se descartan números repetidos en la carga del sistema antiguo.
+      const asesorFinal = r.asesores[r.asesores.length-1]||''
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
-      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:'', _tipifHora:r.hora||'', historial:hist })
-      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_back:r.tipifBack||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
+      if (r.tipifVend) hist.push({ tipo:'TIPIF_VEND', asesor:asesorFinal, tipif:r.tipifVend, hora:r.hora||'—', fecha })
+      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:'', asesor:asesorFinal, horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend, _tipifHora:r.hora||'', historial:hist })
+      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, fecha, hora_asig:r.hora, importacion_legacy:true })
     })
     if (!leadsBackend.length) return
     // Antes esto ignoraba silenciosamente cualquier error del backend y
