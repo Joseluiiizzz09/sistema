@@ -194,9 +194,11 @@ function flujoValidada(v) {
   return Boolean(e) && e !== 'venta' && !flujoNoValidada(v)
 }
 function flujoGrabada(v) {
-  return estadoGrabacion(v) === 'GRABADO'
+  return FLUJO_GRABADA.has(normEstado(v?.estado || v?.estado_venta))
+    || normEstado(v?.estado_grab) === 'grabado'
+    || flujoTieneAudio(v)
 }
-function flujoNoGrabada(v) { return estadoGrabacion(v) === 'NO GRABADO' }
+function flujoNoGrabada(v) { return flujoValidada(v) && !flujoGrabada(v) }
 const ESTADOS_PROPIOS_VALIDACION = new Set([
   'venta','validado','no_validado','corta_llamada','fraude','no_desea',
   'no_contesta','buzon_voz','servicio_activo','corregir','mala_oferta',
@@ -216,13 +218,18 @@ function coincideFiltroValidacion(v, filtro) {
   return true
 }
 function estadoGrabacion(v) {
-  // Grabación solo empieza después de VALIDADO. Una tipificación negativa de
-  // Validación prevalece sobre estados operativos antiguos que pudieran haber
-  // quedado en la fila (por ejemplo CORREGIR + GRABANDO).
-  if (estadoValidacion(v) !== 'VALIDADO') return 'NO GRABADO'
-  const g = normEstado(v?.estado_grab)
-  if (g === 'grabado' || g === 'grabada') return 'GRABADO'
-  if (g === 'grabando' || g.startsWith('grabando_')) return 'GRABANDO'
+  // La tabla conserva el estado detallado. Si la venta no superó Validación,
+  // prevalece su tipificación real para evitar combinaciones engañosas como
+  // CORREGIR + GRABANDO.
+  const validacion = estadoValidacion(v)
+  if (validacion !== 'VALIDADO' && validacion !== 'VENTA') return validacion
+  const g = String(v?.estado_grab || '').trim()
+  return g ? g.replace(/_/g, ' ').toUpperCase() : 'PENDIENTE'
+}
+function categoriaFiltroGrabacion(v) {
+  const estado = normEstado(estadoGrabacion(v))
+  if (estado === 'grabado' || estado === 'grabada') return 'GRABADO'
+  if (estado === 'grabando' || estado.startsWith('grabando_')) return 'GRABANDO'
   return 'NO GRABADO'
 }
 function flujoLabelEstado(estado) {
@@ -1025,7 +1032,7 @@ export default function Jefatura() {
     }
     if (fvEstados.length) lista = lista.filter(v => fvEstados.includes(v.estado || v.estado_venta || ''))
     if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
-    if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
+    if (fvGrabacion) lista = lista.filter(v => categoriaFiltroGrabacion(v) === fvGrabacion)
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
