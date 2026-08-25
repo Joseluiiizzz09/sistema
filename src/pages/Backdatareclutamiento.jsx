@@ -271,9 +271,8 @@ const CAMPOS_CAPACITACION_LABELS = {
 }
 
 // Tipificación final, se asigna desde el día 3 (OJT) en adelante.
-const TIPIF_FINAL_CAPACITACION_OPCIONES = ['INGRESO','ALTA','DESISTE','DESAPROBADO']
+const TIPIF_FINAL_CAPACITACION_OPCIONES = ['ALTA','DESISTE','DESAPROBADO']
 const TIPIF_FINAL_CAPACITACION_COLORES = {
-  'INGRESO':     ['#dbeafe','#1d4ed8','#93c5fd'],
   'ALTA':        ['#dcfce7','#166534','#86efac'],
   'DESISTE':     ['#f1f5f9','#334155','#cbd5e1'],
   'DESAPROBADO': ['#fee2e2','#991b1b','#fca5a5'],
@@ -2246,14 +2245,14 @@ export default function Backdatareclutamiento() {
                     <th>Fecha de inicio</th><th>Fecha de inicio (capacitador)</th>
                     <th>Día 1</th><th>Día 2</th><th>Día 3</th><th>Día 4</th><th>Día 5</th>
                     <th>Sala</th><th>Tipificación final</th>
-                    <th>Fecha de registro</th><th>Historial</th>
+                    <th>Historial</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargandoCapacitaciones ? (
-                    <tr><td colSpan="15" className="reclutados-empty">Cargando capacitaciones...</td></tr>
+                    <tr><td colSpan="14" className="reclutados-empty">Cargando capacitaciones...</td></tr>
                   ) : capacitacionesFiltradas.length === 0 ? (
-                    <tr><td colSpan="15" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
+                    <tr><td colSpan="14" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
                   ) : capacitacionesFiltradas.flatMap(c => ([
                     <tr key={c.id}>
                       <td><CampanaBadge valor={c.campana} /></td>
@@ -2282,7 +2281,6 @@ export default function Backdatareclutamiento() {
                           {TIPIF_FINAL_CAPACITACION_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                         </select>
                       </td>
-                      <td>{normalizarFecha(c.created_at) || '—'}</td>
                       <td>
                         <button type="button" className="btn-hist btn-hist-sm" onClick={()=>setHistOpenCapacitacion(p=>({...p,[c.id]:!p[c.id]}))} title="Historial">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -2290,7 +2288,7 @@ export default function Backdatareclutamiento() {
                       </td>
                     </tr>,
                     <tr key={`hist-cap-${c.id}`} className={`historial-row${histOpenCapacitacion[c.id]?' open':''}`}>
-                      <td colSpan={15}>
+                      <td colSpan={14}>
                         <div className="historial-inner">
                           <div className="hist-label">Trazabilidad — {c.nombre_postulante}</div>
                           {!(c.historial||[]).length
