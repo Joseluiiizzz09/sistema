@@ -93,7 +93,7 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, className,
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
-const BO_SECCIONES = ['base', 'reclutados', 'carga-masiva', 'rendimiento', 'avance']
+const BO_SECCIONES = ['base', 'reclutados', 'carga-masiva', 'rendimiento', 'avance', 'entrevistas']
 
 const PERU_TIME_ZONE = 'America/Lima'
 const PERU_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -221,6 +221,9 @@ function BoNavIcon({ tipo }) {
   if (tipo === 'rendimiento') return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>
   )
+  if (tipo === 'entrevistas') return (
+    <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m8.5 14 2 2 4-4"/></svg>
+  )
   return (
     <svg className="bo-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m0-5a5 5 0 0 1 6 5"/></svg>
   )
@@ -254,10 +257,16 @@ export default function Backdatareclutamiento() {
   const legacyInputRef  = useRef(null)
   const fechaSistemaRef = useRef(fechaHoy())
 
+  // ── Cargos: 'entrevistas' es un rol nuevo que solo ve el apartado de
+  // Entrevistas — sin acceso a Base/Reclutados/Carga Masiva.
+  const esBackReclutamiento = usuarioTieneCargo(sesion, 'backreclutamiento')
+  const esSoloEntrevistas = !esBackReclutamiento && usuarioTieneCargo(sesion, 'entrevistas')
+
   // ── Section ──
   const [seccion, setSeccion] = useState(() => {
+    if (esSoloEntrevistas) return 'entrevistas'
     const guardada = sessionStorage.getItem('nc_backoffice_apartado')
-    return BO_SECCIONES.includes(guardada) ? guardada : 'base'
+    return BO_SECCIONES.includes(guardada) && guardada !== 'entrevistas' ? guardada : 'base'
   })
   const [sidebarAbierto, setSidebarAbierto] = useState(() => sessionStorage.getItem('nc_backoffice_sidebar') !== 'cerrado')
 
@@ -298,6 +307,12 @@ export default function Backdatareclutamiento() {
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
   const [modalEditar,   setModalEditar]   = useState({ open:false, regId:null, modo:'contacto', campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
+
+  // ── Entrevistas (postulantes que aceptaron la propuesta) ──
+  const [entrevistas,        setEntrevistas]        = useState([])
+  const [cargandoEntrevistas,setCargandoEntrevistas] = useState(false)
+  const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turno:'', desde:'', hasta:'', busqueda:'' })
+  const [modalEntrevista,    setModalEntrevista]      = useState({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
   const [rotModalMotivo,setRotModalMotivo]= useState('')
@@ -552,6 +567,20 @@ export default function Backdatareclutamiento() {
     }
   }, [])
 
+  const cargarEntrevistas = useCallback(async () => {
+    setCargandoEntrevistas(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas`, { headers: ncHeaders() })
+      const data = await res.json()
+      setEntrevistas(data.ok ? data.data : [])
+    } catch(e) {
+      console.error('Error cargando entrevistas:', e)
+      setEntrevistas([])
+    } finally {
+      setCargandoEntrevistas(false)
+    }
+  }, [])
+
   useEffect(() => {
     cargarAsesores()
     cargarLeads()
@@ -579,7 +608,13 @@ export default function Backdatareclutamiento() {
     setSeccion(id)
     if (id === 'carga-masiva') setLegacyFecha(fechaActiva)
     if (id === 'reclutados') cargarReclutados()
+    if (id === 'entrevistas') cargarEntrevistas()
   }
+
+  useEffect(() => {
+    if (esSoloEntrevistas) cargarEntrevistas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Date navigation ──────────────────────────────────────────────────────
   function navegarFecha(dir) {
@@ -720,10 +755,53 @@ export default function Backdatareclutamiento() {
         const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
+        if (valor === 'VENTA CERRADA') abrirModalEntrevista(id)
       } catch (e) {
         updateReg(id, { _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
         mostrarToast(e.message || 'No se pudo guardar la tipificación')
       }
+    }
+  }
+
+  // ── Modal agendar entrevista (al tipificar Acepta propuesta) ─────────────
+  function abrirModalEntrevista(id) {
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    setModalEntrevista({
+      open:true, regId:id, nombrePostulante:'',
+      numero: reg.n1 || (reg.usuarioWhatsapp ? '@'+reg.usuarioWhatsapp : ''),
+      numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'',
+    })
+  }
+
+  async function guardarEntrevista() {
+    const found = findReg(modalEntrevista.regId)
+    if (!found) return
+    const { reg } = found
+    if (!reg._backendId) { setModalEntrevista(p=>({...p, error:'Este candidato aún no está sincronizado con el servidor'})); return }
+    const nombrePostulante = modalEntrevista.nombrePostulante.trim()
+    const numero = modalEntrevista.numero.trim()
+    const numeroRef = modalEntrevista.numeroRef.trim()
+    const turno = modalEntrevista.turno
+    const fechaAgendamiento = modalEntrevista.fechaAgendamiento
+    const observacion = modalEntrevista.observacion.trim()
+    if (!nombrePostulante) { setModalEntrevista(p=>({...p, error:'Ingresa el nombre del postulante'})); return }
+    if (!numero) { setModalEntrevista(p=>({...p, error:'Ingresa un número de contacto'})); return }
+    if (!turno) { setModalEntrevista(p=>({...p, error:'Selecciona un turno'})); return }
+    if (!fechaAgendamiento) { setModalEntrevista(p=>({...p, error:'Selecciona la fecha de agendamiento'})); return }
+    setModalEntrevista(p=>({...p, guardando:true, error:''}))
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/entrevista`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({
+        nombre_postulante:nombrePostulante, numero, numero_ref:numeroRef, turno, fecha_agendamiento:fechaAgendamiento, observacion,
+      }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo agendar la entrevista')
+      setModalEntrevista({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
+      mostrarToast('Entrevista agendada')
+      if (seccion === 'entrevistas') cargarEntrevistas()
+    } catch (e) {
+      setModalEntrevista(p=>({...p, guardando:false, error:e.message || 'No se pudo agendar la entrevista'}))
     }
   }
 
@@ -1101,6 +1179,16 @@ export default function Backdatareclutamiento() {
     return true
   })
 
+  const entrevistasFiltradas = entrevistas.filter(en => {
+    if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
+    const fecha = String(en.fecha_agendamiento||'').slice(0,10)
+    if (filtrosEntrevistas.desde && fecha < filtrosEntrevistas.desde) return false
+    if (filtrosEntrevistas.hasta && fecha > filtrosEntrevistas.hasta) return false
+    const texto = filtrosEntrevistas.busqueda.trim().toLowerCase()
+    if (!texto) return true
+    return [en.nombre_postulante, en.numero, en.numero_ref, en.campana].some(v => String(v||'').toLowerCase().includes(texto))
+  })
+
   const statsBase = {
     total:      registrosActivos.length,
     ventas:     registrosActivos.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
@@ -1229,9 +1317,13 @@ export default function Backdatareclutamiento() {
         {/* SIDEBAR */}
         <aside className={`bo-sidebar${sidebarAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarAbierto}>
           <div className="sidebar-sep">Principal</div>
+          {!esSoloEntrevistas && <>
           <button className={`bo-nav${seccion==='base'?' active':''}`} onClick={()=>irSeccion('base')}><BoNavIcon tipo="base" /> <span>Base</span></button>
           <button className={`bo-nav${seccion==='reclutados'?' active':''}`} onClick={()=>irSeccion('reclutados')}><BoNavIcon tipo="avance" /> <span>Reclutados</span></button>
           <button className={`bo-nav${seccion==='carga-masiva'?' active':''}`} onClick={()=>irSeccion('carga-masiva')}><BoNavIcon tipo="carga" /> <span>Carga Masiva</span></button>
+          </>}
+          <button className={`bo-nav${seccion==='entrevistas'?' active':''}`} onClick={()=>irSeccion('entrevistas')}><BoNavIcon tipo="entrevistas" /> <span>Entrevistas</span></button>
+          {!esSoloEntrevistas && (
           <div className="bo-sidebar-registro">
             <div className="sidebar-sep">Agregar registro</div>
             <div style={{fontSize:10,color:'#6b7280',fontWeight:600,margin:'-4px 0 8px'}}>{formatFecha(fechaActiva)}</div>
@@ -1255,6 +1347,7 @@ export default function Backdatareclutamiento() {
               <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar</button>
             </div>
           </div>
+          )}
         </aside>
 
         <main className="bo-main">
@@ -1833,6 +1926,63 @@ export default function Backdatareclutamiento() {
             </div>
           </section>
 
+          {/* ══ SECCIÓN: ENTREVISTAS ═══════════════════════════════════════════ */}
+          <section className={`bo-seccion${seccion==='entrevistas'?'':' hidden'}`}>
+            <div className="bo-seccion-header">
+              <div>
+                <h2>Entrevistas agendadas</h2>
+                <p className="bo-sub">Postulantes que aceptaron la propuesta y programaron entrevista.</p>
+              </div>
+              <div className="reclutados-head-actions">
+                <span className="reclutados-count">{entrevistasFiltradas.length} registros</span>
+                <button type="button" className="reclutados-refresh" onClick={cargarEntrevistas}>↻ Actualizar</button>
+              </div>
+            </div>
+
+            <div className="filtros-grid" style={{marginBottom:14}}>
+              <div className="bo-input-group"><label>Buscar</label><input className="form-control" value={filtrosEntrevistas.busqueda} onChange={e=>setFiltrosEntrevistas(p=>({...p,busqueda:e.target.value}))} placeholder="Postulante, número o campaña…" /></div>
+              <div className="bo-input-group"><label>Turno</label>
+                <select className="form-select" value={filtrosEntrevistas.turno} onChange={e=>setFiltrosEntrevistas(p=>({...p,turno:e.target.value}))}>
+                  <option value="">Todos</option>
+                  <option value="TURNO 1">TURNO 1</option>
+                  <option value="TURNO 2">TURNO 2</option>
+                </select>
+              </div>
+              <div className="bo-input-group"><label>Desde</label><input type="date" className="form-control" value={filtrosEntrevistas.desde} onChange={e=>setFiltrosEntrevistas(p=>({...p,desde:e.target.value}))} /></div>
+              <div className="bo-input-group"><label>Hasta</label><input type="date" className="form-control" value={filtrosEntrevistas.hasta} onChange={e=>setFiltrosEntrevistas(p=>({...p,hasta:e.target.value}))} /></div>
+            </div>
+
+            <div className="base-tabla-wrap reclutados-tabla-wrap">
+              <table className="base-tabla reclutados-tabla">
+                <thead>
+                  <tr>
+                    <th>Fecha agendamiento</th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
+                    <th>Campaña</th><th>Observación</th><th>Agendado por</th><th>Registrado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cargandoEntrevistas ? (
+                    <tr><td colSpan="9" className="reclutados-empty">Cargando entrevistas...</td></tr>
+                  ) : entrevistasFiltradas.length === 0 ? (
+                    <tr><td colSpan="9" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
+                  ) : entrevistasFiltradas.map(en => (
+                    <tr key={en.id}>
+                      <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
+                      <td>{en.turno}</td>
+                      <td className="reclutados-nombre">{en.nombre_postulante}</td>
+                      <td>{en.numero}</td>
+                      <td>{en.numero_ref || '—'}</td>
+                      <td>{en.campana || '—'}</td>
+                      <td>{en.observacion || '—'}</td>
+                      <td className="reclutados-reclutador">{en.creado_por_nombre || '—'}</td>
+                      <td>{normalizarFecha(en.created_at) || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
 
         </main>
       </div>
@@ -1891,6 +2041,32 @@ export default function Backdatareclutamiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalEditar(p=>({...p,open:false}))} disabled={modalEditar.guardando}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={guardarEdicion} disabled={modalEditar.guardando}>{modalEditar.guardando?'Guardando…':'Guardar cambios'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL AGENDAR ENTREVISTA ═════════════════════════════════════════ */}
+      {modalEntrevista.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalEntrevista.guardando) setModalEntrevista(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Agendar entrevista</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Nombre del postulante</label><input className="form-control" value={modalEntrevista.nombrePostulante} onChange={e=>setModalEntrevista(p=>({...p,nombrePostulante:e.target.value}))} placeholder="Nombre y apellidos" /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Número</label><input className="form-control" value={modalEntrevista.numero} onChange={e=>setModalEntrevista(p=>({...p,numero:e.target.value}))} placeholder="Número de contacto" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Número ref</label><input className="form-control" value={modalEntrevista.numeroRef} onChange={e=>setModalEntrevista(p=>({...p,numeroRef:e.target.value}))} placeholder="Número de referencia (opcional)" style={{fontFamily:'monospace'}} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Turno</label>
+              <select className="form-select" value={modalEntrevista.turno} onChange={e=>setModalEntrevista(p=>({...p,turno:e.target.value}))}>
+                <option value="">— Selecciona —</option>
+                <option value="TURNO 1">TURNO 1</option>
+                <option value="TURNO 2">TURNO 2</option>
+              </select>
+            </div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Fecha de agendamiento</label><input type="date" className="form-control" value={modalEntrevista.fechaAgendamiento} onChange={e=>setModalEntrevista(p=>({...p,fechaAgendamiento:e.target.value}))} /></div>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Observación / comentario</label><textarea className="form-control" rows={3} value={modalEntrevista.observacion} onChange={e=>setModalEntrevista(p=>({...p,observacion:e.target.value}))} placeholder="Comentario opcional" /></div>
+            {modalEntrevista.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalEntrevista.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalEntrevista(p=>({...p,open:false}))} disabled={modalEntrevista.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarEntrevista} disabled={modalEntrevista.guardando}>{modalEntrevista.guardando?'Guardando…':'Agendar entrevista'}</button>
             </div>
           </div>
         </div>

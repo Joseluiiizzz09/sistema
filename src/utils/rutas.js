@@ -18,6 +18,7 @@ export const RUTAS = {
   supgrabaciones: '/sup-grabaciones',
   backreclutamiento:   '/backdata-reclutamiento',
   asesorreclutamiento: '/reclutamiento',
+  entrevistas:         '/backdata-reclutamiento',
 }
 
 export const CARGO_LABELS = {
@@ -36,4 +37,5 @@ export const CARGO_LABELS = {
   supgrabaciones: 'Sup. Grabaciones',
   backreclutamiento: 'Back Data Reclutaminto',
   asesorreclutamiento: 'Asesor de Reclutamiento',
+  entrevistas: 'Entrevistas',
 }

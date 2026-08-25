@@ -39,7 +39,8 @@ function PrivateRoute({ children, cargo }) {
   useAuth() // mantiene este componente reactivo ante login/logout/cambio de vista
   const sesion = leerSesionActual()
   if (!sesion) return <Navigate to="/login" replace />
-  if (cargo && !cargosDeUsuario(sesion).includes(cargo)) {
+  const cargosPermitidos = Array.isArray(cargo) ? cargo : cargo ? [cargo] : null
+  if (cargosPermitidos && !cargosPermitidos.some(c => cargosDeUsuario(sesion).includes(c))) {
     return <Navigate to={rutaInicialAutorizada(sesion)} replace />
   }
   return children
@@ -71,7 +72,7 @@ export default function App() {
       <Route path="/sup-calidad"   element={<PrivateRoute cargo="supcalidad"><SupCalidad /></PrivateRoute>} />
       <Route path="/jefatura"      element={<PrivateRoute cargo="jefatura"><Jefatura /></PrivateRoute>} />
       <Route path="/usuarios"      element={<PrivateRoute cargo="usuarios"><Usuarios /></PrivateRoute>} />
-      <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo="backreclutamiento"><Backdatareclutamiento /></PrivateRoute>} />
+      <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo={['backreclutamiento','entrevistas']}><Backdatareclutamiento /></PrivateRoute>} />
       <Route path="/reclutamiento"          element={<PrivateRoute cargo="asesorreclutamiento"><DashboardReclutamiento /></PrivateRoute>} />
 
       <Route path="*" element={<InicioAutorizado />} />
