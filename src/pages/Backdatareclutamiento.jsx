@@ -843,6 +843,7 @@ export default function Backdatareclutamiento() {
         const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/tipif`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipif_vend:valor }) })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
+        if (Array.isArray(data.historial)) updateReg(id, { historial:data.historial })
         if (valor === 'VENTA CERRADA') abrirModalEntrevista(id)
       } catch (e) {
         updateReg(id, { _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
@@ -952,7 +953,7 @@ export default function Backdatareclutamiento() {
     }
     const hora    = horaAhora()
     const motivo  = rotModalMotivo.trim() || 'Rotacion manual'
-    const newHist = [...reg.historial, { asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo }]
+    const newHist = [...reg.historial, { tipo:'ROTACION', asesor:rotModalAsesor, hora, fecha:fechaHoy(), motivo, rotadoPor:sesion?.nombre||'Usuario', tipifVendAntes:reg._tipifVend||'' }]
     updateReg(modalRotar.regId, { asesor:rotModalAsesor, horaAsig:hora, sinAsignar:false, rotaciones:reg.rotaciones+1, historial:newHist })
     try {
       if (reg._backendId) {
@@ -1695,7 +1696,8 @@ export default function Backdatareclutamiento() {
                                 )}
                                 <div className="hist-label">Historial de asignaciones — N1: {r.n1}</div>
                                 {(() => {
-                                  const cola = (r.historial||[]).filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
+                                  const hist = r.historial||[]
+                                  const cola = hist.filter(h => h.asesor && h.tipo!=='TIPIF_BACK' && h.tipo!=='DERIVADO' && h.tipo!=='TIPIF_VEND')
                                   if (!cola.length) return <div style={{fontSize:11,color:'#ccc'}}>Sin historial.</div>
                                   return cola.map((h,ci)=>{
                                     const sig = cola[ci+1]
@@ -1705,12 +1707,23 @@ export default function Backdatareclutamiento() {
                                     const asignadoPor = h.tipo==='ROTACION'
                                       ? (h.rotadoPor || '—')
                                       : (h.reasignadoPor || h.motivo || '—')
+                                    const nombreAsesor = String(h.asesor||'').trim().toUpperCase()
+                                    const tipsAsesor = hist
+                                      .filter(t => t?.tipo==='TIPIF_VEND' && String(t.asesor||'').trim().toUpperCase()===nombreAsesor)
+                                      .sort((a,b)=>(a.ts||0)-(b.ts||0))
                                     return (
                                       <div key={ci} className="hist-item" style={{alignItems:'flex-start'}}>
                                         <div className="hist-dot" style={{background:DOT_COLORS[ci%DOT_COLORS.length],marginTop:4}} />
                                         <div style={{lineHeight:1.5}}>
                                           <div><strong>{h.asesor||'—'}</strong> <span className="hora-cell">{h.hora||'—'}</span> <span style={{color:'#9ca3af'}}>{h.fecha||''}</span></div>
-                                          <div style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></div>
+                                          <div style={{display:'flex',flexWrap:'wrap',gap:'4px 14px',margin:'2px 0'}}>
+                                            {tipsAsesor.length ? tipsAsesor.map((t,ti)=>(
+                                              <span key={ti} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,whiteSpace:'nowrap'}}>
+                                                <span style={{color:'#9ca3af',fontFamily:'monospace'}}>{t.hora||'—'}{t.fecha?` · ${t.fecha}`:''}</span>
+                                                <strong style={{color:'#065f46'}}>{t.tipif||'—'}</strong>
+                                              </span>
+                                            )) : <span style={{fontSize:11}}>Tipificación: <strong style={{color:'#065f46'}}>{tipif || '—'}</strong></span>}
+                                          </div>
                                           <div style={{fontSize:11,color:'#6b7280'}}>Asignado por: {asignadoPor}</div>
                                         </div>
                                       </div>
