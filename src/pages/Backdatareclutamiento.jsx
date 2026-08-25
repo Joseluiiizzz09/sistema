@@ -163,7 +163,7 @@ const TIPIF_VEND_OPCIONES = [
   { value:'VOLVER A LLAMAR', label:'Volver a llamar' },
   { value:'FRAUDE',          label:'Provincia' },
 ]
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['NO TOCAR','FRAUDE','NO ROTAR'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','FRAUDE','NO ROTAR'])
 const LIMA_DISTRITOS = [
   'Ancón','Ate','Barranco','Breña','Carabayllo','Cercado de Lima','Chaclacayo','Chorrillos',
   'Cieneguilla','Comas','El Agustino','Independencia','Jesús María','La Molina','La Victoria',
@@ -202,6 +202,53 @@ function TipifVendBadge({ tipif, hora }) {
       {hora && <span style={{fontSize:9,color:'#9ca3af'}}>vendedor · {hora}</span>}
     </div>
   )
+}
+
+// Colores fuertes para el selector de Tipif. Vendedor (texto legible encima),
+// mismo patrón usado en Backoffice para estiloTipifVend().
+const TIPIF_VEND_FUERTE = {
+  'VENTA CERRADA':   ['#dcfce7','#166534','#86efac'],
+  'BUZON DE VOZ':    ['#f3e8d4','#78350f','#d6a96c'],
+  'NO TOCAR':        ['#fee2e2','#980000','#fca5a5'],
+  'CORTA LLAMADA':   ['#ffedd5','#c2410c','#fdba74'],
+  'GESTION WSP':     ['#fef9c3','#854d0e','#fde047'],
+  'NO CONTESTA':     ['#fef9c3','#854d0e','#fde047'],
+  'NO INTERESADO':   ['#ffedd5','#9a3412','#fdba74'],
+  'NO ROTAR':        ['#fee2e2','#980000','#fca5a5'],
+  'VOLVER A LLAMAR': ['#dbeafe','#1d4ed8','#93c5fd'],
+  'FRAUDE':          ['#fee2e2','#991b1b','#fca5a5'],
+}
+function estiloTipifVend(v) {
+  const paleta = TIPIF_VEND_FUERTE[v]
+  return {
+    fontSize:10, padding:'3px 6px', borderRadius:6, fontFamily:'inherit', maxWidth:155, cursor:'pointer',
+    border:`1px solid ${paleta?paleta[2]:'#e5e7eb'}`,
+    color:paleta?paleta[1]:'inherit',
+    fontWeight:paleta?800:'inherit',
+    background:paleta?paleta[0]:'#fff',
+  }
+}
+
+// Tipificación del resultado de la entrevista (colores enviados por el usuario)
+const TIPIF_ENTREVISTA_OPCIONES = ['NO CONTESTA','DESISTE','REPROGRAMA','CORTA LLAMADA','ASISTE','EN CAMINO','FALTA']
+const TIPIF_ENTREVISTA_COLORES = {
+  'NO CONTESTA':   ['#52525b','#ffffff','#3f3f46'],
+  'DESISTE':       ['#18181b','#ffffff','#000000'],
+  'REPROGRAMA':    ['#8b5cf6','#ffffff','#7c3aed'],
+  'CORTA LLAMADA': ['#ddd6fe','#4c1d95','#c4b5fd'],
+  'ASISTE':        ['#22c55e','#ffffff','#16a34a'],
+  'EN CAMINO':     ['#f59e0b','#78350f','#ca8a04'],
+  'FALTA':         ['#ef4444','#ffffff','#dc2626'],
+}
+function estiloTipifEntrevista(v) {
+  const paleta = TIPIF_ENTREVISTA_COLORES[v]
+  return {
+    fontSize:10, padding:'3px 6px', borderRadius:6, fontFamily:'inherit', maxWidth:145, cursor:'pointer',
+    border:`1px solid ${paleta?paleta[2]:'#e5e7eb'}`,
+    color:paleta?paleta[1]:'#9ca3af',
+    fontWeight:paleta?800:'inherit',
+    background:paleta?paleta[0]:'#fff',
+  }
 }
 
 function BlBadge({ tipif }) {
@@ -580,6 +627,36 @@ export default function Backdatareclutamiento() {
       setCargandoEntrevistas(false)
     }
   }, [])
+
+  function actualizarEntrevistaLocal(id, cambios) {
+    setEntrevistas(prev => prev.map(en => en.id === id ? { ...en, ...cambios } : en))
+  }
+
+  async function guardarTipifEntrevista(id, valor) {
+    const anterior = entrevistas.find(en => en.id === id)?.tipificacion || ''
+    actualizarEntrevistaLocal(id, { tipificacion: valor })
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ tipificacion: valor }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
+    } catch(e) {
+      actualizarEntrevistaLocal(id, { tipificacion: anterior })
+      mostrarToast(e.message || 'No se pudo guardar la tipificación')
+    }
+  }
+
+  async function guardarObservacionEntrevista(id, valorAnterior, valorNuevo) {
+    if (valorNuevo === (valorAnterior||'')) return
+    actualizarEntrevistaLocal(id, { observacion: valorNuevo })
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${id}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ observacion: valorNuevo }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la observación')
+    } catch(e) {
+      actualizarEntrevistaLocal(id, { observacion: valorAnterior||'' })
+      mostrarToast(e.message || 'No se pudo guardar la observación')
+    }
+  }
 
   useEffect(() => {
     cargarAsesores()
@@ -1539,7 +1616,7 @@ export default function Backdatareclutamiento() {
                   {registrosFiltrados.length === 0
                     ? <tr><td colSpan={filtros.verTipVend?11:10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
-                        const esExclusiva = r._tipifVend==='NO TOCAR'||r._tipifVend==='FRAUDE'
+                        const esExclusiva = esLeadProhibido(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
@@ -1561,7 +1638,7 @@ export default function Backdatareclutamiento() {
                             {filtros.verTipVend && (
                               <td>
                                 <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                                  <select className="sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)} style={{fontSize:10,padding:'3px 6px',border:`1px solid ${esExclusiva?'#dc2626':'#e5e7eb'}`,borderRadius:6,fontFamily:'inherit',maxWidth:155,cursor:'pointer',color:esExclusiva?'#dc2626':'inherit',fontWeight:esExclusiva?700:'inherit',background:esExclusiva?'#fef2f2':'#fff'}}>
+                                  <select className="sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)} style={estiloTipifVend(r._tipifVend)}>
                                     <option value="">— Pendiente —</option>
                                     {TIPIF_VEND_OPCIONES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
                                   </select>
@@ -1956,24 +2033,30 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Fecha agendamiento</th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
-                    <th>Campaña</th><th>Observación</th><th>Agendado por</th><th>Registrado</th>
+                    <th>Fecha agendamiento</th><th>Turno</th><th>Campaña</th><th>Postulante</th><th>Número</th><th>Número ref</th>
+                    <th>Tipificación</th><th>Observación</th><th>Agendado por</th><th>Registrado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargandoEntrevistas ? (
-                    <tr><td colSpan="9" className="reclutados-empty">Cargando entrevistas...</td></tr>
+                    <tr><td colSpan="10" className="reclutados-empty">Cargando entrevistas...</td></tr>
                   ) : entrevistasFiltradas.length === 0 ? (
-                    <tr><td colSpan="9" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
+                    <tr><td colSpan="10" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
                   ) : entrevistasFiltradas.map(en => (
                     <tr key={en.id}>
                       <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
                       <td>{en.turno}</td>
+                      <td><CampanaBadge valor={en.campana} /></td>
                       <td className="reclutados-nombre">{en.nombre_postulante}</td>
                       <td>{en.numero}</td>
                       <td>{en.numero_ref || '—'}</td>
-                      <td>{en.campana || '—'}</td>
-                      <td>{en.observacion || '—'}</td>
+                      <td>
+                        <select value={en.tipificacion||''} onChange={e=>guardarTipifEntrevista(en.id,e.target.value)} style={estiloTipifEntrevista(en.tipificacion)}>
+                          <option value="">— Pendiente —</option>
+                          {TIPIF_ENTREVISTA_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </td>
+                      <td><input className="form-control" defaultValue={en.observacion||''} onBlur={e=>guardarObservacionEntrevista(en.id, en.observacion||'', e.target.value.trim())} placeholder="Comentario…" style={{minWidth:160,fontSize:11}} /></td>
                       <td className="reclutados-reclutador">{en.creado_por_nombre || '—'}</td>
                       <td>{normalizarFecha(en.created_at) || '—'}</td>
                     </tr>
