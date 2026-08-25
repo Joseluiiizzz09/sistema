@@ -1527,7 +1527,6 @@ export default function Backdatareclutamiento() {
 
   async function ejecutarCargaLegacy() {
     if (!legacyRows.length) { mostrarToast('No hay datos'); return }
-    let importados=0, omitidos=0
     const leadsBackend = []
     const updates = {}
     const nuevasFechasLocal = []
@@ -1539,11 +1538,26 @@ export default function Backdatareclutamiento() {
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
       updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:r.tipifBack, asesor:r.asesores[r.asesores.length-1]||'', horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:'', _tipifHora:r.hora||'', historial:hist })
       leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_back:r.tipifBack||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:r.asesores[r.asesores.length-1]||'', fecha, hora_asig:r.hora })
-      importados++
     })
-    setBaseData(prev => { const n={...prev}; for(const f in updates) n[f]=[...(prev[f]||[]),...updates[f]]; return n })
-    setFechaPestanas(prev => [...prev, ...nuevasFechasLocal.filter(f=>!prev.includes(f))].sort().reverse())
-    if (leadsBackend.length) { try { await fetch(`${API}/leads-reclutamiento`,{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)}) } catch(e){} }
+    if (!leadsBackend.length) return
+    // Antes esto ignoraba silenciosamente cualquier error del backend y
+    // actualizaba el estado local igual — parecía "importado" en pantalla
+    // aunque nada se hubiera guardado. Ahora solo se actualiza la UI si el
+    // backend confirma éxito, y se avisa con el conteo real (creados/omitidos).
+    setLegacyStatus('Importando...')
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento`,{method:'POST',headers:ncHeaders(),body:JSON.stringify(leadsBackend)})
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo importar el archivo')
+      setBaseData(prev => { const n={...prev}; for(const f in updates) n[f]=[...(prev[f]||[]),...updates[f]]; return n })
+      setFechaPestanas(prev => [...prev, ...nuevasFechasLocal.filter(f=>!prev.includes(f))].sort().reverse())
+      mostrarToast(data.mensaje || `${data.creados} candidato(s) creado(s)`)
+      cargarLeads()
+    } catch(e) {
+      setLegacyStatus('')
+      mostrarToast(e.message || 'No se pudo importar el archivo')
+      return
+    }
     setLegacyRows([]); setLegacyInfo(''); setLegacyStatus('')
     if (legacyInputRef.current) legacyInputRef.current.value = ''
   }
