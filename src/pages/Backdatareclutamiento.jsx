@@ -261,6 +261,9 @@ function estiloTipifEntrevista(v) {
 // que Entrevistas, se reutiliza su paleta con estiloTipifEntrevista().
 const TIPIF_DIA_CAPACITACION_OPCIONES = ['DESISTE','ASISTE','FALTA']
 
+// Mismas salas ya usadas en Jefatura.
+const SALAS_CAPACITACION = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
+
 // Tipificación final, se asigna desde el día 3 (OJT) en adelante.
 const TIPIF_FINAL_CAPACITACION_OPCIONES = ['INGRESO','ALTA','DESISTE','DESAPROBADO']
 const TIPIF_FINAL_CAPACITACION_COLORES = {
@@ -2219,23 +2222,26 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Campaña</th><th>Postulante</th><th>Número</th><th>Fecha de inicio</th>
+                    <th>Campaña</th><th>Registrado por</th><th>Postulante</th><th>Número</th>
+                    <th>Fecha de inicio</th><th>Fecha de inicio (capacitador)</th>
                     <th>Día 1</th><th>Día 2</th><th>Día 3</th><th>Día 4</th><th>Día 5</th>
                     <th>Sala</th><th>Tipificación final</th>
-                    <th>Registrado por</th><th>Fecha de registro</th>
+                    <th>Fecha de registro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargandoCapacitaciones ? (
-                    <tr><td colSpan="13" className="reclutados-empty">Cargando capacitaciones...</td></tr>
+                    <tr><td colSpan="14" className="reclutados-empty">Cargando capacitaciones...</td></tr>
                   ) : capacitacionesFiltradas.length === 0 ? (
-                    <tr><td colSpan="13" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
+                    <tr><td colSpan="14" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
                   ) : capacitacionesFiltradas.map(c => (
                     <tr key={c.id}>
                       <td><CampanaBadge valor={c.campana} /></td>
+                      <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
                       <td className="reclutados-nombre">{c.nombre_postulante}</td>
                       <td>{c.numero}</td>
                       <td>{formatFecha(String(c.fecha_inicio_capacitacion).slice(0,10))}</td>
+                      <td><input type="date" className="form-control" defaultValue={String(c.fecha_inicio_capacitador||'').slice(0,10)} onBlur={e=>guardarCampoCapacitacion(c.id,'fecha_inicio_capacitador', String(c.fecha_inicio_capacitador||'').slice(0,10), e.target.value)} style={{fontSize:11,padding:'5px 8px',minWidth:130}} /></td>
                       {['dia1_tipif','dia2_tipif','dia3_tipif','dia4_tipif','dia5_tipif'].map(campo => (
                         <td key={campo}>
                           <select value={c[campo]||''} onChange={e=>guardarCampoCapacitacion(c.id,campo,c[campo]||'',e.target.value)} style={estiloTipifEntrevista(c[campo])}>
@@ -2244,14 +2250,18 @@ export default function Backdatareclutamiento() {
                           </select>
                         </td>
                       ))}
-                      <td><input className="form-control" defaultValue={c.sala||''} onBlur={e=>guardarCampoCapacitacion(c.id,'sala', c.sala||'', e.target.value.trim())} placeholder="Sala…" style={{minWidth:100,fontSize:11}} /></td>
+                      <td>
+                        <select value={c.sala||''} onChange={e=>guardarCampoCapacitacion(c.id,'sala',c.sala||'',e.target.value)}>
+                          <option value="">— Selecciona —</option>
+                          {SALAS_CAPACITACION.map(s=><option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
                       <td>
                         <select value={c.tipificacion_final||''} onChange={e=>guardarCampoCapacitacion(c.id,'tipificacion_final',c.tipificacion_final||'',e.target.value)} style={estiloTipifFinalCapacitacion(c.tipificacion_final)}>
                           <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                           {TIPIF_FINAL_CAPACITACION_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                         </select>
                       </td>
-                      <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
                       <td>{normalizarFecha(c.created_at) || '—'}</td>
                     </tr>
                   ))}
