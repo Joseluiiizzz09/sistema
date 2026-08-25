@@ -97,6 +97,8 @@ export default function Programacion() {
   const [obsProg, setObsProg]         = useState('')
   const [sotProg, setSotProg]         = useState('')
   const [fechaProg, setFechaProg]     = useState('')
+  const [errorGuardado, setErrorGuardado] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   const [toastMsg, setToastMsg] = useState('')
   const toastRef = useRef(null)
@@ -164,6 +166,7 @@ export default function Programacion() {
     setObsProg(v.obs_programacion || '')
     setSotProg(v.sot || '')
     setFechaProg((v.fecha_programada || '').split('T')[0])
+    setErrorGuardado('')
   }
 
   function cerrarModal() {
@@ -172,12 +175,18 @@ export default function Programacion() {
     setObsProg('')
     setSotProg('')
     setFechaProg('')
+    setErrorGuardado('')
   }
 
   async function guardarCambios() {
-    if (!modalDet) return
+    if (!modalDet || guardando) return
+    setErrorGuardado('')
+    if (!estadoModal) {
+      setErrorGuardado('Seleccione el estado que desea guardar.')
+      return
+    }
     if (estadoModal === 'PROGRAMADO' && (!sotProg.trim() || !fechaProg)) {
-      mostrarToast('Ingrese SOT y fecha programada')
+      setErrorGuardado('Para marcar la venta como PROGRAMADO debe ingresar el SOT y la fecha programada.')
       return
     }
     const esRechazo = estadoModal === 'RECHAZADO'
@@ -202,12 +211,16 @@ export default function Programacion() {
             : {}),
         }
     try {
+      setGuardando(true)
       const res  = await fetch(`${API}/ventas/${modalDet.id}?area=programacion`, {
         method: 'PATCH', headers: ncHeaders(),
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!data.ok) { mostrarToast(data.mensaje || 'Error actualizando'); return }
+      if (!res.ok || !data.ok) {
+        setErrorGuardado(data.mensaje || 'No se pudo actualizar la venta. Intente nuevamente.')
+        return
+      }
       setVentas(list => list.map(x =>
         x.id === modalDet.id
           ? {
@@ -219,7 +232,11 @@ export default function Programacion() {
           : x
       ))
       cerrarModal()
-    } catch (e) { mostrarToast('Error conectando al servidor') }
+    } catch (e) {
+      setErrorGuardado('No se pudo conectar con el servidor. Intente nuevamente.')
+    } finally {
+      setGuardando(false)
+    }
   }
 
   function salir() { logout(); navigate('/login') }
@@ -451,7 +468,7 @@ export default function Programacion() {
                     <button
                       key={btn.id}
                       className={`btn-estado ${btn.cls}${estadoModal === btn.id ? ' selected' : ''}`}
-                      onClick={() => setEstadoModal(btn.id)}
+                      onClick={() => { setEstadoModal(btn.id); setErrorGuardado('') }}
                     >{btn.label}</button>
                   ))}
                 </div>
@@ -468,7 +485,7 @@ export default function Programacion() {
                       <input
                         type="text"
                         value={sotProg}
-                        onChange={e => setSotProg(e.target.value)}
+                        onChange={e => { setSotProg(e.target.value); setErrorGuardado('') }}
                         placeholder="Ingrese SOT"
                         maxLength={100}
                       />
@@ -478,7 +495,7 @@ export default function Programacion() {
                       <input
                         type="date"
                         value={fechaProg}
-                        onChange={e => setFechaProg(e.target.value)}
+                        onChange={e => { setFechaProg(e.target.value); setErrorGuardado('') }}
                       />
                     </label>
                   </div>
@@ -490,10 +507,21 @@ export default function Programacion() {
                 <textarea value={obsProg} onChange={e => setObsProg(e.target.value)}
                   placeholder="Ingresa observaciones sobre la instalación..." />
               </div>
+              {errorGuardado && (
+                <div role="alert" style={{
+                  marginTop: '12px', padding: '10px 12px', border: '1px solid #fca5a5',
+                  borderRadius: '8px', background: '#fff1f2', color: '#b91c1c',
+                  fontSize: '12px', fontWeight: 700,
+                }}>
+                  {errorGuardado}
+                </div>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn-cancelar-m" onClick={cerrarModal}>Cancelar</button>
-              <button className="btn-guardar-m" onClick={guardarCambios}>Guardar cambios</button>
+              <button className="btn-cancelar-m" onClick={cerrarModal} disabled={guardando}>Cancelar</button>
+              <button className="btn-guardar-m" onClick={guardarCambios} disabled={guardando}>
+                {guardando ? 'Guardando...' : 'Guardar cambios'}
+              </button>
             </div>
           </div>
         </div>
