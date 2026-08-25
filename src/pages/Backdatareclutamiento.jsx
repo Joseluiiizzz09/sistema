@@ -399,6 +399,7 @@ export default function Backdatareclutamiento() {
 
   // ── Modal rotación manual ──
   const [modalRotar,    setModalRotar]    = useState({ open:false, regId:null, desc:'', asesorActual:'' })
+  const [modalComentarioTipif, setModalComentarioTipif] = useState({ open:false, regId:null, comentario:'', guardando:false, error:'' })
   const [modalEditar,   setModalEditar]   = useState({ open:false, regId:null, modo:'contacto', campana:'', n1:'', n2:'', usuarioWhatsapp:'', guardando:false, error:'' })
 
   // ── Entrevistas (postulantes que aceptaron la propuesta) ──
@@ -613,6 +614,7 @@ export default function Backdatareclutamiento() {
           _tipifVend: l.tipif_vend || '',
           _tipifHora: l.tipif_hora || '',
           entrevistaTipif: l.entrevista_tipificacion || '',
+          obsAsesor: l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
         }
         // Reconciliar con cambios locales recientes (evita parpadeo al valor viejo)
@@ -939,15 +941,16 @@ export default function Backdatareclutamiento() {
       }
       return
     }
+    const esReasignacion = !!reg.asesor
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
-    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist })
+    updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones: esReasignacion ? reg.rotaciones+1 : reg.rotaciones })
     if (reg._backendId) {
       try {
-        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist }) })
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:esReasignacion }) })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar el lead')
       } catch (e) {
-        updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial })
+        updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial, rotaciones:reg.rotaciones })
         mostrarToast(e.message || 'No se pudo reasignar el lead')
       }
     }
@@ -986,10 +989,58 @@ export default function Backdatareclutamiento() {
         if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
         if (Array.isArray(data.historial)) updateReg(id, { historial:data.historial })
         if (valor === 'VENTA CERRADA') abrirModalEntrevista(id)
+        if (['NO TOCAR','FRAUDE','NO INTERESADO'].includes(valor)) abrirModalComentarioTipif(id)
       } catch (e) {
         updateReg(id, { _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
         mostrarToast(e.message || 'No se pudo guardar la tipificación')
       }
+    }
+  }
+
+  async function guardarObsAsesorReg(id, valorAnterior, valorNuevo) {
+    if (valorNuevo === (valorAnterior||'')) return
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    updateReg(id, { obsAsesor: valorNuevo })
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:valorNuevo }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el comentario')
+      } catch(e) {
+        updateReg(id, { obsAsesor: valorAnterior||'' })
+        mostrarToast(e.message || 'No se pudo guardar el comentario')
+      }
+    }
+  }
+
+  // ── Modal comentario al tipificar No cumple el perfil / Provincia / No interesado ──
+  function abrirModalComentarioTipif(id) {
+    const found = findReg(id)
+    if (!found) return
+    const { reg } = found
+    setModalComentarioTipif({ open:true, regId:id, comentario:reg.obsAsesor||'', guardando:false, error:'' })
+  }
+
+  async function guardarComentarioTipif() {
+    const comentario = modalComentarioTipif.comentario.trim()
+    setModalComentarioTipif(p=>({...p, guardando:true, error:''}))
+    const found = findReg(modalComentarioTipif.regId)
+    if (!found) { setModalComentarioTipif(p=>({...p, guardando:false})); return }
+    const { reg } = found
+    const anterior = reg.obsAsesor||''
+    updateReg(modalComentarioTipif.regId, { obsAsesor: comentario })
+    try {
+      if (reg._backendId) {
+        const res = await fetch(`${API}/leads-reclutamiento/${reg._backendId}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs:comentario }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el comentario')
+      }
+      setModalComentarioTipif({ open:false, regId:null, comentario:'', guardando:false, error:'' })
+    } catch(e) {
+      updateReg(modalComentarioTipif.regId, { obsAsesor: anterior })
+      setModalComentarioTipif(p=>({...p, guardando:false, error:e.message || 'No se pudo guardar el comentario'}))
     }
   }
 
@@ -1759,23 +1810,22 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla table table-sm table-hover">
                 <thead>
                   <tr>
-                    <th>#</th><th>Campaña</th><th>Distrito</th>
+                    <th>#</th><th>Campaña</th>
                     <th>N1</th><th>N2</th>
                     <th>Asesor asignado</th><th>Hora / Fecha asign.</th>
                     {filtros.verTipVend && <th>Tipif. Vendedor</th>}
-                    <th>Sin asig.</th><th>Rotaciones</th><th>Acciones</th>
+                    <th>Comentario</th><th>Rotaciones</th><th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={filtros.verTipVend?11:10} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
+                    ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
                     : registrosFiltrados.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
-                            <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'campana')} title="Editar campaña" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
-                            <td style={{fontSize:11}}>{r.distrito}</td>
+                            <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'campana')} title="Editar campaña" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial (quién cargó esta campaña y número)" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
                             <td>{r.n1
                               ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
                               : r.usuarioWhatsapp
@@ -1800,7 +1850,7 @@ export default function Backdatareclutamiento() {
                                 </div>
                               </td>
                             )}
-                            <td>{r.sinAsignar ? <span className="sin-asig-badge">Sin asig.</span> : <span style={{color:'#d1d5db',fontSize:10}}>—</span>}</td>
+                            <td><input className="form-control" defaultValue={r.obsAsesor||''} onBlur={e=>guardarObsAsesorReg(r.id, r.obsAsesor||'', e.target.value.trim())} placeholder="Comentario…" style={{minWidth:140,fontSize:11}} /></td>
                             <td style={{textAlign:'center'}}>
                               {r.rotaciones > 0
                                 ? <span style={{background:'#EDE9FE',color:'#4C1D95',fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:99,display:'inline-block'}}>{r.rotaciones}x</span>
@@ -1824,7 +1874,7 @@ export default function Backdatareclutamiento() {
                             </td>
                           </tr>,
                           <tr key={`hist-${r.id}`} className={`historial-row${histOpen[r.id]?' open':''}`}>
-                            <td colSpan={filtros.verTipVend?11:10}>
+                            <td colSpan={filtros.verTipVend?10:9}>
                               <div className="historial-inner">
                                 {(r.creadoPor || r.creadoEn) && (
                                   <div style={{fontSize:11,color:'#6b7280',marginBottom:8}}>
@@ -2339,6 +2389,21 @@ export default function Backdatareclutamiento() {
 
         </main>
       </div>
+
+      {/* ══ MODAL COMENTARIO (No cumple el perfil / Provincia / No interesado) ══ */}
+      {modalComentarioTipif.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalComentarioTipif.guardando) setModalComentarioTipif(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Comentario</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Comentario</label><textarea className="form-control" rows={3} value={modalComentarioTipif.comentario} onChange={e=>setModalComentarioTipif(p=>({...p,comentario:e.target.value}))} placeholder="Motivo de la tipificación…" /></div>
+            {modalComentarioTipif.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalComentarioTipif.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalComentarioTipif(p=>({...p,open:false}))} disabled={modalComentarioTipif.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarComentarioTipif} disabled={modalComentarioTipif.guardando}>{modalComentarioTipif.guardando?'Guardando…':'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ MODAL ROTACIÓN MANUAL ════════════════════════════════════════════ */}
       {modalRotar.open && (

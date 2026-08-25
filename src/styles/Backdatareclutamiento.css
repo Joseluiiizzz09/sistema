@@ -486,7 +486,6 @@ body{
 .tipif-sincobert{background:var(--brand-soft);color:var(--brand-deep);}
 .tipif-derivado{background:#f5f3ff;color:#5b21b6;}
 .tipif-empty{color:#cbd5e1;font-style:italic;font-size:11px;}
-.sin-asig-badge{display:inline-flex;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;}
 .hora-cell{color:var(--brand);font-weight:700;font-size:11px;font-family:monospace;}
 
 /* ━━ LEYENDA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
