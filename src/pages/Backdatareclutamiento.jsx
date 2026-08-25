@@ -2137,7 +2137,7 @@ export default function Backdatareclutamiento() {
                 <thead>
                   <tr>
                     <th>Fecha de registro</th><th>Campaña</th><th>Agendado por</th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
-                    <th>Tipificación</th><th>Observación</th><th>Fecha de agendamiento</th><th>Fecha de entrevista</th>
+                    <th>Fecha de agendamiento</th><th>Fecha de entrevista</th><th>Tipificación</th><th>Observación</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2154,6 +2154,8 @@ export default function Backdatareclutamiento() {
                       <td className="reclutados-nombre">{en.nombre_postulante}</td>
                       <td>{en.numero}</td>
                       <td>{en.numero_ref || '—'}</td>
+                      <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
+                      <td><input type="date" className="form-control" defaultValue={String(en.fecha_entrevista||'').slice(0,10)} onBlur={e=>guardarFechaEntrevista(en.id, String(en.fecha_entrevista||'').slice(0,10), e.target.value)} /></td>
                       <td>
                         <select value={en.tipificacion||''} onChange={e=>guardarTipifEntrevista(en.id,e.target.value)} style={estiloTipifEntrevista(en.tipificacion)}>
                           <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
@@ -2161,8 +2163,6 @@ export default function Backdatareclutamiento() {
                         </select>
                       </td>
                       <td><input className="form-control" defaultValue={en.observacion||''} onBlur={e=>guardarObservacionEntrevista(en.id, en.observacion||'', e.target.value.trim())} placeholder="Comentario…" style={{minWidth:160,fontSize:11}} /></td>
-                      <td>{formatFecha(String(en.fecha_agendamiento).slice(0,10))}</td>
-                      <td><input type="date" className="form-control" defaultValue={String(en.fecha_entrevista||'').slice(0,10)} onBlur={e=>guardarFechaEntrevista(en.id, String(en.fecha_entrevista||'').slice(0,10), e.target.value)} /></td>
                     </tr>
                   ))}
                 </tbody>
