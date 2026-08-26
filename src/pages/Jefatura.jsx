@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import MediaViewer from '../components/MediaViewer'
@@ -368,6 +369,88 @@ function FiltroEstadoMultiple({ opciones, seleccionados, onChange }) {
   )
 }
 
+// Selector de rango de fechas en un solo control — un calendario donde se
+// elige inicio y fin (primer clic = desde, segundo clic = hasta), en vez de
+// dos campos separados.
+function RangoFechasPicker({ desde, hasta, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [mesVista, setMesVista] = useState(() => {
+    const base = desde ? new Date(desde+'T00:00:00') : new Date()
+    return new Date(base.getFullYear(), base.getMonth(), 1)
+  })
+  const [pos, setPos] = useState({ top:0, left:0 })
+  const btnRef = useRef(null)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function cerrar(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target) && btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [open])
+
+  function abrir() {
+    const r = btnRef.current.getBoundingClientRect()
+    setPos({ top:r.bottom+4, left:r.left })
+    setOpen(v=>!v)
+  }
+
+  function fmtISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+
+  function clickDia(iso) {
+    if (!desde || (desde && hasta)) onChange({ desde:iso, hasta:'' })
+    else if (iso < desde) onChange({ desde:iso, hasta:'' })
+    else { onChange({ desde, hasta:iso }); setOpen(false) }
+  }
+
+  const diasEnMes = new Date(mesVista.getFullYear(), mesVista.getMonth()+1, 0).getDate()
+  const offsetSemana = (new Date(mesVista.getFullYear(), mesVista.getMonth(), 1).getDay()+6)%7
+  const celdas = []
+  for (let i=0;i<offsetSemana;i++) celdas.push(null)
+  for (let d=1; d<=diasEnMes; d++) celdas.push(new Date(mesVista.getFullYear(), mesVista.getMonth(), d))
+
+  const resumen = desde && hasta ? `${formatF(desde)} – ${formatF(hasta)}` : desde ? `${formatF(desde)} – …` : 'Seleccionar rango'
+
+  return (
+    <>
+      <button ref={btnRef} type="button" className="form-control" style={{textAlign:'left',cursor:'pointer',background:'#fff',width:'100%'}} onClick={abrir}>
+        {resumen}
+      </button>
+      {open && createPortal(
+        <div ref={boxRef} style={{position:'fixed',top:pos.top,left:pos.left,zIndex:10000,background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,boxShadow:'0 12px 32px rgba(15,23,42,.2)',padding:12,width:250,color:'#111827'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <button type="button" onClick={()=>setMesVista(m=>new Date(m.getFullYear(),m.getMonth()-1,1))} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>‹</button>
+            <strong style={{fontSize:12,textTransform:'capitalize'}}>{mesVista.toLocaleDateString('es-PE',{month:'long',year:'numeric'})}</strong>
+            <button type="button" onClick={()=>setMesVista(m=>new Date(m.getFullYear(),m.getMonth()+1,1))} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>›</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,fontSize:10,color:'#9ca3af',marginBottom:4,textAlign:'center'}}>
+            {['L','M','X','J','V','S','D'].map(d=><span key={d}>{d}</span>)}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+            {celdas.map((dia,i) => {
+              if (!dia) return <span key={i} />
+              const iso = fmtISO(dia)
+              const enRango = desde && hasta && iso >= desde && iso <= hasta
+              const esExtremo = iso === desde || iso === hasta
+              return (
+                <button key={i} type="button" onClick={()=>clickDia(iso)}
+                  style={{border:'none',background:esExtremo?'#dc2626':enRango?'#fee2e2':'transparent',color:esExtremo?'#fff':'#111827',borderRadius:6,padding:'5px 0',fontSize:11,cursor:'pointer'}}>
+                  {dia.getDate()}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}>
+            <button type="button" onClick={()=>{onChange({desde:'',hasta:''}); setOpen(false)}} style={{fontSize:11,color:'#6b7280',border:'none',background:'none',cursor:'pointer'}}>Limpiar</button>
+            <button type="button" onClick={()=>{const h=fechaHoy(); onChange({desde:h,hasta:h}); setOpen(false)}} style={{fontSize:11,color:'#dc2626',border:'none',background:'none',cursor:'pointer',fontWeight:700}}>Hoy</button>
+          </div>
+        </div>, document.body)}
+    </>
+  )
+}
+
 export default function Jefatura() {
   const navigate = useNavigate()
   const { sesion, logout, refrescarSesion } = useAuth()
@@ -441,12 +524,12 @@ export default function Jefatura() {
 
   /* dashboard de leads para Marketing — exclusivo de esta vista de Jefatura */
   const [marketingVista, setMarketingVista] = useState('ventas')
-  const [marketingFiltros, setMarketingFiltros] = useState({ desde:'', hasta:'', campana:'', tipificacion:'' })
+  const [marketingFiltros, setMarketingFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingData, setMarketingData] = useState([])
   const [marketingCatalogos, setMarketingCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingCarga, setMarketingCarga] = useState({ cargando:false, error:'' })
   // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
-  const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:'', hasta:'', campana:'', tipificacion:'' })
+  const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingReclData, setMarketingReclData] = useState([])
   const [marketingReclCatalogos, setMarketingReclCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingReclCarga, setMarketingReclCarga] = useState({ cargando:false, error:'' })
@@ -1574,8 +1657,7 @@ export default function Jefatura() {
             <div className="filtros-avanzados marketing-filtros">
               <div className="filtros-titulo">Filtros del reporte</div>
               <div className="filtros-grid">
-                <label><span>Fecha desde</span><input type="date" value={marketingFiltros.desde} onChange={e=>setMarketingFiltros(p=>({...p,desde:e.target.value}))}/></label>
-                <label><span>Fecha hasta</span><input type="date" value={marketingFiltros.hasta} onChange={e=>setMarketingFiltros(p=>({...p,hasta:e.target.value}))}/></label>
+                <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingFiltros.desde} hasta={marketingFiltros.hasta} onChange={v=>setMarketingFiltros(p=>({...p,...v}))} /></label>
                 <label><span>Campaña</span><select value={marketingFiltros.campana} onChange={e=>setMarketingFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <label><span>Tipificación</span><select value={marketingFiltros.tipificacion} onChange={e=>setMarketingFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
@@ -1619,8 +1701,7 @@ export default function Jefatura() {
             <div className="filtros-avanzados marketing-filtros">
               <div className="filtros-titulo">Filtros del reporte</div>
               <div className="filtros-grid">
-                <label><span>Fecha desde</span><input type="date" value={marketingReclFiltros.desde} onChange={e=>setMarketingReclFiltros(p=>({...p,desde:e.target.value}))}/></label>
-                <label><span>Fecha hasta</span><input type="date" value={marketingReclFiltros.hasta} onChange={e=>setMarketingReclFiltros(p=>({...p,hasta:e.target.value}))}/></label>
+                <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingReclFiltros.desde} hasta={marketingReclFiltros.hasta} onChange={v=>setMarketingReclFiltros(p=>({...p,...v}))} /></label>
                 <label><span>Campaña</span><select value={marketingReclFiltros.campana} onChange={e=>setMarketingReclFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingReclCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <label><span>Tipificación</span><select value={marketingReclFiltros.tipificacion} onChange={e=>setMarketingReclFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingReclCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingReclFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
