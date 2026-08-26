@@ -1017,7 +1017,7 @@ export default function Jefatura() {
       porCampana.set(fila.campana, actual)
     })
     const campanas = [...porCampana.values()].sort((a,b) => b.total-a.total || a.campana.localeCompare(b.campana,'es'))
-    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)) }
+    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
   }, [marketingData])
 
   function exportarMarketingExcel() {
@@ -1708,7 +1708,8 @@ export default function Jefatura() {
                     : resumenMarketing.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
                         <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
                         <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketing.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
-                        <div style={{fontSize:10,color:'#16a34a',fontWeight:700,marginTop:3}}>{c.ventas} venta{c.ventas===1?'':'s'} (cerrada, instalada o caída)</div>
+                        <div className="marketing-barra-top" style={{marginTop:4}}><span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>{c.ventas} venta{c.ventas===1?'':'s'}</span></div>
+                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.ventas/resumenMarketing.maxVentas*100)}%`,background:'#16a34a'}} /></div>
                       </div>)}
                 </div>
               </div>
