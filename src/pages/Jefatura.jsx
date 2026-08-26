@@ -440,10 +440,16 @@ export default function Jefatura() {
   const [fsBusqueda,  setFsBusqueda]  = useState('')
 
   /* dashboard de leads para Marketing — exclusivo de esta vista de Jefatura */
+  const [marketingVista, setMarketingVista] = useState('ventas')
   const [marketingFiltros, setMarketingFiltros] = useState({ desde:'', hasta:'', campana:'', tipificacion:'' })
   const [marketingData, setMarketingData] = useState([])
   const [marketingCatalogos, setMarketingCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingCarga, setMarketingCarga] = useState({ cargando:false, error:'' })
+  // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
+  const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:'', hasta:'', campana:'', tipificacion:'' })
+  const [marketingReclData, setMarketingReclData] = useState([])
+  const [marketingReclCatalogos, setMarketingReclCatalogos] = useState({ campanas:[], tipificaciones:[] })
+  const [marketingReclCarga, setMarketingReclCarga] = useState({ cargando:false, error:'' })
 
   /* logs */
   const [logs, setLogs] = useState(() => {
@@ -660,6 +666,25 @@ export default function Jefatura() {
     }
   }, [marketingFiltros])
 
+  const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
+    setMarketingReclCarga({ cargando:true, error:'' })
+    try {
+      const qs = new URLSearchParams()
+      Object.entries(filtros).forEach(([k,v]) => { if (v) qs.set(k,v) })
+      const res = await fetch(`${API}/leads-reclutamiento/marketing-resumen?${qs}`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar el dashboard')
+      setMarketingReclData(Array.isArray(data.data) ? data.data : [])
+      setMarketingReclCatalogos({
+        campanas:Array.isArray(data.filtros?.campanas) ? data.filtros.campanas : [],
+        tipificaciones:Array.isArray(data.filtros?.tipificaciones) ? data.filtros.tipificaciones : [],
+      })
+      setMarketingReclCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setMarketingReclCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [marketingReclFiltros])
+
   async function eliminarRegistroEliminacion(item) {
     if (!item?.id || eliminacionBorrandoId !== null) return
     if (!window.confirm('¿Eliminar este registro del historial?\n\nEsta acción solo borra el registro de auditoría.')) return
@@ -755,9 +780,9 @@ export default function Jefatura() {
     if (seccion === 'seguimiento') cargarSeguimiento()
     if (seccion === 'reclutados-generales') cargarReclutados()
     if (seccion === 'eliminaciones') cargarEliminaciones()
-    if (seccion === 'marketing-leads') cargarMarketing()
+    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl() }
     if (seccion === 'envio-masivo') cargarMasivo()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing, cargarMasivo])
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarMasivo])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -893,6 +918,32 @@ export default function Jefatura() {
       ['Primera alta', f=>f.primera_alta || ''],
       ['Última alta', f=>f.ultima_alta || ''],
     ], `leads-marketing-${fechaHoy()}.xlsx`)
+  }
+
+  const resumenMarketingRecl = useMemo(() => {
+    const porCampana = new Map()
+    let total = 0, sinTipificar = 0
+    marketingReclData.forEach(fila => {
+      const cantidad = Number(fila.cantidad || 0)
+      total += cantidad
+      if (fila.tipificacion === 'SIN TIPIFICAR') sinTipificar += cantidad
+      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, tipificaciones:[] }
+      actual.total += cantidad
+      actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
+      porCampana.set(fila.campana, actual)
+    })
+    const campanas = [...porCampana.values()].sort((a,b) => b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)) }
+  }, [marketingReclData])
+
+  function exportarMarketingReclExcel() {
+    descargarExcel(marketingReclData, [
+      ['Campaña', f=>f.campana],
+      ['Tipificación', f=>f.tipificacion],
+      ['Leads', f=>Number(f.cantidad || 0)],
+      ['Primera alta', f=>f.primera_alta || ''],
+      ['Última alta', f=>f.ultima_alta || ''],
+    ], `leads-marketing-reclutamiento-${fechaHoy()}.xlsx`)
   }
 
   /* ── usuarios para el selector de accesos ── */
@@ -1499,13 +1550,27 @@ export default function Jefatura() {
           {/* ===== DASHBOARD DE LEADS PARA MARKETING (SOLO JEFATURA) ===== */}
           <section className={`section${seccion==='marketing-leads'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para el área de Marketing</p></div>
+              <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para las áreas de Marketing y Reclutamiento</p></div>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>
-                <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
+                {marketingVista==='ventas'
+                  ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>
+                  : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingReclExcel} disabled={!marketingReclData.length}>Exportar Excel</button>}
+                {marketingVista==='ventas'
+                  ? <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
+                  : <button className="btn-nuevo" onClick={()=>cargarMarketingRecl(marketingReclFiltros)}>Actualizar</button>}
               </div>
             </div>
 
+            <div className="nav-tabs" style={{display:'flex',gap:8,marginBottom:14}}>
+              <button type="button" className={`btn-nuevo${marketingVista==='ventas'?'':' btn-tab-inactivo'}`}
+                style={marketingVista==='ventas'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setMarketingVista('ventas')}>Ventas</button>
+              <button type="button" className={`btn-nuevo${marketingVista==='reclutamiento'?'':' btn-tab-inactivo'}`}
+                style={marketingVista==='reclutamiento'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setMarketingVista('reclutamiento')}>Reclutamiento</button>
+            </div>
+
+            {marketingVista==='ventas' && <>
             <div className="filtros-avanzados marketing-filtros">
               <div className="filtros-titulo">Filtros del reporte</div>
               <div className="filtros-grid">
@@ -1548,6 +1613,52 @@ export default function Jefatura() {
                 </table></div>
               </div>
             </div>
+            </>}
+
+            {marketingVista==='reclutamiento' && <>
+            <div className="filtros-avanzados marketing-filtros">
+              <div className="filtros-titulo">Filtros del reporte</div>
+              <div className="filtros-grid">
+                <label><span>Fecha desde</span><input type="date" value={marketingReclFiltros.desde} onChange={e=>setMarketingReclFiltros(p=>({...p,desde:e.target.value}))}/></label>
+                <label><span>Fecha hasta</span><input type="date" value={marketingReclFiltros.hasta} onChange={e=>setMarketingReclFiltros(p=>({...p,hasta:e.target.value}))}/></label>
+                <label><span>Campaña</span><select value={marketingReclFiltros.campana} onChange={e=>setMarketingReclFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingReclCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Tipificación</span><select value={marketingReclFiltros.tipificacion} onChange={e=>setMarketingReclFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingReclCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingReclFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
+              </div>
+            </div>
+
+            {marketingReclCarga.error && <div className="marketing-error">{marketingReclCarga.error}</div>}
+            <div className="kpi-grid marketing-kpis">
+              <div className="kpi-card k-blue"><div className="kpi-num">{resumenMarketingRecl.total}</div><div className="kpi-label">Total de leads</div><div className="kpi-sub">según filtros</div></div>
+              <div className="kpi-card k-purple"><div className="kpi-num">{resumenMarketingRecl.campanas.length}</div><div className="kpi-label">Campañas</div><div className="kpi-sub">con registros</div></div>
+              <div className="kpi-card k-green"><div className="kpi-num">{resumenMarketingRecl.tipificados}</div><div className="kpi-label">Tipificados</div><div className="kpi-sub">con resultado</div></div>
+              <div className="kpi-card k-yellow"><div className="kpi-num">{resumenMarketingRecl.sinTipificar}</div><div className="kpi-label">Sin tipificar</div><div className="kpi-sub">pendientes</div></div>
+            </div>
+
+            <div className="marketing-grid">
+              <div className="chart-card marketing-ranking">
+                <div className="chart-title-row"><span>Volumen de leads por campaña</span>{marketingReclCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="marketing-barras">
+                  {resumenMarketingRecl.campanas.length===0 && !marketingReclCarga.cargando
+                    ? <div className="marketing-vacio">No hay leads para los filtros seleccionados.</div>
+                    : resumenMarketingRecl.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
+                        <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
+                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketingRecl.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                      </div>)}
+                </div>
+              </div>
+
+              <div className="tabla-wrap marketing-tabla-card">
+                <div className="tabla-header"><span className="tabla-title">Detalle para Reclutamiento</span><span className="tabla-count">{marketingReclData.length} grupos</span></div>
+                <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                  <thead><tr><th>Campaña</th><th>Tipificación</th><th>Leads</th><th>Primera alta</th><th>Última alta</th></tr></thead>
+                  <tbody>{marketingReclData.length===0
+                    ? <tr><td colSpan="5" className="tabla-empty">{marketingReclCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
+                    : marketingReclData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
+                </table></div>
+              </div>
+            </div>
+            </>}
           </section>
 
           {/* ===== ENVIO MASIVO ===== */}
