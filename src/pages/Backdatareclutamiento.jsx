@@ -1580,8 +1580,7 @@ export default function Backdatareclutamiento() {
       const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
       if (r.tipifVend) hist.push({ tipo:'TIPIF_VEND', asesor:asesorFinal, tipif:r.tipifVend, hora:r.hora||'—', fecha })
       updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:'', asesor:asesorFinal, horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend, _tipifHora:r.hora||'', historial:hist })
-      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, fecha, hora_asig:r.hora, importacion_legacy:true })
-    })
+      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, rotaciones:Math.max(0,r.asesores.length-1), fecha, hora_asig:r.hora, importacion_legacy:true })    })
     if (!leadsBackend.length) return
     // Antes esto ignoraba silenciosamente cualquier error del backend y
     // actualizaba el estado local igual — parecía "importado" en pantalla
