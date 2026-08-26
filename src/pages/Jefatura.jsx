@@ -999,6 +999,10 @@ export default function Jefatura() {
     }
   }, [ventasCache, usuarios])
 
+  // Una venta cerrada, en cualquiera de sus 3 estados posteriores, sigue
+  // siendo una venta: VENTA CERRADA (recien cerrada), INSTALADO (se completo)
+  // o VENTA CAIDA (se cayo despues) — las 3 cuentan para el total de ventas.
+  const TIPIF_CONJUNTO_VENTA = new Set(['VENTA CERRADA','VENTA CAIDA','INSTALADO'])
   const resumenMarketing = useMemo(() => {
     const porCampana = new Map()
     let total = 0, sinTipificar = 0
@@ -1006,8 +1010,9 @@ export default function Jefatura() {
       const cantidad = Number(fila.cantidad || 0)
       total += cantidad
       if (fila.tipificacion === 'SIN TIPIFICAR') sinTipificar += cantidad
-      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, tipificaciones:[] }
+      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, ventas:0, tipificaciones:[] }
       actual.total += cantidad
+      if (TIPIF_CONJUNTO_VENTA.has(String(fila.tipificacion||'').trim().toUpperCase())) actual.ventas += cantidad
       actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
       porCampana.set(fila.campana, actual)
     })
@@ -1703,6 +1708,7 @@ export default function Jefatura() {
                     : resumenMarketing.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
                         <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
                         <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketing.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                        <div style={{fontSize:10,color:'#16a34a',fontWeight:700,marginTop:3}}>{c.ventas} venta{c.ventas===1?'':'s'} (cerrada, instalada o caída)</div>
                       </div>)}
                 </div>
               </div>
