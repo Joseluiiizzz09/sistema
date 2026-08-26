@@ -171,6 +171,11 @@ const TIPIF_VEND_RECL_LABELS = {
   'FRAUDE':           'Provincia',
 }
 function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor||'').trim().toUpperCase()] || valor }
+// Tipificaciones vigentes del vendedor en Backoffice (mismo set que
+// TIPIF_VEND_OPCIONES en Backoffice.jsx) — el reporte de Marketing solo debe
+// ofrecer estas para filtrar, no cualquier texto libre historico que haya
+// quedado guardado en tipif_vend/tipif_back/tipif_back_2.
+const TIPIF_VEND_VENTAS_ACTUALES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR','SIN TIPIFICAR']
 function fechaHoy()    { return new Date().toISOString().split('T')[0] }
 function horaAhora()   { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function mesActual()   { return fechaHoy().slice(0,7) }
@@ -1676,7 +1681,7 @@ export default function Jefatura() {
               <div className="filtros-grid">
                 <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingFiltros.desde} hasta={marketingFiltros.hasta} onChange={v=>setMarketingFiltros(p=>({...p,...v}))} /></label>
                 <label><span>Campaña</span><select value={marketingFiltros.campana} onChange={e=>setMarketingFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label><span>Tipificación</span><select value={marketingFiltros.tipificacion} onChange={e=>setMarketingFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Tipificación</span><select value={marketingFiltros.tipificacion} onChange={e=>setMarketingFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{TIPIF_VEND_VENTAS_ACTUALES.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
               </div>
             </div>
