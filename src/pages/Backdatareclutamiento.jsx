@@ -396,8 +396,7 @@ export default function Backdatareclutamiento() {
   const distritos = LIMA_DISTRITOS
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true })
-
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, global:false })
   // ── Historial ──
   const [histOpen, setHistOpen] = useState({})
   const [histOpenCapacitacion, setHistOpenCapacitacion] = useState({})
@@ -1613,7 +1612,13 @@ export default function Backdatareclutamiento() {
   }
 
   // ── Computed values ───────────────────────────────────────────────────────
-  const registrosActivos = baseData[fechaActiva] || []
+  // "Buscar en todas las fechas": cargarLeads ya trae TODOS los registros sin
+  // filtrar por fecha (baseData los tiene completos, solo organizados por dia),
+  // asi que la busqueda global no necesita otra llamada al backend — solo hay
+  // que dejar de recortar la vista a la pestaña activa.
+  const registrosActivos = filtros.global
+    ? Object.entries(baseData).flatMap(([fecha, regs]) => regs.map(r => ({ ...r, _fechaFila: fecha })))
+    : (baseData[fechaActiva] || []).map(r => ({ ...r, _fechaFila: fechaActiva }))
   const registrosFiltrados = registrosActivos.filter(r => {
     if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
     if (filtros.tipVend&& (r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase())  return false
@@ -1621,7 +1626,6 @@ export default function Backdatareclutamiento() {
     if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
     return true
   })
-
   const entrevistasFiltradas = entrevistas.filter(en => {
     if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
     const fecha = String(en.fecha_agendamiento||'').slice(0,10)
@@ -1965,12 +1969,15 @@ export default function Backdatareclutamiento() {
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
               </div>
+              <label className="toggle-col base-filtro-toggle base-filtro-global">
+                <input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} />
+                <span>Buscar en todas las fechas</span>
+              </label>
               <label className="toggle-col base-filtro-toggle">
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true})}>Limpiar filtros</button>
-            </div>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false})}>Limpiar filtros</button>            </div>
 
             {/* TABLA BASE */}
             <datalist id="asesores-datalist">
@@ -1990,8 +1997,7 @@ export default function Backdatareclutamiento() {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">Sin registros en {formatFecha(fechaActiva)}.</td></tr>
-                    : registrosFiltrados.map((r,i) => {
+                    ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">{filtros.global ? 'Sin registros para los filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>                    : registrosFiltrados.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
@@ -2009,8 +2015,7 @@ export default function Backdatareclutamiento() {
                                 title={esExclusiva?`Número prohibido: ${r._tipifVend}`:''}
                                 onChange={v=>reasignarReg(r.id,v)} />
                             </td>
-                            <td>{r.horaAsig ? <><span className="hora-cell">{r.horaAsig}</span> <span className="hora-date">{formatFecha(fechaActiva)}</span></> : <span className="hora-empty">—</span>}</td>
-                            {filtros.verTipVend && (
+                            <td>{r.horaAsig ? <><span className="hora-cell">{r.horaAsig}</span> <span className="hora-date">{formatFecha(r._fechaFila || fechaActiva)}</span></> : <span className="hora-empty">—</span>}</td>                            {filtros.verTipVend && (
                               <td>
                                 <div style={{display:'flex',flexDirection:'column',gap:2}}>
                                   <select className="sel-tipif-vend" value={r._tipifVend} onChange={e=>guardarTipif(r.id,e.target.value)} style={estiloTipifVend(r._tipifVend)}>

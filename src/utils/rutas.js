@@ -17,11 +17,9 @@ export const RUTAS = {
   supcalidad:     '/sup-calidad',
   supgrabaciones: '/sup-grabaciones',
   backreclutamiento:   '/backdata-reclutamiento',
-  asesorreclutamiento: '/reclutamiento',
   entrevistas:         '/backdata-reclutamiento',
   capacitador:         '/backdata-reclutamiento',
 }
-
 export const CARGO_LABELS = {
   asesor: 'Asesor',
   supervisor: 'Supervisor',
