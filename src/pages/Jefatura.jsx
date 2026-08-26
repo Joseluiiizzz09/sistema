@@ -154,6 +154,23 @@ function MasivoFiltroColumna({ titulo, opciones, seleccionados, onChange, buscab
 }
 
 /* ── helpers puros ── */
+// Los valores crudos de tipif_vend en Reclutamiento (VENTA CERRADA, NO TOCAR,
+// FRAUDE...) no son los mismos nombres que usan a diario en ese equipo — ahi
+// se llaman por su etiqueta (Acepta propuesta, No cumple el perfil, Provincia...).
+// Mismo mapeo que TIPIF_VEND_OPCIONES en Backdatareclutamiento.jsx.
+const TIPIF_VEND_RECL_LABELS = {
+  'VENTA CERRADA':   'Acepta propuesta',
+  'BUZON DE VOZ':    'Buzón de voz',
+  'NO TOCAR':        'No cumple el perfil',
+  'CORTA LLAMADA':   'Corta llamada',
+  'GESTION WSP':      'Gestión WSP',
+  'NO CONTESTA':      'No contesta',
+  'NO INTERESADO':    'No interesado',
+  'NO ROTAR':         'No rotar',
+  'VOLVER A LLAMAR':  'Volver a llamar',
+  'FRAUDE':           'Provincia',
+}
+function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor||'').trim().toUpperCase()] || valor }
 function fechaHoy()    { return new Date().toISOString().split('T')[0] }
 function horaAhora()   { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function mesActual()   { return fechaHoy().slice(0,7) }
@@ -1703,7 +1720,7 @@ export default function Jefatura() {
               <div className="filtros-grid">
                 <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingReclFiltros.desde} hasta={marketingReclFiltros.hasta} onChange={v=>setMarketingReclFiltros(p=>({...p,...v}))} /></label>
                 <label><span>Campaña</span><select value={marketingReclFiltros.campana} onChange={e=>setMarketingReclFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingReclCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label><span>Tipificación</span><select value={marketingReclFiltros.tipificacion} onChange={e=>setMarketingReclFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingReclCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Tipificación</span><select value={marketingReclFiltros.tipificacion} onChange={e=>setMarketingReclFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingReclCatalogos.tipificaciones.map(v=><option key={v} value={v}>{labelTipifVendRecl(v)}</option>)}</select></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingReclFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
               </div>
             </div>
@@ -1735,7 +1752,7 @@ export default function Jefatura() {
                   <thead><tr><th>Campaña</th><th>Tipificación</th><th>Leads</th><th>Primera alta</th><th>Última alta</th></tr></thead>
                   <tbody>{marketingReclData.length===0
                     ? <tr><td colSpan="5" className="tabla-empty">{marketingReclCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
-                    : marketingReclData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
+                    : marketingReclData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{labelTipifVendRecl(f.tipificacion)}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
                 </table></div>
               </div>
             </div>
