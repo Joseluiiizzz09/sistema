@@ -1503,6 +1503,34 @@ export default function Backdatareclutamiento() {
     })
   }
 
+  // Split de una linea CSV respetando comillas: una OBSERVACIONES con coma
+  // adentro (ej. "johan, falta confirmar turno") no debe correr las columnas
+  // siguientes (TIPIFICACION/HORA/ASESOR) — un split() ingenuo si lo hacia.
+  function splitCSVLine(linea, sep) {
+    const out = []
+    let cur = '', enComillas = false
+    for (let i=0;i<linea.length;i++) {
+      const ch = linea[i]
+      if (ch === '"') {
+        if (enComillas && linea[i+1] === '"') { cur += '"'; i++; continue }
+        enComillas = !enComillas; continue
+      }
+      if (ch === sep && !enComillas) { out.push(cur); cur=''; continue }
+      cur += ch
+    }
+    out.push(cur)
+    return out.map(x=>x.trim())
+  }
+
+  // Excel exporta horas de un solo digito sin cero a la izquierda ("8:32"),
+  // pero el backend exige HH:MM exacto — sin esto, esas filas se rechazaban
+  // silenciosamente en el import por lote.
+  function normalizarHoraLegacy(raw) {
+    const m = String(raw||'').trim().match(/^(\d{1,2}):(\d{2})/)
+    if (!m) return ''
+    return `${m[1].padStart(2,'0')}:${m[2]}`
+  }
+
   async function procesarLegacy(file) {
     setLegacyStatus(`Leyendo ${file.name}...`)
     let text
@@ -1511,7 +1539,7 @@ export default function Backdatareclutamiento() {
     const lineas = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0)
     if (!lineas.length) { setLegacyStatus('Archivo vacio'); return }
     const sep   = lineas[0].includes('\t')?'\t':lineas[0].includes(';')?';':','
-    const prim  = lineas[0].split(sep)
+    const prim  = splitCSVLine(lineas[0], sep)
     // Formato: CAMPAÑA · FECHA · CONTACTO · OBSERVACIONES · TIPIFICACIÓN · HORA · ASESOR 1..6.
     // Encabezado: si la columna FECHA de la primera fila no es una fecha real, es titulo.
     const primFecha = (prim[1]||'').trim()
@@ -1521,7 +1549,7 @@ export default function Backdatareclutamiento() {
     const usarFF = legacyUsarFecha === 'si'
     const rows   = []
     datos.forEach(linea => {
-      const c  = linea.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''))
+      const c  = splitCSVLine(linea, sep)
       const contacto = (c[2]||'').replace(/\s+/g,'')
       if (!contacto || contacto.length<4) return
       const esNumero = /^[\d+()-]+$/.test(contacto) && contacto.replace(/\D/g,'').length >= 7
@@ -1534,12 +1562,11 @@ export default function Backdatareclutamiento() {
         const parsed = parseFechaLegacyRecl((c[1]||'').trim())
         if (parsed) fechaFila = parsed
       }
-      rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifVend:normalizarTipifVendLegacy(c[4]), hora:c[5]||'', asesores:asesoresHist, fecha:fechaFila })
+      rows.push({ campana:c[0]||'—', n1, usuarioWhatsapp, esNumero, obs:c[3]||'', tipifVend:normalizarTipifVendLegacy(c[4]), hora:normalizarHoraLegacy(c[5]), asesores:asesoresHist, fecha:fechaFila })
     })
     if (!rows.length) { setLegacyStatus('No se encontraron filas validas'); return }
     setLegacyRows(rows); setLegacyInfo(`${rows.length} registros desde "${file.name}"`); setLegacyStatus('')
   }
-
   async function ejecutarCargaLegacy() {
     if (!legacyRows.length) { mostrarToast('No hay datos'); return }
     const leadsBackend = []
