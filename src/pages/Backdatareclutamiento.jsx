@@ -1587,8 +1587,8 @@ export default function Backdatareclutamiento() {
       updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:'', asesor:asesorFinal, horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:r.asesores.length, _tipifVend:r.tipifVend, _tipifHora:r.hora||'', historial:hist })
       leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, rotaciones:r.asesores.length, fecha, hora_asig:r.hora, importacion_legacy:true })
     })
-    if (!leadsBackend.length) return    // Antes esto ignoraba silenciosamente cualquier error del backend y
-    // actualizaba el estado local igual — parecía "importado" en pantalla
+    if (!leadsBackend.length) return
+    // Antes esto ignoraba silenciosamente cualquier error del backend y    // actualizaba el estado local igual — parecía "importado" en pantalla
     // aunque nada se hubiera guardado. Ahora solo se actualiza la UI si el
     // backend confirma éxito, y se avisa con el conteo real (creados/omitidos).
     setLegacyStatus('Importando...')
