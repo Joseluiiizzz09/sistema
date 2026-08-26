@@ -91,6 +91,84 @@ function AsesorBuscador({ value, asesores, disabled, onChange, title, className,
   )
 }
 
+function SearchIcon({ size=14 }) {
+  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+}
+
+function SortIcon({ active, direction }) {
+  const up   = active && direction === 'up'   ? '#fff' : 'rgba(255,255,255,0.32)'
+  const down = active && direction === 'down' ? '#fff' : 'rgba(255,255,255,0.32)'
+  return (
+    <svg width="9" height="13" viewBox="0 0 9 13" fill="none" aria-hidden="true" style={{flexShrink:0,marginLeft:3}}>
+      <path d="M4.5 1L1.5 5h6L4.5 1z" fill={up}/>
+      <path d="M4.5 12L1.5 8h6L4.5 12z" fill={down}/>
+    </svg>
+  )
+}
+
+// Filtro multi-seleccion embebido en el encabezado de columna (igual que en
+// Backoffice): boton que abre un checklist con buscador opcional; value/onChange
+// trabajan con arrays (varias opciones a la vez), no un solo valor.
+function FiltroEncabezado({ label, value, options, onChange, pending, searchable }) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const [pos, setPos] = useState({ top:0, left:0, width:220 })
+  const btnRef = useRef(null)
+  const boxRef = useRef(null)
+  const opcionesBase = [...new Set(options.filter(Boolean))]
+  const opciones = pending ? ['__pendiente__', ...opcionesBase] : opcionesBase
+  const visibles = opciones.filter(op=>!q || String(op).toLowerCase().includes(q.toLowerCase()))
+  const etiqueta = op => op === '__pendiente__' ? 'Pendiente' : op
+  useEffect(()=>{
+    if (!open) return
+    function cerrar(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target) && btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', cerrar)
+    return ()=>document.removeEventListener('mousedown', cerrar)
+  }, [open])
+  function abrir() {
+    const r = btnRef.current.getBoundingClientRect()
+    const width = Math.max(r.width, searchable ? 245 : 215)
+    setPos({ top:r.bottom + 4, left:Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), width })
+    setQ('')
+    setOpen(v=>!v)
+  }
+  function alternar(op) {
+    onChange(value.includes(op) ? value.filter(v=>v!==op) : [...value, op])
+  }
+  const resumen = value.length === 0 ? label : value.length === 1 ? etiqueta(value[0]) : `${label} (${value.length})`
+  return (
+    <>
+      <button ref={btnRef} type="button" className={`th-sort-btn${value.length?' th-sort-active':''}`}
+        onClick={abrir} title={`Filtrar por ${label}`} aria-label={`Filtrar por ${label}`} aria-expanded={open}>
+        {resumen} <span style={{fontSize:9}}>▼</span>
+      </button>
+      {open && createPortal(
+        <div ref={boxRef} onKeyDown={e=>{ if(e.key==='Escape') setOpen(false) }}
+          style={{position:'fixed',top:pos.top,left:pos.left,width:pos.width,zIndex:10000,background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,boxShadow:'0 12px 32px rgba(15,23,42,.2)',padding:'8px 10px',color:'#111827'}}>
+          {searchable && <div style={{position:'relative',marginBottom:7}}>
+            <span style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',color:'#64748b',display:'inline-flex',pointerEvents:'none'}}><SearchIcon size={13} /></span>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder={`Buscar ${label.toLowerCase()}…`}
+              style={{width:'100%',padding:'7px 8px 7px 28px',border:'1px solid #cbd5e1',borderRadius:7,outline:'none',fontSize:12,boxSizing:'border-box'}} />
+          </div>}
+          <label style={{display:'flex',alignItems:'center',gap:7,padding:'6px 3px 8px',fontSize:11,fontWeight:800,borderBottom:'1px solid #e5e7eb',cursor:'pointer'}}>
+            <input type="checkbox" checked={value.length===0} onChange={()=>onChange([])} /> Todos
+          </label>
+          <div style={{maxHeight:searchable?154:220,overflowY:'auto',scrollbarGutter:'stable',paddingTop:3}}>
+            {visibles.map(op=><label key={op} style={{display:'flex',alignItems:'center',gap:7,padding:'6px 3px',fontSize:11,cursor:'pointer',whiteSpace:'normal'}}>
+              <input type="checkbox" checked={value.includes(op)} onChange={()=>alternar(op)} /> {etiqueta(op)}
+            </label>)}
+            {visibles.length===0 && <div style={{padding:'8px 3px',fontSize:11,color:'#94a3b8'}}>Sin resultados</div>}
+          </div>
+        </div>, document.body)}
+    </>
+  )
+}
+
 // ── Utilities ────────────────────────────────────────────────────────────
 const COLORES_AV = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#ef4444','#06b6d4','#ec4899']
 const DOT_COLORS  = ['#185FA5','#0F6E56','#854F0B','#7C3AED','#DC2626']
@@ -396,8 +474,19 @@ export default function Backdatareclutamiento() {
   const distritos = LIMA_DISTRITOS
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:[], asesor:[], numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
+  const [tableSort, setTableSort] = useState({ col:null, dir:null })
+  function cycleSort(col) {
+    setOrdenDiarioActivo(false)
+    setTableSort(prev => {
+      const firstDir = { hora:'desc', rots:'asc' }[col]
+      if (prev.col !== col) return { col, dir: firstDir }
+      const seq = { hora:['desc','asc',null], rots:['asc','desc',null] }[col]
+      const next = seq[(seq.indexOf(prev.dir) + 1) % seq.length]
+      return next ? { col, dir: next } : { col: null, dir: null }
+    })
+  }
   // ── Historial ──
   const [histOpen, setHistOpen] = useState({})
   const [histOpenCapacitacion, setHistOpenCapacitacion] = useState({})
@@ -1642,22 +1731,37 @@ export default function Backdatareclutamiento() {
   const registrosFiltrados = (() => {
     const filtered = registrosActivos.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
-      if (filtros.tipVend&& (r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase())  return false
-      if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
+      if (filtros.tipVend.length) {
+        const actual = String(r._tipifVend||'').trim().toUpperCase()
+        const coincidePendiente = !actual && filtros.tipVend.includes('__pendiente__')
+        const coincideTipif = filtros.tipVend.some(v=>v!=='__pendiente__' && v.toUpperCase()===actual)
+        if (!coincidePendiente && !coincideTipif) return false
+      }
+      if (filtros.asesor.length && !filtros.asesor.some(v=>v.toUpperCase()===String(r.asesor||'').trim().toUpperCase())) return false
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
       if (filtros.desde && r._fechaFila < filtros.desde) return false
       if (filtros.hasta && r._fechaFila > filtros.hasta) return false
       if (filtros.duplicados && (conteoDuplicadosReg.get(String(r.n1||'').replace(/\D/g,'')) || 0) < 2) return false
       return true
     })
-    if (!ordenDiarioActivo) return filtered
-    return [...filtered].sort((a, b) => {
-      const bloqueA = bloquePrioridadReg(a), bloqueB = bloquePrioridadReg(b)
-      if (bloqueA !== bloqueB) return bloqueA - bloqueB
-      const rotA = a.rotaciones||0, rotB = b.rotaciones||0
-      if (rotA !== rotB) return rotA - rotB
-      return String(a.horaAsig||'').localeCompare(String(b.horaAsig||''))
-    })
+    if (ordenDiarioActivo) {
+      return [...filtered].sort((a, b) => {
+        const bloqueA = bloquePrioridadReg(a), bloqueB = bloquePrioridadReg(b)
+        if (bloqueA !== bloqueB) return bloqueA - bloqueB
+        const rotA = a.rotaciones||0, rotB = b.rotaciones||0
+        if (rotA !== rotB) return rotA - rotB
+        return String(a.horaAsig||'').localeCompare(String(b.horaAsig||''))
+      })
+    }
+    if (tableSort.col) {
+      return [...filtered].sort((a, b) => {
+        let cmp = 0
+        if (tableSort.col === 'hora') cmp = String(a.horaAsig||'').localeCompare(String(b.horaAsig||''))
+        if (tableSort.col === 'rots') cmp = (a.rotaciones||0) - (b.rotaciones||0)
+        return tableSort.dir === 'asc' ? cmp : -cmp
+      })
+    }
+    return filtered
   })()
   const entrevistasFiltradas = entrevistas.filter(en => {
     if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
@@ -1976,17 +2080,6 @@ export default function Backdatareclutamiento() {
 
             {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
             <div className="base-filtros">
-              <div className="bo-input-group"><label>Tipif. vendedor</label>
-                <select className="form-select" value={filtros.tipVend} onChange={e=>setFiltros(p=>({...p,tipVend:e.target.value}))}>
-                  <option value="">Todas</option>
-                  {TIPIF_VEND_OPCIONES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div className="bo-input-group"><label>Asesor</label>
-                <AsesorBuscador value={filtros.asesor} asesores={asesores}
-                  onChange={v=>setFiltros(p=>({...p,asesor:v}))}
-                  className="form-select" placeholderText="Todos" emptyLabel="Todos" />
-              </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
                 <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
               </div>
@@ -2008,12 +2101,12 @@ export default function Backdatareclutamiento() {
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false})}>Limpiar filtros</button>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>{setFiltros({tip:'',tipVend:[],asesor:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null})}}>Limpiar filtros</button>
               <button type="button" className="base-orden-btn"
                 onClick={()=>{
                   const activar = !ordenDiarioActivo
                   setOrdenDiarioActivo(activar)
-                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false})
+                  if (activar) { setFiltros({tip:'',tipVend:[],asesor:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null}) }
                 }}
                 style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
@@ -2031,9 +2124,26 @@ export default function Backdatareclutamiento() {
                   <tr>
                     <th>#</th><th>Campaña</th>
                     <th>N1</th><th>N2</th>
-                    <th>Asesor asignado</th><th>Hora / Fecha asign.</th>
-                    {filtros.verTipVend && <th>Tipif. Vendedor</th>}
-                    <th>Comentario</th><th>Rotaciones</th><th>Acciones</th>
+                    <th><FiltroEncabezado label="Asesor asignado" value={filtros.asesor} options={asesores.map(a=>a.nombre)} searchable
+                      onChange={asesor=>setFiltros(p=>({...p,asesor}))} /></th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='hora'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('hora')} title="Ordenar por hora" aria-label="Ordenar por hora de asignación"
+                        aria-sort={tableSort.col==='hora'?(tableSort.dir==='asc'?'ascending':'descending'):'none'}>
+                        Hora / Fecha asign.<SortIcon active={tableSort.col==='hora'} direction={tableSort.col==='hora'?(tableSort.dir==='desc'?'down':'up'):null}/>
+                      </button>
+                    </th>
+                    {filtros.verTipVend && <th><FiltroEncabezado label="Tipif. Vendedor" value={filtros.tipVend} options={TIPIF_VEND_OPCIONES.map(t=>t.value)} pending
+                      onChange={tipVend=>setFiltros(p=>({...p,tipVend}))} /></th>}
+                    <th>Comentario</th>
+                    <th>
+                      <button type="button" className={`th-sort-btn${tableSort.col==='rots'?' th-sort-active':''}`}
+                        onClick={()=>cycleSort('rots')} title="Ordenar por rotaciones" aria-label="Ordenar por cantidad de rotaciones"
+                        aria-sort={tableSort.col==='rots'?(tableSort.dir==='asc'?'ascending':'descending'):'none'}>
+                        Rotaciones<SortIcon active={tableSort.col==='rots'} direction={tableSort.col==='rots'?(tableSort.dir==='asc'?'up':'down'):null}/>
+                      </button>
+                    </th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
