@@ -1577,12 +1577,17 @@ export default function Backdatareclutamiento() {
       if (!updates[fecha]) updates[fecha] = []
       // Permitir duplicados: no se descartan números repetidos en la carga del sistema antiguo.
       const asesorFinal = r.asesores[r.asesores.length-1]||''
-      const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:i===0?'Asignacion inicial':`Rotacion ${i}` }))
+      // En el Sistema Antiguo cada columna ASESOR ya representa una vuelta real
+      // del lead (incluida la primera): a diferencia de un lead recien creado en
+      // Krono (que empieza sin rotaciones hasta la primera reasignacion), aqui
+      // TODAS las columnas ocupadas cuentan como rotaciones — por eso se etiquetan
+      // 'Rotacion 1'..'Rotacion N' sin distinguir una 'asignacion inicial'.
+      const hist = r.asesores.map((a,i)=>({ asesor:a, hora:r.hora||'—', fecha, motivo:`Rotacion ${i+1}` }))
       if (r.tipifVend) hist.push({ tipo:'TIPIF_VEND', asesor:asesorFinal, tipif:r.tipifVend, hora:r.hora||'—', fecha })
-      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:'', asesor:asesorFinal, horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:Math.max(0,r.asesores.length-1), _tipifVend:r.tipifVend, _tipifHora:r.hora||'', historial:hist })
-      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, rotaciones:Math.max(0,r.asesores.length-1), fecha, hora_asig:r.hora, importacion_legacy:true })    })
-    if (!leadsBackend.length) return
-    // Antes esto ignoraba silenciosamente cualquier error del backend y
+      updates[fecha].push({ id:idCntRef.current++, _backendId:null, campana:r.campana, distrito:'—', n1:r.n1, n2:'', usuarioWhatsapp:r.usuarioWhatsapp, tipifBack:'', asesor:asesorFinal, horaAsig:r.hora, sinAsignar:r.asesores.length===0, rotaciones:r.asesores.length, _tipifVend:r.tipifVend, _tipifHora:r.hora||'', historial:hist })
+      leadsBackend.push({ campana:r.campana, distrito:'—', n1:r.n1||null, n2:null, usuario_whatsapp:r.usuarioWhatsapp||null, tipif_vend:r.tipifVend||null, tipif_hora:r.hora||null, obs_asesor:r.obs||null, historial:hist, asesor_nombre:asesorFinal, rotaciones:r.asesores.length, fecha, hora_asig:r.hora, importacion_legacy:true })
+    })
+    if (!leadsBackend.length) return    // Antes esto ignoraba silenciosamente cualquier error del backend y
     // actualizaba el estado local igual — parecía "importado" en pantalla
     // aunque nada se hubiera guardado. Ahora solo se actualiza la UI si el
     // backend confirma éxito, y se avisa con el conteo real (creados/omitidos).
