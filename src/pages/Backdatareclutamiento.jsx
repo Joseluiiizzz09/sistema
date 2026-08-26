@@ -898,10 +898,10 @@ export default function Backdatareclutamiento() {
     if (!n1 && !usuarioWhatsapp) { setN1Error(true); mostrarToast('Ingresa un N1 o un usuario de WhatsApp'); return }
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
-    const distrito = form.distrito || '—'
+    const distrito = '—'
     const n2       = form.n2.trim()
-    const asesor   = form.asesor
-    const hora     = asesor ? horaAhora() : ''
+    const asesor   = '' // el formulario de alta rapida ya no asigna asesor — se hace desde la Base
+    const hora     = ''
     const fecha    = fechaActiva
     const reg = {
       id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, usuarioWhatsapp, asesor, horaAsig:hora,
@@ -1789,20 +1789,9 @@ export default function Backdatareclutamiento() {
             <div className="sidebar-sep">Agregar registro</div>
             <div style={{fontSize:10,color:'#6b7280',fontWeight:600,margin:'-4px 0 8px'}}>{formatFecha(fechaActiva)}</div>
             <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain /></div>
-            <div className="bo-input-group"><label>Distrito</label>
-              <select className="form-select" value={form.distrito} onChange={e=>setForm(p=>({...p,distrito:e.target.value}))}>
-                <option value="">— Seleccionar —</option>
-                {distritos.map(d=><option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
             <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" style={{fontFamily:'monospace'}} /></div>
             <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" style={{fontFamily:'monospace'}} /></div>
             <div className="bo-input-group"><label>Usuario WhatsApp</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
-            <div className="bo-input-group"><label>Asesor</label>
-              <AsesorBuscador value={form.asesor} asesores={asesores}
-                onChange={v=>setForm(p=>({...p,asesor:v}))}
-                className="form-select" placeholderText="— Sin asignar —" emptyLabel="— Sin asignar —" />
-            </div>
             <div className="bo-sidebar-registro-acciones">
               <button className="bo-btn-limpiar" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',asesor:''})}>Limpiar</button>
               <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar</button>
@@ -1810,7 +1799,6 @@ export default function Backdatareclutamiento() {
           </div>
           )}
         </aside>
-
         <main className="bo-main">
 
           {/* ══ SECCIÓN: BASE ══════════════════════════════════════════════════ */}
