@@ -396,7 +396,8 @@ export default function Backdatareclutamiento() {
   const distritos = LIMA_DISTRITOS
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, global:false })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:'', asesor:'', numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
+  const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   // ── Historial ──
   const [histOpen, setHistOpen] = useState({})
   const [histOpenCapacitacion, setHistOpenCapacitacion] = useState({})
@@ -1625,13 +1626,39 @@ export default function Backdatareclutamiento() {
   const registrosActivos = filtros.global
     ? Object.entries(baseData).flatMap(([fecha, regs]) => regs.map(r => ({ ...r, _fechaFila: fecha })))
     : (baseData[fechaActiva] || []).map(r => ({ ...r, _fechaFila: fechaActiva }))
-  const registrosFiltrados = registrosActivos.filter(r => {
-    if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
-    if (filtros.tipVend&& (r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase())  return false
-    if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
-    if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
-    return true
-  })
+  // Cuenta cuantas veces aparece cada N1 dentro del alcance actual (fecha activa
+  // o todas las fechas si 'Buscar global' esta activo) — usado por el filtro
+  // "Numeros duplicados".
+  const conteoDuplicadosReg = registrosActivos.reduce((mapa, r) => {
+    const n = String(r.n1||'').replace(/\D/g,'')
+    if (n) mapa.set(n, (mapa.get(n)||0)+1)
+    return mapa
+  }, new Map())
+  const bloquePrioridadReg = r => {
+    if (!String(r.asesor||'').trim() || r.sinAsignar) return 0
+    if (!String(r._tipifVend||'').trim()) return 1
+    return 2
+  }
+  const registrosFiltrados = (() => {
+    const filtered = registrosActivos.filter(r => {
+      if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
+      if (filtros.tipVend&& (r._tipifVend||'').toUpperCase() !== filtros.tipVend.toUpperCase())  return false
+      if (filtros.asesor && !(r.asesor||'').toUpperCase().includes(filtros.asesor.toUpperCase())) return false
+      if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
+      if (filtros.desde && r._fechaFila < filtros.desde) return false
+      if (filtros.hasta && r._fechaFila > filtros.hasta) return false
+      if (filtros.duplicados && (conteoDuplicadosReg.get(String(r.n1||'').replace(/\D/g,'')) || 0) < 2) return false
+      return true
+    })
+    if (!ordenDiarioActivo) return filtered
+    return [...filtered].sort((a, b) => {
+      const bloqueA = bloquePrioridadReg(a), bloqueB = bloquePrioridadReg(b)
+      if (bloqueA !== bloqueB) return bloqueA - bloqueB
+      const rotA = a.rotaciones||0, rotB = b.rotaciones||0
+      if (rotA !== rotB) return rotA - rotB
+      return String(a.horaAsig||'').localeCompare(String(b.horaAsig||''))
+    })
+  })()
   const entrevistasFiltradas = entrevistas.filter(en => {
     if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
     const fecha = String(en.fecha_agendamiento||'').slice(0,10)
@@ -1961,17 +1988,37 @@ export default function Backdatareclutamiento() {
                   className="form-select" placeholderText="Todos" emptyLabel="Todos" />
               </div>
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
-                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1 o N2..." />
+                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
+              </div>
+              <div className="bo-input-group base-filtro-fecha"><label>Desde</label>
+                <input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined} onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} />
+              </div>
+              <div className="bo-input-group base-filtro-fecha"><label>Hasta</label>
+                <input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined} onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} />
               </div>
               <label className="toggle-col base-filtro-toggle base-filtro-global">
                 <input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} />
-                <span>Buscar en todas las fechas</span>
+                <span>Buscar global</span>
+              </label>
+              <label className="toggle-col base-filtro-toggle">
+                <input type="checkbox" checked={filtros.duplicados} onChange={e=>setFiltros(p=>({...p,duplicados:e.target.checked}))} />
+                <span>Números duplicados</span>
               </label>
               <label className="toggle-col base-filtro-toggle">
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false})}>Limpiar filtros</button>            </div>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false})}>Limpiar filtros</button>
+              <button type="button" className="base-orden-btn"
+                onClick={()=>{
+                  const activar = !ordenDiarioActivo
+                  setOrdenDiarioActivo(activar)
+                  if (activar) setFiltros({tip:'',tipVend:'',asesor:'',numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false})
+                }}
+                style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
+                {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
+              </button>
+            </div>
 
             {/* TABLA BASE */}
             <datalist id="asesores-datalist">

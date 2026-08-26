@@ -354,6 +354,10 @@ body{
 }
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}
 .bo-root .base-filtros .base-filtro-numero{flex-basis:210px;min-width:180px;}
+.bo-root .base-filtros .base-filtro-fecha{flex:0 1 142px;min-width:132px;}
+.bo-root .base-filtros .base-filtro-fecha .form-control{min-height:33px;font-size:11px;}
+.bo-root .base-filtro-global{color:#1d4ed8;}
+.bo-root .base-orden-btn{flex:0 0 auto;height:28px;border:0;border-radius:7px;padding:0 10px;color:#fff;font-family:inherit;font-size:9px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap;box-shadow:0 2px 7px rgba(124,58,237,.2);align-self:center;}
 .bo-root .base-filtro-toggle{
   flex:0 0 auto;display:flex;align-items:center;gap:6px;white-space:nowrap;
   height:33px;padding:0 9px;border:1px solid var(--line-2);border-radius:9px;
