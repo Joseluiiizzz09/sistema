@@ -474,7 +474,7 @@ export default function Backdatareclutamiento() {
   const distritos = LIMA_DISTRITOS
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tip:'', tipVend:[], asesor:[], numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
+  const [filtros, setFiltros] = useState({ tip:'', tipVend:[], asesor:[], campana:[], numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [tableSort, setTableSort] = useState({ col:null, dir:null })
   function cycleSort(col) {
@@ -1738,6 +1738,7 @@ export default function Backdatareclutamiento() {
         if (!coincidePendiente && !coincideTipif) return false
       }
       if (filtros.asesor.length && !filtros.asesor.some(v=>v.toUpperCase()===String(r.asesor||'').trim().toUpperCase())) return false
+      if (filtros.campana.length && !filtros.campana.some(v=>v.toUpperCase()===String(r.campana||'').trim().toUpperCase())) return false
       if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
       if (filtros.desde && r._fechaFila < filtros.desde) return false
       if (filtros.hasta && r._fechaFila > filtros.hasta) return false
@@ -2101,12 +2102,12 @@ export default function Backdatareclutamiento() {
                 <input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} />
                 <span>Ver tipif. vendedor</span>
               </label>
-              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>{setFiltros({tip:'',tipVend:[],asesor:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null})}}>Limpiar filtros</button>
+              <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>{setFiltros({tip:'',tipVend:[],asesor:[],campana:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null})}}>Limpiar filtros</button>
               <button type="button" className="base-orden-btn"
                 onClick={()=>{
                   const activar = !ordenDiarioActivo
                   setOrdenDiarioActivo(activar)
-                  if (activar) { setFiltros({tip:'',tipVend:[],asesor:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null}) }
+                  if (activar) { setFiltros({tip:'',tipVend:[],asesor:[],campana:[],numero:'',verTipVend:true,global:false,desde:'',hasta:'',duplicados:false}); setTableSort({col:null,dir:null}) }
                 }}
                 style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
@@ -2122,7 +2123,8 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla table table-sm table-hover">
                 <thead>
                   <tr>
-                    <th>#</th><th>Campaña</th>
+                    <th>#</th><th><FiltroEncabezado label="Campaña" value={filtros.campana} options={CAMPANAS_RECLUTAMIENTO.map(c=>c.valor)}
+                      onChange={campana=>setFiltros(p=>({...p,campana}))} /></th>
                     <th>N1</th><th>N2</th>
                     <th><FiltroEncabezado label="Asesor asignado" value={filtros.asesor} options={asesores.map(a=>a.nombre)} searchable
                       onChange={asesor=>setFiltros(p=>({...p,asesor}))} /></th>
