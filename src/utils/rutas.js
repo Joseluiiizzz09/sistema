@@ -35,7 +35,6 @@ export const CARGO_LABELS = {
   supcalidad: 'Super de Calidad',
   supgrabaciones: 'Sup. Grabaciones',
   backreclutamiento: 'Back Data Reclutaminto',
-  asesorreclutamiento: 'Asesor de Reclutamiento',
   entrevistas: 'Entrevistas',
   capacitador: 'Capacitación',
 }

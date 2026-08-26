@@ -21,7 +21,6 @@ const CARGO_CLASE = {
   supgrabaciones:'bc-supgrabaciones',
   usuarios:      'bc-usuarios',
   backreclutamiento:   'bc-backreclutamiento',
-  asesorreclutamiento: 'bc-asesorreclutamiento',
 }
 
 const CARGOS = [
@@ -39,7 +38,6 @@ const CARGOS = [
   { value: 'supcalidad',     label: 'Super de Calidad' },
   { value: 'supgrabaciones', label: 'Sup. Grabaciones' },
   { value: 'backreclutamiento',   label: 'Back Data Reclutaminto'  },
-  { value: 'asesorreclutamiento', label: 'Asesor de Reclutamiento' },
 ]
 
 const FORM_VACIO = { nombre: '', usuario: '', pass: '', pass2: '', cargo: '', cargo2: '', sala: '', genero: 'M', activo: true }
