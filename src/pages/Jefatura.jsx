@@ -1708,8 +1708,10 @@ export default function Jefatura() {
                     : resumenMarketing.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
                         <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
                         <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketing.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
-                        <div className="marketing-barra-top" style={{marginTop:4}}><span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>{c.ventas} venta{c.ventas===1?'':'s'}</span></div>
-                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.ventas/resumenMarketing.maxVentas*100)}%`,background:'#16a34a'}} /></div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                          <div style={{flex:1,height:3,borderRadius:99,background:'#eef2f7',overflow:'hidden'}}><i style={{display:'block',height:'100%',borderRadius:99,width:`${Math.max(3,c.ventas/resumenMarketing.maxVentas*100)}%`,background:'#86efac'}} /></div>
+                          <span style={{fontSize:9,color:'#94a3b8',fontWeight:600,flexShrink:0}}>{c.ventas} venta{c.ventas===1?'':'s'}</span>
+                        </div>
                       </div>)}
                 </div>
               </div>
