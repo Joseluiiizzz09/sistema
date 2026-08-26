@@ -477,6 +477,9 @@ export default function Backdatareclutamiento() {
   const [filtros, setFiltros] = useState({ tip:'', tipVend:[], asesor:[], campana:[], numero:'', verTipVend:true, global:false, desde:'', hasta:'', duplicados:false })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [tableSort, setTableSort] = useState({ col:null, dir:null })
+  const [basePage, setBasePage] = useState(1)
+  const [basePageSize, setBasePageSize] = useState(25)
+  const [grupoAceptaVisible, setGrupoAceptaVisible] = useState(false)
   function cycleSort(col) {
     setOrdenDiarioActivo(false)
     setTableSort(prev => {
@@ -1728,8 +1731,13 @@ export default function Backdatareclutamiento() {
     if (!String(r._tipifVend||'').trim()) return 1
     return 2
   }
+  // "Acepta propuesta" (VENTA CERRADA) se puede ver por separado, sin que
+  // participe de los demas filtros — igual que los grupos protegidos de
+  // Backoffice (SIN COBERTURA, NO TOCAR, etc.), pero aca solo hace falta este uno.
+  const grupoAceptaPropuesta = registrosActivos.filter(r => String(r._tipifVend||'').trim().toUpperCase() === 'VENTA CERRADA')
   const registrosFiltrados = (() => {
-    const filtered = registrosActivos.filter(r => {
+    const fuente = grupoAceptaVisible ? grupoAceptaPropuesta : registrosActivos
+    const filtered = fuente.filter(r => {
       if (filtros.tip    && !(r.tipifBack||'').toUpperCase().includes(filtros.tip.toUpperCase())) return false
       if (filtros.tipVend.length) {
         const actual = String(r._tipifVend||'').trim().toUpperCase()
@@ -1764,6 +1772,12 @@ export default function Backdatareclutamiento() {
     }
     return filtered
   })()
+  // Paginacion de la tabla Base — evita renderizar cientos de filas de una vez.
+  const baseTotalPages = Math.max(1, Math.ceil(registrosFiltrados.length / basePageSize))
+  const basePageSafe = Math.min(basePage, baseTotalPages)
+  const baseDesde = (basePageSafe - 1) * basePageSize
+  const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.numero, filtros.desde, filtros.hasta, filtros.global, filtros.duplicados, tableSort.col, tableSort.dir, basePageSize, grupoAceptaVisible, ordenDiarioActivo])
   const entrevistasFiltradas = entrevistas.filter(en => {
     if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
     const fecha = String(en.fecha_agendamiento||'').slice(0,10)
@@ -2150,11 +2164,12 @@ export default function Backdatareclutamiento() {
                 </thead>
                 <tbody>
                   {registrosFiltrados.length === 0
-                    ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">{filtros.global ? 'Sin registros para los filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>                    : registrosFiltrados.map((r,i) => {
+                    ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">{filtros.global ? 'Sin registros para los filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>
+                    : registrosPagina.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
-                            <td style={{color:'#9ca3af',fontSize:10}}>{i+1}</td>
+                            <td style={{color:'#9ca3af',fontSize:10}}>{baseDesde+i+1}</td>
                             <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'campana')} title="Editar campaña" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial (quién cargó esta campaña y número)" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
                             <td>{r.n1
                               ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
@@ -2273,6 +2288,31 @@ export default function Backdatareclutamiento() {
                   }
                 </tbody>
               </table>
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,padding:'10px 2px'}}>
+              <div className="paginacion-info">
+                Mostrando {registrosFiltrados.length ? baseDesde + 1 : 0}–{Math.min(baseDesde + basePageSize, registrosFiltrados.length)} de {registrosFiltrados.length}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <select className="select-por-pagina" value={basePageSize} onChange={e=>setBasePageSize(Number(e.target.value))} aria-label="Registros por página">
+                  {[10,25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
+                </select>
+                <button className="fnav-btn" disabled={basePageSafe<=1} onClick={()=>setBasePage(p=>Math.max(1,p-1))}>‹</button>
+                <span className="paginacion-info">Página {basePageSafe} de {baseTotalPages}</span>
+                <button className="fnav-btn" disabled={basePageSafe>=baseTotalPages} onClick={()=>setBasePage(p=>Math.min(baseTotalPages,p+1))}>›</button>
+              </div>
+            </div>
+            <div style={{borderTop:'1px solid #e5e7eb',padding:'12px 14px',background:'#f8fafc'}}>
+              <div style={{fontSize:10,fontWeight:800,color:'#64748b',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>
+                Registros protegidos — no participan en filtros ni rotación normal
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <button type="button" onClick={()=>setGrupoAceptaVisible(v=>!v)}
+                  style={{border:'1px solid #16a34a',color:grupoAceptaVisible?'#fff':'#16a34a',background:grupoAceptaVisible?'#16a34a':'#fff',borderRadius:8,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>
+                  {grupoAceptaVisible?'Ocultar':'Ver'} ACEPTA PROPUESTA ({grupoAceptaPropuesta.length})
+                </button>
+                {grupoAceptaVisible && <button type="button" onClick={()=>setGrupoAceptaVisible(false)} className="bo-btn-limpiar btn btn-sm">Volver a la base</button>}
+              </div>
             </div>
           </section>
 
