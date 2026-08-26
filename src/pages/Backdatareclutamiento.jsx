@@ -1747,7 +1747,7 @@ export default function Backdatareclutamiento() {
       }
       if (filtros.asesor.length && !filtros.asesor.some(v=>v.toUpperCase()===String(r.asesor||'').trim().toUpperCase())) return false
       if (filtros.campana.length && !filtros.campana.some(v=>v.toUpperCase()===String(r.campana||'').trim().toUpperCase())) return false
-      if (filtros.numero && !r.n1.includes(filtros.numero) && !(r.n2||'').includes(filtros.numero)) return false
+      if (filtros.numero && !(r.n1||'').includes(filtros.numero) && !(r.n2||'').includes(filtros.numero) && !(r.usuarioWhatsapp||'').toLowerCase().includes(filtros.numero.toLowerCase())) return false
       if (filtros.desde && r._fechaFila < filtros.desde) return false
       if (filtros.hasta && r._fechaFila > filtros.hasta) return false
       if (filtros.duplicados && (conteoDuplicadosReg.get(String(r.n1||'').replace(/\D/g,'')) || 0) < 2) return false
