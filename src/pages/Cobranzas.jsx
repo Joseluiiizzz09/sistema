@@ -705,8 +705,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       </header>
 
       <main className="cobranzas-main">
-        {!esCalidad && <section className="cobranzas-heading">
-          <div><h1>Clientes instalados</h1><p>Información contractual consolidada para el área de {areaNombre}.</p></div>
+        {!esCalidad && <section className="cobranzas-heading" style={{justifyContent:'flex-end'}}>
           <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
         </section>}
 
