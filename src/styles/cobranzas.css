@@ -980,3 +980,8 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranza-select-llamada.alerta{border-color:#fdba74;background:#fff7ed;color:#c2410c}
 .cobranza-select-llamada.informativo{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
 @media(max-width:620px){.cobranza-select-llamada{width:100%}}
+.calidad-orden-btn{border:1px solid #cbd5e1;background:#fff;color:#64748b;border-radius:6px;width:22px;height:22px;line-height:1;font-size:12px;cursor:pointer;flex-shrink:0}
+.calidad-orden-btn.activo{border-color:#14b8a6;background:#ccfbf1;color:#0f766e}
+/* Tabla mas compacta: mas filas visibles sin necesidad de scroll. */
+.cobranzas-table-card th{padding:8px 14px}
+.cobranzas-table-card td{padding:6px 14px;line-height:1.25}

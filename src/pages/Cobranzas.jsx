@@ -172,6 +172,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [comentarioCobranza, setComentarioCobranza] = useState('')
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroEstados, setFiltroEstados] = useState(null)
+  const [ordenPendientesPrimero, setOrdenPendientesPrimero] = useState(false)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
   const [fechaKpiCalidad, setFechaKpiCalidad] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
@@ -255,7 +256,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
 
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
-    return clientes.filter(cliente => {
+    const resultado = clientes.filter(cliente => {
       if (modoSupervisorCalidad && pestanaCalidad === 'ventas' && !cliente.calidad_tratamiento_at) return false
       const fecha = fechaISO(cliente.fecha_instalacion)
       if (desde && fecha < desde) return false
@@ -266,7 +267,17 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
     })
-  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, modoSupervisorCalidad, pestanaCalidad])
+    if (!ordenPendientesPrimero) return resultado
+    // Pendientes arriba, satisfechos al final; el resto de estados queda en medio
+    // conservando su orden original (sort estable).
+    const rangoEstado = cliente => {
+      const estado = String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase()
+      if (estado === 'PENDIENTE') return 0
+      if (estado === 'SATISFECHO') return 2
+      return 1
+    }
+    return [...resultado].sort((a, b) => rangoEstado(a) - rangoEstado(b))
+  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, modoSupervisorCalidad, pestanaCalidad, ordenPendientesPrimero])
 
   useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados])
 
@@ -713,7 +724,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>{esCalidad ? <FiltroColumna titulo="VENDEDOR" opciones={vendedoresFiltro} seleccionados={filtroVendedores} onChange={setFiltroVendedores} buscable /> : 'VENDEDOR'}</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}{esCalidad && <><th>RESPONSABLE CALIDAD</th><th><FiltroColumna titulo="ESTADO FINAL" opciones={estadosFiltro} seleccionados={filtroEstados} onChange={setFiltroEstados} /></th><th>FECHA DE TRATAMIENTO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th><th>COMENTARIO</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>{esCalidad ? <FiltroColumna titulo="VENDEDOR" opciones={vendedoresFiltro} seleccionados={filtroVendedores} onChange={setFiltroVendedores} buscable /> : 'VENDEDOR'}</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}{esCalidad && <><th>RESPONSABLE CALIDAD</th><th><div style={{display:'flex',alignItems:'center',gap:4}}><FiltroColumna titulo="ESTADO FINAL" opciones={estadosFiltro} seleccionados={filtroEstados} onChange={setFiltroEstados} /><button type="button" className={`calidad-orden-btn${ordenPendientesPrimero?' activo':''}`} onClick={()=>setOrdenPendientesPrimero(v=>!v)} title="Pendientes primero, satisfechos al final">⇅</button></div></th><th>FECHA DE TRATAMIENTO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th><th>COMENTARIO</th></>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
