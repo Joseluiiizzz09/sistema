@@ -2124,7 +2124,7 @@ export default function Backdatareclutamiento() {
             {/* FILTROS EN UNA SOLA FILA, DEBAJO DE LAS FECHAS */}
             <div className="base-filtros">
               <div className="bo-input-group base-filtro-numero"><label>Número</label>
-                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
+                <input className="form-control" value={filtros.numero} onChange={e=>setFiltros(p=>({...p,numero:e.target.value.replace(/\s+/g,'')}))} placeholder="Buscar N1, N2 o usuario WhatsApp..." />
               </div>
               <div className="bo-input-group base-filtro-fecha"><label>Desde</label>
                 <input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined} onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} />
