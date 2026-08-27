@@ -522,6 +522,7 @@ export default function Backdatareclutamiento() {
   const [cargandoCapacitaciones,setCargandoCapacitaciones] = useState(false)
   const [filtrosCapacitacion,   setFiltrosCapacitacion]    = useState({ busqueda:'', desde:'', hasta:'' })
   const [modalCapacitacion,     setModalCapacitacion]      = useState({ open:false, entrevistaId:null, nombrePostulante:'', numero:'', fechaInicio:'', guardando:false, error:'' })
+  const [modalReprogramar, setModalReprogramar] = useState({ open:false, entrevistaId:null, fechaAgendamiento:'', guardando:false, error:'' })
   const [modalAlta, setModalAlta] = useState({ open:false, capacitacionId:null, fechaAlta:'', guardando:false, error:'' })
   const [rotModalAsesor,setRotModalAsesor]= useState('')
   const [rotBusqueda,   setRotBusqueda]   = useState('')
@@ -821,9 +822,33 @@ export default function Backdatareclutamiento() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la tipificación')
       if (valor === 'ASISTE') abrirModalCapacitacion(id)
+      if (valor === 'REPROGRAMA') abrirModalReprogramar(id)
     } catch(e) {
       actualizarEntrevistaLocal(id, { tipificacion: anterior })
       mostrarToast(e.message || 'No se pudo guardar la tipificación')
+    }
+  }
+
+  // ── Modal reprogramar (al tipificar REPROGRAMA, actualiza la fecha de agendamiento) ──
+  function abrirModalReprogramar(entrevistaId) {
+    const en = entrevistas.find(e => e.id === entrevistaId)
+    if (!en) return
+    setModalReprogramar({ open:true, entrevistaId, fechaAgendamiento:String(en.fecha_agendamiento||'').slice(0,10), guardando:false, error:'' })
+  }
+
+  async function guardarReprogramar() {
+    const fechaAgendamiento = modalReprogramar.fechaAgendamiento
+    if (!fechaAgendamiento) { setModalReprogramar(p=>({...p, error:'Selecciona la nueva fecha de agendamiento'})); return }
+    setModalReprogramar(p=>({...p, guardando:true, error:''}))
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${modalReprogramar.entrevistaId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ fecha_agendamiento:fechaAgendamiento }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar la fecha de agendamiento')
+      actualizarEntrevistaLocal(modalReprogramar.entrevistaId, { fecha_agendamiento: fechaAgendamiento })
+      setModalReprogramar({ open:false, entrevistaId:null, fechaAgendamiento:'', guardando:false, error:'' })
+      mostrarToast('Fecha de agendamiento actualizada')
+    } catch (e) {
+      setModalReprogramar(p=>({...p, guardando:false, error:e.message || 'No se pudo actualizar la fecha de agendamiento'}))
     }
   }
 
@@ -2883,6 +2908,21 @@ export default function Backdatareclutamiento() {
             <div className="modal-btns">
               <button className="btn-cancelar-modal" onClick={()=>setModalCapacitacion(p=>({...p,open:false}))} disabled={modalCapacitacion.guardando}>Cancelar</button>
               <button className="btn-confirmar-modal" onClick={guardarCapacitacion} disabled={modalCapacitacion.guardando}>{modalCapacitacion.guardando?'Guardando…':'Registrar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL REPROGRAMAR (actualiza fecha de agendamiento) ══════════════ */}
+      {modalReprogramar.open && (
+        <div className="modal-overlay open" onClick={e=>{ if(e.target===e.currentTarget && !modalReprogramar.guardando) setModalReprogramar(p=>({...p,open:false})) }}>
+          <div className="modal-box">
+            <h3>Reprogramar entrevista</h3>
+            <div className="bo-input-group" style={{marginBottom:10}}><label>Nueva fecha de agendamiento</label><input type="date" className="form-control" value={modalReprogramar.fechaAgendamiento} onChange={e=>setModalReprogramar(p=>({...p,fechaAgendamiento:e.target.value}))} /></div>
+            {modalReprogramar.error && <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{modalReprogramar.error}</p>}
+            <div className="modal-btns">
+              <button className="btn-cancelar-modal" onClick={()=>setModalReprogramar(p=>({...p,open:false}))} disabled={modalReprogramar.guardando}>Cancelar</button>
+              <button className="btn-confirmar-modal" onClick={guardarReprogramar} disabled={modalReprogramar.guardando}>{modalReprogramar.guardando?'Guardando…':'Guardar'}</button>
             </div>
           </div>
         </div>
