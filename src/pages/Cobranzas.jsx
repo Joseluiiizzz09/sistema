@@ -705,10 +705,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       </header>
 
       <main className="cobranzas-main">
-        {!esCalidad && <section className="cobranzas-heading" style={{justifyContent:'flex-end'}}>
-          <button onClick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Actualizar'}</button>
-        </section>}
-
         {esCalidad && <section className="sup-calidad-toolbar">
           <div className="sup-calidad-menu" ref={menuSeccionRef}>
             <button type="button" className="sup-calidad-hamburguesa" onClick={() => setMenuSeccionAbierto(v => !v)} aria-haspopup="true" aria-expanded={menuSeccionAbierto} aria-label="Abrir menú de secciones">

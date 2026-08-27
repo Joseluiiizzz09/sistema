@@ -993,7 +993,10 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranzas-table-card th{padding:8px 14px}
 .cobranzas-table-card td{padding:6px 14px;line-height:1.25}
 /* Menos espacio entre la barra de arriba y la tabla: el listado sube. */
-.cobranzas-filtros{padding:10px 14px;margin-bottom:10px}
+.cobranzas-filtros{padding:7px 12px;margin-bottom:8px}
+.cobranzas-filtros label span{margin-bottom:3px}
+.cobranzas-filtros input,.cobranzas-filtros .form-control{height:30px}
+.cobranzas-filtros>button{height:30px}
 .cobranzas-filtros-rango{grid-template-columns:minmax(260px,1fr) 230px auto}
 .sup-calidad-toolbar{margin-bottom:10px;padding:8px 14px}
 /* Listado de Cobranzas agrupado por mes (acordeon) */
