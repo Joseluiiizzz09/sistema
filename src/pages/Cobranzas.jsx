@@ -159,6 +159,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [pagina, setPagina] = useState(1)
+  const [mesesAbiertos, setMesesAbiertos] = useState({})
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
   const [guardando, setGuardando] = useState('')
@@ -300,6 +301,28 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE))
   const paginaSegura = Math.min(pagina, totalPaginas)
   const visibles = filtrados.slice((paginaSegura - 1) * PAGE_SIZE, paginaSegura * PAGE_SIZE)
+
+  const clientesPorMes = useMemo(() => {
+    const nombresMes = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+    const mapa = new Map()
+    filtrados.forEach(cliente => {
+      const iso = fechaISO(cliente.fecha_instalacion)
+      const clave = iso ? iso.slice(0, 7) : 'sin-fecha'
+      if (!mapa.has(clave)) mapa.set(clave, [])
+      mapa.get(clave).push(cliente)
+    })
+    return [...mapa.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([clave, clientesMes]) => {
+        let label = 'Sin fecha'
+        if (clave !== 'sin-fecha') {
+          const [anio, mes] = clave.split('-')
+          const nombre = nombresMes[Number(mes) - 1] || mes
+          label = `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`
+        }
+        return { clave, label, clientes: clientesMes }
+      })
+  }, [filtrados])
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
@@ -734,12 +757,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           <button onClick={limpiar}>Limpiar</button>
         </section>
 
+        {esCalidad ? (
         <section className="cobranzas-table-card">
-          <div className="cobranzas-table-title"><strong>{modoSupervisorCalidad ? 'Llamadas de Calidad' : 'Listado de clientes'}</strong><span>{filtrados.length} registros</span></div>
+          <div className="cobranzas-table-title"><strong>Llamadas de Calidad</strong><span>{filtrados.length} registros</span></div>
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>{esCalidad ? <FiltroColumna titulo="VENDEDOR" opciones={vendedoresFiltro} seleccionados={filtroVendedores} onChange={setFiltroVendedores} buscable /> : 'VENDEDOR'}</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}{esCalidad && <><th>RESPONSABLE CALIDAD</th><th><div style={{display:'flex',alignItems:'center',gap:4}}><FiltroColumna titulo="ESTADO FINAL" opciones={estadosFiltro} seleccionados={filtroEstados} onChange={setFiltroEstados} /><button type="button" className={`calidad-orden-btn${ordenPendientesPrimero?' activo':''}`} onClick={()=>setOrdenPendientesPrimero(v=>!v)} title="Pendientes primero, satisfechos al final">⇅</button></div></th><th>FECHA DE TRATAMIENTO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th><th>COMENTARIO</th></>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th><FiltroColumna titulo="VENDEDOR" opciones={vendedoresFiltro} seleccionados={filtroVendedores} onChange={setFiltroVendedores} buscable /></th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th><th>RESPONSABLE CALIDAD</th><th><div style={{display:'flex',alignItems:'center',gap:4}}><FiltroColumna titulo="ESTADO FINAL" opciones={estadosFiltro} seleccionados={filtroEstados} onChange={setFiltroEstados} /><button type="button" className={`calidad-orden-btn${ordenPendientesPrimero?' activo':''}`} onClick={()=>setOrdenPendientesPrimero(v=>!v)} title="Pendientes primero, satisfechos al final">⇅</button></div></th><th>FECHA DE TRATAMIENTO</th><th>GESTIÓN DE CALIDAD</th><th>HISTORIAL</th><th>COMENTARIO</th></tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -749,29 +773,20 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
-                    {esCobranza && (
-                      <td className="cobranza-gestion-cell">
-                        <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
-                          <span>Gestionar cobranza</span><small>{resumenCobranza(cliente)}</small>
-                        </button>
-                      </td>
-                    )}
-                    {esCalidad && <>
-                      <td className="calidad-responsable">{cliente.calidad_asignado_a_nombre || 'SIN ASIGNAR'}</td>
-                      <td><span className={`calidad-estado-final ${claseCalidad(cliente.calidad_estado_cliente)}`}>{cliente.calidad_estado_cliente || 'PENDIENTE'}</span></td>
-                      <td className="calidad-fecha">{fechaHoraVisible(cliente.calidad_tratamiento_at)}</td>
-                      <td className="calidad-gestion-cell">
-                        <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => abrirCalidad(cliente)}>
-                          <span>Gestionar calidad</span><small>{resumenCalidad(cliente)}</small>
-                        </button>
-                      </td>
-                      <td><button className="calidad-historial-btn" onClick={() => abrirHistorial(cliente)}>Historial</button></td>
-                      <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
-                    </>}
+                    <td className="calidad-responsable">{cliente.calidad_asignado_a_nombre || 'SIN ASIGNAR'}</td>
+                    <td><span className={`calidad-estado-final ${claseCalidad(cliente.calidad_estado_cliente)}`}>{cliente.calidad_estado_cliente || 'PENDIENTE'}</span></td>
+                    <td className="calidad-fecha">{fechaHoraVisible(cliente.calidad_tratamiento_at)}</td>
+                    <td className="calidad-gestion-cell">
+                      <button className={`calidad-gestion-btn ${resumenCalidad(cliente) === 'COMPLETADO' ? 'completo' : ''}`} onClick={() => abrirCalidad(cliente)}>
+                        <span>Gestionar calidad</span><small>{resumenCalidad(cliente)}</small>
+                      </button>
+                    </td>
+                    <td><button className="calidad-historial-btn" onClick={() => abrirHistorial(cliente)}>Historial</button></td>
+                    <td className="calidad-comentario-col" title={cliente.calidad_comentario || ''}>{cliente.calidad_comentario || '—'}</td>
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCalidad ? 15 : esCobranza ? 10 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCalidad ? 15 : esCobranza ? 10 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={15} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={15} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
@@ -779,7 +794,54 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <span>Mostrando {visibles.length ? (paginaSegura - 1) * PAGE_SIZE + 1 : 0}–{(paginaSegura - 1) * PAGE_SIZE + visibles.length} de {filtrados.length}</span>
             <div><button disabled={paginaSegura <= 1} onClick={() => setPagina(p => p - 1)}>‹</button><b>Página {paginaSegura} de {totalPaginas}</b><button disabled={paginaSegura >= totalPaginas} onClick={() => setPagina(p => p + 1)}>›</button></div>
           </footer>
-        </section></>}
+        </section>
+        ) : (
+        <section className="cobranzas-table-card cobranzas-meses">
+          <div className="cobranzas-table-title"><strong>Listado de clientes</strong><span>{filtrados.length} registros</span></div>
+          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
+          {cargando && <div className="cobranzas-empty">Cargando clientes instalados…</div>}
+          {!cargando && !clientesPorMes.length && <div className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</div>}
+          {!cargando && clientesPorMes.map((grupo, gi) => {
+            const abierto = mesesAbiertos[grupo.clave] !== undefined ? mesesAbiertos[grupo.clave] : gi === 0
+            return (
+              <div className="cobranzas-mes-grupo" key={grupo.clave}>
+                <button type="button" className="cobranzas-mes-header" onClick={() => setMesesAbiertos(p => ({ ...p, [grupo.clave]: !abierto }))}>
+                  <span className="cobranzas-mes-nombre">{grupo.label}</span>
+                  <span className="cobranzas-mes-count">{grupo.clientes.length} clientes</span>
+                  <span className={`cobranzas-mes-flecha${abierto ? ' abierto' : ''}`}>▾</span>
+                </button>
+                {abierto && (
+                  <div className="cobranzas-table-scroll">
+                    <table>
+                      <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}</tr></thead>
+                      <tbody>
+                        {grupo.clientes.map((cliente, index) => (
+                          <tr key={cliente.id}>
+                            <td>{index + 1}</td>
+                            <td className="cobranzas-name">{cliente.nombre || '—'}</td>
+                            <td>{cliente.dni || '—'}</td><td>{cliente.sot || '—'}</td>
+                            <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
+                            <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
+                            <td>{cliente.paquete || '—'}</td>
+                            {esCobranza && (
+                              <td className="cobranza-gestion-cell">
+                                <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
+                                  <span>Gestionar cobranza</span><small>{resumenCobranza(cliente)}</small>
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </section>
+        )}
+        </>}
 
         {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <section className="sup-calidad-rendimiento">
           <header>
