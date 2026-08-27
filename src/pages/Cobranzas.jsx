@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usuarioTieneCargo } from '../utils/roles'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import RangoFechasPicker from '../components/RangoFechasPicker'
 import { API, ncHeaders } from '../services/api'
 import '../styles/cobranzas.css'
 
@@ -174,6 +175,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [ordenPendientesPrimero, setOrdenPendientesPrimero] = useState(false)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
+  const [menuSeccionAbierto, setMenuSeccionAbierto] = useState(false)
+  const menuSeccionRef = useRef(null)
   const [fechaKpiCalidad, setFechaKpiCalidad] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
   const [mesRendimiento, setMesRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }).slice(0, 7))
@@ -239,6 +242,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   useEffect(() => {
     if (pestanaCalidad === 'rendimiento') cargarRendimiento()
   }, [pestanaCalidad, cargarRendimiento])
+
+  useEffect(() => {
+    if (!menuSeccionAbierto) return undefined
+    const cerrar = evento => { if (!menuSeccionRef.current?.contains(evento.target)) setMenuSeccionAbierto(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [menuSeccionAbierto])
 
   useEffect(() => {
     if (!clienteCalidad) return undefined
@@ -673,10 +683,16 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
         </section>}
 
         {esCalidad && <section className="sup-calidad-toolbar">
-          <nav className="sup-calidad-tabs" aria-label="Secciones de Calidad">
-            <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
-            <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
-          </nav>
+          <div className="sup-calidad-menu" ref={menuSeccionRef}>
+            <button type="button" className="sup-calidad-hamburguesa" onClick={() => setMenuSeccionAbierto(v => !v)} aria-haspopup="true" aria-expanded={menuSeccionAbierto} aria-label="Abrir menú de secciones">
+              <span className="sup-calidad-hamburguesa-icono">☰</span>
+              <span>{pestanaCalidad === 'rendimiento' ? 'Rendimiento' : 'Llamadas'}</span>
+            </button>
+            {menuSeccionAbierto && <div className="sup-calidad-menu-panel">
+              <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => { setPestanaCalidad('llamadas'); setMenuSeccionAbierto(false) }}>Llamadas</button>
+              <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => { setPestanaCalidad('rendimiento'); setMenuSeccionAbierto(false) }}>Rendimiento</button>
+            </div>}
+          </div>
           <div className="sup-calidad-toolbar-controls">
             {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <>
               <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
@@ -712,10 +728,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
         </section>}
 
-        <section className="cobranzas-filtros">
+        <section className="cobranzas-filtros cobranzas-filtros-rango">
           <label className="cobranzas-search"><span>BUSCAR CLIENTE</span><input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, documento, SOT, número o paquete…" /></label>
-          <label><span>DESDE</span><input type="date" value={desde} onChange={e => setDesde(e.target.value)} /></label>
-          <label><span>HASTA</span><input type="date" value={hasta} onChange={e => setHasta(e.target.value)} /></label>
+          <label><span>RANGO DE FECHAS</span><RangoFechasPicker desde={desde} hasta={hasta} onChange={v=>{setDesde(v.desde); setHasta(v.hasta)}} /></label>
           <button onClick={limpiar}>Limpiar</button>
         </section>
 

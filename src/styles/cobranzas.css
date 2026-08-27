@@ -802,6 +802,13 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .sup-calidad-tabs button:hover{color:var(--cz-navy)}
 .sup-calidad-tabs button.activo{background:#fff;color:var(--cz-navy);box-shadow:var(--cz-shadow-sm);font-weight:900}
 .sup-calidad-toolbar-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sup-calidad-menu{position:relative}
+.sup-calidad-hamburguesa{display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border:1px solid var(--cz-line,#e2e8f0);border-radius:9px;background:#fff;color:var(--cz-navy);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.sup-calidad-hamburguesa-icono{font-size:14px;line-height:1}
+.sup-calidad-menu-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:20;display:flex;flex-direction:column;min-width:160px;padding:6px;border-radius:10px;background:#fff;box-shadow:0 12px 32px rgba(15,23,42,.16);border:1px solid #eef2f7}
+.sup-calidad-menu-panel button{text-align:left;height:36px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--cz-muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.sup-calidad-menu-panel button:hover{background:var(--cz-bg)}
+.sup-calidad-menu-panel button.activo{background:var(--cz-bg);color:var(--cz-navy);font-weight:900}
 .sup-calidad-fecha{display:flex;align-items:center;gap:9px}
 .sup-calidad-fecha span{color:var(--cz-muted);font-size:9.5px;font-weight:800;letter-spacing:.5px}
 .sup-calidad-fecha input{height:38px;padding:0 12px;border:1px solid var(--cz-border);border-radius:9px;background:#f8fafc;color:var(--cz-ink);font:inherit;font-size:12px;outline:none;transition:.15s ease}
@@ -985,3 +992,7 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 /* Tabla mas compacta: mas filas visibles sin necesidad de scroll. */
 .cobranzas-table-card th{padding:8px 14px}
 .cobranzas-table-card td{padding:6px 14px;line-height:1.25}
+/* Menos espacio entre la barra de arriba y la tabla: el listado sube. */
+.cobranzas-filtros{padding:10px 14px;margin-bottom:10px}
+.cobranzas-filtros-rango{grid-template-columns:minmax(260px,1fr) 230px auto}
+.sup-calidad-toolbar{margin-bottom:10px;padding:8px 14px}
