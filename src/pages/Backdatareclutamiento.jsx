@@ -20,6 +20,7 @@ const CAMPANAS_RECLUTAMIENTO = [
   { valor: 'R6',      bg: '#ddd6fe', color: '#5b21b6' },
   { valor: 'CHANCAY', bg: '#0f766e', color: '#fff' },
   { valor: 'COMPU T', bg: '#1d4ed8', color: '#fff' },
+  { valor: 'REFERIDO', bg: '#be123c', color: '#fff' },
 ]
 function CampanaBadge({ valor }) {
   const info = CAMPANAS_RECLUTAMIENTO.find(c => c.valor === valor)
