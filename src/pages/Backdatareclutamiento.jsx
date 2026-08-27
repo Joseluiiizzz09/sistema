@@ -514,7 +514,7 @@ export default function Backdatareclutamiento() {
   // ── Entrevistas (postulantes que aceptaron la propuesta) ──
   const [entrevistas,        setEntrevistas]        = useState([])
   const [cargandoEntrevistas,setCargandoEntrevistas] = useState(false)
-  const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turno:'', desde:'', hasta:'', busqueda:'' })
+  const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turno:'', desde:'', hasta:'', busqueda:'', agendadoPor:[] })
   const [modalEntrevista,    setModalEntrevista]      = useState({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
 
   // ── Capacitación (postulantes que asistieron a la entrevista) ──
@@ -1779,8 +1779,10 @@ export default function Backdatareclutamiento() {
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
   useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.numero, filtros.desde, filtros.hasta, filtros.global, filtros.duplicados, tableSort.col, tableSort.dir, basePageSize, grupoAceptaVisible, ordenDiarioActivo])
+  const agendadoPorOpciones = [...new Set(entrevistas.map(en => String(en.creado_por_nombre||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const entrevistasFiltradas = entrevistas.filter(en => {
     if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
+    if (filtrosEntrevistas.agendadoPor.length && !filtrosEntrevistas.agendadoPor.includes(String(en.creado_por_nombre||'').trim())) return false
     const fecha = String(en.fecha_agendamiento||'').slice(0,10)
     if (filtrosEntrevistas.desde && fecha < filtrosEntrevistas.desde) return false
     if (filtrosEntrevistas.hasta && fecha > filtrosEntrevistas.hasta) return false
@@ -2635,7 +2637,8 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Fecha de registro</th><th>Campaña</th><th>Agendado por</th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
+                    <th>Fecha de registro</th><th>Campaña</th><th><FiltroEncabezado label="Agendado por" value={filtrosEntrevistas.agendadoPor} options={agendadoPorOpciones}
+                      onChange={agendadoPor=>setFiltrosEntrevistas(p=>({...p,agendadoPor}))} /></th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
                     <th>Fecha de agendamiento</th><th>Fecha de entrevista</th><th>Tipificación</th><th>Observación</th>
                   </tr>
                 </thead>
@@ -2648,7 +2651,7 @@ export default function Backdatareclutamiento() {
                     <tr key={en.id}>
                       <td>{normalizarFecha(en.created_at) || '—'}</td>
                       <td><CampanaBadge valor={en.campana} /></td>
-                      <td className="reclutados-reclutador">{en.creado_por_nombre || '—'}</td>
+                      <td className="reclutados-reclutador entrevistas-agendado-negro">{en.creado_por_nombre || '—'}</td>
                       <td>{en.turno}</td>
                       <td className="reclutados-nombre">{en.nombre_postulante}</td>
                       <td>{en.numero}</td>
