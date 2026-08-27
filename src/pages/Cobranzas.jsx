@@ -791,24 +791,19 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           </footer>
         </section>
         ) : (
-        <div className="cobranzas-meses">
-          <div className="cobranzas-meses-titulo"><strong>Listado de clientes</strong><span>{filtrados.length} registros</span></div>
+        <section className="cobranzas-table-card cobranzas-meses">
+          <div className="cobranzas-table-title"><strong>Listado de clientes</strong><span>{filtrados.length} registros</span></div>
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
-          {cargando && <div className="cobranzas-mes-card cobranzas-empty">Cargando clientes instalados…</div>}
-          {!cargando && !clientesPorMes.length && <div className="cobranzas-mes-card cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</div>}
+          {cargando && <div className="cobranzas-empty">Cargando clientes instalados…</div>}
+          {!cargando && !clientesPorMes.length && <div className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</div>}
           {!cargando && clientesPorMes.map((grupo, gi) => {
             const abierto = mesesAbiertos[grupo.clave] !== undefined ? mesesAbiertos[grupo.clave] : gi === 0
             return (
-              <div className={`cobranzas-mes-card${abierto ? ' abierto' : ''}`} key={grupo.clave}>
-                <button type="button" className="cobranzas-mes-header" onClick={() => setMesesAbiertos(p => ({ ...p, [grupo.clave]: !abierto }))} aria-expanded={abierto}>
-                  <span className="cobranzas-mes-icono" aria-hidden="true">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                  </span>
+              <div className="cobranzas-mes-grupo" key={grupo.clave}>
+                <button type="button" className="cobranzas-mes-header" onClick={() => setMesesAbiertos(p => ({ ...p, [grupo.clave]: !abierto }))}>
                   <span className="cobranzas-mes-nombre">{grupo.label}</span>
                   <span className="cobranzas-mes-count">{grupo.clientes.length} clientes</span>
-                  <span className={`cobranzas-mes-flecha${abierto ? ' abierto' : ''}`} aria-hidden="true">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </span>
+                  <span className={`cobranzas-mes-flecha${abierto ? ' abierto' : ''}`}>▾</span>
                 </button>
                 {abierto && (
                   <div className="cobranzas-table-scroll">
@@ -839,7 +834,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
               </div>
             )
           })}
-        </div>
+        </section>
         )}
         </>}
 
