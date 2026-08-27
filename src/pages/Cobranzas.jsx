@@ -689,6 +689,11 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <span>PANEL DE {areaNombre.toUpperCase()}</span>
           </div>
         </div>
+        {!esCalidad && <div className="cobranzas-topbar-stats" aria-label="Resumen de instalados">
+          <div className="cobranzas-topbar-stat"><strong>{clientes.length}</strong><span>Total</span></div>
+          <div className="cobranzas-topbar-stat blue"><strong>{instaladosHoy}</strong><span>Hoy</span></div>
+          <div className="cobranzas-topbar-stat purple"><strong>{paquetes}</strong><span>Paquetes</span></div>
+        </div>}
         <div className="cobranzas-top-actions">
           <JefaturaViewControls>
             <span className="cobranzas-area-badge">{areaNombre.toUpperCase()}</span>
@@ -745,11 +750,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
         </>}
 
         {pestanaCalidad !== 'rendimiento' && <>
-        {!esCalidad && <section className="cobranzas-kpis">
-            <article><strong>{clientes.length}</strong><span>TOTAL INSTALADOS</span></article>
-            <article><strong>{instaladosHoy}</strong><span>INSTALADOS HOY</span></article>
-            <article><strong>{paquetes}</strong><span>PAQUETES CONTRATADOS</span></article>
-        </section>}
 
         <section className="cobranzas-filtros cobranzas-filtros-rango">
           <label className="cobranzas-search"><span>BUSCAR CLIENTE</span><input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, documento, SOT, número o paquete…" /></label>
