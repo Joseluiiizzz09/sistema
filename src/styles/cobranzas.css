@@ -999,15 +999,23 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranzas-filtros>button{height:30px}
 .cobranzas-filtros-rango{grid-template-columns:minmax(260px,1fr) 230px auto}
 .sup-calidad-toolbar{margin-bottom:10px;padding:8px 14px}
-/* Listado de Cobranzas agrupado por mes (acordeon) */
-.cobranzas-mes-grupo{border-bottom:1px solid #eef2f7}
-.cobranzas-mes-grupo:last-child{border-bottom:0}
-.cobranzas-mes-header{width:100%;display:flex;align-items:center;gap:12px;padding:14px 18px;border:0;background:#fff;cursor:pointer;text-align:left;font:inherit}
+/* Listado de Cobranzas agrupado por mes: una tarjeta elevada por mes */
+.cobranzas-meses{display:flex;flex-direction:column;gap:10px}
+.cobranzas-meses-titulo{display:flex;align-items:baseline;justify-content:space-between;padding:2px 6px 2px;color:#334155}
+.cobranzas-meses-titulo strong{font-size:13px;font-weight:800;color:#0f172a}
+.cobranzas-meses-titulo span{font-size:11px;font-weight:700;color:#94a3b8}
+.cobranzas-mes-card{background:#fff;border:1px solid #e6eaf1;border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.04);overflow:hidden;transition:box-shadow .15s ease,border-color .15s ease}
+.cobranzas-mes-card.abierto{border-color:#ccfbf1;box-shadow:0 6px 16px rgba(15,23,42,.07)}
+.cobranzas-mes-header{width:100%;display:flex;align-items:center;gap:12px;padding:16px 18px;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit}
 .cobranzas-mes-header:hover{background:#f8fafc}
+.cobranzas-mes-icono{flex-shrink:0;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#f0fdfa;color:#0f766e}
+.cobranzas-mes-card.abierto .cobranzas-mes-icono{background:#0f766e;color:#fff}
 .cobranzas-mes-nombre{font-size:14px;font-weight:800;color:#0f172a;text-transform:capitalize}
-.cobranzas-mes-count{margin-left:auto;font-size:11px;font-weight:700;color:#0f766e;background:#f0fdfa;padding:4px 10px;border-radius:20px}
-.cobranzas-mes-flecha{font-size:12px;color:#94a3b8;transition:transform .15s ease}
+.cobranzas-mes-count{margin-left:auto;font-size:11px;font-weight:700;color:#0f766e;background:#f0fdfa;padding:5px 12px;border-radius:20px;white-space:nowrap}
+.cobranzas-mes-flecha{flex-shrink:0;display:flex;color:#94a3b8;transition:transform .18s ease,color .15s ease}
 .cobranzas-mes-flecha.abierto{transform:rotate(180deg);color:#0f766e}
+.cobranzas-mes-card .cobranzas-table-scroll{border-top:1px solid #eef2f7}
+.cobranzas-mes-card.cobranzas-empty{padding:22px;text-align:center;color:#94a3b8;font-size:12px;font-weight:600}
 /* Tira compacta de KPIs en el topbar (reemplaza las tarjetas grandes) */
 .cobranzas-topbar-stats{display:flex;align-items:center;gap:6px;margin:0 auto 0 18px;min-width:0;overflow:hidden}
 .cobranzas-topbar-stat{height:48px;min-width:74px;padding:5px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;border-left:1px solid #f1f5f9;border-right:1px solid #f1f5f9;box-shadow:0 1px 5px rgba(15,23,42,.06);border-radius:6px}
