@@ -2324,11 +2324,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   // el número de "Fecha activa". "Ventas" es otra cosa aparte: la familia
   // venta cerrada + venta caída + instalada, tal como se definió el criterio.
   const TIPIF_FAMILIA_VENTA = ['VENTA CERRADA','VENTA CAIDA','INSTALADO']
+  // Un NO ROTAR/NO TOCAR ya tiene un motivo definido por el que no se puede
+  // trabajar — no es un cliente "pendiente de asignar", está bloqueado a
+  // propósito. No debe inflar el conteo de disponibles para llamar.
+  const TIPIF_BLOQUEADO_NO_ASIGNABLE = ['NO ROTAR','SH NO ROTAR','NO TOCAR','SH NO TOCAR']
   const statsBase = {
     total:      registrosBusquedaGlobal.length,
     ventas:     registrosBusquedaGlobal.filter(r=>TIPIF_FAMILIA_VENTA.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
     asignados:  registrosBusquedaGlobal.filter(r=>r.asesor&&r.asesor!=='').length,
-    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar).length,
+    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar && !TIPIF_BLOQUEADO_NO_ASIGNABLE.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
     rotaciones: registrosBusquedaGlobal.reduce((s,r)=>s+r.rotaciones,0),
   }
 
