@@ -296,7 +296,7 @@ function flujoLabelEstado(estado) {
   })[e] || (estado || 'Venta subida')
 }
 
-const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', salaManual:true, pass:'', pass2:'' }
+const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', cargo3:'', sala:'', salaManual:true, pass:'', pass2:'' }
 
 // Valores únicos y ordenados para poblar selects dinámicos (Asesor/Sala/Distrito/Plan) —
 // nunca hardcodeados, siempre derivados de los datos reales ya cargados.
@@ -1316,39 +1316,44 @@ export default function Jefatura() {
   }
   function abrirModalEditar(u) {
     setEditandoId(u.id)
-    const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo) || ''
+    const permisosExtra = permisosDeUsuario(u).filter(c => c !== u.cargo)
+    const cargo2 = permisosExtra[0] || ''
+    const cargo3 = permisosExtra[1] || ''
     const salaActual = String(u.sala || '').trim()
-    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, sala:salaActual, salaManual:!salaActual || !SALAS.includes(salaActual), pass:'', pass2:'' })
+    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, cargo3, sala:salaActual, salaManual:!salaActual || !SALAS.includes(salaActual), pass:'', pass2:'' })
     setModErrores({}); setModalUsu(true)
   }
   function cerrarModalUsu() { setModalUsu(false); setEditandoId(null); setModForm(MOD_FORM_VACIO); setModErrores({}) }
   function setField(k, v) { setModForm(f=>({...f,[k]:v})); setModErrores(e=>({...e,[k]:false})) }
 
   async function guardarUsuario() {
-    const { nombre, usuario, cargo, cargo2, sala, pass, pass2 } = modForm
+    const { nombre, usuario, cargo, cargo2, cargo3, sala, pass, pass2 } = modForm
     const errs = {}
     let primerError = ''
     if (!nombre.trim())              { errs.nombre = true; primerError ||= 'El nombre completo es obligatorio.' }
     if (!usuario.trim())             { errs.usuario = true; primerError ||= 'El usuario es obligatorio.' }
     if (!cargo)                      { errs.cargo  = true; primerError ||= 'Selecciona un cargo principal.' }
     if (cargo2 && cargo2 === cargo)  { errs.cargo2 = true; primerError ||= 'El cargo adicional debe ser diferente al principal.' }
+    if (cargo3 && cargo3 === cargo)  { errs.cargo3 = true; primerError ||= 'El segundo cargo adicional debe ser diferente al principal.' }
+    if (cargo3 && cargo3 === cargo2) { errs.cargo3 = true; primerError ||= 'El segundo cargo adicional debe ser diferente al primero.' }
     if (!editandoId && !pass)        { errs.pass   = true; primerError ||= 'La contraseña es obligatoria.' }
     if (pass && pass.length < 6)     { errs.pass   = true; primerError ||= 'La contraseña debe tener al menos 6 caracteres.' }
     if (pass && pass !== pass2)      { errs.pass2  = true; primerError ||= 'Las contraseñas no coinciden.' }
     if (Object.keys(errs).length) { setModErrores(errs); mostrarToast(primerError); return }
 
+    const permisos = [cargo2, cargo3].filter(Boolean)
     setGuardandoUsu(true)
     try {
       const loginNorm = usuario.trim().toLowerCase().replace(/\s+/g, '.')
       let res
       if (editandoId) {
-        const body = { nombre, usuario: loginNorm, cargo, sala: sala || null, permisos: cargo2 ? [cargo2] : [] }
+        const body = { nombre, usuario: loginNorm, cargo, sala: sala || null, permisos }
         if (pass) body.password = pass
         res = await fetch(`${API}/usuarios/${editandoId}`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify(body) })
       } else {
         res = await fetch(`${API}/usuarios`, {
           method: 'POST', headers: ncHeaders(),
-          body: JSON.stringify({ nombre, usuario: loginNorm, password: pass, cargo, sala: sala || null, activo: true, permisos: cargo2 ? [cargo2] : [] })
+          body: JSON.stringify({ nombre, usuario: loginNorm, password: pass, cargo, sala: sala || null, activo: true, permisos })
         })
       }
       const ct   = res.headers.get('content-type') || ''
@@ -2114,7 +2119,7 @@ export default function Jefatura() {
                     ? <tr><td colSpan="7" className="tabla-empty">No hay usuarios que coincidan con la búsqueda.</td></tr>
                     : usuariosFiltrados.map(u => {
                         const c    = cargoObj(u.cargo)
-                        const cargo2 = permisosDeUsuario(u).find(rol => rol !== u.cargo)
+                        const permisosExtra = permisosDeUsuario(u).filter(rol => rol !== u.cargo)
                         const col  = colorAvatar(u.nombre)
                         const fecha= u.created_at ? u.created_at.split(' ')[0] : ''
                         const protegido = String(u.id) === String(sesion?.id)
@@ -2129,7 +2134,7 @@ export default function Jefatura() {
                             <td>
                               <div className="usuario-cargos">
                                 <span className={`badge-cargo ${c.cls}`}>{c.label}</span>
-                                {cargo2 && <span className={`badge-cargo ${cargoObj(cargo2).cls}`}>{cargoObj(cargo2).label}</span>}
+                                {permisosExtra.map(rol => <span key={rol} className={`badge-cargo ${cargoObj(rol).cls}`}>{cargoObj(rol).label}</span>)}
                               </div>
                             </td>
                             <td style={{fontSize:'12px'}}>{u.sala||'—'}</td>
@@ -2510,6 +2515,13 @@ export default function Jefatura() {
                 <select value={modForm.cargo2} onChange={e=>setField('cargo2',e.target.value)} className={modErrores.cargo2?'error':''}>
                   <option value="">— Sin cargo adicional —</option>
                   {CARGOS.filter(c=>c.id!==modForm.cargo && c.id!=='jefatura').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className={`modal-campo${modErrores.cargo3?' error':''}`}>
+                <label>Segundo cargo adicional (opcional)</label>
+                <select value={modForm.cargo3} onChange={e=>setField('cargo3',e.target.value)} className={modErrores.cargo3?'error':''}>
+                  <option value="">— Sin segundo cargo adicional —</option>
+                  {CARGOS.filter(c=>c.id!==modForm.cargo && c.id!==modForm.cargo2 && c.id!=='jefatura').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
               </div>
               <div className="modal-campo">
