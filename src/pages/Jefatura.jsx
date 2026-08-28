@@ -476,6 +476,9 @@ export default function Jefatura() {
   const [marketingReclData, setMarketingReclData] = useState([])
   const [marketingReclCatalogos, setMarketingReclCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingReclCarga, setMarketingReclCarga] = useState({ cargando:false, error:'' })
+  /* ranking de Grabaciones: quién grabó más ventas hoy/semana/mes */
+  const [grabRanking, setGrabRanking] = useState([])
+  const [grabCarga, setGrabCarga] = useState({ cargando:false, error:'' })
 
   /* logs */
   const [logs, setLogs] = useState(() => {
@@ -711,6 +714,23 @@ export default function Jefatura() {
     }
   }, [marketingReclFiltros])
 
+  const cargarGrabRendimiento = useCallback(async () => {
+    setGrabCarga({ cargando:true, error:'' })
+    try {
+      const res = await fetch(`${API}/ventas/grabaciones-rendimiento`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar el rendimiento de Grabaciones')
+      setGrabRanking(Array.isArray(data.ranking) ? data.ranking : [])
+      setGrabCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setGrabCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [])
+
+  const grabResumen = useMemo(() => grabRanking.reduce((acc, f) => ({
+    hoy:acc.hoy+f.hoy, semana:acc.semana+f.semana, mes:acc.mes+f.mes,
+  }), { hoy:0, semana:0, mes:0 }), [grabRanking])
+
   async function eliminarRegistroEliminacion(item) {
     if (!item?.id || eliminacionBorrandoId !== null) return
     if (!window.confirm('¿Eliminar este registro del historial?\n\nEsta acción solo borra el registro de auditoría.')) return
@@ -807,6 +827,7 @@ export default function Jefatura() {
     if (seccion === 'reclutados-generales') cargarReclutados()
     if (seccion === 'eliminaciones') cargarEliminaciones()
     if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl() }
+    if (seccion === 'grab-rendimiento') cargarGrabRendimiento()
     if (seccion === 'envio-masivo') cargarMasivo()
   }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarMasivo])
 
@@ -1383,6 +1404,7 @@ export default function Jefatura() {
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
           <div className="sidebar-sep">Operaciones</div>
           <button className={`nav-btn${seccion==='marketing-leads'?' active':''}`} onClick={()=>irSeccion('marketing-leads')}><span className="nav-dot"></span> Marketing · Leads</button>
+          <button className={`nav-btn${seccion==='grab-rendimiento'?' active':''}`} onClick={()=>irSeccion('grab-rendimiento')}><span className="nav-dot"></span> Grabaciones</button>
           <button className={`nav-btn${seccion==='envio-masivo'?' active':''}`} onClick={()=>irSeccion('envio-masivo')}><span className="nav-dot"></span> Envío masivo</button>
           <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
           <button className={`nav-btn${seccion==='seguimiento'?' active':''}`} onClick={()=>irSeccion('seguimiento')}><span className="nav-dot"></span> Seguimiento en campo</button>
@@ -1703,6 +1725,51 @@ export default function Jefatura() {
               </div>
             </div>
             </>}
+          </section>
+
+          {/* ===== GRABACIONES: RENDIMIENTO ===== */}
+          <section className={`section${seccion==='grab-rendimiento'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Rendimiento de Grabaciones</h2><p>Ranking de ventas grabadas por cada asesor de Grabaciones: hoy, esta semana y este mes</p></div>
+              <button className="btn-nuevo" onClick={cargarGrabRendimiento}>Actualizar</button>
+            </div>
+
+            {grabCarga.error && <div className="marketing-error">{grabCarga.error}</div>}
+
+            <div className="kpi-grid marketing-kpis">
+              <div className="kpi-card k-blue"><div className="kpi-num">{grabResumen.hoy}</div><div className="kpi-label">Grabadas hoy</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-purple"><div className="kpi-num">{grabResumen.semana}</div><div className="kpi-label">Esta semana</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-green"><div className="kpi-num">{grabResumen.mes}</div><div className="kpi-label">Este mes</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-yellow"><div className="kpi-num">{grabRanking.length}</div><div className="kpi-label">Personas activas</div><div className="kpi-sub">con grabaciones este mes</div></div>
+            </div>
+
+            <div className="marketing-grid">
+              <div className="chart-card marketing-ranking">
+                <div className="chart-title-row"><span>Grabadas hoy por asesor</span>{grabCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="marketing-barras">
+                  {grabRanking.length===0 && !grabCarga.cargando
+                    ? <div className="marketing-vacio">Todavía no hay grabaciones registradas.</div>
+                    : grabRanking.map((f,i)=><div className="marketing-barra" key={f.id}>
+                        <div className="marketing-barra-top"><strong>{f.nombre}</strong><span>{f.hoy} hoy</span></div>
+                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,f.hoy/Math.max(1,...grabRanking.map(x=>x.hoy))*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                          <div style={{flex:1,height:3,borderRadius:99,background:'#eef2f7',overflow:'hidden'}}><i style={{display:'block',height:'100%',borderRadius:99,width:`${Math.max(3,f.mes/Math.max(1,...grabRanking.map(x=>x.mes))*100)}%`,background:'#86efac'}} /></div>
+                          <span style={{fontSize:9,color:'#94a3b8',fontWeight:600,flexShrink:0}}>{f.mes} en el mes</span>
+                        </div>
+                      </div>)}
+                </div>
+              </div>
+
+              <div className="tabla-wrap marketing-tabla-card">
+                <div className="tabla-header"><span className="tabla-title">Detalle por asesor</span><span className="tabla-count">{grabRanking.length} personas</span></div>
+                <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                  <thead><tr><th>#</th><th>Asesor</th><th>Hoy</th><th>Semana</th><th>Mes</th></tr></thead>
+                  <tbody>{grabRanking.length===0
+                    ? <tr><td colSpan="5" className="tabla-empty">{grabCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
+                    : grabRanking.map((f,i)=><tr key={f.id}><td>{i+1}</td><td><strong>{f.nombre}</strong></td><td>{f.hoy}</td><td>{f.semana}</td><td>{f.mes}</td></tr>)}</tbody>
+                </table></div>
+              </div>
+            </div>
           </section>
 
           {/* ===== ENVIO MASIVO ===== */}
