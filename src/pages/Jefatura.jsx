@@ -411,6 +411,9 @@ export default function Jefatura() {
   const [ventasSeg,   setVentasSeg]   = useState([])
   const [reclutados, setReclutados] = useState([])
   const [cargandoReclutados, setCargandoReclutados] = useState(false)
+  const [reclutadosVista, setReclutadosVista] = useState('reclutados')
+  const [entrevistados, setEntrevistados] = useState([])
+  const [cargandoEntrevistados, setCargandoEntrevistados] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
   const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
@@ -589,6 +592,19 @@ export default function Jefatura() {
       setReclutados([])
     } finally {
       setCargandoReclutados(false)
+    }
+  }, [])
+
+  const cargarEntrevistados = useCallback(async () => {
+    setCargandoEntrevistados(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      setEntrevistados(res.ok && data.ok && Array.isArray(data.data) ? data.data : [])
+    } catch {
+      setEntrevistados([])
+    } finally {
+      setCargandoEntrevistados(false)
     }
   }, [])
 
@@ -824,12 +840,12 @@ export default function Jefatura() {
 
   useEffect(() => {
     if (seccion === 'seguimiento') cargarSeguimiento()
-    if (seccion === 'reclutados-generales') cargarReclutados()
+    if (seccion === 'reclutados-generales') { cargarReclutados(); cargarEntrevistados() }
     if (seccion === 'eliminaciones') cargarEliminaciones()
     if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl() }
     if (seccion === 'grab-rendimiento') cargarGrabRendimiento()
     if (seccion === 'envio-masivo') cargarMasivo()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarMasivo])
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGrabRendimiento, cargarMasivo])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -2191,9 +2207,20 @@ export default function Jefatura() {
           {/* ===== RECLUTADOS GENERALES ===== */}
           <section className={`section${seccion==='reclutados-generales'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Reclutados generales</h2><p>Postulantes registrados por todos los asesores de reclutamiento</p></div>
-              <button className="btn-nuevo" onClick={cargarReclutados}>Actualizar</button>
+              <div><h2>Reclutados generales</h2><p>Postulantes registrados y entrevistas agendadas por todos los asesores de reclutamiento</p></div>
+              <button className="btn-nuevo" onClick={()=>{ cargarReclutados(); cargarEntrevistados() }}>Actualizar</button>
             </div>
+
+            <div className="nav-tabs" style={{display:'flex',gap:8,marginBottom:14}}>
+              <button type="button" className={`btn-nuevo${reclutadosVista==='reclutados'?'':' btn-tab-inactivo'}`}
+                style={reclutadosVista==='reclutados'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setReclutadosVista('reclutados')}>Reclutados</button>
+              <button type="button" className={`btn-nuevo${reclutadosVista==='entrevistados'?'':' btn-tab-inactivo'}`}
+                style={reclutadosVista==='entrevistados'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setReclutadosVista('entrevistados')}>Entrevistados</button>
+            </div>
+
+            {reclutadosVista==='reclutados' && (
             <div className="tabla-wrap">
               <div className="tabla-header">
                 <span className="tabla-title">Postulantes generales</span>
@@ -2227,6 +2254,40 @@ export default function Jefatura() {
                 </table>
               </div>
             </div>
+            )}
+
+            {reclutadosVista==='entrevistados' && (
+            <div className="tabla-wrap">
+              <div className="tabla-header">
+                <span className="tabla-title">Entrevistas agendadas</span>
+                <span className="tabla-count">{entrevistados.length} registros</span>
+              </div>
+              <div className="tabla-scroll">
+                <table className="tabla reclutados-generales-tabla">
+                  <thead><tr><th>#</th><th>Fecha agendamiento</th><th>Nombre postulante</th><th>Número</th><th>Turno</th><th>Campaña</th><th>Agendado por</th><th>Tipificación</th><th>Observación</th></tr></thead>
+                  <tbody>
+                    {cargandoEntrevistados ? (
+                      <tr className="tabla-empty"><td colSpan="9">Cargando entrevistas...</td></tr>
+                    ) : entrevistados.length === 0 ? (
+                      <tr className="tabla-empty"><td colSpan="9">Sin entrevistas agendadas.</td></tr>
+                    ) : entrevistados.map((e, i) => (
+                      <tr key={e.id}>
+                        <td>{i + 1}</td>
+                        <td>{formatF(soloFecha(e.fecha_agendamiento))}</td>
+                        <td style={{fontWeight:700}}>{e.nombre_postulante || '—'}</td>
+                        <td>{e.numero || e.numero_ref || '—'}</td>
+                        <td>{e.turno || '—'}</td>
+                        <td>{e.campana || '—'}</td>
+                        <td>{e.creado_por_nombre || '—'}</td>
+                        <td>{e.tipificacion ? <span className="flujo-ok">{e.tipificacion}</span> : '—'}</td>
+                        <td>{e.observacion || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            )}
           </section>
 
           {/* ===== ELIMINACIONES GENERALES ===== */}
