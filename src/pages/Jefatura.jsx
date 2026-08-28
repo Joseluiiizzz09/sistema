@@ -40,6 +40,8 @@ const CARGOS = [
   { id:'capacitador',   label:'Capacitación',  cls:'bc-capacitador'   },
 ]
 const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
+const TIPIFICACIONES_ENTREVISTA = ['NO CONTESTA','DESISTE','REPROGRAMA','CORTA LLAMADA','ASISTE','EN CAMINO','FALTA']
+const TURNOS_ENTREVISTA = ['TURNO 1','TURNO 2']
 
 const SEG_MAP = {
   en_ejecucion:'ejecucion',
@@ -414,6 +416,9 @@ export default function Jefatura() {
   const [reclutadosVista, setReclutadosVista] = useState('reclutados')
   const [entrevistados, setEntrevistados] = useState([])
   const [cargandoEntrevistados, setCargandoEntrevistados] = useState(false)
+  const [entrevistaEditar, setEntrevistaEditar] = useState(null)
+  const [entrevistaForm, setEntrevistaForm] = useState({ tipificacion:'', observacion:'', fecha_agendamiento:'', turno:'' })
+  const [guardandoEntrevista, setGuardandoEntrevista] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
   const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
@@ -805,6 +810,48 @@ export default function Jefatura() {
       return
     }
     setReclutados(prev => prev.filter(item => item.id !== postulante.id))
+  }
+
+  function abrirEditarEntrevista(entrevista) {
+    setEntrevistaEditar(entrevista)
+    setEntrevistaForm({
+      tipificacion: entrevista.tipificacion || '',
+      observacion: entrevista.observacion || '',
+      fecha_agendamiento: soloFecha(entrevista.fecha_agendamiento) || '',
+      turno: entrevista.turno || 'TURNO 1',
+    })
+  }
+
+  async function guardarEntrevista() {
+    if (!entrevistaEditar) return
+    setGuardandoEntrevista(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${entrevistaEditar.id}`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify(entrevistaForm),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la entrevista')
+      setEntrevistados(prev => prev.map(item => item.id === entrevistaEditar.id ? { ...item, ...entrevistaForm } : item))
+      setEntrevistaEditar(null)
+    } catch (e) {
+      window.alert(e.message || 'No se pudo guardar la entrevista')
+    } finally {
+      setGuardandoEntrevista(false)
+    }
+  }
+
+  async function eliminarEntrevista(entrevista) {
+    if (!window.confirm(`¿Eliminar definitivamente la entrevista de ${entrevista.nombre_postulante || 'este postulante'}?`)) return
+    const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${entrevista.id}`, {
+      method:'DELETE',
+      headers:ncHeaders(),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.ok) {
+      console.error(data.mensaje || 'No se pudo eliminar la entrevista')
+      return
+    }
+    setEntrevistados(prev => prev.filter(item => item.id !== entrevista.id))
   }
 
   async function completarReasignacion(data) {
@@ -2264,12 +2311,12 @@ export default function Jefatura() {
               </div>
               <div className="tabla-scroll">
                 <table className="tabla reclutados-generales-tabla">
-                  <thead><tr><th>#</th><th>Fecha agendamiento</th><th>Nombre postulante</th><th>Número</th><th>Turno</th><th>Campaña</th><th>Agendado por</th><th>Tipificación</th><th>Observación</th></tr></thead>
+                  <thead><tr><th>#</th><th>Fecha agendamiento</th><th>Nombre postulante</th><th>Número</th><th>Turno</th><th>Campaña</th><th>Agendado por</th><th>Tipificación</th><th>Observación</th><th>Acción</th></tr></thead>
                   <tbody>
                     {cargandoEntrevistados ? (
-                      <tr className="tabla-empty"><td colSpan="9">Cargando entrevistas...</td></tr>
+                      <tr className="tabla-empty"><td colSpan="10">Cargando entrevistas...</td></tr>
                     ) : entrevistados.length === 0 ? (
-                      <tr className="tabla-empty"><td colSpan="9">Sin entrevistas agendadas.</td></tr>
+                      <tr className="tabla-empty"><td colSpan="10">Sin entrevistas agendadas.</td></tr>
                     ) : entrevistados.map((e, i) => (
                       <tr key={e.id}>
                         <td>{i + 1}</td>
@@ -2281,6 +2328,10 @@ export default function Jefatura() {
                         <td>{e.creado_por_nombre || '—'}</td>
                         <td>{e.tipificacion ? <span className="flujo-ok">{e.tipificacion}</span> : '—'}</td>
                         <td>{e.observacion || '—'}</td>
+                        <td style={{display:'flex',gap:6}}>
+                          <button type="button" className="venta-action-btn" onClick={()=>abrirEditarEntrevista(e)}>Editar</button>
+                          <button type="button" className="venta-action-btn delete" onClick={()=>eliminarEntrevista(e)}>Eliminar</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2550,6 +2601,45 @@ export default function Jefatura() {
               <button className="btn-cancelar-m" onClick={()=>setModalEliminar(null)} disabled={eliminandoUsu}>Cancelar</button>
               <button className="btn-confirmar-eliminar" onClick={confirmarEliminarUsuario} disabled={eliminandoUsu}>
                 {eliminandoUsu?'Eliminando...':'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDITAR ENTREVISTA (Reclutados generales → Entrevistados) */}
+      {entrevistaEditar && (
+        <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget && !guardandoEntrevista)setEntrevistaEditar(null)}}>
+          <div className="modal-box">
+            <div className="modal-title">Editar entrevista</div>
+            <div className="modal-sub">{entrevistaEditar.nombre_postulante || 'Postulante'}</div>
+            <div className="modal-grid">
+              <div className="modal-campo">
+                <label>Tipificación</label>
+                <select value={entrevistaForm.tipificacion} onChange={e=>setEntrevistaForm(f=>({...f,tipificacion:e.target.value}))}>
+                  <option value="">— Sin tipificar —</option>
+                  {TIPIFICACIONES_ENTREVISTA.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="modal-campo">
+                <label>Turno</label>
+                <select value={entrevistaForm.turno} onChange={e=>setEntrevistaForm(f=>({...f,turno:e.target.value}))}>
+                  {TURNOS_ENTREVISTA.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="modal-campo">
+                <label>Fecha de agendamiento</label>
+                <input type="date" value={entrevistaForm.fecha_agendamiento} onChange={e=>setEntrevistaForm(f=>({...f,fecha_agendamiento:e.target.value}))} />
+              </div>
+              <div className="modal-campo span2">
+                <label>Observación</label>
+                <textarea rows={3} value={entrevistaForm.observacion} onChange={e=>setEntrevistaForm(f=>({...f,observacion:e.target.value}))} placeholder="Notas de la entrevista" />
+              </div>
+            </div>
+            <div className="modal-btns">
+              <button className="btn-cancelar-m" onClick={()=>setEntrevistaEditar(null)} disabled={guardandoEntrevista}>Cancelar</button>
+              <button className="btn-guardar" onClick={guardarEntrevista} disabled={guardandoEntrevista}>
+                {guardandoEntrevista ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
           </div>
