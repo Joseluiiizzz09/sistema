@@ -2319,19 +2319,17 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
 
   useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tipBack1, filtros.tipBack2, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, filtros.duplicados, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
-  // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
-  // la base operativa principal.
-  const registrosParaConteo = registrosBusquedaGlobal.filter(r => !['VENTA CAIDA','INSTALADO'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
-  // "Ventas" es su propio conteo, sobre TODO el día (no sobre registrosParaConteo,
-  // que ya excluye caídas/instalados) — cuenta la familia completa: venta
-  // cerrada + venta caída + instalada, tal como se definió el criterio.
+  // Total es su propio conteo, independiente de Ventas: TODOS los leads del
+  // día activo, sin excluir instalados ni caídos — debe coincidir siempre con
+  // el número de "Fecha activa". "Ventas" es otra cosa aparte: la familia
+  // venta cerrada + venta caída + instalada, tal como se definió el criterio.
   const TIPIF_FAMILIA_VENTA = ['VENTA CERRADA','VENTA CAIDA','INSTALADO']
   const statsBase = {
-    total:      registrosParaConteo.length,
+    total:      registrosBusquedaGlobal.length,
     ventas:     registrosBusquedaGlobal.filter(r=>TIPIF_FAMILIA_VENTA.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
-    asignados:  registrosParaConteo.filter(r=>r.asesor&&r.asesor!=='').length,
-    sinAsignar: registrosParaConteo.filter(r=>r.sinAsignar).length,
-    rotaciones: registrosParaConteo.reduce((s,r)=>s+r.rotaciones,0),
+    asignados:  registrosBusquedaGlobal.filter(r=>r.asesor&&r.asesor!=='').length,
+    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar).length,
+    rotaciones: registrosBusquedaGlobal.reduce((s,r)=>s+r.rotaciones,0),
   }
 
   const rendData = useMemo(() => {
