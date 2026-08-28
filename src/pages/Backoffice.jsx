@@ -2322,9 +2322,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
   // la base operativa principal.
   const registrosParaConteo = registrosBusquedaGlobal.filter(r => !['VENTA CAIDA','INSTALADO'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+  // "Ventas" es su propio conteo, sobre TODO el día (no sobre registrosParaConteo,
+  // que ya excluye caídas/instalados) — cuenta la familia completa: venta
+  // cerrada + venta caída + instalada, tal como se definió el criterio.
+  const TIPIF_FAMILIA_VENTA = ['VENTA CERRADA','VENTA CAIDA','INSTALADO']
   const statsBase = {
     total:      registrosParaConteo.length,
-    ventas:     registrosParaConteo.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
+    ventas:     registrosBusquedaGlobal.filter(r=>TIPIF_FAMILIA_VENTA.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
     asignados:  registrosParaConteo.filter(r=>r.asesor&&r.asesor!=='').length,
     sinAsignar: registrosParaConteo.filter(r=>r.sinAsignar).length,
     rotaciones: registrosParaConteo.reduce((s,r)=>s+r.rotaciones,0),
