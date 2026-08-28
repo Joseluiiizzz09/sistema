@@ -1251,6 +1251,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           if (idx >= 0) { arr[idx] = { ...arr[idx], id: bid, _backendId: bid }; next[fecha] = arr }
           return next
         })
+      } else {
+        // El backend omitió el lead en silencio (N1 repetido ese mismo día en
+        // la misma campaña): no hay id que confirmar. Se retira el registro
+        // fantasma sin mostrar error — no era un fallo, era el resultado esperado.
+        setBaseData(prev => { const n={...prev}; n[fecha]=(n[fecha]||[]).filter(r=>r.id!==reg.id); return n })
       }
       setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
     } catch(e) {
@@ -1722,9 +1727,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   }
 
   // ── Carga masiva ──────────────────────────────────────────────────────────
-  function obtenerN1Existentes() {
+  // Duplicado = mismo N1 + misma fecha destino + misma campaña destino. Un
+  // N1 que ya existe en OTRA campaña ese día no cuenta como duplicado aquí:
+  // es un lead independiente y válido para la campaña que se está cargando.
+  function obtenerN1Existentes(fecha, campana) {
     const set = new Set()
-    for (const f in baseData) (baseData[f]||[]).forEach(r => { if(r.n1) set.add(String(r.n1).replace(/\s+/g,'')) })
+    const campanaNorm = (campana||'').trim().toUpperCase()
+    ;(baseData[fecha]||[]).forEach(r => {
+      if (r.n1 && (r.campana||'').trim().toUpperCase() === campanaNorm) set.add(String(r.n1).replace(/\s+/g,''))
+    })
     return set
   }
 
@@ -1735,13 +1746,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     if (!numsRaw.length) { mostrarToast('No se encontraron numeros validos'); return }
     const lote = masivaLote === '0' ? numsRaw.length : (parseInt(masivaLote) || 10)
     const numsLote   = numsRaw.slice(0, lote)
-    const existentes = obtenerN1Existentes()
+    const existentes = obtenerN1Existentes(fechaActiva, masivaCamp.trim() || '—')
     const vistos = new Set()
     const filas  = []
     numsLote.forEach(n => {
       let dup=false, motivo=''
       if (vistos.has(n)) { dup=true; motivo='Repetido en la lista' }
-      else if (existentes.has(n)) { dup=true; motivo='Ya esta en el sistema' }
+      else if (existentes.has(n)) { dup=true; motivo='Ya esta en esta campaña ese día' }
       vistos.add(n)
       filas.push({ n1:n, dup, motivo })
     })
@@ -1782,9 +1793,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const leadsParaBackend = []
     const nuevosRegs = []
     const filaResult = []
+    const campanaNorm = campana.trim().toUpperCase()
     lista.forEach(n1 => {
-      if ((baseData[fecha]||[]).find(r=>r.n1===n1)) {
-        filaResult.push({ n1, campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+      if ((baseData[fecha]||[]).find(r=>r.n1===n1 && (r.campana||'').trim().toUpperCase()===campanaNorm)) {
+        filaResult.push({ n1, campana, resultado:'DUPLICADO', motivo:'Ya existe en esta campaña ese día' })
         return
       }
       const reg = { id:-idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
