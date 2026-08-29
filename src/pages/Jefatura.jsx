@@ -1310,6 +1310,7 @@ export default function Jefatura() {
       ['FECHA SUBIDA',      v => formatF(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))],
       ['CLIENTE',           v => v.nombre || v.nombre_apellidos || v.cliente || '-'],
       ['DNI',               v => v.dni || v.documento || '-'],
+      ['SOT',               v => v.sot || '-'],
       ['DISTRITO',          v => v.distrito || '-'],
       ['ASESOR',            v => v.asesor_nombre || v.asesor || v.vendedor || '-'],
       ['SALA',              v => v.sala || '-'],
