@@ -8,6 +8,7 @@ import { VentaEditarModal } from '../components/VentaEditarModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import RangoFechasPicker from '../components/RangoFechasPicker'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
@@ -460,6 +461,7 @@ export default function Jefatura() {
   const [fvEstados,    setFvEstados]    = useState([])
   const [fvValidacion, setFvValidacion] = useState('')
   const [fvGrabacion,  setFvGrabacion]  = useState('')
+  const [fvCanal,      setFvCanal]      = useState('')
   const [fvAsesor,     setFvAsesor]     = useState('')
   const [fvSala,       setFvSala]       = useState('')
   const [fvDistrito,   setFvDistrito]   = useState('')
@@ -1213,6 +1215,7 @@ export default function Jefatura() {
     if (fvEstados.length) lista = lista.filter(v => fvEstados.includes(v.estado || v.estado_venta || ''))
     if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
     if (fvGrabacion) lista = lista.filter(v => categoriaFiltroGrabacion(v) === fvGrabacion)
+    if (fvCanal) lista = lista.filter(v => String(v.canal || '').toUpperCase() === fvCanal)
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
@@ -1241,7 +1244,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1249,13 +1252,13 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
     setFiltroFlujoVentas('todas')
     setBusqFlujoVentas('')
-    setFvEstados([]); setFvValidacion(''); setFvGrabacion('')
+    setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal('')
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
     setFvDia(''); setFvDesde(''); setFvHasta('')
   }
@@ -1997,6 +2000,7 @@ export default function Jefatura() {
                 <label><span>Estado actual</span><FiltroEstadoMultiple opciones={opcionesFlujo.estados} seleccionados={fvEstados} onChange={setFvEstados} /></label>
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">TODAS</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
                 <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option><option value="GRABADO">GRABADO</option><option value="GRABANDO">GRABANDO</option><option value="NO GRABADO">NO GRABADO</option></select></label>
+                <label><span>Canal</span><select value={fvCanal} onChange={e=>setFvCanal(e.target.value)}><option value="">TODOS</option><option value="NETCONTACT">NETCONTACT</option><option value="KELS">KELS</option></select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
@@ -2031,6 +2035,7 @@ export default function Jefatura() {
                       <th>DNI</th>
                       <th>Asesor</th>
                       <th>Sala</th>
+                      <th>Canal</th>
                       <th>Validación</th>
                       <th>Grabación</th>
                       <th>Programación</th>
@@ -2040,7 +2045,7 @@ export default function Jefatura() {
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const estadoSeg = estadoSeguimiento(v)
@@ -2057,6 +2062,7 @@ export default function Jefatura() {
                           <td>{v.dni || v.documento || '—'}</td>
                           <td>{String(v.asesor_nombre || v.asesor || v.vendedor || '—').toLocaleUpperCase('es-PE')}</td>
                           <td>{v.sala || '—'}</td>
+                          <td><CanalBadge canal={v.canal} /></td>
                           <td><span className={flujoValidada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoValidacion(v)}</span></td>
                           <td><span className={flujoGrabada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoGrabacion(v)}</span></td>
                           <td>
