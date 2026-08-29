@@ -176,8 +176,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [ordenPendientesPrimero, setOrdenPendientesPrimero] = useState(false)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
-  const [menuSeccionAbierto, setMenuSeccionAbierto] = useState(false)
-  const menuSeccionRef = useRef(null)
   const [fechaKpiCalidad, setFechaKpiCalidad] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
   const [mesRendimiento, setMesRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }).slice(0, 7))
@@ -243,13 +241,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   useEffect(() => {
     if (pestanaCalidad === 'rendimiento') cargarRendimiento()
   }, [pestanaCalidad, cargarRendimiento])
-
-  useEffect(() => {
-    if (!menuSeccionAbierto) return undefined
-    const cerrar = evento => { if (!menuSeccionRef.current?.contains(evento.target)) setMenuSeccionAbierto(false) }
-    document.addEventListener('mousedown', cerrar)
-    return () => document.removeEventListener('mousedown', cerrar)
-  }, [menuSeccionAbierto])
 
   useEffect(() => {
     if (!clienteCalidad) return undefined
@@ -705,17 +696,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       </header>
 
       <main className="cobranzas-main">
+        <div className={esCalidad ? 'sup-calidad-layout' : undefined}>
+        {esCalidad && (
+          <aside className="sup-calidad-sidebar">
+            <button type="button" className={`sup-calidad-nav${pestanaCalidad==='llamadas'?' active':''}`} onClick={() => setPestanaCalidad('llamadas')}>Llamadas</button>
+            <button type="button" className={`sup-calidad-nav${pestanaCalidad==='rendimiento'?' active':''}`} onClick={() => setPestanaCalidad('rendimiento')}>Rendimiento</button>
+          </aside>
+        )}
+        <div className={esCalidad ? 'sup-calidad-content' : undefined}>
         {esCalidad && <section className="sup-calidad-toolbar">
-          <div className="sup-calidad-menu" ref={menuSeccionRef}>
-            <button type="button" className="sup-calidad-hamburguesa" onClick={() => setMenuSeccionAbierto(v => !v)} aria-haspopup="true" aria-expanded={menuSeccionAbierto} aria-label="Abrir menú de secciones">
-              <span className="sup-calidad-hamburguesa-icono">☰</span>
-              <span>{pestanaCalidad === 'rendimiento' ? 'Rendimiento' : 'Llamadas'}</span>
-            </button>
-            {menuSeccionAbierto && <div className="sup-calidad-menu-panel">
-              <button className={pestanaCalidad === 'llamadas' ? 'activo' : ''} onClick={() => { setPestanaCalidad('llamadas'); setMenuSeccionAbierto(false) }}>Llamadas</button>
-              <button className={pestanaCalidad === 'rendimiento' ? 'activo' : ''} onClick={() => { setPestanaCalidad('rendimiento'); setMenuSeccionAbierto(false) }}>Rendimiento</button>
-            </div>}
-          </div>
           <div className="sup-calidad-toolbar-controls">
             {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <>
               <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
@@ -952,6 +941,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             {cargandoRendimiento && <div className="sup-calidad-sin-datos">Cargando métricas del equipo…</div>}
           </div>}
         </section>}
+        </div>
+        </div>
       </main>
 
       {esCalidad && clienteCalidad && (

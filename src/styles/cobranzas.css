@@ -1016,3 +1016,15 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranzas-topbar-stat.blue strong{color:#2563eb}
 .cobranzas-topbar-stat.purple strong{color:#8b5cf6}
 @media(max-width:850px){.cobranzas-topbar-stats{display:none}}
+/* Panel de secciones de Calidad/Super de Calidad: antes era un menu
+   hamburguesa desplegable, ahora una columna fija a la izquierda. */
+.sup-calidad-layout{display:flex;align-items:flex-start;gap:16px}
+.sup-calidad-sidebar{width:168px;min-width:168px;background:#fff;border:1px solid #e6eaf1;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;position:sticky;top:16px}
+.sup-calidad-nav{display:flex;align-items:center;gap:8px;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:#475569;font:600 12px inherit;cursor:pointer;text-align:left;width:100%;transition:all .15s ease}
+.sup-calidad-nav:hover{background:#f0fdfa;color:#0f766e}
+.sup-calidad-nav.active{background:#0f766e;color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(15,118,110,.28)}
+.sup-calidad-content{flex:1;min-width:0}
+@media(max-width:850px){
+  .sup-calidad-layout{flex-direction:column}
+  .sup-calidad-sidebar{width:100%;min-width:0;flex-direction:row;position:static;overflow-x:auto}
+}
