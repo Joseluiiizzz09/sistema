@@ -1318,6 +1318,7 @@ export default function Jefatura() {
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
+      ['FECHA DE INSTALACIÓN', v => v.fecha_instalado ? formatF(soloFecha(v.fecha_instalado)) : '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
