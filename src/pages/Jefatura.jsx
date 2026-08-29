@@ -1273,11 +1273,10 @@ export default function Jefatura() {
     return texto.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim()).map(linea => {
       const cols = linea.split('\t')
       return {
-        nombre: (cols[0] || '').trim(),
-        documento: (cols[1] || '').trim(),
-        sot: (cols[2] || '').trim(),
-        fecha_oficial: (cols[3] || '').trim(),
-        codigo_pago: (cols[4] || '').trim(),
+        documento: (cols[0] || '').trim(),
+        sot: (cols[1] || '').trim(),
+        fecha_oficial: (cols[2] || '').trim(),
+        codigo_pago: (cols[3] || '').trim(),
       }
     })
   }
@@ -2007,7 +2006,7 @@ export default function Jefatura() {
               <textarea
                 value={cobCodigosTexto}
                 onChange={e=>setCobCodigosTexto(e.target.value)}
-                placeholder={'Pega aquí las filas copiadas de la hoja de cálculo (Nombres y apellidos, Número de doc, SOT, Fecha oficial, Código de pago)'}
+                placeholder={'Pega aquí las filas copiadas de la hoja de cálculo (Número de doc, SOT, Fecha oficial, Código de pago)'}
                 rows={8}
                 style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'monospace',fontSize:11.5,resize:'vertical'}}
               />
@@ -2034,13 +2033,13 @@ export default function Jefatura() {
                   <div className="tabla-header"><span className="tabla-title">Resultado del cruce</span><span className="tabla-count">{cobCodigosResultado.resultados.length} filas</span></div>
                   <div style={{overflowX:'auto'}}><table className="tabla">
                     <thead><tr>
-                      <th>Nombre (pegado)</th><th>Documento</th><th>SOT</th><th>Código de pago</th>
+                      <th>Nombre (sistema)</th><th>Documento</th><th>SOT</th><th>Código de pago</th>
                       <th>Vendedor</th><th>Sala</th><th>Tel. 1</th><th>Tel. 2</th><th>Estado</th>
                     </tr></thead>
                     <tbody>
                       {cobCodigosResultado.resultados.map((r, i) => (
                         <tr key={i}>
-                          <td>{r.nombre || '—'}</td>
+                          <td>{r.nombre_sistema || '—'}</td>
                           <td>{r.documento || '—'}</td>
                           <td>{r.sot || '—'}</td>
                           <td>{r.codigo_pago || '—'}</td>
