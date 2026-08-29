@@ -338,7 +338,7 @@
 
 .cobranzas-table-scroll {
   overflow: auto;
-  max-height: calc(100vh - 390px);
+  max-height: calc(100vh - 300px);
 }
 
 .cobranzas-table-card table {
