@@ -751,6 +751,17 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranzas-table-scroll{overflow-x:auto;overflow-y:auto}
 .cobranzas-table-card table{width:100%;min-width:1100px;table-layout:fixed}
 .calidad-tabla-flat table{min-width:1800px}
+.cobranza-tabla-flat table{min-width:1266px}
+.cobranza-tabla-flat th:nth-child(1){width:36px}
+.cobranza-tabla-flat th:nth-child(2){width:180px}
+.cobranza-tabla-flat th:nth-child(3){width:90px}
+.cobranza-tabla-flat th:nth-child(4){width:80px}
+.cobranza-tabla-flat th:nth-child(5),.cobranza-tabla-flat th:nth-child(6){width:90px}
+.cobranza-tabla-flat th:nth-child(7){width:160px}
+.cobranza-tabla-flat th:nth-child(8){width:100px}
+.cobranza-tabla-flat th:nth-child(9){width:170px}
+.cobranza-tabla-flat th:nth-child(10){width:110px}
+.cobranza-tabla-flat th:nth-child(11){width:160px}
 .cobranzas-table-card th,.cobranzas-table-card td{box-sizing:border-box;padding-left:9px;padding-right:9px;overflow-wrap:anywhere;word-break:normal}
 .cobranzas-table-card th{font-size:8.5px;line-height:1.2}
 .cobranzas-table-card td{font-size:10px;line-height:1.35}
