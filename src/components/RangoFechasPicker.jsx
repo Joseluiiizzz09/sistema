@@ -82,7 +82,7 @@ export default function RangoFechasPicker({ desde, hasta, onChange }) {
           </div>
           <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}>
             <button type="button" onClick={()=>{onChange({desde:'',hasta:''}); setOpen(false)}} style={{fontSize:11,color:'#6b7280',border:'none',background:'none',cursor:'pointer'}}>Limpiar</button>
-            <button type="button" onClick={()=>{const hoy = new Date().toISOString().split('T')[0]; onChange({desde:hoy,hasta:hoy}); setOpen(false)}} style={{fontSize:11,color:'#dc2626',border:'none',background:'none',cursor:'pointer',fontWeight:700}}>Hoy</button>
+            <button type="button" onClick={()=>{const d=new Date(); const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; onChange({desde:hoy,hasta:hoy}); setOpen(false)}} style={{fontSize:11,color:'#dc2626',border:'none',background:'none',cursor:'pointer',fontWeight:700}}>Hoy</button>
           </div>
         </div>, document.body)}
     </>

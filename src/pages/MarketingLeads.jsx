@@ -27,7 +27,10 @@ function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor|
 // ofrecer estas para filtrar, no cualquier texto libre historico que haya
 // quedado guardado en tipif_vend/tipif_back/tipif_back_2.
 const TIPIF_VEND_VENTAS_ACTUALES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR','SIN TIPIFICAR']
-function fechaHoy() { return new Date().toISOString().split('T')[0] }
+// OJO: toISOString() usa UTC, no la hora local — Lima va 5h detrás de UTC,
+// así que entre las 7pm y medianoche (hora Lima) esto devolvía "mañana" en
+// vez de "hoy" (el reporte cargaba con rango de fechas por defecto vacío).
+function fechaHoy() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 
 // Exportación genérica a Excel: recibe filas ya filtradas (nunca solo la
 // página visible) y una lista de columnas [encabezado, getter(fila)].

@@ -180,7 +180,11 @@ function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor|
 // ofrecer estas para filtrar, no cualquier texto libre historico que haya
 // quedado guardado en tipif_vend/tipif_back/tipif_back_2.
 const TIPIF_VEND_VENTAS_ACTUALES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR','SIN TIPIFICAR']
-function fechaHoy()    { return new Date().toISOString().split('T')[0] }
+// OJO: toISOString() usa UTC, no la hora local — como Lima va 5h detrás de
+// UTC, entre las 7pm y medianoche (hora Lima) esto devolvía "mañana" en vez
+// de "hoy" (reportes con rango de fechas por defecto vacíos toda esa
+// ventana). Usar componentes locales de Date, igual que horaAhora() de al lado.
+function fechaHoy()    { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 function horaAhora()   { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function mesActual()   { return fechaHoy().slice(0,7) }
 function formatF(f)    { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
