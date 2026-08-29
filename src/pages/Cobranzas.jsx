@@ -772,8 +772,10 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             {clientesPorMes.filter(grupo => grupo.clave !== 'sin-fecha').map(grupo => {
               const pendientes = grupo.clientes.filter(c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'PENDIENTE').length
               const conformesMes = grupo.clientes.filter(c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'SATISFECHO').length
-              const gestionados = grupo.clientes.length - pendientes
-              const pctMes = gestionados ? Math.round((conformesMes / gestionados) * 100) : 0
+              // Mismo criterio que "GLOBAL · % CONFORMIDAD" en Rendimiento: sobre el
+              // TOTAL del mes, no solo lo ya gestionado — si no, un mes recién cargado
+              // con casi todo pendiente muestra un % artificialmente alto.
+              const pctMes = grupo.clientes.length ? Math.round((conformesMes / grupo.clientes.length) * 100) : 0
               return (
                 <button type="button" key={grupo.clave} className="calidad-mes-card" onClick={() => {
                   const [anio, mes] = grupo.clave.split('-')
