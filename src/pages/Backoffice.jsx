@@ -3840,16 +3840,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <div id="campana-edit-title" className="numero-edit-title">Editar campaña</div>
             <div className="numero-edit-sub">Actualiza la campaña correspondiente a este lead.</div>
             <label>Campaña <span>*</span></label>
-            <input
-              autoFocus
-              value={campanaModal.valor}
-              maxLength={100}
-              onChange={e=>setCampanaModal(p=>({...p,valor:e.target.value}))}
-              onKeyDown={e=>{
-                if(e.key==='Enter') guardarCampanaModal()
-                if(e.key==='Escape'&&!campanaModal.guardando) setCampanaModal(null)
-              }}
-            />
+            <CampanaSelect value={campanaModal.valor} onChange={v=>setCampanaModal(p=>({...p,valor:v}))} plain />
             <div className="numero-edit-actions">
               <button type="button" className="numero-edit-cancel"
                 onClick={()=>setCampanaModal(null)} disabled={campanaModal.guardando}>Cancelar</button>
