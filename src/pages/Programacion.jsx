@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/programacion.css'
@@ -367,12 +368,12 @@ export default function Programacion() {
                 <tr>
                   <th>#</th><th>Fecha</th><th>Nombre</th><th>DNI</th>
                   <th>Asesor</th><th>Sala</th><th>Distrito</th>
-                  <th>Paquete</th><th>Estado</th><th>Obs. Programación</th><th>Acción</th>
+                  <th>Paquete</th><th>Estado</th><th>Canal</th><th>Obs. Programación</th><th>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {ventasFiltradas.length === 0 ? (
-                  <tr className="tabla-empty"><td colSpan="11">Sin registros con esos filtros.</td></tr>
+                  <tr className="tabla-empty"><td colSpan="12">Sin registros con esos filtros.</td></tr>
                 ) : ventasFiltradas.map((v, i) => {
                   const fecha = formatF((v.created_at || '').split(' ')[0])
                   const estadoRaw = estadoVisible(v)
@@ -389,6 +390,7 @@ export default function Programacion() {
                       <td style={{ fontSize: '11px' }}>{v.distrito || '—'}</td>
                       <td style={{ fontSize: '11px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v.paquete || ''}>{v.paquete || '—'}</td>
                       <td><span className={`badge ${cls}`}>{estadoLabel}</span></td>
+                      <td style={{ textAlign: 'center' }}><CanalBadge canal={v.canal} /></td>
                       <td style={{ fontSize: '11px', color: '#6b7280', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.obs_programacion || '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

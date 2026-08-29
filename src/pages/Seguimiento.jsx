@@ -6,6 +6,7 @@ import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import WhatsappSeguimientoBoton from '../components/WhatsappSeguimientoBoton'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/seguimiento.css'
@@ -672,6 +673,7 @@ export default function Seguimiento() {
                   <th className="th-fecha">FECHA PREVENTA</th>
                   <th>OBS. PROGRAMACIÓN</th>
                   <th className="th-est">ESTADO</th>
+                  <th>CANAL</th>
                   <th>SOT</th>
                   <th className="th-tramo">TRAMO</th>
                   <th className="th-comment">COMENTARIO</th>
@@ -691,7 +693,7 @@ export default function Seguimiento() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="19" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
+                  <tr><td colSpan="20" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
                 ) : ventasPag.map(v => {
                   const est     = estadoObj(v._estadoSeg)
                   const motCls  = motivoBadgeCls(v._motivoRech)
@@ -725,6 +727,7 @@ export default function Seguimiento() {
                           {est.label}
                         </span>
                       </td>
+                      <td style={{ textAlign:'center' }}><CanalBadge canal={v.canal} /></td>
                       <td style={{ textAlign:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
                           <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color:'#374151' }}>{v.sot || '—'}</span>

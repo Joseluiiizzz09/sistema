@@ -1052,3 +1052,7 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
   .sup-calidad-layout{flex-direction:column}
   .sup-calidad-sidebar{width:100%;min-width:0;flex-direction:row;position:static;overflow-x:auto}
 }
+.badge-canal{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap;}
+.badge-canal-netcontact{background:#eef2ff;color:#4338ca;}
+.badge-canal-kels{background:#fdf4ff;color:#a21caf;}
+.badge-canal-sin{background:#f3f4f6;color:#6b7280;}

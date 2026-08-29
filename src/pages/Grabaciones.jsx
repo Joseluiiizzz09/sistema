@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
@@ -620,6 +621,7 @@ export default function Grabaciones() {
                 <tr>
                   <th style={{width:330,minWidth:330}}>ACCIONES</th>
                   <th style={{width:110}}>ESTADO GRAB.</th>
+                  <th style={{width:90}}>CANAL</th>
                   <th style={{width:130}}>RESULTADO SUP.</th>
                   <th style={{width:90}}>HORA</th>
                   <th style={{width:120}}>FECHA</th>
@@ -638,7 +640,7 @@ export default function Grabaciones() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr><td colSpan={16} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
+                  ? <tr><td colSpan={17} className="tabla-empty">{tabActiva==='hoy'?'No hay ventas validadas para hoy.':'No hay ventas pendientes.'}</td></tr>
                   : paginaVentas.map(v => {
                       const esAnterior = v._fechaGrab < hoy
                       const tieneAudio = !!v._grabAudio
@@ -657,6 +659,7 @@ export default function Grabaciones() {
                             </div>
                           </td>
                           <td><span className={`badge-grab ${eg.cls}`}>{eg.id==='grabando' && v.grabando_por_nombre ? `GRABANDO ${primerNombre(v.grabando_por_nombre).toUpperCase()}` : eg.label}</span></td>
+                          <td><CanalBadge canal={v.canal} /></td>
                           <td>
                             {v._estadoSupGrab === 'observado'
                               ? <span className="badge-grab bg-observado">OBSERVADO</span>

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
@@ -415,6 +416,7 @@ export default function SupGrabaciones() {
                 <tr>
                   <th style={{ minWidth: '240px' }}>ACCIONES</th>
                   <th style={{ minWidth: '110px' }}>ESTADO REV.</th>
+                  <th style={{ minWidth: '90px' }}>CANAL</th>
                   <th style={{ minWidth: '105px' }}>RESULTADO</th>
                   <th style={{ minWidth: '110px' }}>SOT</th>
                   <th style={{ minWidth: '100px' }}>FECHA</th>
@@ -431,7 +433,7 @@ export default function SupGrabaciones() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="14" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
+                  <tr><td colSpan="15" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
                 ) : ventasPag.map(v => {
                   const badge    = BADGE_MAP[v.estadoRev] || BADGE_MAP.sin_revisar
                   const ultimaObs = v.obsSup
@@ -451,6 +453,7 @@ export default function SupGrabaciones() {
                           {badge.label}
                         </span>
                       </td>
+                      <td><CanalBadge canal={v.canal} /></td>
                       <td>
                         {['aprobado','conforme','observado','no_conforme','rechazado'].includes(v.estadoRev)
                           ? <span className={`badge-grab ${['aprobado','conforme'].includes(v.estadoRev) ? 'bg-grabado' : 'bg-observado'}`}>

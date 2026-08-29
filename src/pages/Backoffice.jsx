@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
@@ -1004,6 +1005,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           venta_confirmada: Number(l.venta_confirmada || 0),
           ventaDocumento: l.venta_documento || '',
           ventaTipoDoc: l.venta_tipo_doc || '',
+          ventaCanal: l.venta_canal || '',
           tipifInterna: l.tipif_interna || '',
           tipifInternaColor: l.tipif_interna_color || '',
           tipifInternaArea: l.tipif_interna_area || '',
@@ -2871,6 +2873,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                       {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                     </select>}
+                                {r.ventaCanal && <CanalBadge canal={r.ventaCanal} />}
                                 {documentoVenta(r)&&(
                                   <button type="button" className="btn-dni-cuaderno"
                                     title={`Ver ${documentoVenta(r).tipo} registrado en Ventas`}

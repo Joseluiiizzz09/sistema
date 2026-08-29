@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/validacion.css'
@@ -38,6 +39,11 @@ const TIP_BTNS = [
   { id:'mala_oferta',     label:'MALA OFERTA',       cls:'be-malaoferta' },
   { id:'venta',           label:'VENTA',             cls:'be-venta' },
   { id:'validado',        label:'VALIDADO',         cls:'be-validado' },
+]
+
+const CANAL_BTNS = [
+  { id:'NETCONTACT', label:'NETCONTACT', cls:'be-canal-netcontact' },
+  { id:'KELS',       label:'KELS',       cls:'be-canal-kels' },
 ]
 
 const ESTADOS_OK    = ['validado','instalado','programado','grabado','aprobado','en_ejecucion','caida','rechazo_campo','tecnico_casa']
@@ -188,6 +194,7 @@ export default function Validacion() {
   // ── Modal tipificación ──
   const [modalEst,      setModalEst]      = useState({ open:false, id:null })
   const [tipSel,        setTipSel]        = useState('')
+  const [canalSel,      setCanalSel]      = useState('')
   const [nuevaObsModal, setNuevaObsModal] = useState('')
   const [guardandoTipificacion, setGuardandoTipificacion] = useState(false)
   const guardandoTipificacionRef = useRef(false)
@@ -278,6 +285,7 @@ export default function Validacion() {
     if (!v) return
     setModalEst({ open:true, id })
     setTipSel(v.estadoVal !== 'venta' ? v.estadoVal : '')
+    setCanalSel(v.canal || '')
     setNuevaObsModal('')
   }
 
@@ -295,6 +303,11 @@ export default function Validacion() {
       return
     }
 
+    if ((tipSel === 'venta' || tipSel === 'validado') && !canalSel && !v.canal) {
+      mostrarToast('Selecciona el canal (NETCONTACT o KELS) antes de guardar')
+      return
+    }
+
     guardandoTipificacionRef.current = true
     setGuardandoTipificacion(true)
     try {
@@ -305,6 +318,7 @@ export default function Validacion() {
           tipificacion: tipSel || null,
           observacion: nuevaObsModal.trim() || null,
           estadoAnteriorEsperado: v.estado,
+          canal: canalSel || null,
         }),
       })
 
@@ -471,6 +485,7 @@ export default function Validacion() {
                 <tr>
                   <th className="th-accion">ACCIÓN</th>
                   <th className="th-estado">ESTADO VENTA</th>
+                  <th>CANAL</th>
                   <th className="th-fecha">FECHA INGRESO</th>
                   <th className="th-nombre">NOMBRE Y APELLIDOS</th>
                   <th className="th-dni">DNI / DOC.</th>
@@ -496,7 +511,7 @@ export default function Validacion() {
               </thead>
               <tbody>
                 {paginaVentas.length === 0
-                  ? <tr className="tabla-empty"><td colSpan={23}>Sin registros.</td></tr>
+                  ? <tr className="tabla-empty"><td colSpan={24}>Sin registros.</td></tr>
                   : paginaVentas.map(v => {
                       const mostrar  = v.estadoVal
                       const eObj     = estadoObj(mostrar)
@@ -519,6 +534,7 @@ export default function Validacion() {
                               {eObj.label}
                             </span>
                           </td>
+                          <td style={{textAlign:'center'}}><CanalBadge canal={v.canal} /></td>
                           <td style={{color:'#185FA5',fontWeight:700,fontFamily:'monospace',fontSize:10,whiteSpace:'nowrap'}}>
                             {formatF(v.fechaIngreso)}<br />
                             <span style={{color:'#9ca3af',fontWeight:400}}>{v.horaIngreso||''}</span>
@@ -611,6 +627,23 @@ export default function Validacion() {
                       key={btn.id}
                       className={`tip-val-btn ${btn.cls}${tipSel===btn.id?' activo':''}`}
                       onClick={()=>setTipSel(prev=>prev===btn.id?'':btn.id)}
+                      style={{padding:'8px 14px',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'inherit',cursor:'pointer',transition:'all .15s'}}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Canal de la venta */}
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:.3,marginBottom:8}}>Seleccionar canal</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {CANAL_BTNS.map(btn => (
+                    <button
+                      key={btn.id}
+                      className={`tip-val-btn ${btn.cls}${canalSel===btn.id?' activo':''}`}
+                      onClick={()=>setCanalSel(prev=>prev===btn.id?'':btn.id)}
                       style={{padding:'8px 14px',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'inherit',cursor:'pointer',transition:'all .15s'}}
                     >
                       {btn.label}
