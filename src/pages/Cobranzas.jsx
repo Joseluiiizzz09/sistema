@@ -800,7 +800,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           </div>
         </section>
         ) : esCalidad ? (
-        <section className="cobranzas-table-card">
+        <section className="cobranzas-table-card calidad-tabla-flat">
           <div className="cobranzas-table-title">
             <strong>Llamadas de Calidad</strong>
             <span>{filtrados.length} registros</span>

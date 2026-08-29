@@ -749,25 +749,26 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
    de posición y el ancho que le tocaba a cada una dejaba de tener sentido —
    así se comprimieron "Gestionar calidad" y "Estado final" al agregar Canal). */
 .cobranzas-table-scroll{overflow-x:auto;overflow-y:auto}
-.cobranzas-table-card table{width:100%;min-width:1800px;table-layout:fixed}
+.cobranzas-table-card table{width:100%;min-width:1100px;table-layout:fixed}
+.calidad-tabla-flat table{min-width:1800px}
 .cobranzas-table-card th,.cobranzas-table-card td{box-sizing:border-box;padding-left:9px;padding-right:9px;overflow-wrap:anywhere;word-break:normal}
 .cobranzas-table-card th{font-size:8.5px;line-height:1.2}
 .cobranzas-table-card td{font-size:10px;line-height:1.35}
-.cobranzas-table-card th:nth-child(1){width:36px}
-.cobranzas-table-card th:nth-child(2){width:170px}
-.cobranzas-table-card th:nth-child(3){width:90px}
-.cobranzas-table-card th:nth-child(4){width:80px}
-.cobranzas-table-card th:nth-child(5),.cobranzas-table-card th:nth-child(6){width:90px}
-.cobranzas-table-card th:nth-child(7){width:150px}
-.cobranzas-table-card th:nth-child(8){width:100px}
-.cobranzas-table-card th:nth-child(9){width:140px}
-.cobranzas-table-card th:nth-child(10){width:90px}
-.cobranzas-table-card th:nth-child(11){width:140px}
-.cobranzas-table-card th:nth-child(12){width:110px}
-.cobranzas-table-card th:nth-child(13){width:110px}
-.cobranzas-table-card th:nth-child(14){width:150px}
-.cobranzas-table-card th:nth-child(15){width:90px}
-.cobranzas-table-card th:nth-child(16){width:160px}
+.calidad-tabla-flat th:nth-child(1){width:36px}
+.calidad-tabla-flat th:nth-child(2){width:170px}
+.calidad-tabla-flat th:nth-child(3){width:90px}
+.calidad-tabla-flat th:nth-child(4){width:80px}
+.calidad-tabla-flat th:nth-child(5),.calidad-tabla-flat th:nth-child(6){width:90px}
+.calidad-tabla-flat th:nth-child(7){width:150px}
+.calidad-tabla-flat th:nth-child(8){width:100px}
+.calidad-tabla-flat th:nth-child(9){width:140px}
+.calidad-tabla-flat th:nth-child(10){width:90px}
+.calidad-tabla-flat th:nth-child(11){width:140px}
+.calidad-tabla-flat th:nth-child(12){width:110px}
+.calidad-tabla-flat th:nth-child(13){width:110px}
+.calidad-tabla-flat th:nth-child(14){width:150px}
+.calidad-tabla-flat th:nth-child(15){width:90px}
+.calidad-tabla-flat th:nth-child(16){width:160px}
 .cobranzas-name,.cobranzas-vendedor,.calidad-responsable,.calidad-gestion-cell,.calidad-comentario-col{min-width:0;max-width:none}
 .calidad-gestion-btn{width:100%;min-width:0;padding:8px 9px}
 .calidad-estado-final{white-space:nowrap}
