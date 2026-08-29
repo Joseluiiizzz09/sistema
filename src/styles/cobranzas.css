@@ -1019,10 +1019,12 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 /* Panel de secciones de Calidad/Super de Calidad: antes era un menu
    hamburguesa desplegable, ahora una columna fija a la izquierda. */
 .sup-calidad-layout{display:flex;align-items:flex-start;gap:16px}
-.sup-calidad-sidebar{width:168px;min-width:168px;background:#fff;border:1px solid #e6eaf1;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;position:sticky;top:16px}
-.sup-calidad-nav{display:flex;align-items:center;gap:8px;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:#475569;font:600 12px inherit;cursor:pointer;text-align:left;width:100%;transition:all .15s ease}
+.sup-calidad-sidebar{width:188px;min-width:188px;background:#fff;border:1px solid #e6eaf1;border-radius:12px;padding:12px 8px;display:flex;flex-direction:column;gap:1px;position:sticky;top:16px}
+.sup-calidad-sidebar-sep{font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px}
+.sup-calidad-nav{display:flex;align-items:center;gap:8px;padding:8px 12px;border:none;border-radius:9px;background:transparent;color:#475569;font:600 12px inherit;cursor:pointer;text-align:left;width:100%;transition:all .18s ease}
+.sup-calidad-nav-icon{width:18px;height:18px;flex:0 0 18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .sup-calidad-nav:hover{background:#f0fdfa;color:#0f766e}
-.sup-calidad-nav.active{background:#0f766e;color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(15,118,110,.28)}
+.sup-calidad-nav.active{background:linear-gradient(135deg,#14b8a6,#0f766e);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(15,118,110,.35)}
 .sup-calidad-content{flex:1;min-width:0}
 @media(max-width:850px){
   .sup-calidad-layout{flex-direction:column}
