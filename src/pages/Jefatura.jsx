@@ -480,6 +480,7 @@ export default function Jefatura() {
 
   /* dashboard de leads para Marketing — exclusivo de esta vista de Jefatura */
   const [marketingVista, setMarketingVista] = useState('ventas')
+  const [ordenCampanas, setOrdenCampanas] = useState('total')
   const [marketingFiltros, setMarketingFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingData, setMarketingData] = useState([])
   const [marketingCatalogos, setMarketingCatalogos] = useState({ campanas:[], tipificaciones:[] })
@@ -1026,9 +1027,11 @@ export default function Jefatura() {
       actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
       porCampana.set(fila.campana, actual)
     })
-    const campanas = [...porCampana.values()].sort((a,b) => b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+    const campanas = [...porCampana.values()].sort((a,b) => ordenCampanas==='ventas'
+      ? (b.ventas-a.ventas || b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+      : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
     return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
-  }, [marketingData])
+  }, [marketingData, ordenCampanas])
 
   function exportarMarketingExcel() {
     descargarExcel(marketingData, [
@@ -1054,9 +1057,11 @@ export default function Jefatura() {
       actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
       porCampana.set(fila.campana, actual)
     })
-    const campanas = [...porCampana.values()].sort((a,b) => b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+    const campanas = [...porCampana.values()].sort((a,b) => ordenCampanas==='ventas'
+      ? (b.ventas-a.ventas || b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+      : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
     return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
-  }, [marketingReclData])
+  }, [marketingReclData, ordenCampanas])
 
   function exportarMarketingReclExcel() {
     descargarExcel(marketingReclData, [
@@ -1724,7 +1729,16 @@ export default function Jefatura() {
 
             <div className="marketing-grid">
               <div className="chart-card marketing-ranking">
-                <div className="chart-title-row"><span>Volumen de leads por campaña</span>{marketingCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="chart-title-row">
+                  <span>Volumen de leads por campaña</span>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{display:'flex',gap:2}}>
+                      <button type="button" onClick={()=>setOrdenCampanas('total')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='total'?'#0f172a':'#fff',color:ordenCampanas==='total'?'#fff':'#374151',cursor:'pointer'}}>Leads</button>
+                      <button type="button" onClick={()=>setOrdenCampanas('ventas')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='ventas'?'#0f172a':'#fff',color:ordenCampanas==='ventas'?'#fff':'#374151',cursor:'pointer'}}>Ventas</button>
+                    </div>
+                    {marketingCarga.cargando&&<small>Actualizando…</small>}
+                  </div>
+                </div>
                 <div className="marketing-barras">
                   {resumenMarketing.campanas.length===0 && !marketingCarga.cargando
                     ? <div className="marketing-vacio">No hay leads para los filtros seleccionados.</div>
@@ -1772,7 +1786,16 @@ export default function Jefatura() {
 
             <div className="marketing-grid">
               <div className="chart-card marketing-ranking">
-                <div className="chart-title-row"><span>Volumen de leads por campaña</span>{marketingReclCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="chart-title-row">
+                  <span>Volumen de leads por campaña</span>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{display:'flex',gap:2}}>
+                      <button type="button" onClick={()=>setOrdenCampanas('total')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='total'?'#0f172a':'#fff',color:ordenCampanas==='total'?'#fff':'#374151',cursor:'pointer'}}>Leads</button>
+                      <button type="button" onClick={()=>setOrdenCampanas('ventas')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='ventas'?'#0f172a':'#fff',color:ordenCampanas==='ventas'?'#fff':'#374151',cursor:'pointer'}}>Ventas</button>
+                    </div>
+                    {marketingReclCarga.cargando&&<small>Actualizando…</small>}
+                  </div>
+                </div>
                 <div className="marketing-barras">
                   {resumenMarketingRecl.campanas.length===0 && !marketingReclCarga.cargando
                     ? <div className="marketing-vacio">No hay leads para los filtros seleccionados.</div>
