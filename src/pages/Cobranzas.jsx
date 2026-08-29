@@ -315,6 +315,10 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
         return { clave, label, clientes: clientesMes }
       })
   }, [filtrados])
+  // Resumen mensual (tarjetas) solo como landing por defecto de "Llamadas":
+  // en cuanto haya un rango de fechas o una búsqueda activa, se muestra la
+  // tabla plana filtrada (clic en una tarjeta de mes fija ese rango).
+  const mostrarMesesCalidad = esCalidad && pestanaCalidad === 'llamadas' && !desde && !hasta && !busqueda.trim()
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
@@ -761,9 +765,42 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           <button onClick={limpiar}>Limpiar</button>
         </section>
 
-        {esCalidad ? (
+        {esCalidad && mostrarMesesCalidad ? (
+        <section className="calidad-meses-resumen">
+          <div className="cobranzas-table-title"><strong>Llamadas de Calidad</strong><span>{clientes.length} registros</span></div>
+          <div className="calidad-meses-grid">
+            {clientesPorMes.filter(grupo => grupo.clave !== 'sin-fecha').map(grupo => {
+              const pendientes = grupo.clientes.filter(c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'PENDIENTE').length
+              const conformesMes = grupo.clientes.filter(c => String(c.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase() === 'SATISFECHO').length
+              const gestionados = grupo.clientes.length - pendientes
+              const pctMes = gestionados ? Math.round((conformesMes / gestionados) * 100) : 0
+              return (
+                <button type="button" key={grupo.clave} className="calidad-mes-card" onClick={() => {
+                  const [anio, mes] = grupo.clave.split('-')
+                  const ultimoDia = new Date(Number(anio), Number(mes), 0).getDate()
+                  setDesde(`${grupo.clave}-01`); setHasta(`${grupo.clave}-${String(ultimoDia).padStart(2, '0')}`)
+                }}>
+                  <div className="calidad-mes-card-header">
+                    <span className="calidad-mes-nombre">{grupo.label}</span>
+                    <span className="calidad-mes-total">{grupo.clientes.length} clientes</span>
+                  </div>
+                  <div className="calidad-mes-barra"><i style={{ width: `${pctMes}%` }} /></div>
+                  <div className="calidad-mes-footer">
+                    <span className="calidad-mes-pct">{pctMes}% conformidad</span>
+                    <span className="calidad-mes-pendientes">{pendientes} pendientes</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+        ) : esCalidad ? (
         <section className="cobranzas-table-card">
-          <div className="cobranzas-table-title"><strong>Llamadas de Calidad</strong><span>{filtrados.length} registros</span></div>
+          <div className="cobranzas-table-title">
+            <strong>Llamadas de Calidad</strong>
+            <span>{filtrados.length} registros</span>
+            {(desde || hasta) && <button type="button" className="calidad-volver-meses" onClick={() => { setDesde(''); setHasta('') }}>← Todos los meses</button>}
+          </div>
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
