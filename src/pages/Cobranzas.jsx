@@ -176,6 +176,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [ordenPendientesPrimero, setOrdenPendientesPrimero] = useState(false)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
+  const [sidebarCalidadAbierto, setSidebarCalidadAbierto] = useState(() => sessionStorage.getItem('nc_calidad_sidebar') !== 'cerrado')
   const [fechaKpiCalidad, setFechaKpiCalidad] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }))
   const [cargandoRendimiento, setCargandoRendimiento] = useState(false)
   const [mesRendimiento, setMesRendimiento] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone:'America/Lima' }).slice(0, 7))
@@ -679,6 +680,21 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <img className="cobranzas-wordmark" src="/assets/krono-wordmark.png" alt="KRONO" />
             <span>PANEL DE {areaNombre.toUpperCase()}</span>
           </div>
+          {esCalidad && (
+            <button
+              type="button"
+              className={`sup-calidad-sidebar-toggle${sidebarCalidadAbierto ? ' abierto' : ''}`}
+              aria-label={sidebarCalidadAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+              title={sidebarCalidadAbierto ? 'Ocultar menú' : 'Mostrar menú'}
+              onClick={() => setSidebarCalidadAbierto(valor => {
+                const nuevo = !valor
+                sessionStorage.setItem('nc_calidad_sidebar', nuevo ? 'abierto' : 'cerrado')
+                return nuevo
+              })}
+            >
+              <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13" rx="2.5"/><path d="M7 3v12"/></svg>
+            </button>
+          )}
         </div>
         {!esCalidad && <div className="cobranzas-topbar-stats" aria-label="Resumen de instalados">
           <div className="cobranzas-topbar-stat"><strong>{clientes.length}</strong><span>Total</span></div>
@@ -698,7 +714,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       <main className="cobranzas-main">
         <div className={esCalidad ? 'sup-calidad-layout' : undefined}>
         {esCalidad && (
-          <aside className="sup-calidad-sidebar">
+          <aside className={`sup-calidad-sidebar${sidebarCalidadAbierto ? '' : ' cerrado'}`} aria-hidden={!sidebarCalidadAbierto}>
             <div className="sup-calidad-sidebar-sep">Secciones</div>
             <button type="button" className={`sup-calidad-nav${pestanaCalidad==='llamadas'?' active':''}`} onClick={() => setPestanaCalidad('llamadas')}>
               <svg className="sup-calidad-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
