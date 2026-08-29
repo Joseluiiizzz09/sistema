@@ -13,9 +13,9 @@ import { CAMPANAS } from '../utils/campanas'
 import '../styles/backoffice.css'
 
 // ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
-function CampanaSelect({ value, onChange, plain }) {
-  const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
-  const [manualConfirmada, setManualConfirmada] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
+function CampanaSelect({ value, onChange, plain, sinOtro }) {
+  const [manual, setManual] = useState(() => !sinOtro && Boolean(value) && !CAMPANAS.includes(value))
+  const [manualConfirmada, setManualConfirmada] = useState(() => !sinOtro && Boolean(value) && !CAMPANAS.includes(value))
   if (manual) {
     if (manualConfirmada && String(value || '').trim()) {
       return (
@@ -48,7 +48,7 @@ function CampanaSelect({ value, onChange, plain }) {
       onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); setManualConfirmada(false); onChange('') } else onChange(v) }}>
       <option value="">— Selecciona —</option>
       {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
-      <option value="__OTRO__">Otro (escribir a mano)…</option>
+      {!sinOtro && <option value="__OTRO__">Otro (escribir a mano)…</option>}
     </select>
   )
 }
@@ -3840,7 +3840,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <div id="campana-edit-title" className="numero-edit-title">Editar campaña</div>
             <div className="numero-edit-sub">Actualiza la campaña correspondiente a este lead.</div>
             <label>Campaña <span>*</span></label>
-            <CampanaSelect value={campanaModal.valor} onChange={v=>setCampanaModal(p=>({...p,valor:v}))} plain />
+            <CampanaSelect value={campanaModal.valor} onChange={v=>setCampanaModal(p=>({...p,valor:v}))} plain sinOtro />
             <div className="numero-edit-actions">
               <button type="button" className="numero-edit-cancel"
                 onClick={()=>setCampanaModal(null)} disabled={campanaModal.guardando}>Cancelar</button>
