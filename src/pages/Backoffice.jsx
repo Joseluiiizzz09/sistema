@@ -2544,7 +2544,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><BoNavIcon tipo="avance" /> <span>Avance Asesores</span></button>
           <div className="bo-sidebar-registro">
             <div className="sidebar-sep">Agregar registro</div>
-            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain /></div>
+            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain sinOtro /></div>
             <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" inputMode="numeric" /></div>
             <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" inputMode="numeric" /></div>
             <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
