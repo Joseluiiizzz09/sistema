@@ -727,18 +727,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           </aside>
         )}
         <div className={esCalidad ? 'sup-calidad-content' : undefined}>
-        {esCalidad && <section className="sup-calidad-toolbar">
+        {esCalidad && modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <section className="sup-calidad-toolbar">
           <div className="sup-calidad-toolbar-controls">
-            {modoSupervisorCalidad && pestanaCalidad === 'rendimiento' && <>
-              <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
-              <label className="sup-calidad-encargado"><span>ENCARGADO</span>
-                <select value={encargadoRendimiento} onChange={e => setEncargadoRendimiento(e.target.value)}>
-                  <option value="">Todos los encargados</option>
-                  {porUsuarioRendimiento.map(persona => <option value={String(persona.id)} key={persona.id}>{persona.nombre}</option>)}
-                </select>
-              </label>
-            </>}
-            <button className="sup-calidad-actualizar" onClick={(modoSupervisorCalidad && pestanaCalidad === 'rendimiento') ? cargarRendimiento : cargar} disabled={cargando || cargandoRendimiento}>{cargando || cargandoRendimiento ? 'Cargando…' : 'Actualizar'}</button>
+            <label className="sup-calidad-fecha"><span>MES</span><input type="month" value={mesRendimiento} onChange={e => { if (e.target.value) setMesRendimiento(e.target.value) }} /></label>
+            <label className="sup-calidad-encargado"><span>ENCARGADO</span>
+              <select value={encargadoRendimiento} onChange={e => setEncargadoRendimiento(e.target.value)}>
+                <option value="">Todos los encargados</option>
+                {porUsuarioRendimiento.map(persona => <option value={String(persona.id)} key={persona.id}>{persona.nombre}</option>)}
+              </select>
+            </label>
           </div>
         </section>}
 
