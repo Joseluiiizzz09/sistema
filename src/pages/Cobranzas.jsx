@@ -159,7 +159,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [pagina, setPagina] = useState(1)
-  const [mesesAbiertos, setMesesAbiertos] = useState({})
   const [cargando, setCargando] = useState(true)
   const [mensaje, setMensaje] = useState('')
   const [guardando, setGuardando] = useState('')
@@ -319,6 +318,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   // en cuanto haya un rango de fechas o una búsqueda activa, se muestra la
   // tabla plana filtrada (clic en una tarjeta de mes fija ese rango).
   const mostrarMesesCalidad = esCalidad && pestanaCalidad === 'llamadas' && !desde && !hasta && !busqueda.trim()
+  // Mismo criterio para el panel de Cobranzas: tarjetas por mes en vez de un
+  // acordeón con TODOS los clientes de golpe (crecía sin límite, ver 1074+ registros).
+  const mostrarMesesCobranza = !esCalidad && !desde && !hasta && !busqueda.trim()
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   const instaladosHoy = clientes.filter(c => fechaISO(c.fecha_instalacion) === hoy).length
   const paquetes = new Set(clientes.map(c => String(c.paquete || '').trim()).filter(Boolean)).size
@@ -838,50 +840,72 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
             <div><button disabled={paginaSegura <= 1} onClick={() => setPagina(p => p - 1)}>‹</button><b>Página {paginaSegura} de {totalPaginas}</b><button disabled={paginaSegura >= totalPaginas} onClick={() => setPagina(p => p + 1)}>›</button></div>
           </footer>
         </section>
-        ) : (
-        <section className="cobranzas-table-card cobranzas-meses">
-          <div className="cobranzas-table-title"><strong>Listado de clientes</strong><span>{filtrados.length} registros</span></div>
-          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
-          {cargando && <div className="cobranzas-empty">Cargando clientes instalados…</div>}
-          {!cargando && !clientesPorMes.length && <div className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</div>}
-          {!cargando && clientesPorMes.map((grupo, gi) => {
-            const abierto = mesesAbiertos[grupo.clave] !== undefined ? mesesAbiertos[grupo.clave] : gi === 0
-            return (
-              <div className="cobranzas-mes-grupo" key={grupo.clave}>
-                <button type="button" className="cobranzas-mes-header" onClick={() => setMesesAbiertos(p => ({ ...p, [grupo.clave]: !abierto }))}>
-                  <span className="cobranzas-mes-nombre">{grupo.label}</span>
-                  <span className="cobranzas-mes-count">{grupo.clientes.length} clientes</span>
-                  <span className={`cobranzas-mes-flecha${abierto ? ' abierto' : ''}`}>▾</span>
-                </button>
-                {abierto && (
-                  <div className="cobranzas-table-scroll">
-                    <table>
-                      <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}</tr></thead>
-                      <tbody>
-                        {grupo.clientes.map((cliente, index) => (
-                          <tr key={cliente.id}>
-                            <td>{index + 1}</td>
-                            <td className="cobranzas-name">{cliente.nombre || '—'}</td>
-                            <td>{cliente.dni || '—'}</td><td>{cliente.sot || '—'}</td>
-                            <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
-                            <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
-                            <td>{cliente.paquete || '—'}</td>
-                            {esCobranza && (
-                              <td className="cobranza-gestion-cell">
-                                <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
-                                  <span>Gestionar cobranza</span><small>{resumenCobranza(cliente)}</small>
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+        ) : mostrarMesesCobranza ? (
+        <section className="calidad-meses-resumen">
+          <div className="cobranzas-table-title"><strong>Listado de clientes</strong><span>{clientes.length} registros</span></div>
+          <div className="calidad-meses-grid">
+            {clientesPorMes.filter(grupo => grupo.clave !== 'sin-fecha').map(grupo => {
+              const completados = grupo.clientes.filter(c => resumenCobranza(c) === 'COMPLETADO').length
+              const sinCiclo = grupo.clientes.filter(c => resumenCobranza(c) === 'SIN CICLO').length
+              const pctMes = grupo.clientes.length ? Math.round((completados / grupo.clientes.length) * 100) : 0
+              return (
+                <button type="button" key={grupo.clave} className="calidad-mes-card" onClick={() => {
+                  const [anio, mes] = grupo.clave.split('-')
+                  const ultimoDia = new Date(Number(anio), Number(mes), 0).getDate()
+                  setDesde(`${grupo.clave}-01`); setHasta(`${grupo.clave}-${String(ultimoDia).padStart(2, '0')}`)
+                }}>
+                  <div className="calidad-mes-card-header">
+                    <span className="calidad-mes-nombre">{grupo.label}</span>
+                    <span className="calidad-mes-total">{grupo.clientes.length} clientes</span>
                   </div>
-                )}
-              </div>
-            )
-          })}
+                  <div className="calidad-mes-barra"><i style={{ width: `${pctMes}%` }} /></div>
+                  <div className="calidad-mes-footer">
+                    <span className="calidad-mes-pct">{pctMes}% cobranza completa</span>
+                    <span className="calidad-mes-pendientes">{sinCiclo} sin ciclo</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+        ) : (
+        <section className="cobranzas-table-card">
+          <div className="cobranzas-table-title">
+            <strong>Listado de clientes</strong>
+            <span>{filtrados.length} registros</span>
+            {(desde || hasta) && <button type="button" className="calidad-volver-meses" onClick={() => { setDesde(''); setHasta('') }}>← Todos los meses</button>}
+          </div>
+          {mensaje && <div className="cobranzas-error">{mensaje}</div>}
+          <div className="cobranzas-table-scroll">
+            <table>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}</tr></thead>
+              <tbody>
+                {!cargando && visibles.map((cliente, index) => (
+                  <tr key={cliente.id}>
+                    <td>{(paginaSegura - 1) * PAGE_SIZE + index + 1}</td>
+                    <td className="cobranzas-name">{cliente.nombre || '—'}</td>
+                    <td>{cliente.dni || '—'}</td><td>{cliente.sot || '—'}</td>
+                    <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
+                    <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
+                    <td>{cliente.paquete || '—'}</td>
+                    {esCobranza && (
+                      <td className="cobranza-gestion-cell">
+                        <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
+                          <span>Gestionar cobranza</span><small>{resumenCobranza(cliente)}</small>
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 10 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCobranza ? 10 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <footer className="cobranzas-pagination">
+            <span>Mostrando {visibles.length ? (paginaSegura - 1) * PAGE_SIZE + 1 : 0}–{(paginaSegura - 1) * PAGE_SIZE + visibles.length} de {filtrados.length}</span>
+            <div><button disabled={paginaSegura <= 1} onClick={() => setPagina(p => p - 1)}>‹</button><b>Página {paginaSegura} de {totalPaginas}</b><button disabled={paginaSegura >= totalPaginas} onClick={() => setPagina(p => p + 1)}>›</button></div>
+          </footer>
         </section>
         )}
         </>}
