@@ -31,6 +31,7 @@ export function VentaEditarModal({ venta, onClose, onSuccess }) {
     direccion:       venta?.direccion       || '',
     coordenadas:     venta?.coordenadas     || '',
     paquete:         venta?.paquete         || '',
+    canal:           venta?.canal           || '',
     cuotaInstalacion:venta?.cuota_inst      || venta?.cuotaInstalacion || '',
     hogar:           venta?.claro_hogar     || venta?.hogar  || '',
     tec:             venta?.tecnologia      || venta?.tec    || '',
@@ -131,6 +132,13 @@ export function VentaEditarModal({ venta, onClose, onSuccess }) {
           )}
           {campo('Paquete',
             <input style={inputStyle} value={form.paquete} onChange={e => set('paquete', e.target.value)} />
+          )}
+          {campo('Canal',
+            <select style={{ ...inputStyle }} value={form.canal} onChange={e => set('canal', e.target.value)}>
+              <option value="">— Sin canal —</option>
+              <option value="NETCONTACT">NETCONTACT</option>
+              <option value="KELS">KELS</option>
+            </select>
           )}
           {campo('Cuota instalación',
             <input style={inputStyle} value={form.cuotaInstalacion} onChange={e => set('cuotaInstalacion', e.target.value)} />
