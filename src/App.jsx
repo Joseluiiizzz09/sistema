@@ -20,6 +20,7 @@ const Jefatura = lazy(() => import('./pages/Jefatura'))
 const Usuarios = lazy(() => import('./pages/Usuarios'))
 const Backdatareclutamiento = lazy(() => import('./pages/Backdatareclutamiento'))
 const DashboardReclutamiento = lazy(() => import('./pages/dashboardreclutamiento'))
+const MarketingLeads = lazy(() => import('./pages/MarketingLeads'))
 
 function RouteLoader() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
       <Route path="/usuarios"      element={<PrivateRoute cargo="usuarios"><Usuarios /></PrivateRoute>} />
       <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo={['backreclutamiento','entrevistas','capacitador']}><Backdatareclutamiento /></PrivateRoute>} />
       <Route path="/reclutamiento"          element={<PrivateRoute cargo="asesorreclutamiento"><DashboardReclutamiento /></PrivateRoute>} />
+      <Route path="/marketing-leads"        element={<PrivateRoute cargo="marketing"><MarketingLeads /></PrivateRoute>} />
 
       <Route path="*" element={<InicioAutorizado />} />
       </Routes>

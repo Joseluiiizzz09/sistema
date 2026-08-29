@@ -38,6 +38,7 @@ const CARGOS = [
   { id:'backreclutamiento',   label:'Back Data Reclutaminto',  cls:'bc-backreclutamiento'   },
   { id:'entrevistas',   label:'Entrevistas',   cls:'bc-entrevistas'   },
   { id:'capacitador',   label:'Capacitación',  cls:'bc-capacitador'   },
+  { id:'marketing',     label:'Marketing',     cls:'bc-marketing'     },
 ]
 const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
 const TIPIFICACIONES_ENTREVISTA = ['NO CONTESTA','DESISTE','REPROGRAMA','CORTA LLAMADA','ASISTE','EN CAMINO','FALTA']
