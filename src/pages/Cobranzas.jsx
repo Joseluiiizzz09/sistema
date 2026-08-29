@@ -880,7 +880,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th><th>CANAL</th>{esCobranza && <th>COBRANZA</th>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>COBRANZA</th>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -890,7 +890,6 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
-                    <td><CanalBadge canal={cliente.canal} /></td>
                     {esCobranza && (
                       <td className="cobranza-gestion-cell">
                         <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
@@ -900,8 +899,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     )}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 11 : 10} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCobranza ? 11 : 10} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 10 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCobranza ? 10 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
