@@ -751,19 +751,20 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranzas-table-card th{font-size:8.5px;line-height:1.2}
 .cobranzas-table-card td{font-size:10px;line-height:1.35}
 .cobranzas-table-card th:nth-child(1){width:2.5%}
-.cobranzas-table-card th:nth-child(2){width:12%}
-.cobranzas-table-card th:nth-child(3){width:5.2%}
-.cobranzas-table-card th:nth-child(4){width:4.8%}
-.cobranzas-table-card th:nth-child(5),.cobranzas-table-card th:nth-child(6){width:5.2%}
-.cobranzas-table-card th:nth-child(7){width:9%}
-.cobranzas-table-card th:nth-child(8){width:5.5%}
-.cobranzas-table-card th:nth-child(9){width:6.2%}
-.cobranzas-table-card th:nth-child(10){width:8.2%}
-.cobranzas-table-card th:nth-child(11){width:6.3%}
-.cobranzas-table-card th:nth-child(12){width:6.5%}
-.cobranzas-table-card th:nth-child(13){width:9.2%}
-.cobranzas-table-card th:nth-child(14){width:5.4%}
-.cobranzas-table-card th:nth-child(15){width:8%}
+.cobranzas-table-card th:nth-child(2){width:11%}
+.cobranzas-table-card th:nth-child(3){width:5%}
+.cobranzas-table-card th:nth-child(4){width:4.5%}
+.cobranzas-table-card th:nth-child(5),.cobranzas-table-card th:nth-child(6){width:5%}
+.cobranzas-table-card th:nth-child(7){width:8.5%}
+.cobranzas-table-card th:nth-child(8){width:5.3%}
+.cobranzas-table-card th:nth-child(9){width:6%}
+.cobranzas-table-card th:nth-child(10){width:5%}
+.cobranzas-table-card th:nth-child(11){width:7.8%}
+.cobranzas-table-card th:nth-child(12){width:6%}
+.cobranzas-table-card th:nth-child(13){width:6.2%}
+.cobranzas-table-card th:nth-child(14){width:8.7%}
+.cobranzas-table-card th:nth-child(15){width:5.2%}
+.cobranzas-table-card th:nth-child(16){width:7.6%}
 .cobranzas-name,.cobranzas-vendedor,.calidad-responsable,.calidad-gestion-cell,.calidad-comentario-col{min-width:0;max-width:none}
 .calidad-gestion-btn{width:100%;min-width:0;padding:8px 9px}
 .calidad-historial-btn{width:100%;padding-left:5px;padding-right:5px}
