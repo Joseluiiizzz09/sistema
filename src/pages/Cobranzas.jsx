@@ -173,6 +173,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [codigoPagoInput, setCodigoPagoInput] = useState('')
   const [comentarioCobranza, setComentarioCobranza] = useState('')
   const [filtroVendedores, setFiltroVendedores] = useState(null)
+  const [filtroCodigoPago, setFiltroCodigoPago] = useState('')
   const [filtroEstados, setFiltroEstados] = useState(null)
   const [ordenPendientesPrimero, setOrdenPendientesPrimero] = useState(false)
   const [pestanaCalidad, setPestanaCalidad] = useState('llamadas')
@@ -266,6 +267,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       if (hasta && fecha > hasta) return false
       if (filtroVendedores !== null && !filtroVendedores.includes(String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim())) return false
       if (filtroEstados !== null && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
+      if (filtroCodigoPago === 'con' && !String(cliente.cobranza_codigo_pago || '').trim()) return false
+      if (filtroCodigoPago === 'sin' && String(cliente.cobranza_codigo_pago || '').trim()) return false
       if (!texto) return true
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
@@ -280,9 +283,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       return 1
     }
     return [...resultado].sort((a, b) => rangoEstado(a) - rangoEstado(b))
-  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, modoSupervisorCalidad, pestanaCalidad, ordenPendientesPrimero])
+  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago, modoSupervisorCalidad, pestanaCalidad, ordenPendientesPrimero])
 
-  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados])
+  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago])
 
   const vendedoresFiltro = useMemo(() => [...new Set(clientes.map(cliente => String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim()))].sort((a, b) => a.localeCompare(b, 'es')), [clientes])
   const estadosFiltro = useMemo(() => [...new Set([
@@ -467,7 +470,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   useEffect(() => () => { instEvolucion.current?.destroy() }, [])
 
   function salir() { logout(); navigate('/login') }
-  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null) }
+  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null); setFiltroCodigoPago('') }
 
   async function guardarCalidad(cliente, campo, valor) {
     const propiedad = `calidad_${campo}`
@@ -765,6 +768,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
         <section className="cobranzas-filtros cobranzas-filtros-rango">
           <label className="cobranzas-search"><span>BUSCAR CLIENTE</span><input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, documento, SOT, número o paquete…" /></label>
           <label><span>RANGO DE FECHAS</span><RangoFechasPicker desde={desde} hasta={hasta} onChange={v=>{setDesde(v.desde); setHasta(v.hasta)}} /></label>
+          {esCobranza && (
+            <label><span>CÓDIGO DE PAGO</span>
+              <select value={filtroCodigoPago} onChange={e=>setFiltroCodigoPago(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="con">Con código</option>
+                <option value="sin">Sin código</option>
+              </select>
+            </label>
+          )}
           <button onClick={limpiar}>Limpiar</button>
         </section>
 
