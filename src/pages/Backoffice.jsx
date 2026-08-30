@@ -2254,8 +2254,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       }
     }
   }
+  const esGraciaTerna = r => grupoPrioridadLead(r) === 5 && ternaEnGracia.has(r._backendId)
   const registrosOperativos = registrosBusquedaGlobal.filter(r =>
-    (grupoPrioridadLead(r) === 0 || (grupoPrioridadLead(r) === 5 && ternaEnGracia.has(r._backendId))) &&
+    (grupoPrioridadLead(r) === 0 || esGraciaTerna(r)) &&
     !['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
   )
   const n1FormularioNormalizado = normalizarNumero(form.n1)
@@ -2299,8 +2300,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     })
     return [...filtered].sort((a, b) => {
       if (ordenDiarioActivo) {
-        const pendienteA = !String(tipifEfectiva(a) || '').trim()
-        const pendienteB = !String(tipifEfectiva(b) || '').trim()
+        const pendienteA = !String(tipifEfectiva(a) || '').trim() || esGraciaTerna(a)
+        const pendienteB = !String(tipifEfectiva(b) || '').trim() || esGraciaTerna(b)
         const sinAsignarA = !String(a.asesor || '').trim() || a.sinAsignar
         const sinAsignarB = !String(b.asesor || '').trim() || b.sinAsignar
         const bloqueA = pendienteA ? (sinAsignarA ? 0 : 1) : 2
@@ -2317,8 +2318,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         return porHora || Number(b.id || 0) - Number(a.id || 0)
       }
       // Esta prioridad es fija: los leads operativos siempre permanecen arriba,
-      // SIN COBERTURA se agrupa debajo y VENTA CERRADA queda al final.
-      const grupo = grupoPrioridadLead(a) - grupoPrioridadLead(b)
+      // SIN COBERTURA se agrupa debajo y VENTA CERRADA queda al final. Una fila
+      // en su ventana de gracia de Blacklist se ordena como pendiente normal.
+      const prioridadOrden = r => esGraciaTerna(r) ? 0 : grupoPrioridadLead(r)
+      const grupo = prioridadOrden(a) - prioridadOrden(b)
       if (grupo !== 0) return grupo
       if (!tableSort.col) return 0
       if (tableSort.col === 'tipif') {
