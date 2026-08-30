@@ -732,7 +732,7 @@ export default function Supervisor() {
                 <input type="text" className="tabla-search" value={tablaSearch} onChange={e=>setTablaSearch(e.target.value)} placeholder="Buscar por N1, asesor..." />
               </div>
               <div className="tabla-scroll tabla-scroll-ventas">
-              <table className="tabla" style={{minWidth:2250}}>
+              <table className="tabla tabla-sup-ventas" style={{minWidth:2250}}>
                 <thead><tr><th>#</th><th>Estado actual</th><th>Validación</th><th>Grabación</th><th>Programación</th><th>Obs. Seguimiento</th><th>Obs. Validación</th><th>Fecha Programada</th><th>Fecha</th><th>Nombre</th><th>DNI</th><th>N1</th><th>N2</th><th>Depto.</th><th>Distrito</th><th>Paquete</th><th>Asesor</th><th>Hora</th><th>Obs.</th><th>Acción</th></tr></thead>
                 <tbody>
                   {ventasTabla.length === 0
