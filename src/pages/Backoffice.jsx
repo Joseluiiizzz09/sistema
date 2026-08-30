@@ -758,6 +758,20 @@ export default function Backoffice() {
   // ── Toast ──
   const [toast, setToast] = useState('')
 
+  // Ids de leads recien bloqueados por Blacklist (TERNA) que aun deben verse
+  // en la base general por 3s antes de pasar al grupo protegido, para que
+  // Back Data note que el numero se auto-tipifico y por que.
+  const [ternaEnGracia, setTernaEnGracia] = useState(() => new Set())
+  function darGraciaTerna(bloqueados) {
+    if (!Array.isArray(bloqueados) || !bloqueados.length) return
+    const ids = bloqueados.map(b => b.id).filter(Boolean)
+    if (!ids.length) return
+    setTernaEnGracia(prev => { const s = new Set(prev); ids.forEach(id => s.add(id)); return s })
+    setTimeout(() => {
+      setTernaEnGracia(prev => { const s = new Set(prev); ids.forEach(id => s.delete(id)); return s })
+    }, 3000)
+  }
+
   // Mantiene el panel alineado con el calendario de Lima aunque quede abierto
   // durante el cambio de día. Conserva una fecha histórica elegida a mano.
   useEffect(() => {
@@ -788,12 +802,13 @@ export default function Backoffice() {
     toastTimer.current = setTimeout(() => setToast(''), duracionMs)
   }
 
-  function avisarBloqueadosTerna(bloqueadosN1) {
-    if (!Array.isArray(bloqueadosN1) || !bloqueadosN1.length) return
-    const detalle = bloqueadosN1.length === 1
-      ? `El número ${bloqueadosN1[0]} está en la Blacklist — se tipificó automáticamente como TERNA`
-      : `${bloqueadosN1.length} números están en la Blacklist — se tipificaron automáticamente como TERNA`
-    mostrarToast(detalle, 2000)
+  function avisarBloqueadosTerna(bloqueados) {
+    if (!Array.isArray(bloqueados) || !bloqueados.length) return
+    const detalle = bloqueados.length === 1
+      ? `El número ${bloqueados[0].n1} está en la Blacklist — se tipificó automáticamente como TERNA`
+      : `${bloqueados.length} números están en la Blacklist — se tipificaron automáticamente como TERNA`
+    mostrarToast(detalle, 3000)
+    darGraciaTerna(bloqueados)
   }
 
   async function copiarNumero(numero) {
@@ -1252,8 +1267,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.mensaje || 'Error al guardar el registro')
-      avisarBloqueadosTerna(data.bloqueados_terna_n1)
+      avisarBloqueadosTerna(data.bloqueados_terna)
       const bid  = data.ids?.[0] || data.id
+      const quedoBlacklisteado = Boolean(data.bloqueados_terna?.some(b => b.id === bid))
       if (bid) {
         // El POST ya fue confirmado. Descarta también un poll que pudiera haberse
         // iniciado mientras se guardaba y que aún traiga la lista anterior.
@@ -1262,7 +1278,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           const next = { ...prev }
           const arr  = [...(next[fecha] || [])]
           const idx  = arr.findIndex(r => r.id === reg.id)
-          if (idx >= 0) { arr[idx] = { ...arr[idx], id: bid, _backendId: bid }; next[fecha] = arr }
+          if (idx >= 0) {
+            arr[idx] = { ...arr[idx], id: bid, _backendId: bid, ...(quedoBlacklisteado ? { _tipifVend: 'TERNA' } : {}) }
+            next[fecha] = arr
+          }
           return next
         })
       } else {
@@ -1791,10 +1810,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       if (!data.ok) throw new Error(data.mensaje || 'El servidor rechazó el lote de leads')
       creados += data.creados || 0
       if (data.ids) ids.push(...data.ids)
-      if (data.bloqueados_terna_n1) bloqueadosTerna.push(...data.bloqueados_terna_n1)
+      if (data.bloqueados_terna) bloqueadosTerna.push(...data.bloqueados_terna)
     }
     avisarBloqueadosTerna(bloqueadosTerna)
-    return { creados, ids }
+    return { creados, ids, bloqueadosTerna }
   }
 
   async function ejecutarCargaMasiva() {
@@ -1825,13 +1844,14 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevosRegs] }))
       setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
       try {
-        const { ids } = await enviarLeadsEnLotes(leadsParaBackend)
+        const { ids, bloqueadosTerna } = await enviarLeadsEnLotes(leadsParaBackend)
         if (ids.length) {
+          const idsBlacklist = new Set((bloqueadosTerna||[]).map(b=>b.id))
           setBaseData(prev => {
             const next = { ...prev }
             const arr  = [...(next[fecha]||[])]
             const off  = arr.length - nuevosRegs.length
-            ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
+            ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid,...(idsBlacklist.has(bid)?{_tipifVend:'TERNA'}:{})} })
             next[fecha] = arr
             return next
           })
@@ -2000,6 +2020,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const LOTE = 200
     let creados=0, actualizados=0, existentes=0, errores=0
     const erroresDetalle = []
+    const bloqueadosTerna = []
     for (let i=0; i<registros.length; i+=LOTE) {
       const batch = registros.slice(i, i+LOTE)
       let data
@@ -2015,7 +2036,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       existentes += data.existentes || 0
       errores    += data.errores    || 0
       if (data.erroresDetalle) erroresDetalle.push(...data.erroresDetalle)
+      if (data.bloqueados_terna) bloqueadosTerna.push(...data.bloqueados_terna)
     }
+    avisarBloqueadosTerna(bloqueadosTerna)
     return { creados, actualizados, existentes, errores, erroresDetalle }
   }
 
@@ -2232,7 +2255,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
   }
   const registrosOperativos = registrosBusquedaGlobal.filter(r =>
-    grupoPrioridadLead(r) === 0 &&
+    (grupoPrioridadLead(r) === 0 || (grupoPrioridadLead(r) === 5 && ternaEnGracia.has(r._backendId))) &&
     !['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())
   )
   const n1FormularioNormalizado = normalizarNumero(form.n1)
