@@ -10,6 +10,8 @@ export const CAMPANAS = [
   'E1',
   'E2',
   'E3',
+  'F2',
+  'F3',
   'FABIAN',
   'GOOGLE',
   'GUSTAVO',
