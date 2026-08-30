@@ -78,14 +78,12 @@ The app is organized as one page per job role (`cargo`), not by generic feature 
 ### Styling
 
 No single convention — expect to encounter all of these:
-- CSS Modules for newer/isolated pieces (`Login.module.css`, `Topbar.module.css`).
+- CSS Modules for newer/isolated pieces (`Login.module.css`).
 - One global plain CSS file per page in `src/styles/*.css`, loaded globally (not scoped).
-- A separate, likely-stale `css/backoffice.css` at the repo root, distinct from `src/styles/backoffice.css` — check which one is actually referenced before editing backoffice styles.
 - Bootstrap 5 imported globally, plus inline styles scattered through JSX.
-- `validacion.html` at the repo root is a standalone legacy HTML/CSS/JS page (own `<script>` tags, own `css/validacion.css`) that duplicates `src/pages/Validacion.jsx`. It is not part of the Vite build. Confirm with the user which one is actually live before changing "the validación screen."
 
 ### Other shared pieces
 
 - `src/services/ubigeo.js` — static Peru location data (department/province/district) used by forms.
 - `src/components/MediaViewer.jsx` — authenticated blob-based viewer for protected recordings/files.
-- `src/components/VentaAssignmentModal.jsx`, `src/components/JefaturaViewControls.jsx`, `src/components/Topbar.jsx` — shared UI used across a subset of the role pages.
+- `src/components/VentaAssignmentModal.jsx` and `src/components/JefaturaViewControls.jsx` — shared UI used across a subset of the role pages.

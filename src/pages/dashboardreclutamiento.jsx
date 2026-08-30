@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import '../styles/dashboardreclutamiento.css'
@@ -424,7 +424,7 @@ export default function DashboardReclutamiento() {
     window.addEventListener('online', sincronizarAlVolver)
     document.addEventListener('visibilitychange', sincronizarAlVolver)
     return () => {
-      clearInterval(t1); clearInterval(t2); clearInterval(t3)
+      clearVisibleInterval(t1); clearVisibleInterval(t2); clearVisibleInterval(t3)
       window.removeEventListener('focus', sincronizarAlVolver)
       window.removeEventListener('online', sincronizarAlVolver)
       document.removeEventListener('visibilitychange', sincronizarAlVolver)

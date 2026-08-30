@@ -280,6 +280,8 @@ body{
 }
 .bo-root .numero-copiar button:hover{color:var(--brand);border-color:#fca5a5;background:#fff5f5;}
 .bo-root .numero-copiar button svg{width:13px;height:13px;}
+.bo-root .numero-copiar button.btn-editar-inline{color:#475569;}
+.bo-root .numero-copiar button.btn-editar-inline:hover{color:#2563eb;border-color:#93c5fd;background:#eff6ff;}
 .bo-root .bo-inline-select,
 .bo-root .bo-datos-ubicacion input,
 .bo-root .bo-obs-back{
@@ -352,6 +354,14 @@ body{
 }
 .bo-root .base-filtros .bo-input-group{flex:1 1 150px;min-width:135px;}
 .bo-root .base-filtros .base-filtro-numero{flex-basis:210px;min-width:180px;}
+.bo-root .base-filtros .base-filtro-fecha{flex:0 1 142px;min-width:132px;}
+.bo-root .base-filtros .base-filtro-fecha .form-control{min-height:33px;font-size:11px;}
+.bo-root .base-filtro-global{color:#1d4ed8;}
+.bo-root .base-orden-btn{flex:0 0 auto;height:28px;border:0;border-radius:7px;padding:0 10px;color:#fff;font-family:inherit;font-size:9px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap;box-shadow:0 2px 7px rgba(124,58,237,.2);align-self:center;}
+.th-sort-btn{display:inline-flex;align-items:center;gap:0;background:none;border:none;color:inherit;font:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;padding:0;cursor:pointer;white-space:nowrap;border-radius:3px;transition:opacity .15s;}
+.th-sort-btn:hover{opacity:.8;}
+.th-sort-btn:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;}
+.th-sort-active{opacity:1;}
 .bo-root .base-filtro-toggle{
   flex:0 0 auto;display:flex;align-items:center;gap:6px;white-space:nowrap;
   height:33px;padding:0 9px;border:1px solid var(--line-2);border-radius:9px;
@@ -388,6 +398,7 @@ body{
 .reclutados-nombre{min-width:180px;font-weight:700;color:#111827!important;}
 .reclutados-documento{font-family:monospace;}
 .reclutados-reclutador{font-weight:700;color:#7c3aed!important;}
+.reclutados-reclutador.entrevistas-agendado-negro{color:#111827!important;}
 .reclutados-estado{display:inline-flex;padding:3px 8px;border:1px solid #86efac;border-radius:7px;background:#dcfce7;color:#166534;font-size:9px;font-weight:800;}
 .reclutados-empty{height:150px;text-align:center!important;color:#9ca3af!important;}
 .tabla-desliza-aviso{
@@ -484,7 +495,6 @@ body{
 .tipif-sincobert{background:var(--brand-soft);color:var(--brand-deep);}
 .tipif-derivado{background:#f5f3ff;color:#5b21b6;}
 .tipif-empty{color:#cbd5e1;font-style:italic;font-size:11px;}
-.sin-asig-badge{display:inline-flex;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;}
 .hora-cell{color:var(--brand);font-weight:700;font-size:11px;font-family:monospace;}
 
 /* ━━ LEYENDA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -551,6 +561,14 @@ body{
 .btn-rotar:disabled{background:#fee2e2;color:#991b1b;box-shadow:none;cursor:not-allowed;opacity:1;}
 .sel-asesor-tabla:disabled{background:#fef2f2;color:#991b1b;border-color:#fecaca;cursor:not-allowed;}
 .btn-rotar:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 4px 14px rgba(124,58,237,.4);}
+.acc-cell-compact{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;}
+.btn-acc-det{min-width:22px;height:22px;border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0 4px;font-family:inherit;}
+.btn-acc-det:hover{background:var(--brand-soft);color:var(--brand);border-color:rgba(229,62,62,.3);}
+.btn-rotar-sm{height:22px!important;padding:0 5px!important;font-size:10px!important;}
+.btn-rotar-sm svg{width:10px!important;height:10px!important;}
+.btn-hist-sm{height:22px!important;padding:0 5px!important;}
+.btn-hist-sm svg{width:10px!important;height:10px!important;}
+.acc-cell-compact .btn-del{width:22px;height:22px;}
 .btn-obs{border-color:rgba(217,119,6,.3);background:#fffbeb;}
 .btn-obs:hover{background:#fef3c7;}
 .sel-asesor-tabla{padding:4px 8px;border:1px solid var(--line-2);border-radius:7px;font-size:11px;font-family:inherit;outline:none;background:var(--surf-1);color:var(--ink);min-width:110px;cursor:pointer;transition:all .18s;}
@@ -1017,3 +1035,14 @@ body{
 }
 .bo-root .btn-confirmar-modal:hover { transform: scale(1.04) translateY(-1px); box-shadow: 0 6px 18px rgba(229,62,62,.45); }
 .bo-root .btn-confirmar-modal:active { transform: scale(.97); }
+
+/* ---------- Agregar registro en el sidebar (igual que Backoffice) ---------- */
+.bo-root .bo-sidebar-registro{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:0 8px 12px;border-top:1px solid var(--line);white-space:normal;}
+.bo-root .bo-sidebar-registro .sidebar-sep{padding-left:0;padding-right:0;}
+.bo-root .bo-sidebar-registro .bo-input-group{min-width:0;width:100%;flex:none;gap:4px;}
+.bo-root .bo-sidebar-registro .bo-input-group input,
+.bo-root .bo-sidebar-registro .bo-input-group select,
+.bo-root .bo-sidebar-registro .bo-input-group button{font-size:11px;padding:7px 8px;border-radius:8px;min-width:0;}
+.bo-root .bo-sidebar-registro-aviso{font-size:9px;line-height:1.3;color:#7c3aed;font-weight:700;white-space:normal;}
+.bo-root .bo-sidebar-registro-acciones{display:grid;grid-template-columns:1fr 1.25fr;gap:6px;margin-top:4px;}
+.bo-root .bo-sidebar-registro-acciones button{font-size:10px;padding:7px 5px;width:100%;}

@@ -5,17 +5,18 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import { usuarioTieneCargo } from '../utils/roles'
 import { CAMPANAS } from '../utils/campanas'
 import '../styles/backoffice.css'
 
 // ── Selector de campaña (lista + opción "Otro" para escribir a mano) ───────
-function CampanaSelect({ value, onChange, plain }) {
-  const [manual, setManual] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
-  const [manualConfirmada, setManualConfirmada] = useState(() => Boolean(value) && !CAMPANAS.includes(value))
+function CampanaSelect({ value, onChange, plain, sinOtro }) {
+  const [manual, setManual] = useState(() => !sinOtro && Boolean(value) && !CAMPANAS.includes(value))
+  const [manualConfirmada, setManualConfirmada] = useState(() => !sinOtro && Boolean(value) && !CAMPANAS.includes(value))
   if (manual) {
     if (manualConfirmada && String(value || '').trim()) {
       return (
@@ -48,7 +49,7 @@ function CampanaSelect({ value, onChange, plain }) {
       onChange={e=>{ const v=e.target.value; if(v==='__OTRO__'){ setManual(true); setManualConfirmada(false); onChange('') } else onChange(v) }}>
       <option value="">— Selecciona —</option>
       {CAMPANAS.map(c=>(<option key={c} value={c}>{c}</option>))}
-      <option value="__OTRO__">Otro (escribir a mano)…</option>
+      {!sinOtro && <option value="__OTRO__">Otro (escribir a mano)…</option>}
     </select>
   )
 }
@@ -609,7 +610,7 @@ export default function Backoffice() {
   const distritos = (form.dpto && form.prov) ? (UBIGEO[form.dpto]?.[form.prov] || []) : []
 
   // ── Filtros base ──
-  const [filtros, setFiltros] = useState({ tipBack1:[], tipBack2:[], tipVend:[], asesor:[], campana:[], sala:[], numero:'', desde:'', hasta:'', global:false, verTipVend:true })
+  const [filtros, setFiltros] = useState({ tipBack1:[], tipBack2:[], tipVend:[], asesor:[], campana:[], sala:[], numero:'', desde:'', hasta:'', global:false, duplicados:false })
   const [tableSort, setTableSort] = useState({ col: null, dir: null })
   const [ordenDiarioActivo, setOrdenDiarioActivo] = useState(false)
   const [basePage, setBasePage] = useState(1)
@@ -664,14 +665,25 @@ export default function Backoffice() {
     const bid = dniModal?.bid
     const val = String(dniModal?.editVal || '').replace(/\D/g, '')
     if (!id) return
+    const found = findReg(id)
+    const anterior = found?.reg?.obsAsesor || ''
     setBaseData(prev => {
       const next = { ...prev }
       for (const f in next) next[f] = (next[f] || []).map(r => r.id === id ? { ...r, obsAsesor: val } : r)
       return next
     })
-    if (bid) { try { await fetch(`${API}/leads/${bid}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs: val }) }) } catch(e) {} }
-    setDniModal(p => p ? { ...p, dni: val, editing: false } : null)
-    mostrarToast('DNI actualizado')
+    try {
+      if (bid) {
+        const res = await fetch(`${API}/leads/${bid}/obs`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ obs: val }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar el DNI')
+      }
+      setDniModal(p => p ? { ...p, dni: val, editing: false } : null)
+      mostrarToast('DNI actualizado')
+    } catch (e) {
+      updateReg(id, { obsAsesor: anterior })
+      mostrarToast(e.message || 'No se pudo actualizar el DNI')
+    }
   }
 
   // ── Rotación panel ──
@@ -797,6 +809,7 @@ export default function Backoffice() {
   async function guardarDatosBack(id, cambios) {
     const found = findReg(id)
     if (!found) return
+    const anteriores = Object.fromEntries(Object.keys(cambios).map(clave => [clave, found.reg[clave]]))
     updateReg(id, cambios)
     if (!found.reg._backendId) return
     try {
@@ -806,8 +819,8 @@ export default function Backoffice() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'Error al guardar')
     } catch(e) {
+      updateReg(id, anteriores)
       mostrarToast(e.message || 'No se pudieron guardar los datos')
-      cargarLeads()
     }
   }
 
@@ -992,6 +1005,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           venta_confirmada: Number(l.venta_confirmada || 0),
           ventaDocumento: l.venta_documento || '',
           ventaTipoDoc: l.venta_tipo_doc || '',
+          ventaCanal: l.venta_canal || '',
           tipifInterna: l.tipif_interna || '',
           tipifInternaColor: l.tipif_interna_color || '',
           tipifInternaArea: l.tipif_interna_area || '',
@@ -1119,8 +1133,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     document.addEventListener('visibilitychange', refrescarAlVolver)
 
     return () => {
-      clearInterval(t)
-      clearInterval(tv)
+      clearVisibleInterval(t)
+      clearVisibleInterval(tv)
       window.removeEventListener('focus', refrescarAlEnfocar)
       document.removeEventListener('visibilitychange', refrescarAlVolver)
     }
@@ -1239,6 +1253,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           if (idx >= 0) { arr[idx] = { ...arr[idx], id: bid, _backendId: bid }; next[fecha] = arr }
           return next
         })
+      } else {
+        // El backend omitió el lead en silencio (N1 repetido ese mismo día en
+        // la misma campaña): no hay id que confirmar. Se retira el registro
+        // fantasma sin mostrar error — no era un fallo, era el resultado esperado.
+        setBaseData(prev => { const n={...prev}; n[fecha]=(n[fecha]||[]).filter(r=>r.id!==reg.id); return n })
       }
       setForm({ campana:'', dpto:'', prov:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
     } catch(e) {
@@ -1261,21 +1280,49 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     }
     if (!nuevoAsesor) {
       updateReg(id, { asesor:'', horaAsig:'', sinAsignar:true })
-      if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) }).catch(()=>{})
+      if (reg._backendId) {
+        try {
+          const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:'', hora_asig:'' }) })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo quitar la asignación')
+        } catch (e) {
+          updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar })
+          mostrarToast(e.message || 'No se pudo quitar la asignación')
+        }
+      }
       return
     }
     const newHist = [...reg.historial, { asesor:nuevoAsesor, asesorAnterior:reg.asesor||'', reasignadoPor:sesion?.nombre||'', tipifVendAntes:tipifEfectiva(reg)||'', obsAsesorAntes:reg.obsAsesor||'', hora, fecha:fechaHoy(), motivo:'Reasignacion directa' }]
     updateReg(id, { asesor:nuevoAsesor, horaAsig:hora, sinAsignar:false, historial:newHist, rotaciones:cantidadRotaciones(reg)+1, _tipifVend:'', _tipifHora:'' })
-    if (reg._backendId) fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) }).catch(()=>{})
+    if (reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${reg._backendId}`, { method:'PATCH', headers:ncHeaders(), body:JSON.stringify({ asesor_nombre:nuevoAsesor, hora_asig:hora, historial:newHist, sumarRotacion:true }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar el lead')
+      } catch (e) {
+        updateReg(id, { asesor:reg.asesor, horaAsig:reg.horaAsig, sinAsignar:reg.sinAsignar, historial:reg.historial, rotaciones:reg.rotaciones, _tipifVend:reg._tipifVend, _tipifHora:reg._tipifHora })
+        mostrarToast(e.message || 'No se pudo reasignar el lead')
+      }
+    }
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   async function eliminarReg(id) {
     mutGenRef.current++
     const found = findReg(id)
-    if (found?.reg._backendId) fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() }).catch(()=>{})
+    if (!found) return
     setBaseData(prev => { const n={}; for(const f in prev) n[f]=prev[f].filter(r=>r.id!==id); return n })
     setHistOpen(prev => { const n={...prev}; delete n[id]; return n })
+    if (found.reg._backendId) {
+      try {
+        const res = await fetch(`${API}/leads/${found.reg._backendId}`, { method:'DELETE', headers:ncHeaders() })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el lead')
+      } catch (e) {
+        setBaseData(prev => ({ ...prev, [found.fecha]: [found.reg, ...(prev[found.fecha] || []).filter(r => r.id !== id)] }))
+        mostrarToast(e.message || 'No se pudo eliminar el lead')
+      }
+    }
   }
 
   // Elimina una asignación individual del historial: el número desaparece de la base
@@ -1552,13 +1599,43 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   function rotTxt(f) { const m=rotMins(f); if(m<60) return m+' min'; const h=Math.floor(m/60),r=m%60; return h+'h'+(r>0?' '+r+'min':'') }
   function rotFaltanTxt(mins) { const r=120-mins; if(r<=0) return ''; const h=Math.floor(r/60),m=r%60; return h>0?`Faltan ${h}h${m>0?' '+m+' min':''}`:`Faltan ${r} min` }
 
-  async function rotFinalizarWith(selToUse, asesorActual) {
+  async function validarSeleccionRotacionEnServidor(selToUse) {
+    const seleccionados = buildRotLeads().filter(l => selToUse[l.id])
+    const fechas = [...new Set(seleccionados.map(l => l.fecha).filter(Boolean))]
+    const respuestas = await Promise.all(fechas.map(async fecha => {
+      const respuesta = await fetch(`${API}/leads?fecha=${encodeURIComponent(fecha)}&_rotcheck=${Date.now()}`, {
+        headers:ncHeaders(), cache:'no-store',
+      })
+      const data = await respuesta.json().catch(() => ({}))
+      if (!respuesta.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo actualizar la lista de rotación')
+      return Array.isArray(data.data) ? data.data : []
+    }))
+    const actuales = new Map(respuestas.flat().map(l => [Number(l.id), l]))
+    const vigentes = {}
+    const omitidos = []
+    for (const lead of seleccionados) {
+      const local = lead._reg
+      const servidor = actuales.get(Number(local._backendId))
+      const mismoAsesor = servidor && Number(servidor.asesor_id || 0) === Number(local._asesorId || 0)
+      const mismasRotaciones = servidor && cantidadRotaciones(servidor) === cantidadRotaciones(local)
+      const mismaTipificacion = servidor
+        && String(servidor.tipif_vend || '').trim().toUpperCase() === String(local._tipifVend || '').trim().toUpperCase()
+      if (servidor && mismoAsesor && mismasRotaciones && mismaTipificacion) {
+        vigentes[lead.id] = true
+      } else {
+        omitidos.push({ tel:lead.tel, error:'Se actualizó antes de ejecutar; fue retirado automáticamente de la selección' })
+      }
+    }
+    return { vigentes, omitidos }
+  }
+
+  async function rotFinalizarWith(selToUse, asesorActual, resultadosPrevios = []) {
     const hora     = horaAhora()
     const allLeads = buildRotLeads()
     // Se valida otra vez al ejecutar para impedir selecciones antiguas o cambios
     // de tipificación ocurridos mientras el panel estaba abierto.
     const rotados  = allLeads.filter(l => selToUse[l.id] && rotApto(l, asesorActual).apto)
-    const res = []
+    const res = [...resultadosPrevios]
     for (const l of rotados) {
       const reg = l._reg
       if (!reg._backendId) continue
@@ -1619,9 +1696,19 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       setTimeout(() => setRotProgress(75), 400)
       setTimeout(async () => {
         try {
-          await rotFinalizarWith(selToUse, asesorActual)
+          const { vigentes, omitidos } = await validarSeleccionRotacionEnServidor(selToUse)
+          if (Object.keys(vigentes).length === 0) {
+            await cargarLeads()
+            setRotResultado(omitidos)
+            setRotSel({})
+          } else {
+            await rotFinalizarWith(vigentes, asesorActual, omitidos)
+          }
           setRotProgress(100)
           setTimeout(() => setRotProgress(0), 1000)
+        } catch (e) {
+          setRotResultado([{ tel:'Rotación', error:e.message || 'No se pudo actualizar la lista antes de ejecutar' }])
+          setRotSel({})
         } finally {
           rotandoRef.current = false
         }
@@ -1642,9 +1729,15 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   }
 
   // ── Carga masiva ──────────────────────────────────────────────────────────
-  function obtenerN1Existentes() {
+  // Duplicado = mismo N1 + misma fecha destino + misma campaña destino. Un
+  // N1 que ya existe en OTRA campaña ese día no cuenta como duplicado aquí:
+  // es un lead independiente y válido para la campaña que se está cargando.
+  function obtenerN1Existentes(fecha, campana) {
     const set = new Set()
-    for (const f in baseData) (baseData[f]||[]).forEach(r => { if(r.n1) set.add(String(r.n1).replace(/\s+/g,'')) })
+    const campanaNorm = (campana||'').trim().toUpperCase()
+    ;(baseData[fecha]||[]).forEach(r => {
+      if (r.n1 && (r.campana||'').trim().toUpperCase() === campanaNorm) set.add(String(r.n1).replace(/\s+/g,''))
+    })
     return set
   }
 
@@ -1655,13 +1748,13 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     if (!numsRaw.length) { mostrarToast('No se encontraron numeros validos'); return }
     const lote = masivaLote === '0' ? numsRaw.length : (parseInt(masivaLote) || 10)
     const numsLote   = numsRaw.slice(0, lote)
-    const existentes = obtenerN1Existentes()
+    const existentes = obtenerN1Existentes(fechaActiva, masivaCamp.trim() || '—')
     const vistos = new Set()
     const filas  = []
     numsLote.forEach(n => {
       let dup=false, motivo=''
       if (vistos.has(n)) { dup=true; motivo='Repetido en la lista' }
-      else if (existentes.has(n)) { dup=true; motivo='Ya esta en el sistema' }
+      else if (existentes.has(n)) { dup=true; motivo='Ya esta en esta campaña ese día' }
       vistos.add(n)
       filas.push({ n1:n, dup, motivo })
     })
@@ -1702,9 +1795,10 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const leadsParaBackend = []
     const nuevosRegs = []
     const filaResult = []
+    const campanaNorm = campana.trim().toUpperCase()
     lista.forEach(n1 => {
-      if ((baseData[fecha]||[]).find(r=>r.n1===n1)) {
-        filaResult.push({ n1, campana, resultado:'DUPLICADO', motivo:'Ya existe en la fecha destino' })
+      if ((baseData[fecha]||[]).find(r=>r.n1===n1 && (r.campana||'').trim().toUpperCase()===campanaNorm)) {
+        filaResult.push({ n1, campana, resultado:'DUPLICADO', motivo:'Ya existe en esta campaña ese día' })
         return
       }
       const reg = { id:-idCntRef.current++, _backendId:null, campana, distrito:'—', n1, n2:'', tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
@@ -2076,6 +2170,11 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
         .filter(([fecha]) => (!filtros.desde || fecha >= filtros.desde) && (!filtros.hasta || fecha <= filtros.hasta))
         .flatMap(([fecha, regs]) => (regs || []).map(r => ({ ...r, _fechaBase:fecha })))
     : registrosActivos.map(r => ({ ...r, _fechaBase:fechaActiva }))
+  const conteoDuplicadosAlcance = registrosBusquedaGlobal.reduce((conteo, reg) => {
+    const numero = normalizarNumero(reg.n1)
+    if (numero) conteo.set(numero, (conteo.get(numero) || 0) + 1)
+    return conteo
+  }, new Map())
   const gruposProtegidos = {
     sin_cobertura: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'SIN COBERTURA'),
     no_tocar: registrosBusquedaGlobal.filter(r => ['NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase())),
@@ -2136,7 +2235,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     // Si abre un grupo protegido, los demás filtros también se respetan.
     const hayFiltroConsulta = Boolean(
       filtros.tipBack1.length || filtros.tipBack2.length || filtros.tipVend.length || filtros.asesor.length || filtros.campana.length || filtros.sala.length || filtros.numero ||
-      filtros.desde || filtros.hasta || filtros.global
+      filtros.desde || filtros.hasta || filtros.global || filtros.duplicados
     )
     const fuente = ordenDiarioActivo
       ? (filtros.tipVend.length ? registrosBusquedaGlobal : registrosOperativos)
@@ -2144,6 +2243,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       ? (gruposProtegidos[grupoProtegidoVisible] || [])
       : (hayFiltroConsulta ? registrosBusquedaGlobal : registrosOperativos)
     const filtered = fuente.filter(r => {
+      if (filtros.duplicados && (conteoDuplicadosAlcance.get(normalizarNumero(r.n1)) || 0) < 2) return false
       if (filtros.tipBack1.length && !filtros.tipBack1.some(v=>v.toUpperCase()===String(r.tipifBack||'').trim().toUpperCase())) return false
       if (filtros.tipBack2.length && !filtros.tipBack2.some(v=>v.toUpperCase()===String(r.tipifBack2||'').trim().toUpperCase())) return false
       if (filtros.tipVend.length) {
@@ -2219,17 +2319,23 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
   const baseDesde = (basePageSafe - 1) * basePageSize
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
 
-  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tipBack1, filtros.tipBack2, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
+  useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tipBack1, filtros.tipBack2, filtros.tipVend, filtros.asesor, filtros.campana, filtros.sala, filtros.numero, filtros.desde, filtros.hasta, filtros.global, filtros.duplicados, tableSort.col, tableSort.dir, basePageSize, grupoProtegidoVisible, ordenDiarioActivo])
 
-  // VENTA CAIDA no participa del conteo del KPI, igual que ya no aparece en
-  // la base operativa principal.
-  const registrosParaConteo = registrosBusquedaGlobal.filter(r => !['VENTA CAIDA','INSTALADO'].includes(String(tipifEfectiva(r)||'').trim().toUpperCase()))
+  // Total es su propio conteo, independiente de Ventas: TODOS los leads del
+  // día activo, sin excluir instalados ni caídos — debe coincidir siempre con
+  // el número de "Fecha activa". "Ventas" es otra cosa aparte: la familia
+  // venta cerrada + venta caída + instalada, tal como se definió el criterio.
+  const TIPIF_FAMILIA_VENTA = ['VENTA CERRADA','VENTA CAIDA','INSTALADO']
+  // Un NO ROTAR/NO TOCAR ya tiene un motivo definido por el que no se puede
+  // trabajar — no es un cliente "pendiente de asignar", está bloqueado a
+  // propósito. No debe inflar el conteo de disponibles para llamar.
+  const TIPIF_BLOQUEADO_NO_ASIGNABLE = ['NO ROTAR','SH NO ROTAR','NO TOCAR','SH NO TOCAR']
   const statsBase = {
-    total:      registrosParaConteo.length,
-    ventas:     registrosParaConteo.filter(r=>(r.tipifBack||'').toUpperCase().includes('VENTA')).length,
-    asignados:  registrosParaConteo.filter(r=>r.asesor&&r.asesor!=='').length,
-    sinAsignar: registrosParaConteo.filter(r=>r.sinAsignar).length,
-    rotaciones: registrosParaConteo.reduce((s,r)=>s+r.rotaciones,0),
+    total:      registrosBusquedaGlobal.length,
+    ventas:     registrosBusquedaGlobal.filter(r=>TIPIF_FAMILIA_VENTA.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
+    asignados:  registrosBusquedaGlobal.filter(r=>r.asesor&&r.asesor!=='').length,
+    sinAsignar: registrosBusquedaGlobal.filter(r=>r.sinAsignar && !TIPIF_BLOQUEADO_NO_ASIGNABLE.includes(String(tipifEfectiva(r)||'').trim().toUpperCase())).length,
+    rotaciones: registrosBusquedaGlobal.reduce((s,r)=>s+r.rotaciones,0),
   }
 
   const rendData = useMemo(() => {
@@ -2440,7 +2546,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           <button className={`bo-nav${seccion==='avance'?' active':''}`} onClick={()=>irSeccion('avance')}><BoNavIcon tipo="avance" /> <span>Avance Asesores</span></button>
           <div className="bo-sidebar-registro">
             <div className="sidebar-sep">Agregar registro</div>
-            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain /></div>
+            <div className="bo-input-group"><label>Campaña</label><CampanaSelect value={form.campana} onChange={v=>setForm(p=>({...p,campana:v}))} plain sinOtro /></div>
             <div className="bo-input-group"><label>N1</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.n1} onChange={e=>{ setN1Error(false); setForm(p=>({...p,n1:e.target.value})) }} placeholder="Número principal" inputMode="numeric" /></div>
             <div className="bo-input-group"><label>N2 (opcional)</label><input className="form-control" value={form.n2} onChange={e=>setForm(p=>({...p,n2:e.target.value}))} placeholder="Número secundario" inputMode="numeric" /></div>
             <div className="bo-input-group"><label>Usuario WhatsApp</label><input className="form-control" value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Ej. usuario_cliente" maxLength={100} /></div>
@@ -2586,8 +2692,8 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <div className="bo-input-group base-filtro-fecha"><label>Desde</label><input type="date" className="form-control" value={filtros.desde} max={filtros.hasta||undefined} onChange={e=>setFiltros(p=>({...p,desde:e.target.value,global:true}))} /></div>
                 <div className="bo-input-group base-filtro-fecha"><label>Hasta</label><input type="date" className="form-control" value={filtros.hasta} min={filtros.desde||undefined} onChange={e=>setFiltros(p=>({...p,hasta:e.target.value,global:true}))} /></div>
                 <label className="toggle-col base-filtro-toggle base-filtro-global"><input type="checkbox" checked={filtros.global} onChange={e=>setFiltros(p=>({...p,global:e.target.checked}))} /><span>Buscar global</span></label>
-                <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.verTipVend} onChange={e=>setFiltros(p=>({...p,verTipVend:e.target.checked}))} /><span>Ver tipif. vendedor</span></label>
-                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,verTipVend:true})}>Limpiar filtros</button>
+                <label className="toggle-col base-filtro-toggle"><input type="checkbox" checked={filtros.duplicados} onChange={e=>setFiltros(p=>({...p,duplicados:e.target.checked}))} /><span>Números duplicados</span></label>
+                <button className="bo-btn-limpiar btn btn-sm base-filtro-limpiar" onClick={()=>setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,duplicados:false})}>Limpiar filtros</button>
               </div>
               <button type="button"
                 className="base-orden-btn"
@@ -2597,7 +2703,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                   setTableSort({col:null,dir:null})
                   setGrupoProtegidoVisible('')
                   setBasePage(1)
-                  if (activar) setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,verTipVend:true})
+                  if (activar) setFiltros({tipBack1:[],tipBack2:[],tipVend:[],asesor:[],campana:[],sala:[],numero:'',desde:'',hasta:'',global:false,duplicados:false})
                 }}
                 style={{background:ordenDiarioActivo?'#16a34a':'linear-gradient(135deg,#7c3aed,#dc2626)'}}>
                 {ordenDiarioActivo?'✓ Orden diario activo':'Ordenar base del día'}
@@ -2767,6 +2873,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                                       <option value="" style={{background:'#fff',color:'#111827',fontWeight:400}}>— Pendiente —</option>
                                       {TIPIF_VEND_OPCIONES.map(t=><option key={t} value={t} style={{background:'#fff',color:'#111827',fontWeight:400}}>{t}</option>)}
                                     </select>}
+                                {r.ventaCanal && <CanalBadge canal={r.ventaCanal} />}
                                 {documentoVenta(r)&&(
                                   <button type="button" className="btn-dni-cuaderno"
                                     title={`Ver ${documentoVenta(r).tipo} registrado en Ventas`}
@@ -3736,16 +3843,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
             <div id="campana-edit-title" className="numero-edit-title">Editar campaña</div>
             <div className="numero-edit-sub">Actualiza la campaña correspondiente a este lead.</div>
             <label>Campaña <span>*</span></label>
-            <input
-              autoFocus
-              value={campanaModal.valor}
-              maxLength={100}
-              onChange={e=>setCampanaModal(p=>({...p,valor:e.target.value}))}
-              onKeyDown={e=>{
-                if(e.key==='Enter') guardarCampanaModal()
-                if(e.key==='Escape'&&!campanaModal.guardando) setCampanaModal(null)
-              }}
-            />
+            <CampanaSelect value={campanaModal.valor} onChange={v=>setCampanaModal(p=>({...p,valor:v}))} plain sinOtro />
             <div className="numero-edit-actions">
               <button type="button" className="numero-edit-cancel"
                 onClick={()=>setCampanaModal(null)} disabled={campanaModal.guardando}>Cancelar</button>

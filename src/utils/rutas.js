@@ -12,11 +12,15 @@ export const RUTAS = {
   jefatura:       '/jefatura',
   usuarios:       '/usuarios',
   programacion:   '/programacion',
+  cobranzas:      '/cobranzas',
+  calidad:        '/calidad',
+  supcalidad:     '/sup-calidad',
   supgrabaciones: '/sup-grabaciones',
   backreclutamiento:   '/backdata-reclutamiento',
-  asesorreclutamiento: '/reclutamiento',
+  entrevistas:         '/backdata-reclutamiento',
+  capacitador:         '/backdata-reclutamiento',
+  marketing:           '/marketing-leads',
 }
-
 export const CARGO_LABELS = {
   asesor: 'Asesor',
   supervisor: 'Supervisor',
@@ -27,7 +31,12 @@ export const CARGO_LABELS = {
   jefatura: 'Jefatura',
   usuarios: 'Usuarios',
   programacion: 'Programación',
+  cobranzas: 'Cobranzas',
+  calidad: 'Calidad',
+  supcalidad: 'Super de Calidad',
   supgrabaciones: 'Sup. Grabaciones',
   backreclutamiento: 'Back Data Reclutaminto',
-  asesorreclutamiento: 'Asesor de Reclutamiento',
+  entrevistas: 'Entrevistas',
+  capacitador: 'Capacitación',
+  marketing: 'Marketing',
 }

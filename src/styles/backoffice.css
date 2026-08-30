@@ -424,8 +424,8 @@ body{
 .numero-edit-modal label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;}
 .numero-edit-modal label span{color:var(--brand);}
 .numero-edit-modal label small{font-weight:500;text-transform:none;letter-spacing:0;color:#94a3b8;}
-.numero-edit-modal input{height:40px;border:1px solid #dbe2ea;border-radius:8px;padding:0 11px;font:700 13px monospace;color:#0f172a;outline:none;}
-.numero-edit-modal input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.12);}
+.numero-edit-modal input,.numero-edit-modal select{height:40px;border:1px solid #dbe2ea;border-radius:8px;padding:0 11px;font:700 13px monospace;color:#0f172a;outline:none;width:100%;}
+.numero-edit-modal input:focus,.numero-edit-modal select:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.12);}
 .numero-edit-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
 .numero-edit-actions button{height:36px;border-radius:8px;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer;}
 .numero-edit-cancel{border:1px solid #e2e8f0;background:#fff;color:#64748b;}
@@ -1157,3 +1157,7 @@ body{
 .th-sort-btn:hover{opacity:.8;}
 .th-sort-btn:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;}
 .th-sort-active{opacity:1;}
+.badge-canal{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap;}
+.badge-canal-netcontact{background:#eef2ff;color:#4338ca;}
+.badge-canal-kels{background:#fdf4ff;color:#a21caf;}
+.badge-canal-sin{background:#f3f4f6;color:#6b7280;}

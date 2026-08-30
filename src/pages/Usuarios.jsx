@@ -15,10 +15,14 @@ const CARGO_CLASE = {
   seguimiento:   'bc-seguimiento',
   jefatura:      'bc-jefatura',
   programacion:  'bc-programacion',
+  cobranzas:     'bc-cobranzas',
+  calidad:       'bc-calidad',
+  supcalidad:    'bc-calidad',
   supgrabaciones:'bc-supgrabaciones',
   usuarios:      'bc-usuarios',
   backreclutamiento:   'bc-backreclutamiento',
-  asesorreclutamiento: 'bc-asesorreclutamiento',
+  entrevistas:   'bc-entrevistas',
+  capacitador:   'bc-capacitador',
 }
 
 const CARGOS = [
@@ -31,9 +35,13 @@ const CARGOS = [
   { value: 'jefatura',       label: 'Jefatura'         },
   { value: 'usuarios',       label: 'Usuarios'         },
   { value: 'programacion',   label: 'Programación'     },
+  { value: 'cobranzas',      label: 'Cobranzas'        },
+  { value: 'calidad',        label: 'Calidad'          },
+  { value: 'supcalidad',     label: 'Super de Calidad' },
   { value: 'supgrabaciones', label: 'Sup. Grabaciones' },
   { value: 'backreclutamiento',   label: 'Back Data Reclutaminto'  },
-  { value: 'asesorreclutamiento', label: 'Asesor de Reclutamiento' },
+  { value: 'entrevistas',   label: 'Entrevistas'  },
+  { value: 'capacitador',   label: 'Capacitación'  },
 ]
 
 const FORM_VACIO = { nombre: '', usuario: '', pass: '', pass2: '', cargo: '', cargo2: '', sala: '', genero: 'M', activo: true }

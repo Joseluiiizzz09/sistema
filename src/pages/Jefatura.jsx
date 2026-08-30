@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import MediaViewer from '../components/MediaViewer'
@@ -7,9 +8,11 @@ import { VentaEditarModal } from '../components/VentaEditarModal'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
+import RangoFechasPicker from '../components/RangoFechasPicker'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
 import '../styles/jefatura.css'
@@ -29,11 +32,18 @@ const CARGOS = [
   { id:'jefatura',       label:'Jefatura',          cls:'bc-jefatura'       },
   { id:'usuarios',       label:'Usuarios',          cls:'bc-usuarios'       },
   { id:'programacion',   label:'Programación',      cls:'bc-programacion'   },
+  { id:'cobranzas',      label:'Cobranzas',         cls:'bc-cobranzas'      },
+  { id:'calidad',        label:'Calidad',           cls:'bc-calidad'        },
+  { id:'supcalidad',     label:'Super de Calidad',  cls:'bc-calidad'        },
   { id:'supgrabaciones', label:'Sup. Grabaciones',  cls:'bc-supgrabaciones' },
   { id:'backreclutamiento',   label:'Back Data Reclutaminto',  cls:'bc-backreclutamiento'   },
-  { id:'asesorreclutamiento', label:'Asesor de Reclutamiento', cls:'bc-asesorreclutamiento' },
+  { id:'entrevistas',   label:'Entrevistas',   cls:'bc-entrevistas'   },
+  { id:'capacitador',   label:'Capacitación',  cls:'bc-capacitador'   },
+  { id:'marketing',     label:'Marketing',     cls:'bc-marketing'     },
 ]
-const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SIN SALA']
+const SALAS = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
+const TIPIFICACIONES_ENTREVISTA = ['NO CONTESTA','DESISTE','REPROGRAMA','CORTA LLAMADA','ASISTE','EN CAMINO','FALTA']
+const TURNOS_ENTREVISTA = ['TURNO 1','TURNO 2']
 
 const SEG_MAP = {
   en_ejecucion:'ejecucion',
@@ -87,9 +97,12 @@ const ACCESOS_MODS = [
   { nombre:'Dashboard CRM',    desc:'Panel individual del asesor',   icon:'chart',     path:'/dashboard',       color:'#2563eb', cargo:'asesor' },
   { nombre:'Gestión Usuarios', desc:'Administración de accesos',     icon:'users',     path:'/usuarios',        color:'#be185d', cargo:'usuarios' },
   { nombre:'Programación',     desc:'Agenda de instalaciones',       icon:'calendar',  path:'/programacion',    color:'#c2410c', cargo:'programacion' },
+  { nombre:'Cobranzas',        desc:'Clientes instalados y contratos',icon:'wallet',    path:'/cobranzas',       color:'#0f766e', cargo:'cobranzas' },
+  { nombre:'Calidad',          desc:'Control de clientes instalados',   icon:'quality',   path:'/calidad',         color:'#2563eb', cargo:'calidad' },
+  { nombre:'Super de Calidad', desc:'Supervisión del equipo de Calidad',icon:'quality',   path:'/sup-calidad',     color:'#7c3aed', cargo:'supcalidad' },
   { nombre:'Sup. Grabaciones', desc:'Supervisión del equipo de audio',icon:'headphones',path:'/sup-grabaciones',color:'#047857', cargo:'supgrabaciones' },
   { nombre:'Back Data Reclutaminto',        desc:'Gestión y asignación de candidatos', icon:'clipboard', path:'/backdata-reclutamiento', color:'#4338ca', cargo:'backreclutamiento' },
-  { nombre:'Sistema de Llamadas Reclutamiento', desc:'Contacto y seguimiento de postulantes', icon:'chart', path:'/reclutamiento', color:'#0e7490', cargo:'asesorreclutamiento' },
+  { nombre:'Capacitación',      desc:'Seguimiento de postulantes en capacitación', icon:'graduation', path:'/backdata-reclutamiento', color:'#0e7490', cargo:'capacitador' },
 ]
 
 function ModuloIcon({ tipo, size = 24 }) {
@@ -103,12 +116,76 @@ function ModuloIcon({ tipo, size = 24 }) {
     users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/></>,
     headphones: <><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M18 19h-2v-7h4v5a2 2 0 0 1-2 2ZM6 19H4a2 2 0 0 1-2-2v-5h4v7Z"/></>,
+    wallet: <><path d="M4 6.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3v-10a3 3 0 0 1 3-3h11"/><path d="M15 11h6v5h-6a2.5 2.5 0 0 1 0-5Z"/></>,
+    quality: <><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></>,
+    graduation: <><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></>,
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{display:'block', margin:'auto', flex:'0 0 auto'}}>{trazos[tipo] || trazos.activity}</svg>
 }
 
+// Filtro estilo Excel: checkbox por opción + "Todos" para marcar/desmarcar en bloque.
+// seleccionados === null significa "todos" (sin filtro); un array es la selección puntual.
+function MasivoFiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = false }) {
+  const [abierto, setAbierto] = useState(false)
+  const [buscar, setBuscar] = useState('')
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!abierto) return undefined
+    const cerrar = evento => { if (!ref.current?.contains(evento.target)) setAbierto(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [abierto])
+  const visibles = opciones.filter(opcion => !buscar || opcion.toLowerCase().includes(buscar.toLowerCase()))
+  const todosMarcados = seleccionados === null || (opciones.length > 0 && seleccionados.length === opciones.length)
+  const alternar = opcion => {
+    const actuales = todosMarcados ? [...opciones] : seleccionados
+    onChange(actuales.includes(opcion) ? actuales.filter(v => v !== opcion) : [...actuales, opcion])
+  }
+  return (
+    <div className="masivo-filtro-columna" ref={ref}>
+      <button type="button" className={!todosMarcados ? 'activo' : ''} onClick={() => setAbierto(v => !v)}>
+        {titulo}<span>▼</span>
+      </button>
+      {abierto && <div className="masivo-filtro-menu">
+        {buscable && <input autoFocus value={buscar} onChange={e => setBuscar(e.target.value)} placeholder={`Buscar ${titulo.toLowerCase()}…`} />}
+        <label className="masivo-filtro-todos"><input type="checkbox" checked={todosMarcados} onChange={() => onChange(todosMarcados ? [] : null)} /> Todos</label>
+        <div className="masivo-filtro-opciones">
+          {visibles.map(opcion => <label key={opcion}><input type="checkbox" checked={todosMarcados || seleccionados.includes(opcion)} onChange={() => alternar(opcion)} /> {opcion}</label>)}
+          {!visibles.length && <small>Sin resultados</small>}
+        </div>
+      </div>}
+    </div>
+  )
+}
+
 /* ── helpers puros ── */
-function fechaHoy()    { return new Date().toISOString().split('T')[0] }
+// Los valores crudos de tipif_vend en Reclutamiento (VENTA CERRADA, NO TOCAR,
+// FRAUDE...) no son los mismos nombres que usan a diario en ese equipo — ahi
+// se llaman por su etiqueta (Acepta propuesta, No cumple el perfil, Provincia...).
+// Mismo mapeo que TIPIF_VEND_OPCIONES en Backdatareclutamiento.jsx.
+const TIPIF_VEND_RECL_LABELS = {
+  'VENTA CERRADA':   'Acepta propuesta',
+  'BUZON DE VOZ':    'Buzón de voz',
+  'NO TOCAR':        'No cumple el perfil',
+  'CORTA LLAMADA':   'Corta llamada',
+  'GESTION WSP':      'Gestión WSP',
+  'NO CONTESTA':      'No contesta',
+  'NO INTERESADO':    'No interesado',
+  'NO ROTAR':         'No rotar',
+  'VOLVER A LLAMAR':  'Volver a llamar',
+  'FRAUDE':           'Provincia',
+}
+function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor||'').trim().toUpperCase()] || valor }
+// Tipificaciones vigentes del vendedor en Backoffice (mismo set que
+// TIPIF_VEND_OPCIONES en Backoffice.jsx) — el reporte de Marketing solo debe
+// ofrecer estas para filtrar, no cualquier texto libre historico que haya
+// quedado guardado en tipif_vend/tipif_back/tipif_back_2.
+const TIPIF_VEND_VENTAS_ACTUALES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR','SIN TIPIFICAR']
+// OJO: toISOString() usa UTC, no la hora local — como Lima va 5h detrás de
+// UTC, entre las 7pm y medianoche (hora Lima) esto devolvía "mañana" en vez
+// de "hoy" (reportes con rango de fechas por defecto vacíos toda esa
+// ventana). Usar componentes locales de Date, igual que horaAhora() de al lado.
+function fechaHoy()    { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 function horaAhora()   { return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false}) }
 function mesActual()   { return fechaHoy().slice(0,7) }
 function formatF(f)    { if(!f)return'—'; const p=f.split('-'); return `${p[2]}/${p[1]}/${p[0]}` }
@@ -175,8 +252,19 @@ function coincideFiltroValidacion(v, filtro) {
   return true
 }
 function estadoGrabacion(v) {
-  const g = (v?.estado_grab || '').trim()
-  return g || 'PENDIENTE'
+  // La tabla conserva el estado detallado. Si la venta no superó Validación,
+  // prevalece su tipificación real para evitar combinaciones engañosas como
+  // CORREGIR + GRABANDO.
+  const validacion = estadoValidacion(v)
+  if (validacion !== 'VALIDADO' && validacion !== 'VENTA') return validacion
+  const g = String(v?.estado_grab || '').trim()
+  return g ? g.replace(/_/g, ' ').toUpperCase() : 'PENDIENTE'
+}
+function categoriaFiltroGrabacion(v) {
+  const estado = normEstado(estadoGrabacion(v))
+  if (estado === 'grabado' || estado === 'grabada') return 'GRABADO'
+  if (estado === 'grabando' || estado.startsWith('grabando_')) return 'GRABANDO'
+  return 'NO GRABADO'
 }
 function flujoLabelEstado(estado) {
   const e = normEstado(estado)
@@ -214,7 +302,7 @@ function flujoLabelEstado(estado) {
   })[e] || (estado || 'Venta subida')
 }
 
-const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', sala:'', pass:'', pass2:'' }
+const MOD_FORM_VACIO = { nombre:'', usuario:'', cargo:'', cargo2:'', cargo3:'', sala:'', salaManual:true, pass:'', pass2:'' }
 
 // Valores únicos y ordenados para poblar selects dinámicos (Asesor/Sala/Distrito/Plan) —
 // nunca hardcodeados, siempre derivados de los datos reales ya cargados.
@@ -331,10 +419,32 @@ export default function Jefatura() {
   const [ventasSeg,   setVentasSeg]   = useState([])
   const [reclutados, setReclutados] = useState([])
   const [cargandoReclutados, setCargandoReclutados] = useState(false)
+  const [reclutadosVista, setReclutadosVista] = useState('reclutados')
+  const [entrevistados, setEntrevistados] = useState([])
+  const [cargandoEntrevistados, setCargandoEntrevistados] = useState(false)
+  const [entrevistaEditar, setEntrevistaEditar] = useState(null)
+  const [entrevistaForm, setEntrevistaForm] = useState({ tipificacion:'', observacion:'', fecha_agendamiento:'', turno:'' })
+  const [guardandoEntrevista, setGuardandoEntrevista] = useState(false)
   const [eliminaciones, setEliminaciones] = useState([])
   const [cargandoEliminaciones, setCargandoEliminaciones] = useState(false)
   const [eliminacionBorrandoId, setEliminacionBorrandoId] = useState(null)
+  const [eliminacionRestaurandoId, setEliminacionRestaurandoId] = useState(null)
   const [detalleEliminacion, setDetalleEliminacion] = useState(null)
+  const [cobCodigosTexto, setCobCodigosTexto] = useState('')
+  const [cobCodigosProcesando, setCobCodigosProcesando] = useState(false)
+  const [cobCodigosMensaje, setCobCodigosMensaje] = useState('')
+  const [cobCodigosResultado, setCobCodigosResultado] = useState(null)
+  const [masivoLeads, setMasivoLeads] = useState([])
+  const [masivoCargando, setMasivoCargando] = useState(false)
+  const [masivoMensaje, setMasivoMensaje] = useState('')
+  const [masivoSeleccion, setMasivoSeleccion] = useState(() => new Set())
+  const [masivoFiltros, setMasivoFiltros] = useState({ campana: '', distrito: '', desde: '', hasta: '' })
+  const [masivoCantidadInput, setMasivoCantidadInput] = useState('')
+  const [masivoCatalogos, setMasivoCatalogos] = useState({ campanas: [], tipificaciones: [] })
+  const [filtroMasivoCampanas, setFiltroMasivoCampanas] = useState(null)
+  const [filtroMasivoTipificaciones, setFiltroMasivoTipificaciones] = useState(null)
+  const [masivoModoFecha, setMasivoModoFecha] = useState('rango')
+  const [masivoCopiando, setMasivoCopiando] = useState(false)
 
 
   /* filtros persistentes */
@@ -346,6 +456,8 @@ export default function Jefatura() {
   })
   const [mesReporte, setMesReporte] = useState('')
   const [busqUsuarios, setBusqUsuarios] = useState('')
+  const [filtroUsuarioCargo, setFiltroUsuarioCargo] = useState('')
+  const [filtroUsuarioSala, setFiltroUsuarioSala] = useState('')
   const [filtroFlujoVentas, setFiltroFlujoVentas] = useState('todas')
   const [busqFlujoVentas, setBusqFlujoVentas] = useState('')
 
@@ -353,11 +465,13 @@ export default function Jefatura() {
   const [fvEstados,    setFvEstados]    = useState([])
   const [fvValidacion, setFvValidacion] = useState('')
   const [fvGrabacion,  setFvGrabacion]  = useState('')
+  const [fvCanal,      setFvCanal]      = useState('')
   const [fvAsesor,     setFvAsesor]     = useState('')
   const [fvSala,       setFvSala]       = useState('')
   const [fvDistrito,   setFvDistrito]   = useState('')
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
+  const [fvDia,        setFvDia]        = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
   const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
@@ -371,10 +485,20 @@ export default function Jefatura() {
   const [fsBusqueda,  setFsBusqueda]  = useState('')
 
   /* dashboard de leads para Marketing — exclusivo de esta vista de Jefatura */
-  const [marketingFiltros, setMarketingFiltros] = useState({ desde:'', hasta:'', campana:'', tipificacion:'' })
+  const [marketingVista, setMarketingVista] = useState('ventas')
+  const [ordenCampanas, setOrdenCampanas] = useState('total')
+  const [marketingFiltros, setMarketingFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingData, setMarketingData] = useState([])
   const [marketingCatalogos, setMarketingCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingCarga, setMarketingCarga] = useState({ cargando:false, error:'' })
+  // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
+  const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
+  const [marketingReclData, setMarketingReclData] = useState([])
+  const [marketingReclCatalogos, setMarketingReclCatalogos] = useState({ campanas:[], tipificaciones:[] })
+  const [marketingReclCarga, setMarketingReclCarga] = useState({ cargando:false, error:'' })
+  /* ranking de Grabaciones: quién grabó más ventas hoy/semana/mes */
+  const [grabRanking, setGrabRanking] = useState([])
+  const [grabCarga, setGrabCarga] = useState({ cargando:false, error:'' })
 
   /* logs */
   const [logs, setLogs] = useState(() => {
@@ -488,6 +612,19 @@ export default function Jefatura() {
     }
   }, [])
 
+  const cargarEntrevistados = useCallback(async () => {
+    setCargandoEntrevistados(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      setEntrevistados(res.ok && data.ok && Array.isArray(data.data) ? data.data : [])
+    } catch {
+      setEntrevistados([])
+    } finally {
+      setCargandoEntrevistados(false)
+    }
+  }, [])
+
   const cargarEliminaciones = useCallback(async () => {
     setCargandoEliminaciones(true)
     try {
@@ -500,6 +637,77 @@ export default function Jefatura() {
       setCargandoEliminaciones(false)
     }
   }, [])
+
+  const cargarMasivo = useCallback(async (filtros = masivoFiltros) => {
+    setMasivoCargando(true)
+    setMasivoMensaje('')
+    try {
+      const qs = new URLSearchParams()
+      Object.entries(filtros).forEach(([k, v]) => { if (v) qs.set(k, v) })
+      const res = await fetch(`${API}/leads/masivo-elegibles?${qs}`, { headers: ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar los leads')
+      setMasivoLeads(Array.isArray(data.data) ? data.data : [])
+      setMasivoSeleccion(new Set())
+      setMasivoCatalogos({
+        campanas: Array.isArray(data.filtros?.campanas) ? data.filtros.campanas : [],
+        tipificaciones: Array.isArray(data.filtros?.tipificaciones) ? data.filtros.tipificaciones : [],
+      })
+    } catch (error) {
+      setMasivoLeads([])
+      setMasivoMensaje(error.message || 'Error conectando con el servidor')
+    } finally {
+      setMasivoCargando(false)
+    }
+  }, [masivoFiltros])
+
+  function masivoAlternarUno(id) {
+    setMasivoSeleccion(actual => {
+      const nuevo = new Set(actual)
+      if (nuevo.has(id)) nuevo.delete(id); else nuevo.add(id)
+      return nuevo
+    })
+  }
+
+  const masivoLeadsFiltrados = useMemo(() => masivoLeads.filter(l =>
+    (filtroMasivoCampanas === null || filtroMasivoCampanas.includes(l.campana)) &&
+    (filtroMasivoTipificaciones === null || filtroMasivoTipificaciones.includes((l.tipif_vend && l.tipif_vend.trim()) || 'SIN TIPIFICAR'))
+  ), [masivoLeads, filtroMasivoCampanas, filtroMasivoTipificaciones])
+
+  function masivoSeleccionarPrimerosN() {
+    const n = Number(masivoCantidadInput)
+    if (!Number.isInteger(n) || n <= 0) { setMasivoMensaje('Ingresa una cantidad válida'); return }
+    setMasivoSeleccion(new Set(masivoLeadsFiltrados.slice(0, n).map(l => l.id)))
+  }
+
+  async function masivoCopiarNumeros() {
+    const seleccionados = masivoLeads.filter(l => masivoSeleccion.has(l.id))
+    if (!seleccionados.length) { setMasivoMensaje('No hay leads seleccionados'); return }
+    const texto = seleccionados.map(l => l.n1 || (l.usuario_whatsapp ? `@${l.usuario_whatsapp}` : '')).filter(Boolean).join('\n')
+    setMasivoCopiando(true)
+    setMasivoMensaje('')
+    try {
+      await navigator.clipboard.writeText(texto)
+    } catch {
+      setMasivoMensaje('No se pudo copiar al portapapeles (revisa permisos del navegador)')
+      setMasivoCopiando(false)
+      return
+    }
+    try {
+      const res = await fetch(`${API}/leads/masivo-lote`, {
+        method: 'POST', headers: ncHeaders(), body: JSON.stringify({ ids: seleccionados.map(l => l.id) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo registrar el lote')
+      const ahora = new Date().toISOString()
+      setMasivoLeads(actuales => actuales.map(l => masivoSeleccion.has(l.id) ? { ...l, masivo_lote_id: data.lote_id, masivo_fecha: ahora } : l))
+      setMasivoMensaje(`Copiados ${seleccionados.length} números al portapapeles (lote #${data.lote_id})`)
+    } catch (error) {
+      setMasivoMensaje(`Se copiaron los números, pero no se pudo dejar constancia: ${error.message || 'error de servidor'}`)
+    } finally {
+      setMasivoCopiando(false)
+    }
+  }
 
   const cargarMarketing = useCallback(async (filtros = marketingFiltros) => {
     setMarketingCarga({ cargando:true, error:'' })
@@ -519,6 +727,42 @@ export default function Jefatura() {
       setMarketingCarga({ cargando:false, error:error.message || 'Error de conexión' })
     }
   }, [marketingFiltros])
+
+  const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
+    setMarketingReclCarga({ cargando:true, error:'' })
+    try {
+      const qs = new URLSearchParams()
+      Object.entries(filtros).forEach(([k,v]) => { if (v) qs.set(k,v) })
+      const res = await fetch(`${API}/leads-reclutamiento/marketing-resumen?${qs}`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar el dashboard')
+      setMarketingReclData(Array.isArray(data.data) ? data.data : [])
+      setMarketingReclCatalogos({
+        campanas:Array.isArray(data.filtros?.campanas) ? data.filtros.campanas : [],
+        tipificaciones:Array.isArray(data.filtros?.tipificaciones) ? data.filtros.tipificaciones : [],
+      })
+      setMarketingReclCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setMarketingReclCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [marketingReclFiltros])
+
+  const cargarGrabRendimiento = useCallback(async () => {
+    setGrabCarga({ cargando:true, error:'' })
+    try {
+      const res = await fetch(`${API}/ventas/grabaciones-rendimiento`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar el rendimiento de Grabaciones')
+      setGrabRanking(Array.isArray(data.ranking) ? data.ranking : [])
+      setGrabCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setGrabCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [])
+
+  const grabResumen = useMemo(() => grabRanking.reduce((acc, f) => ({
+    hoy:acc.hoy+f.hoy, semana:acc.semana+f.semana, mes:acc.mes+f.mes,
+  }), { hoy:0, semana:0, mes:0 }), [grabRanking])
 
   async function eliminarRegistroEliminacion(item) {
     if (!item?.id || eliminacionBorrandoId !== null) return
@@ -541,6 +785,31 @@ export default function Jefatura() {
     }
   }
 
+  async function restablecerRegistroEliminacion(item) {
+    if (!item?.id || item.tipo !== 'VENTA' || item.restored_at || eliminacionRestaurandoId !== null) return
+    if (!window.confirm(`¿Restablecer la venta ${item.registro_id}?\n\nLa venta volverá a aparecer en el sistema con sus datos originales.`)) return
+    setEliminacionRestaurandoId(item.id)
+    try {
+      const res = await fetch(`${API}/eliminaciones/${item.id}/restablecer`, {
+        method:'POST',
+        headers:ncHeaders(),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo restablecer la venta')
+      setEliminaciones(actuales => actuales.map(registro => registro.id === item.id
+        ? { ...registro, restored_at:new Date().toISOString(), restored_by_nombre:sesion?.nombre || 'Jefatura' }
+        : registro))
+      setDetalleEliminacion(actual => actual?.id === item.id
+        ? { ...actual, restored_at:new Date().toISOString(), restored_by_nombre:sesion?.nombre || 'Jefatura' }
+        : actual)
+      mostrarToast(data.mensaje || 'Venta restablecida correctamente')
+    } catch (error) {
+      mostrarToast(error.message || 'Error de conexión')
+    } finally {
+      setEliminacionRestaurandoId(null)
+    }
+  }
+
   async function eliminarReclutado(postulante) {
     if (!window.confirm(`¿Eliminar definitivamente a ${postulante.nombre || 'este postulante'}?`)) return
     const res = await fetch(`${API}/ventas-reclutamiento/${postulante.id}`, {
@@ -553,6 +822,48 @@ export default function Jefatura() {
       return
     }
     setReclutados(prev => prev.filter(item => item.id !== postulante.id))
+  }
+
+  function abrirEditarEntrevista(entrevista) {
+    setEntrevistaEditar(entrevista)
+    setEntrevistaForm({
+      tipificacion: entrevista.tipificacion || '',
+      observacion: entrevista.observacion || '',
+      fecha_agendamiento: soloFecha(entrevista.fecha_agendamiento) || '',
+      turno: entrevista.turno || 'TURNO 1',
+    })
+  }
+
+  async function guardarEntrevista() {
+    if (!entrevistaEditar) return
+    setGuardandoEntrevista(true)
+    try {
+      const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${entrevistaEditar.id}`, {
+        method:'PATCH', headers:ncHeaders(), body:JSON.stringify(entrevistaForm),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar la entrevista')
+      setEntrevistados(prev => prev.map(item => item.id === entrevistaEditar.id ? { ...item, ...entrevistaForm } : item))
+      setEntrevistaEditar(null)
+    } catch (e) {
+      window.alert(e.message || 'No se pudo guardar la entrevista')
+    } finally {
+      setGuardandoEntrevista(false)
+    }
+  }
+
+  async function eliminarEntrevista(entrevista) {
+    if (!window.confirm(`¿Eliminar definitivamente la entrevista de ${entrevista.nombre_postulante || 'este postulante'}?`)) return
+    const res = await fetch(`${API}/leads-reclutamiento/entrevistas/${entrevista.id}`, {
+      method:'DELETE',
+      headers:ncHeaders(),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.ok) {
+      console.error(data.mensaje || 'No se pudo eliminar la entrevista')
+      return
+    }
+    setEntrevistados(prev => prev.filter(item => item.id !== entrevista.id))
   }
 
   async function completarReasignacion(data) {
@@ -583,15 +894,17 @@ export default function Jefatura() {
     cargarVentasCache()
     agregarLog('Sesión iniciada', 'Panel de Jefatura')
     const iv = setVisibleInterval(cargarVentasCache, 5000)
-    return () => clearInterval(iv)
+    return () => clearVisibleInterval(iv)
   }, [cargarUsuarios, cargarVentasCache])
 
   useEffect(() => {
     if (seccion === 'seguimiento') cargarSeguimiento()
-    if (seccion === 'reclutados-generales') cargarReclutados()
+    if (seccion === 'reclutados-generales') { cargarReclutados(); cargarEntrevistados() }
     if (seccion === 'eliminaciones') cargarEliminaciones()
-    if (seccion === 'marketing-leads') cargarMarketing()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEliminaciones, cargarMarketing])
+    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl() }
+    if (seccion === 'grab-rendimiento') cargarGrabRendimiento()
+    if (seccion === 'envio-masivo') cargarMasivo()
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGrabRendimiento, cargarMasivo])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -629,7 +942,7 @@ export default function Jefatura() {
       destroy('salas')
       const mesUsar   = mesReporte || mesActual()
       const ventasMes = ventasCache.filter(v => v._fecha && v._fecha.startsWith(mesUsar))
-      const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
+      const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&(v.estado||'').toLowerCase()==='instalado').length
@@ -653,8 +966,8 @@ export default function Jefatura() {
       destroy('diario')
       const dias = []
       for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().split('T')[0]) }
-      const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5']
-      const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e']
+      const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
+      const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e','#eab308']
       const datasets = salas.map((s,i) => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
         return { label:s, data:dias.map(d=>ventasCache.filter(v=>v._fecha===d&&nombres.includes(v.asesor_nombre||'')).length), borderColor:colors[i], backgroundColor:colors[i]+'22', fill:true, tension:.4, borderWidth:2, pointRadius:4 }
@@ -703,6 +1016,10 @@ export default function Jefatura() {
     }
   }, [ventasCache, usuarios])
 
+  // Una venta cerrada, en cualquiera de sus 3 estados posteriores, sigue
+  // siendo una venta: VENTA CERRADA (recien cerrada), INSTALADO (se completo)
+  // o VENTA CAIDA (se cayo despues) — las 3 cuentan para el total de ventas.
+  const TIPIF_CONJUNTO_VENTA = new Set(['VENTA CERRADA','VENTA CAIDA','INSTALADO'])
   const resumenMarketing = useMemo(() => {
     const porCampana = new Map()
     let total = 0, sinTipificar = 0
@@ -710,14 +1027,17 @@ export default function Jefatura() {
       const cantidad = Number(fila.cantidad || 0)
       total += cantidad
       if (fila.tipificacion === 'SIN TIPIFICAR') sinTipificar += cantidad
-      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, tipificaciones:[] }
+      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, ventas:0, tipificaciones:[] }
       actual.total += cantidad
+      if (TIPIF_CONJUNTO_VENTA.has(String(fila.tipificacion||'').trim().toUpperCase())) actual.ventas += cantidad
       actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
       porCampana.set(fila.campana, actual)
     })
-    const campanas = [...porCampana.values()].sort((a,b) => b.total-a.total || a.campana.localeCompare(b.campana,'es'))
-    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)) }
-  }, [marketingData])
+    const campanas = [...porCampana.values()].sort((a,b) => ordenCampanas==='ventas'
+      ? (b.ventas-a.ventas || b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+      : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
+    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
+  }, [marketingData, ordenCampanas])
 
   function exportarMarketingExcel() {
     descargarExcel(marketingData, [
@@ -727,6 +1047,36 @@ export default function Jefatura() {
       ['Primera alta', f=>f.primera_alta || ''],
       ['Última alta', f=>f.ultima_alta || ''],
     ], `leads-marketing-${fechaHoy()}.xlsx`)
+  }
+
+  const resumenMarketingRecl = useMemo(() => {
+    const porCampana = new Map()
+    let total = 0, sinTipificar = 0
+    marketingReclData.forEach(fila => {
+      const cantidad = Number(fila.cantidad || 0)
+      total += cantidad
+      if (fila.tipificacion === 'SIN TIPIFICAR') sinTipificar += cantidad
+      const actual = porCampana.get(fila.campana) || { campana:fila.campana, total:0, ventas:0, tipificaciones:[] }
+      actual.total += cantidad
+      // En Reclutamiento "venta" equivale a Acepta propuesta (VENTA CERRADA en tipif_vend).
+      if (String(fila.tipificacion||'').trim().toUpperCase() === 'VENTA CERRADA') actual.ventas += cantidad
+      actual.tipificaciones.push({ nombre:fila.tipificacion, cantidad })
+      porCampana.set(fila.campana, actual)
+    })
+    const campanas = [...porCampana.values()].sort((a,b) => ordenCampanas==='ventas'
+      ? (b.ventas-a.ventas || b.total-a.total || a.campana.localeCompare(b.campana,'es'))
+      : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
+    return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
+  }, [marketingReclData, ordenCampanas])
+
+  function exportarMarketingReclExcel() {
+    descargarExcel(marketingReclData, [
+      ['Campaña', f=>f.campana],
+      ['Tipificación', f=>f.tipificacion],
+      ['Leads', f=>Number(f.cantidad || 0)],
+      ['Primera alta', f=>f.primera_alta || ''],
+      ['Última alta', f=>f.ultima_alta || ''],
+    ], `leads-marketing-reclutamiento-${fechaHoy()}.xlsx`)
   }
 
   /* ── usuarios para el selector de accesos ── */
@@ -855,7 +1205,6 @@ export default function Jefatura() {
 
   const opcionesFlujo = useMemo(() => ({
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
-    grabaciones: opcionesUnicas(ventasCache.map(estadoGrabacion)),
   }), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
@@ -869,14 +1218,16 @@ export default function Jefatura() {
     }
     if (fvEstados.length) lista = lista.filter(v => fvEstados.includes(v.estado || v.estado_venta || ''))
     if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
-    if (fvGrabacion) lista = lista.filter(v => estadoGrabacion(v) === fvGrabacion)
+    if (fvGrabacion) lista = lista.filter(v => categoriaFiltroGrabacion(v) === fvGrabacion)
+    if (fvCanal) lista = lista.filter(v => String(v.canal || '').toUpperCase() === fvCanal)
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
-    if (fvDesde || fvHasta) {
+    if (fvDia || fvDesde || fvHasta) {
       lista = lista.filter(v => {
         const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
         if (!f) return false
+        if (fvDia && f !== fvDia) return false
         if (fvDesde && f < fvDesde) return false
         if (fvHasta && f > fvHasta) return false
         return true
@@ -887,6 +1238,7 @@ export default function Jefatura() {
     if (b) {
       lista = lista.filter(v => [
         v.nombre, v.nombre_apellidos, v.cliente, v.dni, v.documento, v.telefono, v.n1, v.n2,
+        v.telefono1, v.telefono2, v.tel_contacto, v.tel_referencia,
         v.asesor_nombre, v.asesor, v.vendedor, v.sala, v.estado, v.estado_venta, v.distrito
       ].some(x => String(x || '').toLowerCase().includes(b)))
     }
@@ -896,7 +1248,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -904,15 +1256,53 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvAsesor, fvSala, fvDistrito, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
     setFiltroFlujoVentas('todas')
     setBusqFlujoVentas('')
-    setFvEstados([]); setFvValidacion(''); setFvGrabacion('')
+    setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal('')
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
-    setFvDesde(''); setFvHasta('')
+    setFvDia(''); setFvDesde(''); setFvHasta('')
+  }
+
+  // Pegado desde Excel/Sheets: cada línea trae 5 columnas separadas por TAB —
+  // Nombres y apellidos, Número de doc, SOT, Fecha oficial, Código de pago.
+  function parsearFilasCobCodigos(texto) {
+    return texto.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim()).map(linea => {
+      const cols = linea.split('\t')
+      return {
+        documento: (cols[0] || '').trim(),
+        sot: (cols[1] || '').trim(),
+        fecha_oficial: (cols[2] || '').trim(),
+        codigo_pago: (cols[3] || '').trim(),
+      }
+    })
+  }
+
+  async function procesarCobCodigos() {
+    const filas = parsearFilasCobCodigos(cobCodigosTexto)
+    if (!filas.length) { setCobCodigosMensaje('Pega al menos una fila con datos.'); return }
+    setCobCodigosProcesando(true)
+    setCobCodigosMensaje('')
+    setCobCodigosResultado(null)
+    try {
+      const res = await fetch(`${API}/ventas/cobranza-codigos-masivo`, {
+        method: 'POST', headers: ncHeaders(), body: JSON.stringify({ filas }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo procesar el lote')
+      setCobCodigosResultado(data)
+    } catch (e) {
+      setCobCodigosMensaje(e.message || 'Error conectando con el servidor')
+    } finally {
+      setCobCodigosProcesando(false)
+    }
+  }
+
+  function limpiarCobCodigos() {
+    setCobCodigosTexto(''); setCobCodigosResultado(null); setCobCodigosMensaje('')
   }
 
   function exportarVentasExcel() {
@@ -920,6 +1310,7 @@ export default function Jefatura() {
       ['FECHA SUBIDA',      v => formatF(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))],
       ['CLIENTE',           v => v.nombre || v.nombre_apellidos || v.cliente || '-'],
       ['DNI',               v => v.dni || v.documento || '-'],
+      ['SOT',               v => v.sot || '-'],
       ['DISTRITO',          v => v.distrito || '-'],
       ['ASESOR',            v => v.asesor_nombre || v.asesor || v.vendedor || '-'],
       ['SALA',              v => v.sala || '-'],
@@ -927,6 +1318,7 @@ export default function Jefatura() {
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
+      ['FECHA DE INSTALACIÓN', v => v.fecha_instalado ? formatF(soloFecha(v.fecha_instalado)) : '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
@@ -964,11 +1356,16 @@ export default function Jefatura() {
   }, [usuarios, ventasCache, salaReporte, mesReporte])
 
   /* ── usuarios filtrados ── */
+  const salasUsuariosDisponibles = useMemo(() => [...new Set(usuarios.map(u=>u.sala).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')), [usuarios])
   const usuariosFiltrados = useMemo(() => {
-    if (!busqUsuarios) return usuarios
     const b = busqUsuarios.toLowerCase()
-    return usuarios.filter(u => (u.nombre||'').toLowerCase().includes(b)||(u.usuario||'').toLowerCase().includes(b)||(u.sala||'').toLowerCase().includes(b))
-  }, [usuarios, busqUsuarios])
+    return usuarios.filter(u => {
+      if (b && !(u.nombre||'').toLowerCase().includes(b) && !(u.usuario||'').toLowerCase().includes(b) && !(u.sala||'').toLowerCase().includes(b)) return false
+      if (filtroUsuarioCargo && !usuarioTieneCargo(u, filtroUsuarioCargo)) return false
+      if (filtroUsuarioSala && (u.sala||'') !== filtroUsuarioSala) return false
+      return true
+    })
+  }, [usuarios, busqUsuarios, filtroUsuarioCargo, filtroUsuarioSala])
 
   /* ── modal usuario ── */
   function abrirModalNuevo() {
@@ -976,38 +1373,44 @@ export default function Jefatura() {
   }
   function abrirModalEditar(u) {
     setEditandoId(u.id)
-    const cargo2 = permisosDeUsuario(u).find(c => c !== u.cargo) || ''
-    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, sala:u.sala||'', pass:'', pass2:'' })
+    const permisosExtra = permisosDeUsuario(u).filter(c => c !== u.cargo)
+    const cargo2 = permisosExtra[0] || ''
+    const cargo3 = permisosExtra[1] || ''
+    const salaActual = String(u.sala || '').trim()
+    setModForm({ nombre:u.nombre||'', usuario:u.usuario||'', cargo:u.cargo||'', cargo2, cargo3, sala:salaActual, salaManual:!salaActual || !SALAS.includes(salaActual), pass:'', pass2:'' })
     setModErrores({}); setModalUsu(true)
   }
   function cerrarModalUsu() { setModalUsu(false); setEditandoId(null); setModForm(MOD_FORM_VACIO); setModErrores({}) }
   function setField(k, v) { setModForm(f=>({...f,[k]:v})); setModErrores(e=>({...e,[k]:false})) }
 
   async function guardarUsuario() {
-    const { nombre, usuario, cargo, cargo2, sala, pass, pass2 } = modForm
+    const { nombre, usuario, cargo, cargo2, cargo3, sala, pass, pass2 } = modForm
     const errs = {}
     let primerError = ''
     if (!nombre.trim())              { errs.nombre = true; primerError ||= 'El nombre completo es obligatorio.' }
     if (!usuario.trim())             { errs.usuario = true; primerError ||= 'El usuario es obligatorio.' }
     if (!cargo)                      { errs.cargo  = true; primerError ||= 'Selecciona un cargo principal.' }
     if (cargo2 && cargo2 === cargo)  { errs.cargo2 = true; primerError ||= 'El cargo adicional debe ser diferente al principal.' }
+    if (cargo3 && cargo3 === cargo)  { errs.cargo3 = true; primerError ||= 'El segundo cargo adicional debe ser diferente al principal.' }
+    if (cargo3 && cargo3 === cargo2) { errs.cargo3 = true; primerError ||= 'El segundo cargo adicional debe ser diferente al primero.' }
     if (!editandoId && !pass)        { errs.pass   = true; primerError ||= 'La contraseña es obligatoria.' }
     if (pass && pass.length < 6)     { errs.pass   = true; primerError ||= 'La contraseña debe tener al menos 6 caracteres.' }
     if (pass && pass !== pass2)      { errs.pass2  = true; primerError ||= 'Las contraseñas no coinciden.' }
     if (Object.keys(errs).length) { setModErrores(errs); mostrarToast(primerError); return }
 
+    const permisos = [cargo2, cargo3].filter(Boolean)
     setGuardandoUsu(true)
     try {
       const loginNorm = usuario.trim().toLowerCase().replace(/\s+/g, '.')
       let res
       if (editandoId) {
-        const body = { nombre, usuario: loginNorm, cargo, sala: sala || null, permisos: cargo2 ? [cargo2] : [] }
+        const body = { nombre, usuario: loginNorm, cargo, sala: sala || null, permisos }
         if (pass) body.password = pass
         res = await fetch(`${API}/usuarios/${editandoId}`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify(body) })
       } else {
         res = await fetch(`${API}/usuarios`, {
           method: 'POST', headers: ncHeaders(),
-          body: JSON.stringify({ nombre, usuario: loginNorm, password: pass, cargo, sala: sala || null, activo: true, permisos: cargo2 ? [cargo2] : [] })
+          body: JSON.stringify({ nombre, usuario: loginNorm, password: pass, cargo, sala: sala || null, activo: true, permisos })
         })
       }
       const ct   = res.headers.get('content-type') || ''
@@ -1126,6 +1529,9 @@ export default function Jefatura() {
           <button className={`nav-btn${seccion==='accesos'?'     active':''}`} onClick={()=>irSeccion('accesos')}><span className="nav-dot"></span> Accesos directos</button>
           <div className="sidebar-sep">Operaciones</div>
           <button className={`nav-btn${seccion==='marketing-leads'?' active':''}`} onClick={()=>irSeccion('marketing-leads')}><span className="nav-dot"></span> Marketing · Leads</button>
+          <button className={`nav-btn${seccion==='grab-rendimiento'?' active':''}`} onClick={()=>irSeccion('grab-rendimiento')}><span className="nav-dot"></span> Grabaciones</button>
+          <button className={`nav-btn${seccion==='envio-masivo'?' active':''}`} onClick={()=>irSeccion('envio-masivo')}><span className="nav-dot"></span> Envío masivo</button>
+          <button className={`nav-btn${seccion==='cobranza-codigos'?' active':''}`} onClick={()=>irSeccion('cobranza-codigos')}><span className="nav-dot"></span> Cobranza · Códigos</button>
           <button className={`nav-btn${seccion==='ventas-flujo'?' active':''}`} onClick={()=>irSeccion('ventas-flujo')}><span className="nav-dot"></span> Ventas generales</button>
           <button className={`nav-btn${seccion==='seguimiento'?' active':''}`} onClick={()=>irSeccion('seguimiento')}><span className="nav-dot"></span> Seguimiento en campo</button>
           <button className={`nav-btn${seccion==='reclutados-generales'?' active':''}`} onClick={()=>irSeccion('reclutados-generales')}><span className="nav-dot"></span> Reclutados generales</button>
@@ -1330,20 +1736,33 @@ export default function Jefatura() {
           {/* ===== DASHBOARD DE LEADS PARA MARKETING (SOLO JEFATURA) ===== */}
           <section className={`section${seccion==='marketing-leads'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para el área de Marketing</p></div>
+              <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para las áreas de Marketing y Reclutamiento</p></div>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>
-                <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
+                {marketingVista==='ventas'
+                  ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>
+                  : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingReclExcel} disabled={!marketingReclData.length}>Exportar Excel</button>}
+                {marketingVista==='ventas'
+                  ? <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
+                  : <button className="btn-nuevo" onClick={()=>cargarMarketingRecl(marketingReclFiltros)}>Actualizar</button>}
               </div>
             </div>
 
+            <div className="nav-tabs" style={{display:'flex',gap:8,marginBottom:14}}>
+              <button type="button" className={`btn-nuevo${marketingVista==='ventas'?'':' btn-tab-inactivo'}`}
+                style={marketingVista==='ventas'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setMarketingVista('ventas')}>Ventas</button>
+              <button type="button" className={`btn-nuevo${marketingVista==='reclutamiento'?'':' btn-tab-inactivo'}`}
+                style={marketingVista==='reclutamiento'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setMarketingVista('reclutamiento')}>Reclutamiento</button>
+            </div>
+
+            {marketingVista==='ventas' && <>
             <div className="filtros-avanzados marketing-filtros">
               <div className="filtros-titulo">Filtros del reporte</div>
               <div className="filtros-grid">
-                <label><span>Fecha desde</span><input type="date" value={marketingFiltros.desde} onChange={e=>setMarketingFiltros(p=>({...p,desde:e.target.value}))}/></label>
-                <label><span>Fecha hasta</span><input type="date" value={marketingFiltros.hasta} onChange={e=>setMarketingFiltros(p=>({...p,hasta:e.target.value}))}/></label>
+                <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingFiltros.desde} hasta={marketingFiltros.hasta} onChange={v=>setMarketingFiltros(p=>({...p,...v}))} /></label>
                 <label><span>Campaña</span><select value={marketingFiltros.campana} onChange={e=>setMarketingFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label><span>Tipificación</span><select value={marketingFiltros.tipificacion} onChange={e=>setMarketingFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingCatalogos.tipificaciones.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Tipificación</span><select value={marketingFiltros.tipificacion} onChange={e=>setMarketingFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{TIPIF_VEND_VENTAS_ACTUALES.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
               </div>
             </div>
@@ -1358,13 +1777,26 @@ export default function Jefatura() {
 
             <div className="marketing-grid">
               <div className="chart-card marketing-ranking">
-                <div className="chart-title-row"><span>Volumen de leads por campaña</span>{marketingCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="chart-title-row">
+                  <span>Volumen de leads por campaña</span>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{display:'flex',gap:2}}>
+                      <button type="button" onClick={()=>setOrdenCampanas('total')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='total'?'#0f172a':'#fff',color:ordenCampanas==='total'?'#fff':'#374151',cursor:'pointer'}}>Leads</button>
+                      <button type="button" onClick={()=>setOrdenCampanas('ventas')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='ventas'?'#0f172a':'#fff',color:ordenCampanas==='ventas'?'#fff':'#374151',cursor:'pointer'}}>Ventas</button>
+                    </div>
+                    {marketingCarga.cargando&&<small>Actualizando…</small>}
+                  </div>
+                </div>
                 <div className="marketing-barras">
                   {resumenMarketing.campanas.length===0 && !marketingCarga.cargando
                     ? <div className="marketing-vacio">No hay leads para los filtros seleccionados.</div>
                     : resumenMarketing.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
                         <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
                         <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketing.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                          <div style={{flex:1,height:3,borderRadius:99,background:'#eef2f7',overflow:'hidden'}}><i style={{display:'block',height:'100%',borderRadius:99,width:`${Math.max(3,c.ventas/resumenMarketing.maxVentas*100)}%`,background:'#86efac'}} /></div>
+                          <span style={{fontSize:9,color:'#94a3b8',fontWeight:600,flexShrink:0}}>{c.ventas} venta{c.ventas===1?'':'s'}</span>
+                        </div>
                       </div>)}
                 </div>
               </div>
@@ -1379,6 +1811,259 @@ export default function Jefatura() {
                 </table></div>
               </div>
             </div>
+            </>}
+
+            {marketingVista==='reclutamiento' && <>
+            <div className="filtros-avanzados marketing-filtros">
+              <div className="filtros-titulo">Filtros del reporte</div>
+              <div className="filtros-grid">
+                <label><span>Rango de fechas</span><RangoFechasPicker desde={marketingReclFiltros.desde} hasta={marketingReclFiltros.hasta} onChange={v=>setMarketingReclFiltros(p=>({...p,...v}))} /></label>
+                <label><span>Campaña</span><select value={marketingReclFiltros.campana} onChange={e=>setMarketingReclFiltros(p=>({...p,campana:e.target.value}))}><option value="">Todas las campañas</option>{marketingReclCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Tipificación</span><select value={marketingReclFiltros.tipificacion} onChange={e=>setMarketingReclFiltros(p=>({...p,tipificacion:e.target.value}))}><option value="">Todas las tipificaciones</option>{marketingReclCatalogos.tipificaciones.map(v=><option key={v} value={v}>{labelTipifVendRecl(v)}</option>)}</select></label>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMarketingReclFiltros({desde:'',hasta:'',campana:'',tipificacion:''})}>Limpiar</button>
+              </div>
+            </div>
+
+            {marketingReclCarga.error && <div className="marketing-error">{marketingReclCarga.error}</div>}
+            <div className="kpi-grid marketing-kpis">
+              <div className="kpi-card k-blue"><div className="kpi-num">{resumenMarketingRecl.total}</div><div className="kpi-label">Total de leads</div><div className="kpi-sub">según filtros</div></div>
+              <div className="kpi-card k-purple"><div className="kpi-num">{resumenMarketingRecl.campanas.length}</div><div className="kpi-label">Campañas</div><div className="kpi-sub">con registros</div></div>
+              <div className="kpi-card k-green"><div className="kpi-num">{resumenMarketingRecl.tipificados}</div><div className="kpi-label">Tipificados</div><div className="kpi-sub">con resultado</div></div>
+              <div className="kpi-card k-yellow"><div className="kpi-num">{resumenMarketingRecl.sinTipificar}</div><div className="kpi-label">Sin tipificar</div><div className="kpi-sub">pendientes</div></div>
+            </div>
+
+            <div className="marketing-grid">
+              <div className="chart-card marketing-ranking">
+                <div className="chart-title-row">
+                  <span>Volumen de leads por campaña</span>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{display:'flex',gap:2}}>
+                      <button type="button" onClick={()=>setOrdenCampanas('total')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='total'?'#0f172a':'#fff',color:ordenCampanas==='total'?'#fff':'#374151',cursor:'pointer'}}>Leads</button>
+                      <button type="button" onClick={()=>setOrdenCampanas('ventas')} style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:6,border:'1px solid #e5e7eb',background:ordenCampanas==='ventas'?'#0f172a':'#fff',color:ordenCampanas==='ventas'?'#fff':'#374151',cursor:'pointer'}}>Ventas</button>
+                    </div>
+                    {marketingReclCarga.cargando&&<small>Actualizando…</small>}
+                  </div>
+                </div>
+                <div className="marketing-barras">
+                  {resumenMarketingRecl.campanas.length===0 && !marketingReclCarga.cargando
+                    ? <div className="marketing-vacio">No hay leads para los filtros seleccionados.</div>
+                    : resumenMarketingRecl.campanas.map((c,i)=><div className="marketing-barra" key={c.campana}>
+                        <div className="marketing-barra-top"><strong>{c.campana}</strong><span>{c.total} leads</span></div>
+                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,c.total/resumenMarketingRecl.max*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                          <div style={{flex:1,height:3,borderRadius:99,background:'#eef2f7',overflow:'hidden'}}><i style={{display:'block',height:'100%',borderRadius:99,width:`${Math.max(3,c.ventas/resumenMarketingRecl.maxVentas*100)}%`,background:'#86efac'}} /></div>
+                          <span style={{fontSize:9,color:'#94a3b8',fontWeight:600,flexShrink:0}}>{c.ventas} acepta{c.ventas===1?'':'n'} propuesta</span>
+                        </div>
+                      </div>)}
+                </div>
+              </div>
+
+              <div className="tabla-wrap marketing-tabla-card">
+                <div className="tabla-header"><span className="tabla-title">Detalle para Reclutamiento</span><span className="tabla-count">{marketingReclData.length} grupos</span></div>
+                <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                  <thead><tr><th>Campaña</th><th>Tipificación</th><th>Leads</th><th>Primera alta</th><th>Última alta</th></tr></thead>
+                  <tbody>{marketingReclData.length===0
+                    ? <tr><td colSpan="5" className="tabla-empty">{marketingReclCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
+                    : marketingReclData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{labelTipifVendRecl(f.tipificacion)}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
+                </table></div>
+              </div>
+            </div>
+            </>}
+          </section>
+
+          {/* ===== GRABACIONES: RENDIMIENTO ===== */}
+          <section className={`section${seccion==='grab-rendimiento'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Rendimiento de Grabaciones</h2><p>Ranking de ventas grabadas por cada asesor de Grabaciones: hoy, esta semana y este mes</p></div>
+              <button className="btn-nuevo" onClick={cargarGrabRendimiento}>Actualizar</button>
+            </div>
+
+            {grabCarga.error && <div className="marketing-error">{grabCarga.error}</div>}
+
+            <div className="kpi-grid marketing-kpis">
+              <div className="kpi-card k-blue"><div className="kpi-num">{grabResumen.hoy}</div><div className="kpi-label">Grabadas hoy</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-purple"><div className="kpi-num">{grabResumen.semana}</div><div className="kpi-label">Esta semana</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-green"><div className="kpi-num">{grabResumen.mes}</div><div className="kpi-label">Este mes</div><div className="kpi-sub">todo el equipo</div></div>
+              <div className="kpi-card k-yellow"><div className="kpi-num">{grabRanking.length}</div><div className="kpi-label">Personas activas</div><div className="kpi-sub">con grabaciones este mes</div></div>
+            </div>
+
+            <div className="marketing-grid">
+              <div className="chart-card marketing-ranking">
+                <div className="chart-title-row"><span>Grabadas hoy por asesor</span>{grabCarga.cargando&&<small>Actualizando…</small>}</div>
+                <div className="marketing-barras">
+                  {grabRanking.length===0 && !grabCarga.cargando
+                    ? <div className="marketing-vacio">Todavía no hay grabaciones registradas.</div>
+                    : grabRanking.map((f,i)=><div className="marketing-barra" key={f.id}>
+                        <div className="marketing-barra-top"><strong>{f.nombre}</strong><span>{f.hoy} hoy</span></div>
+                        <div className="marketing-barra-track"><i style={{width:`${Math.max(3,f.hoy/Math.max(1,...grabRanking.map(x=>x.hoy))*100)}%`,background:['#2563eb','#7c3aed','#0f766e','#ea580c','#db2777'][i%5]}} /></div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                          <div style={{flex:1,height:3,borderRadius:99,background:'#eef2f7',overflow:'hidden'}}><i style={{display:'block',height:'100%',borderRadius:99,width:`${Math.max(3,f.mes/Math.max(1,...grabRanking.map(x=>x.mes))*100)}%`,background:'#86efac'}} /></div>
+                          <span style={{fontSize:9,color:'#94a3b8',fontWeight:600,flexShrink:0}}>{f.mes} en el mes</span>
+                        </div>
+                      </div>)}
+                </div>
+              </div>
+
+              <div className="tabla-wrap marketing-tabla-card">
+                <div className="tabla-header"><span className="tabla-title">Detalle por asesor</span><span className="tabla-count">{grabRanking.length} personas</span></div>
+                <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                  <thead><tr><th>#</th><th>Asesor</th><th>Hoy</th><th>Semana</th><th>Mes</th></tr></thead>
+                  <tbody>{grabRanking.length===0
+                    ? <tr><td colSpan="5" className="tabla-empty">{grabCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
+                    : grabRanking.map((f,i)=><tr key={f.id}><td>{i+1}</td><td><strong>{f.nombre}</strong></td><td>{f.hoy}</td><td>{f.semana}</td><td>{f.mes}</td></tr>)}</tbody>
+                </table></div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== ENVIO MASIVO ===== */}
+          <section className={`section${seccion==='envio-masivo'?' active':''}`}>
+            <div className="sec-header">
+              <div><h2>Envío masivo</h2><p>Arma un lote de números para pegar en una plataforma externa de envío masivo. Excluye leads SIN COBERTURA y VENTA CERRADA.</p></div>
+              <button className="btn-nuevo" onClick={()=>cargarMasivo()} disabled={masivoCargando}>{masivoCargando ? 'Cargando…' : '↻ Actualizar'}</button>
+            </div>
+
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtros</div>
+              <div className="filtros-grid">
+                <label><span>Fecha</span>
+                  <div style={{display:'flex',gap:4,marginBottom:5}}>
+                    <button type="button" onClick={()=>setMasivoModoFecha('rango')} style={{flex:1,height:26,border:'1px solid #e5e7eb',borderRadius:6,background:masivoModoFecha==='rango'?'#1f2937':'#fff',color:masivoModoFecha==='rango'?'#fff':'#475569',fontSize:10,fontWeight:700,cursor:'pointer'}}>Rango</button>
+                    <button type="button" onClick={()=>{ setMasivoModoFecha('exacta'); setMasivoFiltros(p=>({...p,hasta:p.desde})) }} style={{flex:1,height:26,border:'1px solid #e5e7eb',borderRadius:6,background:masivoModoFecha==='exacta'?'#1f2937':'#fff',color:masivoModoFecha==='exacta'?'#fff':'#475569',fontSize:10,fontWeight:700,cursor:'pointer'}}>Fecha exacta</button>
+                  </div>
+                  <input type="date" value={masivoFiltros.desde} onChange={e=>setMasivoFiltros(p=>({...p, desde:e.target.value, hasta: masivoModoFecha==='exacta' ? e.target.value : p.hasta}))} />
+                </label>
+                {masivoModoFecha === 'rango' && (
+                  <label><span>Fecha hasta</span><input type="date" value={masivoFiltros.hasta} onChange={e=>setMasivoFiltros(p=>({...p,hasta:e.target.value}))} /></label>
+                )}
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ const vacio={campana:'',distrito:'',desde:'',hasta:''}; setMasivoFiltros(vacio); setFiltroMasivoCampanas(null); setFiltroMasivoTipificaciones(null); setMasivoModoFecha('rango'); cargarMasivo(vacio) }}>Limpiar</button>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>cargarMasivo(masivoFiltros)}>Buscar</button>
+              </div>
+            </div>
+
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Filtrar lo ya cargado (como Excel)</div>
+              <div className="filtros-grid">
+                <MasivoFiltroColumna titulo="CAMPAÑA" opciones={masivoCatalogos.campanas} seleccionados={filtroMasivoCampanas} onChange={setFiltroMasivoCampanas} buscable />
+                <MasivoFiltroColumna titulo="TIPIFICACIÓN DEL VENDEDOR" opciones={masivoCatalogos.tipificaciones} seleccionados={filtroMasivoTipificaciones} onChange={setFiltroMasivoTipificaciones} buscable />
+              </div>
+            </div>
+
+            {masivoMensaje && <div className="marketing-error">{masivoMensaje}</div>}
+
+            <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',margin:'0 0 14px'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569'}}>
+                Seleccionar los primeros
+                <input type="number" min="1" value={masivoCantidadInput} onChange={e=>setMasivoCantidadInput(e.target.value)} placeholder="Ej. 200" style={{width:90,padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:7,fontFamily:'inherit',fontSize:12}} />
+              </label>
+              <button type="button" className="flujo-clear filtro-limpiar" onClick={masivoSeleccionarPrimerosN}>Seleccionar</button>
+              <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setMasivoSeleccion(new Set())}>Limpiar selección</button>
+              <span style={{fontSize:12,fontWeight:700,color:'#334155'}}>{masivoSeleccion.size} seleccionados</span>
+              <button className="btn-nuevo" style={{marginLeft:'auto'}} disabled={!masivoSeleccion.size || masivoCopiando} onClick={masivoCopiarNumeros}>
+                {masivoCopiando ? 'Copiando…' : `Copiar números (${masivoSeleccion.size})`}
+              </button>
+            </div>
+
+            <div className="tabla-wrap">
+              <div className="tabla-header"><span className="tabla-title">Leads elegibles</span><span className="tabla-count">{masivoLeadsFiltrados.length} registros</span></div>
+              <div style={{overflowX:'auto'}}><table className="tabla">
+                <thead><tr>
+                  <th><input type="checkbox" checked={masivoLeadsFiltrados.length>0 && masivoSeleccion.size===masivoLeadsFiltrados.length} onChange={e=>setMasivoSeleccion(e.target.checked ? new Set(masivoLeadsFiltrados.map(l=>l.id)) : new Set())} /></th>
+                  <th>N1</th><th>N2</th><th>Campaña</th><th>Distrito</th><th>Asesor</th><th>Fecha</th><th>Estado</th>
+                </tr></thead>
+                <tbody>
+                  {!masivoCargando && masivoLeadsFiltrados.map(l => (
+                    <tr key={l.id}>
+                      <td><input type="checkbox" checked={masivoSeleccion.has(l.id)} onChange={()=>masivoAlternarUno(l.id)} /></td>
+                      <td>{l.n1 || (l.usuario_whatsapp ? <span title="Sin número — usuario de WhatsApp">@{l.usuario_whatsapp}</span> : '—')}</td>
+                      <td>{l.n2 || '—'}</td>
+                      <td>{l.campana || '—'}</td>
+                      <td>{l.distrito || '—'}</td>
+                      <td>{l.asesor_nombre || '—'}</td>
+                      <td>{l.fecha ? new Date(l.fecha).toLocaleDateString('es-PE',{timeZone:'America/Lima'}) : '—'}</td>
+                      <td>{l.masivo_lote_id
+                        ? <span style={{display:'inline-block',padding:'3px 8px',borderRadius:6,background:'#fef3c7',color:'#92400e',fontSize:10,fontWeight:700}}>Lote #{l.masivo_lote_id}{l.masivo_fecha ? ` · ${new Date(l.masivo_fecha).toLocaleDateString('es-PE',{timeZone:'America/Lima'})}` : ''}</span>
+                        : <span style={{color:'#94a3b8',fontSize:10}}>Sin enviar</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {!masivoCargando && !masivoLeadsFiltrados.length && <tr><td colSpan="8" className="tabla-empty">Sin registros para los filtros seleccionados.</td></tr>}
+                  {masivoCargando && <tr><td colSpan="8" className="tabla-empty">Cargando leads…</td></tr>}
+                </tbody>
+              </table></div>
+            </div>
+          </section>
+
+          {/* ===== COBRANZA · CÓDIGOS ===== */}
+          <section className={`section${seccion==='cobranza-codigos'?' active':''}`}>
+            <div className="sec-header">
+              <div>
+                <h2>Cobranza · Códigos de pago</h2>
+                <p>Pega el reporte de facturación (Nombres y apellidos, Número de doc, SOT, Fecha oficial, Código de pago). Se cruza por SOT contra las ventas y solo actualiza el código de pago en Cobranza — el ciclo de facturación y los recibos siguen siendo 100% manuales.</p>
+              </div>
+            </div>
+
+            <div className="filtros-avanzados">
+              <div className="filtros-titulo">Pegar datos (copiados desde Excel/Sheets)</div>
+              <textarea
+                value={cobCodigosTexto}
+                onChange={e=>setCobCodigosTexto(e.target.value)}
+                placeholder={'Pega aquí las filas copiadas de la hoja de cálculo (Número de doc, SOT, Fecha oficial, Código de pago)'}
+                rows={8}
+                style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontFamily:'monospace',fontSize:11.5,resize:'vertical'}}
+              />
+              <div style={{display:'flex',gap:10,marginTop:10}}>
+                <button className="btn-nuevo" onClick={procesarCobCodigos} disabled={cobCodigosProcesando}>
+                  {cobCodigosProcesando ? 'Procesando…' : 'Procesar lote'}
+                </button>
+                <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarCobCodigos}>Limpiar</button>
+              </div>
+            </div>
+
+            {cobCodigosMensaje && <div className="marketing-error">{cobCodigosMensaje}</div>}
+
+            {cobCodigosResultado && (
+              <>
+                <div className="flujo-kpi-grid">
+                  <div className="kpi-card flujo-kpi k-blue"><div className="kpi-num">{cobCodigosResultado.resumen.total}</div><div className="kpi-label">Filas procesadas</div></div>
+                  <div className="kpi-card flujo-kpi k-green"><div className="kpi-num">{cobCodigosResultado.resumen.actualizados}</div><div className="kpi-label">Actualizados</div></div>
+                  <div className="kpi-card flujo-kpi k-yellow"><div className="kpi-num">{cobCodigosResultado.resumen.sin_cambios}</div><div className="kpi-label">Sin cambios</div></div>
+                  <div className="kpi-card flujo-kpi k-red"><div className="kpi-num">{cobCodigosResultado.resumen.no_encontrados}</div><div className="kpi-label">SOT no encontrado</div></div>
+                </div>
+
+                <div className="tabla-wrap">
+                  <div className="tabla-header"><span className="tabla-title">Resultado del cruce</span><span className="tabla-count">{cobCodigosResultado.resultados.length} filas</span></div>
+                  <div style={{overflowX:'auto'}}><table className="tabla">
+                    <thead><tr>
+                      <th>Nombre (sistema)</th><th>Documento</th><th>SOT</th><th>Código de pago</th>
+                      <th>Vendedor</th><th>Sala</th><th>Tel. 1</th><th>Tel. 2</th><th>Estado</th>
+                    </tr></thead>
+                    <tbody>
+                      {cobCodigosResultado.resultados.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.nombre_sistema || '—'}</td>
+                          <td>{r.documento || '—'}</td>
+                          <td>{r.sot || '—'}</td>
+                          <td>{r.codigo_pago || '—'}</td>
+                          <td>{r.vendedor || '—'}</td>
+                          <td>{r.sala || '—'}</td>
+                          <td>{r.telefono1 || '—'}</td>
+                          <td>{r.telefono2 || '—'}</td>
+                          <td>
+                            {r.estado === 'actualizado' && <span style={{color:'#047857',fontWeight:700}}>Actualizado</span>}
+                            {r.estado === 'sin_cambios' && <span style={{color:'#94a3b8',fontWeight:700}}>Sin cambios</span>}
+                            {r.estado === 'no_encontrado' && <span style={{color:'#dc2626',fontWeight:700}}>SOT no encontrado</span>}
+                            {r.estado === 'sin_sot' && <span style={{color:'#dc2626',fontWeight:700}}>Fila sin SOT</span>}
+                            {r.estado === 'sin_codigo' && <span style={{color:'#dc2626',fontWeight:700}}>Sin código de pago</span>}
+                            {r.estado === 'codigo_muy_largo' && <span style={{color:'#dc2626',fontWeight:700}}>Código muy largo</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table></div>
+                </div>
+              </>
+            )}
           </section>
 
           {/* ===== VENTAS GENERALES ===== */}
@@ -1423,7 +2108,7 @@ export default function Jefatura() {
                 className="tabla-search flujo-search"
                 value={busqFlujoVentas}
                 onChange={e=>setBusqFlujoVentas(e.target.value)}
-                placeholder="Buscar cliente, DNI, asesor, sala..."
+                placeholder="Buscar cliente, DNI, teléfono, asesor, sala..."
               />
             </div>
             <div className="filtros-avanzados">
@@ -1431,10 +2116,12 @@ export default function Jefatura() {
               <div className="filtros-grid filtros-grid-ventas">
                 <label><span>Estado actual</span><FiltroEstadoMultiple opciones={opcionesFlujo.estados} seleccionados={fvEstados} onChange={setFvEstados} /></label>
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">TODAS</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
-                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option>{opcionesFlujo.grabaciones.map(x=><option key={x} value={x}>{textoFiltroMayuscula(x)}</option>)}</select></label>
+                <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option><option value="GRABADO">GRABADO</option><option value="GRABANDO">GRABANDO</option><option value="NO GRABADO">NO GRABADO</option></select></label>
+                <label><span>Canal</span><select value={fvCanal} onChange={e=>setFvCanal(e.target.value)}><option value="">TODOS</option><option value="NETCONTACT">NETCONTACT</option><option value="KELS">KELS</option></select></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
+                <label><span>Fecha del día</span><input type="date" value={fvDia} onChange={e=>setFvDia(e.target.value)}/></label>
                 <label><span>Fecha desde</span><input type="date" value={fvDesde} onChange={e=>setFvDesde(e.target.value)}/></label>
                 <label><span>Fecha hasta</span><input type="date" value={fvHasta} onChange={e=>setFvHasta(e.target.value)}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
@@ -1465,6 +2152,7 @@ export default function Jefatura() {
                       <th>DNI</th>
                       <th>Asesor</th>
                       <th>Sala</th>
+                      <th>Canal</th>
                       <th>Validación</th>
                       <th>Grabación</th>
                       <th>Programación</th>
@@ -1474,7 +2162,7 @@ export default function Jefatura() {
                   </thead>
                   <tbody>
                     {ventasFlujoFiltradas.length === 0 ? (
-                      <tr><td colSpan="11" className="tabla-empty">No hay ventas registradas.</td></tr>
+                      <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const estadoSeg = estadoSeguimiento(v)
@@ -1491,6 +2179,7 @@ export default function Jefatura() {
                           <td>{v.dni || v.documento || '—'}</td>
                           <td>{String(v.asesor_nombre || v.asesor || v.vendedor || '—').toLocaleUpperCase('es-PE')}</td>
                           <td>{v.sala || '—'}</td>
+                          <td><CanalBadge canal={v.canal} /></td>
                           <td><span className={flujoValidada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoValidacion(v)}</span></td>
                           <td><span className={flujoGrabada(v) ? 'flujo-ok' : 'flujo-warn'}>{estadoGrabacion(v)}</span></td>
                           <td>
@@ -1545,16 +2234,25 @@ export default function Jefatura() {
                 </div>
                 <input type="text" className="tabla-search" value={busqUsuarios}
                   onChange={e=>setBusqUsuarios(e.target.value)} placeholder="Buscar usuario..." />
+                <select className="select-filtro" value={filtroUsuarioCargo} onChange={e=>setFiltroUsuarioCargo(e.target.value)}>
+                  <option value="">Todos los cargos</option>
+                  {CARGOS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+                <select className="select-filtro" value={filtroUsuarioSala} onChange={e=>setFiltroUsuarioSala(e.target.value)}>
+                  <option value="">Todas las salas</option>
+                  {salasUsuariosDisponibles.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {(filtroUsuarioCargo || filtroUsuarioSala) && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{setFiltroUsuarioCargo(''); setFiltroUsuarioSala('')}}>Limpiar</button>}
               </div>
               <table className="tabla tabla-usuarios-pro">
                 <colgroup>
-                  <col style={{width:'300px'}} />
-                  <col style={{width:'380px'}} />
-                  <col style={{width:'140px'}} />
-                  <col style={{width:'150px'}} />
-                  <col style={{width:'150px'}} />
-                  <col style={{width:'140px'}} />
-                  <col style={{width:'300px'}} />
+                  <col style={{width:'290px'}} />
+                  <col style={{width:'290px'}} />
+                  <col style={{width:'115px'}} />
+                  <col style={{width:'135px'}} />
+                  <col style={{width:'120px'}} />
+                  <col style={{width:'110px'}} />
+                  <col style={{width:'350px'}} />
                 </colgroup>
                 <thead><tr><th>Usuario</th><th>Cargo</th><th>Sala</th><th>Login</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody>
@@ -1572,7 +2270,7 @@ export default function Jefatura() {
                     ? <tr><td colSpan="7" className="tabla-empty">No hay usuarios que coincidan con la búsqueda.</td></tr>
                     : usuariosFiltrados.map(u => {
                         const c    = cargoObj(u.cargo)
-                        const cargo2 = permisosDeUsuario(u).find(rol => rol !== u.cargo)
+                        const permisosExtra = permisosDeUsuario(u).filter(rol => rol !== u.cargo)
                         const col  = colorAvatar(u.nombre)
                         const fecha= u.created_at ? u.created_at.split(' ')[0] : ''
                         const protegido = String(u.id) === String(sesion?.id)
@@ -1587,7 +2285,7 @@ export default function Jefatura() {
                             <td>
                               <div className="usuario-cargos">
                                 <span className={`badge-cargo ${c.cls}`}>{c.label}</span>
-                                {cargo2 && <span className={`badge-cargo ${cargoObj(cargo2).cls}`}>{cargoObj(cargo2).label}</span>}
+                                {permisosExtra.map(rol => <span key={rol} className={`badge-cargo ${cargoObj(rol).cls}`}>{cargoObj(rol).label}</span>)}
                               </div>
                             </td>
                             <td style={{fontSize:'12px'}}>{u.sala||'—'}</td>
@@ -1645,6 +2343,7 @@ export default function Jefatura() {
                 { id:'SALA 4', label:'Sala 4' },
                 { id:'SALA CHANCAY', label:'Sala Chancay' },
                 { id:'SALA 5', label:'Sala 5' },
+                { id:'SALA 6', label:'Sala 6' },
               ].map(tab => (
                 <button key={tab.id}
                   className={`sala-tab${salaReporte===tab.id?' active':''}`}
@@ -1711,9 +2410,20 @@ export default function Jefatura() {
           {/* ===== RECLUTADOS GENERALES ===== */}
           <section className={`section${seccion==='reclutados-generales'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Reclutados generales</h2><p>Postulantes registrados por todos los asesores de reclutamiento</p></div>
-              <button className="btn-nuevo" onClick={cargarReclutados}>Actualizar</button>
+              <div><h2>Reclutados generales</h2><p>Postulantes registrados y entrevistas agendadas por todos los asesores de reclutamiento</p></div>
+              <button className="btn-nuevo" onClick={()=>{ cargarReclutados(); cargarEntrevistados() }}>Actualizar</button>
             </div>
+
+            <div className="nav-tabs" style={{display:'flex',gap:8,marginBottom:14}}>
+              <button type="button" className={`btn-nuevo${reclutadosVista==='reclutados'?'':' btn-tab-inactivo'}`}
+                style={reclutadosVista==='reclutados'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setReclutadosVista('reclutados')}>Reclutados</button>
+              <button type="button" className={`btn-nuevo${reclutadosVista==='entrevistados'?'':' btn-tab-inactivo'}`}
+                style={reclutadosVista==='entrevistados'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setReclutadosVista('entrevistados')}>Entrevistados</button>
+            </div>
+
+            {reclutadosVista==='reclutados' && (
             <div className="tabla-wrap">
               <div className="tabla-header">
                 <span className="tabla-title">Postulantes generales</span>
@@ -1747,6 +2457,44 @@ export default function Jefatura() {
                 </table>
               </div>
             </div>
+            )}
+
+            {reclutadosVista==='entrevistados' && (
+            <div className="tabla-wrap">
+              <div className="tabla-header">
+                <span className="tabla-title">Entrevistas agendadas</span>
+                <span className="tabla-count">{entrevistados.length} registros</span>
+              </div>
+              <div className="tabla-scroll">
+                <table className="tabla reclutados-generales-tabla">
+                  <thead><tr><th>#</th><th>Fecha agendamiento</th><th>Nombre postulante</th><th>Número</th><th>Turno</th><th>Campaña</th><th>Agendado por</th><th>Tipificación</th><th>Observación</th><th>Acción</th></tr></thead>
+                  <tbody>
+                    {cargandoEntrevistados ? (
+                      <tr className="tabla-empty"><td colSpan="10">Cargando entrevistas...</td></tr>
+                    ) : entrevistados.length === 0 ? (
+                      <tr className="tabla-empty"><td colSpan="10">Sin entrevistas agendadas.</td></tr>
+                    ) : entrevistados.map((e, i) => (
+                      <tr key={e.id}>
+                        <td>{i + 1}</td>
+                        <td>{formatF(soloFecha(e.fecha_agendamiento))}</td>
+                        <td style={{fontWeight:700}}>{e.nombre_postulante || '—'}</td>
+                        <td>{e.numero || e.numero_ref || '—'}</td>
+                        <td>{e.turno || '—'}</td>
+                        <td>{e.campana || '—'}</td>
+                        <td>{e.creado_por_nombre || '—'}</td>
+                        <td>{e.tipificacion ? <span className="flujo-ok">{e.tipificacion}</span> : '—'}</td>
+                        <td>{e.observacion || '—'}</td>
+                        <td style={{display:'flex',gap:6}}>
+                          <button type="button" className="venta-action-btn" onClick={()=>abrirEditarEntrevista(e)}>Editar</button>
+                          <button type="button" className="venta-action-btn delete" onClick={()=>eliminarEntrevista(e)}>Eliminar</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            )}
           </section>
 
           {/* ===== ELIMINACIONES GENERALES ===== */}
@@ -1790,6 +2538,16 @@ export default function Jefatura() {
                             >
                               Ver detalle
                             </button>
+                            {item.tipo === 'VENTA' && (
+                              <button
+                                type="button"
+                                className="venta-action-btn edit"
+                                disabled={Boolean(item.restored_at) || eliminacionRestaurandoId !== null}
+                                onClick={()=>restablecerRegistroEliminacion(item)}
+                              >
+                                {item.restored_at ? 'Restablecida' : eliminacionRestaurandoId === item.id ? 'Restableciendo...' : 'Restablecer'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="btn-eliminar-usuario"
@@ -1850,6 +2608,11 @@ export default function Jefatura() {
                 <div className="eliminacion-resumen">
                   Eliminado por <strong>{detalleEliminacion.actor_nombre}</strong> · ID {detalleEliminacion.registro_id}
                 </div>
+                {detalleEliminacion.restored_at && (
+                  <div className="eliminacion-resumen" style={{marginTop:8,borderColor:'#86efac',background:'#f0fdf4',color:'#166534'}}>
+                    Restablecida por <strong>{detalleEliminacion.restored_by_nombre || 'Jefatura'}</strong>
+                  </div>
+                )}
                 <div className="eliminacion-campos">
                   {Object.entries(snapshot).map(([campo, valor]) => (
                     <div className="eliminacion-campo" key={campo}>
@@ -1861,6 +2624,15 @@ export default function Jefatura() {
               </div>
               <div className="modal-footer">
                 <button className="btn-cancelar-m" onClick={()=>setDetalleEliminacion(null)}>Cerrar</button>
+                {detalleEliminacion.tipo === 'VENTA' && (
+                  <button
+                    className="btn-guardar-m"
+                    disabled={Boolean(detalleEliminacion.restored_at) || eliminacionRestaurandoId !== null}
+                    onClick={()=>restablecerRegistroEliminacion(detalleEliminacion)}
+                  >
+                    {detalleEliminacion.restored_at ? 'Venta restablecida' : eliminacionRestaurandoId === detalleEliminacion.id ? 'Restableciendo...' : 'Restablecer venta'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1896,12 +2668,30 @@ export default function Jefatura() {
                   {CARGOS.filter(c=>c.id!==modForm.cargo && c.id!=='jefatura').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
               </div>
+              <div className={`modal-campo${modErrores.cargo3?' error':''}`}>
+                <label>Segundo cargo adicional (opcional)</label>
+                <select value={modForm.cargo3} onChange={e=>setField('cargo3',e.target.value)} className={modErrores.cargo3?'error':''}>
+                  <option value="">— Sin segundo cargo adicional —</option>
+                  {CARGOS.filter(c=>c.id!==modForm.cargo && c.id!==modForm.cargo2 && c.id!=='jefatura').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
               <div className="modal-campo">
                 <label>Sala / Equipo</label>
-                <select value={modForm.sala} onChange={e=>setField('sala',e.target.value)}>
-                  <option value="">— Sin sala —</option>
+                <select value={modForm.salaManual ? '__AGREGAR__' : modForm.sala} onChange={e=>{
+                  if (e.target.value === '__AGREGAR__') setModForm(f=>({...f,sala:'',salaManual:true}))
+                  else setModForm(f=>({...f,sala:e.target.value,salaManual:false}))
+                }}>
+                  <option value="__AGREGAR__">— Agregar sala —</option>
                   {SALAS.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
+                {modForm.salaManual && <input
+                  value={modForm.sala}
+                  onChange={e=>setField('sala',e.target.value.toUpperCase())}
+                  placeholder="Escribir nombre de la sala"
+                  autoFocus
+                  maxLength={80}
+                  style={{marginTop:'8px'}}
+                />}
               </div>
               <div className="modal-sep">Contraseña</div>
               <div className={`modal-campo${modErrores.pass?' error':''}`}>
@@ -1974,6 +2764,45 @@ export default function Jefatura() {
               <button className="btn-cancelar-m" onClick={()=>setModalEliminar(null)} disabled={eliminandoUsu}>Cancelar</button>
               <button className="btn-confirmar-eliminar" onClick={confirmarEliminarUsuario} disabled={eliminandoUsu}>
                 {eliminandoUsu?'Eliminando...':'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDITAR ENTREVISTA (Reclutados generales → Entrevistados) */}
+      {entrevistaEditar && (
+        <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget && !guardandoEntrevista)setEntrevistaEditar(null)}}>
+          <div className="modal-box">
+            <div className="modal-title">Editar entrevista</div>
+            <div className="modal-sub">{entrevistaEditar.nombre_postulante || 'Postulante'}</div>
+            <div className="modal-grid">
+              <div className="modal-campo">
+                <label>Tipificación</label>
+                <select value={entrevistaForm.tipificacion} onChange={e=>setEntrevistaForm(f=>({...f,tipificacion:e.target.value}))}>
+                  <option value="">— Sin tipificar —</option>
+                  {TIPIFICACIONES_ENTREVISTA.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="modal-campo">
+                <label>Turno</label>
+                <select value={entrevistaForm.turno} onChange={e=>setEntrevistaForm(f=>({...f,turno:e.target.value}))}>
+                  {TURNOS_ENTREVISTA.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="modal-campo">
+                <label>Fecha de agendamiento</label>
+                <input type="date" value={entrevistaForm.fecha_agendamiento} onChange={e=>setEntrevistaForm(f=>({...f,fecha_agendamiento:e.target.value}))} />
+              </div>
+              <div className="modal-campo span2">
+                <label>Observación</label>
+                <textarea rows={3} value={entrevistaForm.observacion} onChange={e=>setEntrevistaForm(f=>({...f,observacion:e.target.value}))} placeholder="Notas de la entrevista" />
+              </div>
+            </div>
+            <div className="modal-btns">
+              <button className="btn-cancelar-m" onClick={()=>setEntrevistaEditar(null)} disabled={guardandoEntrevista}>Cancelar</button>
+              <button className="btn-guardar" onClick={guardarEntrevista} disabled={guardandoEntrevista}>
+                {guardandoEntrevista ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
           </div>

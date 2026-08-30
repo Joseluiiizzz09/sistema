@@ -13,10 +13,14 @@ const Seguimiento = lazy(() => import('./pages/Seguimiento'))
 const Grabaciones = lazy(() => import('./pages/Grabaciones'))
 const SupGrabaciones = lazy(() => import('./pages/SupGrabaciones'))
 const Programacion = lazy(() => import('./pages/Programacion'))
+const Cobranzas = lazy(() => import('./pages/Cobranzas'))
+const Calidad = lazy(() => import('./pages/Calidad'))
+const SupCalidad = lazy(() => import('./pages/SupCalidad'))
 const Jefatura = lazy(() => import('./pages/Jefatura'))
 const Usuarios = lazy(() => import('./pages/Usuarios'))
 const Backdatareclutamiento = lazy(() => import('./pages/Backdatareclutamiento'))
 const DashboardReclutamiento = lazy(() => import('./pages/dashboardreclutamiento'))
+const MarketingLeads = lazy(() => import('./pages/MarketingLeads'))
 
 function RouteLoader() {
   return (
@@ -36,7 +40,8 @@ function PrivateRoute({ children, cargo }) {
   useAuth() // mantiene este componente reactivo ante login/logout/cambio de vista
   const sesion = leerSesionActual()
   if (!sesion) return <Navigate to="/login" replace />
-  if (cargo && !cargosDeUsuario(sesion).includes(cargo)) {
+  const cargosPermitidos = Array.isArray(cargo) ? cargo : cargo ? [cargo] : null
+  if (cargosPermitidos && !cargosPermitidos.some(c => cargosDeUsuario(sesion).includes(c))) {
     return <Navigate to={rutaInicialAutorizada(sesion)} replace />
   }
   return children
@@ -63,10 +68,14 @@ export default function App() {
       <Route path="/grabaciones"   element={<PrivateRoute cargo="grabaciones"><Grabaciones /></PrivateRoute>} />
       <Route path="/sup-grabaciones" element={<PrivateRoute cargo="supgrabaciones"><SupGrabaciones /></PrivateRoute>} />
       <Route path="/programacion"  element={<PrivateRoute cargo="programacion"><Programacion /></PrivateRoute>} />
+      <Route path="/cobranzas"     element={<PrivateRoute cargo="cobranzas"><Cobranzas /></PrivateRoute>} />
+      <Route path="/calidad"       element={<PrivateRoute cargo="calidad"><Calidad /></PrivateRoute>} />
+      <Route path="/sup-calidad"   element={<PrivateRoute cargo="supcalidad"><SupCalidad /></PrivateRoute>} />
       <Route path="/jefatura"      element={<PrivateRoute cargo="jefatura"><Jefatura /></PrivateRoute>} />
       <Route path="/usuarios"      element={<PrivateRoute cargo="usuarios"><Usuarios /></PrivateRoute>} />
-      <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo="backreclutamiento"><Backdatareclutamiento /></PrivateRoute>} />
+      <Route path="/backdata-reclutamiento" element={<PrivateRoute cargo={['backreclutamiento','entrevistas','capacitador']}><Backdatareclutamiento /></PrivateRoute>} />
       <Route path="/reclutamiento"          element={<PrivateRoute cargo="asesorreclutamiento"><DashboardReclutamiento /></PrivateRoute>} />
+      <Route path="/marketing-leads"        element={<PrivateRoute cargo="marketing"><MarketingLeads /></PrivateRoute>} />
 
       <Route path="*" element={<InicioAutorizado />} />
       </Routes>

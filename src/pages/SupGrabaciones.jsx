@@ -4,8 +4,9 @@ import { useAuth } from '../hooks/useAuth'
 import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
+import CanalBadge from '../components/CanalBadge'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/grabaciones.css'
 
 const BADGE_MAP = {
@@ -13,6 +14,7 @@ const BADGE_MAP = {
   observado:    { cls: 'bg-observado',label: 'OBSERVADO'    },
   conforme:     { cls: 'bg-grabado',  label: 'CONFORME'     },
   no_conforme:  { cls: 'bg-observado',label: 'NO CONFORME'  },
+  rechazado:     { cls: 'bg-observado',label: 'RECHAZADO'     },
   programado:   { cls: 'bg-revisado', label: 'PROGRAMADO'   },
   sin_revisar:  { cls: 'bg-revisado', label: 'EN REVISION'  },
   audio_subido: { cls: 'bg-grabado',  label: 'AUDIO SUBIDO' },
@@ -153,7 +155,7 @@ export default function SupGrabaciones() {
     actualizarFecha()
     const fi = setInterval(actualizarFecha, 60000)
     const fc = setVisibleInterval(cargarVentas, 2000)
-    return () => { clearInterval(fi); clearInterval(fc) }
+    return () => { clearInterval(fi); clearVisibleInterval(fc) }
   }, [cargarVentas])
 
   useEffect(() => {
@@ -203,9 +205,16 @@ export default function SupGrabaciones() {
     setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
   }
 
+  function esSegundoCicloVenta(venta) {
+    const revision = String(venta?.estadoRev || venta?.estado_supgrab || '').trim().toLowerCase()
+    return Boolean(venta?.fecha_programado) ||
+      String(venta?.estado || '').trim().toUpperCase() === 'PROGRAMADO' ||
+      ['programado', 'audio_subido', 'no_conforme', 'conforme'].includes(revision)
+  }
+
   async function abrirModalRevisar(v) {
     setModalRevisar(v)
-    setEstadoRevision(v.estadoRev === 'programado' ? '' : (v.estadoRev || 'sin_revisar'))
+    setEstadoRevision(esSegundoCicloVenta(v) ? '' : (v.estadoRev || 'sin_revisar'))
     setRevObs('')
     setAudioSrc('')
     if (v.audioUrl) {
@@ -239,6 +248,7 @@ export default function SupGrabaciones() {
     const lineas = (modalRevisar.obsSup || '').split('\n').filter(l => l.trim())
     lineas.push(`[${nowLabel()} - ${usuarioActual}] ${estadoRevision.toUpperCase()}${revObs ? ' -- ' + revObs : ''}`)
     const nuevoHistorial = lineas.join('\n')
+    const esSegundoCiclo = esSegundoCicloVenta(modalRevisar)
     try {
       const res  = await fetch(`${API}/ventas/${modalRevisar.id}?area=supgrabaciones`, {
         method: 'PATCH', headers: ncHeaders(),
@@ -252,12 +262,20 @@ export default function SupGrabaciones() {
                 estado_supgrab: 'conforme',
                 estado_grab: 'grabado',
               }
+            : estadoRevision === 'rechazado'
+              ? {
+                  estado: 'CAIDA',
+                  estado_supgrab: 'rechazado',
+                  estado_grab: 'grabado',
+                  motivo_seguimiento: 'RECHAZO POR AUDIO',
+                }
             : estadoRevision === 'no_conforme'
               ? {
-                  ...(['VALIDADO','APROBADO'].includes((modalRevisar.estado || '').toUpperCase())
-                    ? { estado: 'VALIDADO' } : {}),
+                  ...(esSegundoCiclo
+                    ? { estado: 'VALIDADO' }
+                    : (['VALIDADO','APROBADO'].includes((modalRevisar.estado || '').toUpperCase()) ? { estado: 'VALIDADO' } : {})),
                   estado_supgrab: 'no_conforme',
-                  estado_grab: 'pendiente',
+                  estado_grab: esSegundoCiclo ? 'grabando' : 'pendiente',
                 }
               : {
                   estado_supgrab: estadoRevision,
@@ -266,7 +284,7 @@ export default function SupGrabaciones() {
         }),
       })
       const data = await res.json()
-      if (!data.ok) { mostrarToast('Error guardando'); setGuardando(false); return }
+      if (!res.ok || !data.ok) { mostrarToast(data.mensaje || 'Error guardando'); setGuardando(false); return }
       // CONFORME completa esta etapa y pasa a Seguimiento; los demás resultados
       // permanecen visibles aquí como historial operativo.
       setVentas(list => estadoRevision === 'conforme'
@@ -335,6 +353,7 @@ export default function SupGrabaciones() {
                 <option value="observado">Observado</option>
                 <option value="audio_subido">Audio subido</option>
                 <option value="no_conforme">No conforme</option>
+                <option value="rechazado">Rechazado</option>
                 <option value="programado">Programado</option>
               </select>
             </div>
@@ -397,6 +416,7 @@ export default function SupGrabaciones() {
                 <tr>
                   <th style={{ minWidth: '240px' }}>ACCIONES</th>
                   <th style={{ minWidth: '110px' }}>ESTADO REV.</th>
+                  <th style={{ minWidth: '90px' }}>CANAL</th>
                   <th style={{ minWidth: '105px' }}>RESULTADO</th>
                   <th style={{ minWidth: '110px' }}>SOT</th>
                   <th style={{ minWidth: '100px' }}>FECHA</th>
@@ -413,7 +433,7 @@ export default function SupGrabaciones() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="14" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
+                  <tr><td colSpan="15" className="tabla-empty">Sin ventas grabadas para revisar.</td></tr>
                 ) : ventasPag.map(v => {
                   const badge    = BADGE_MAP[v.estadoRev] || BADGE_MAP.sin_revisar
                   const ultimaObs = v.obsSup
@@ -433,10 +453,11 @@ export default function SupGrabaciones() {
                           {badge.label}
                         </span>
                       </td>
+                      <td><CanalBadge canal={v.canal} /></td>
                       <td>
-                        {['aprobado','conforme','observado','no_conforme'].includes(v.estadoRev)
+                        {['aprobado','conforme','observado','no_conforme','rechazado'].includes(v.estadoRev)
                           ? <span className={`badge-grab ${['aprobado','conforme'].includes(v.estadoRev) ? 'bg-grabado' : 'bg-observado'}`}>
-                              {['aprobado','conforme'].includes(v.estadoRev) ? 'APROBADO' : v.estadoRev === 'no_conforme' ? 'NO CONFORME' : 'OBSERVADO'}
+                              {['aprobado','conforme'].includes(v.estadoRev) ? 'APROBADO' : v.estadoRev === 'no_conforme' ? 'NO CONFORME' : v.estadoRev === 'rechazado' ? 'RECHAZADO' : 'OBSERVADO'}
                             </span>
                           : <span style={{color:'#9ca3af'}}>—</span>}
                       </td>
@@ -522,16 +543,18 @@ export default function SupGrabaciones() {
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: '8px' }}>Resultado de revisión</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {(modalRevisar.estadoRev === 'programado'
+                {(esSegundoCicloVenta(modalRevisar)
                   ? [
                       { id: 'conforme',     label: 'CONFORME',     border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                       { id: 'audio_subido', label: 'AUDIO SUBIDO', border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                       { id: 'no_conforme',  label: 'NO CONFORME',  border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                      { id: 'rechazado',     label: 'RECHAZADO',     border: '#fb7185', bg: '#fff1f2', color: '#be123c' },
                     ]
-                  : modalRevisar.estadoRev === 'audio_subido'
+                  : ['audio_subido', 'rechazado'].includes(modalRevisar.estadoRev)
                     ? [
                         { id: 'conforme',    label: 'CONFORME',    border: '#86efac', bg: '#f0fdf4', color: '#15803d' },
                         { id: 'no_conforme', label: 'NO CONFORME', border: '#fca5a5', bg: '#fef2f2', color: '#b91c1c' },
+                        { id: 'rechazado',    label: 'RECHAZADO',    border: '#fb7185', bg: '#fff1f2', color: '#be123c' },
                       ]
                     : [
                         { id: 'aprobado',  label: 'APROBADO',  border: '#86efac', bg: '#f0fdf4', color: '#15803d' },

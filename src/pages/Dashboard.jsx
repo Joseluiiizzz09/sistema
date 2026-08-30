@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { UBIGEO } from '../services/ubigeo'
 import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
@@ -523,7 +523,7 @@ export default function Dashboard() {
     window.addEventListener('online', sincronizarAlVolver)
     document.addEventListener('visibilitychange', sincronizarAlVolver)
     return () => {
-      clearInterval(t1); clearInterval(t2); clearInterval(t3)
+      clearVisibleInterval(t1); clearVisibleInterval(t2); clearVisibleInterval(t3)
       window.removeEventListener('focus', sincronizarAlVolver)
       window.removeEventListener('online', sincronizarAlVolver)
       document.removeEventListener('visibilitychange', sincronizarAlVolver)
@@ -1286,6 +1286,7 @@ export default function Dashboard() {
                     tramo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.tramo_seguimiento : ''}
                     comentario={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.obs_seguimiento : ''}
                     motivo={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.motivo_seguimiento : ''}
+                    expandible
                   /></td>
                   <td><ProgramacionInfoCell fecha={(v.estado_supgrab||'').toLowerCase()==='conforme' ? v.fecha_programada : ''} soloFecha /></td>
                   <td style={{fontSize:'11px',color:'#185FA5',fontWeight:700}}>{normalizarFecha(v.created_at) || '-'}</td>

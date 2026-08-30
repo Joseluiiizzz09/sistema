@@ -5,8 +5,10 @@ import JefaturaViewControls from '../components/JefaturaViewControls'
 import MediaViewer from '../components/MediaViewer'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
+import WhatsappSeguimientoBoton from '../components/WhatsappSeguimientoBoton'
+import CanalBadge from '../components/CanalBadge'
 import { API, ncHeaders } from '../services/api'
-import { responseChanged, setVisibleInterval } from '../utils/polling'
+import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import '../styles/seguimiento.css'
 
 const ESTADOS = [
@@ -168,6 +170,7 @@ export default function Seguimiento() {
   })
   const [fEstados, setFEstados]   = useState([])
   const [fVendedor, setFVendedor] = useState('')
+  const [fSala, setFSala]         = useState('')
   const [fDistrito, setFDistrito] = useState('')
   const [fTramo, setFTramo]       = useState('')
   const [fTipoFecha, setFTipoFecha] = useState('fecha')
@@ -228,7 +231,8 @@ export default function Seguimiento() {
       if (data.ok && responseChanged(firmaVentasRef, data.data)) {
         setVentas(data.data
           .filter(v => {
-            return String(v.estado_supgrab || '').trim().toLowerCase() === 'conforme'
+            const conforme = String(v.estado_supgrab || '').trim().toLowerCase() === 'conforme'
+            return conforme || Boolean(v.seguimiento_ingresado_at)
           })
           .map(v => ({
             ...v,
@@ -245,6 +249,8 @@ export default function Seguimiento() {
             _audioPath:       v.audio_path   || '',
             _audioNombre:     v.audio_path ? v.audio_path.split('/').pop() : '',
             _waEnviado:       !!v.fecha_whatsapp_enviado,
+            _waFecha:         v.fecha_whatsapp_enviado || null,
+            _waPlantilla:     v.plantilla_whatsapp_enviado || null,
           }))
         )
       }
@@ -255,7 +261,7 @@ export default function Seguimiento() {
   useEffect(() => {
     cargarVentas()
     const fc = setVisibleInterval(cargarVentas, 1000)
-    return () => clearInterval(fc)
+    return () => clearVisibleInterval(fc)
   }, [cargarVentas])
 
   function toggleLeyenda(id) {
@@ -284,6 +290,7 @@ export default function Seguimiento() {
       }
     }
     if (fVendedor && !(v.vendedor || v.asesor_nombre || '').toLowerCase().includes(fVendedor.toLowerCase())) return false
+    if (fSala && !(v.sala || '').toLowerCase().includes(fSala.toLowerCase())) return false
     if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
     if (fTramo   && v._tramo !== fTramo) return false
     const f = fTipoFecha === 'programados'
@@ -299,7 +306,7 @@ export default function Seguimiento() {
       ].some(x => String(x || '').toLowerCase().includes(b))) return false
     }
     return true
-  }, [filtroLeyenda, fEstados, fVendedor, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
+  }, [filtroLeyenda, fEstados, fVendedor, fSala, fDistrito, fTramo, fTipoFecha, fDesde, fHasta, busqueda])
 
   const ventasEnRango = useMemo(() => ventas.filter(v => filtrarVenta(v, false)), [ventas, filtrarVenta])
 
@@ -332,7 +339,7 @@ export default function Seguimiento() {
   const ventasPag = ventasFiltradas.slice(inicio, fin)
 
   function limpiarFiltros() {
-    setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFDistrito('')
+    setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFSala(''); setFDistrito('')
     setFTramo(''); setFTipoFecha('fecha'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
     try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
   }
@@ -433,12 +440,13 @@ export default function Seguimiento() {
     setSotModal(null)
   }
 
-  async function enviarWhatsapp(v) {
+  async function enviarWhatsapp(v, plantilla) {
     if (enviandoWA.has(v.id)) return
     setEnviandoWA(prev => new Set(prev).add(v.id))
     try {
       const res  = await fetch(`${API}/ventas/${v.id}/enviar-seguimiento-whatsapp`, {
         method: 'POST', headers: ncHeaders(),
+        body: JSON.stringify({ plantilla }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || data.ok === false) {
@@ -446,7 +454,9 @@ export default function Seguimiento() {
         return
       }
       mostrarToast('Mensaje de WhatsApp enviado')
-      setVentas(list => list.map(x => x.id === v.id ? { ...x, _waEnviado: true } : x))
+      setVentas(list => list.map(x => x.id === v.id
+        ? { ...x, _waEnviado: true, _waFecha: new Date().toISOString(), _waPlantilla: plantilla }
+        : x))
     } catch (e) {
       console.error(e)
       mostrarToast('No se pudo enviar el mensaje de WhatsApp')
@@ -576,6 +586,10 @@ export default function Seguimiento() {
               <input value={fVendedor} onChange={e => { setFVendedor(e.target.value); setPagina(1) }} placeholder="Buscar vendedor..." />
             </div>
             <div className="fg">
+              <label>Sala</label>
+              <input value={fSala} onChange={e => { setFSala(e.target.value); setPagina(1) }} placeholder="Escribir sala..." />
+            </div>
+            <div className="fg">
               <label>Distrito</label>
               <input value={fDistrito} onChange={e => { setFDistrito(e.target.value); setPagina(1) }} placeholder="Buscar distrito..." />
             </div>
@@ -659,6 +673,7 @@ export default function Seguimiento() {
                   <th className="th-fecha">FECHA PREVENTA</th>
                   <th>OBS. PROGRAMACIÓN</th>
                   <th className="th-est">ESTADO</th>
+                  <th>CANAL</th>
                   <th>SOT</th>
                   <th className="th-tramo">TRAMO</th>
                   <th className="th-comment">COMENTARIO</th>
@@ -678,7 +693,7 @@ export default function Seguimiento() {
               </thead>
               <tbody>
                 {ventasPag.length === 0 ? (
-                  <tr><td colSpan="19" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
+                  <tr><td colSpan="20" style={{ textAlign: 'center', color: '#9ca3af', padding: '36px', fontSize: '13px' }}>Sin registros.</td></tr>
                 ) : ventasPag.map(v => {
                   const est     = estadoObj(v._estadoSeg)
                   const motCls  = motivoBadgeCls(v._motivoRech)
@@ -690,21 +705,12 @@ export default function Seguimiento() {
                           <button className="btn-acc btn-acc-agenda" onClick={() => abrirModalAgenda(v)} title="Agendar">Agenda</button>
                           <button className="btn-acc btn-acc-hist"   onClick={() => setModalHist(v)}     title="Historial">Hist.</button>
                           <button className="btn-fotos" onClick={() => setMediaVenta(v)} title="Ver fotos y audio">Archivos</button>
-                          <button
-                            className={`btn-acc btn-acc-wa${v._waEnviado ? ' btn-acc-wa-enviado' : ''}`}
-                            onClick={() => enviarWhatsapp(v)}
-                            disabled={enviandoWA.has(v.id)}
-                            title={v._waEnviado ? 'Ya se envió el mensaje de seguimiento (reenviar)' : 'Enviar mensaje de WhatsApp de seguimiento'}
-                          >
-                            {enviandoWA.has(v.id) ? (
-                              <span className="btn-acc-wa-spin" aria-hidden="true" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M22 2 11 13" />
-                                <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                              </svg>
-                            )}
-                          </button>
+                          <WhatsappSeguimientoBoton
+                            enviando={enviandoWA.has(v.id)}
+                            waFecha={v._waFecha}
+                            waPlantilla={v._waPlantilla}
+                            onEnviar={(plantillaId) => enviarWhatsapp(v, plantillaId)}
+                          />
                         </div>
                       </td>
                       <td style={{ fontWeight: 700, color: '#185FA5', fontSize: '10px' }}>{formatF(v.fechaIngreso)}</td>
@@ -721,6 +727,7 @@ export default function Seguimiento() {
                           {est.label}
                         </span>
                       </td>
+                      <td style={{ textAlign:'center' }}><CanalBadge canal={v.canal} /></td>
                       <td style={{ textAlign:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
                           <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color:'#374151' }}>{v.sot || '—'}</span>
