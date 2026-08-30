@@ -124,12 +124,12 @@ function claseTipifBack(valor) {
   const clave = String(valor || '').trim().toUpperCase().replace(/\s+/g, '-')
   return `bo-sel-compact tipif-back-color tipif-back-${clave || 'VACIA'}`
 }
-const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR']
+const TIPIF_VEND_OPCIONES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','TERNA','NO ROTAR']
 const TIPIF_FILTRO_OPCIONES = [...TIPIF_VEND_OPCIONES, 'INSTALADO', 'VENTA CAIDA']
 // Para rotación sólo existen tres cierres definitivos. Cualquier otra
 // tipificación vigente puede volver a trabajarse después de 2 horas.
-const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR'])
-const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR','INSTALADO'])
+const TIPIF_PROHIBIDAS_ROTACION = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR','TERNA'])
+const TIPIF_EXCLUIDAS_ROTACION  = new Set(['VENTA CERRADA','NO TOCAR','SH NO TOCAR','NO ROTAR','SH NO ROTAR','INSTALADO','TERNA'])
 const ESTADOS_AMARILLOS_VENTA = new Set(['RECHAZO_CAMPO','RECHAZADA','RECHAZADO','CORTA_LLAMADA','FRAUDE','NO_DESEA','NO_CONTESTA','BUZON_VOZ','SERVICIO_ACTIVO','MALA_OFERTA','CORREGIR'])
 const ESTADOS_AMARILLOS_GRAB  = new Set(['CORTA_LLAMADA','SUPLANTACION','NO_DESEA','NO_CONTESTA','BUZON','BUZON_VOZ'])
 const ESTADOS_AMARILLOS_SUPGRAB = new Set(['RECHAZADO','NO_CONFORME','OBSERVADO'])
@@ -212,6 +212,7 @@ function grupoPrioridadLead(reg) {
   if (tipif === 'VENTA CAIDA') return 3
   if (tipif === 'INSTALADO') return 4
   if (tipif === 'SIN COBERTURA') return 1
+  if (tipif === 'TERNA') return 5
   return 0
 }
 function resaltadoPorVenta(venta) {
@@ -298,13 +299,14 @@ const TIPIF_VEND_STYLES = {
   'DESEA MOVIL':['#f8e9dc','#713707'],'SERVICIO ACTIVO':['#444444','#ffffff'],
   'NC':['#fefce8','#854d0e'],'DERIVADO':['#ede9fe','#5b21b6'],'NO TOCAR':['#fef2f2','#dc2626'],'FRAUDE':['#fee2e2','#991b1b'],
   'INSTALADO':['#dcfce7','#14532d'],'NO ROTAR':['#fee2e2','#980000'],'SH NO ROTAR':['#fee2e2','#980000'],'SH NO TOCAR':['#fee2e2','#980000'],
+  'TERNA':['#1f2937','#ffffff'],
 }
 const BL_TIPIF_COLORS = {
   'VENTA CERRADA':'#16a34a','PREVENTA':'#2563eb','AGENDADO':'#c2410c','NO CONTESTA':'#854d0e',
   'CORTA LLAMADA':'#c2410c','NO DESEA':'#92400e','BUZON DE VOZ':'#78350f','SERVICIO ACTIVO':'#4b5563',
   'SIN COBERTURA':'#b91c1c','NO CALIFICA':'#9a3412','CONTACTO CON TERCEROS':'#047857','EDIFICIO NO LIBERADO':'#991b1b',
   'DESEA MOVIL':'#92400e','EN EJECUCION':'#4b5563','NO TOCAR':'#980000','FRAUDE':'#991b1b','INSTALADO':'#15803d',
-  'NO ROTAR':'#980000','SH NO ROTAR':'#980000','SH NO TOCAR':'#980000',
+  'NO ROTAR':'#980000','SH NO ROTAR':'#980000','SH NO TOCAR':'#980000','TERNA':'#111827',
 }
 
 // Colores fuertes/vistosos para el selector de Tipif. Vendedor (texto blanco encima)
@@ -316,6 +318,7 @@ const TIPIF_VEND_FUERTE = {
   'EN EJECUCION':['#e5e7eb','#374151','#9ca3af'], 'DESEA MOVIL':['#fef3c7','#92400e','#fbbf24'], 'DERIVADO':['#e0f2fe','#0369a1','#7dd3fc'],
   'NO CALIFICA':['#ffedd5','#9a3412','#fdba74'], 'SIN COBERTURA':['#fee2e2','#b91c1c','#fca5a5'], 'EDIFICIO NO LIBERADO':['#fee2e2','#991b1b','#fca5a5'],
   'NO TOCAR':['#fee2e2','#980000','#fca5a5'], 'FRAUDE':['#fee2e2','#991b1b','#fca5a5'], 'NO ROTAR':['#fee2e2','#980000','#fca5a5'], 'SH NO ROTAR':['#fee2e2','#980000','#fca5a5'], 'SH NO TOCAR':['#fee2e2','#980000','#fca5a5'],
+  'TERNA':['#1f2937','#ffffff','#4b5563'],
 }
 function estiloTipifVend(v) {
   const paleta = TIPIF_VEND_FUERTE[v]
@@ -779,10 +782,18 @@ export default function Backoffice() {
   }, [])
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  function mostrarToast(msg) {
+  function mostrarToast(msg, duracionMs = 3200) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast(msg)
-    toastTimer.current = setTimeout(() => setToast(''), 3200)
+    toastTimer.current = setTimeout(() => setToast(''), duracionMs)
+  }
+
+  function avisarBloqueadosTerna(bloqueadosN1) {
+    if (!Array.isArray(bloqueadosN1) || !bloqueadosN1.length) return
+    const detalle = bloqueadosN1.length === 1
+      ? `El número ${bloqueadosN1[0]} está en la Blacklist — se tipificó automáticamente como TERNA`
+      : `${bloqueadosN1.length} números están en la Blacklist — se tipificaron automáticamente como TERNA`
+    mostrarToast(detalle, 2000)
   }
 
   async function copiarNumero(numero) {
@@ -1241,6 +1252,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       const res  = await fetch(`${API}/leads`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, tipo_contacto, direccion, coordenadas, obs_back, tipif_back:tipifBack, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.mensaje || 'Error al guardar el registro')
+      avisarBloqueadosTerna(data.bloqueados_terna_n1)
       const bid  = data.ids?.[0] || data.id
       if (bid) {
         // El POST ya fue confirmado. Descarta también un poll que pudiera haberse
@@ -1766,6 +1778,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     const LOTE = 499
     let creados = 0
     const ids = []
+    const bloqueadosTerna = []
     for (let i = 0; i < leads.length; i += LOTE) {
       const batch = leads.slice(i, i + LOTE)
       let data
@@ -1778,7 +1791,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
       if (!data.ok) throw new Error(data.mensaje || 'El servidor rechazó el lote de leads')
       creados += data.creados || 0
       if (data.ids) ids.push(...data.ids)
+      if (data.bloqueados_terna_n1) bloqueadosTerna.push(...data.bloqueados_terna_n1)
     }
+    avisarBloqueadosTerna(bloqueadosTerna)
     return { creados, ids }
   }
 
@@ -2181,6 +2196,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
     venta_cerrada: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CERRADA'),
     venta_caida: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'VENTA CAIDA'),
     instalado: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'INSTALADO'),
+    blacklist: registrosBusquedaGlobal.filter(r => String(tipifEfectiva(r)||'').trim().toUpperCase() === 'TERNA'),
   }
   const todosLosRegistrosBase = Object.values(baseData).flat()
   const campanasFiltroBase = [...new Set([
@@ -3081,6 +3097,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                     ['venta_cerrada','VENTA CERRADA',gruposProtegidos.venta_cerrada.length,'#16a34a'],
                     ['venta_caida','VENTA CAIDA',gruposProtegidos.venta_caida.length,'#a64d79'],
                     ['instalado','INSTALADO',gruposProtegidos.instalado.length,'#0369a1'],
+                    ['blacklist','BLACKLIST',gruposProtegidos.blacklist.length,'#111827'],
                   ].map(([id,label,total,color]) => (
                     <button key={id} type="button" onClick={()=>setGrupoProtegidoVisible(prev=>prev===id?'':id)}
                       style={{border:`1px solid ${color}`,color:grupoProtegidoVisible===id?'#fff':color,background:grupoProtegidoVisible===id?color:'#fff',borderRadius:8,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>
