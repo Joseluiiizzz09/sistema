@@ -110,6 +110,10 @@ function claseFlujo(valor) {
   if (['no validado','rechazado','caida','caída','bloqueado','fraude'].includes(e)) return 'danger'
   return 'pending'
 }
+function ventaAlcanzoInstalacion(venta) {
+  const estado = String(venta?._estado || venta?.estado || '').trim().toLowerCase().replace(/_/g, ' ')
+  return Boolean(venta?.fecha_instalado) || ['instalado', 'instalado no validado', 'reasignacion'].includes(estado)
+}
 function mapearEstado(e, sup = '', eg = '', obsValidacion = '') {
   const s=(e||'').toLowerCase().trim()
   const sr=(sup||'').toLowerCase().trim()
@@ -314,7 +318,7 @@ export default function Supervisor() {
   const dashRendData = useMemo(() =>
     asesoresSala.map(a => {
       const mis = dashVentas.filter(v=>v.asesor===a.nombre)
-      const inst = mis.filter(v=>v._estado==='instalado').length
+      const inst = mis.filter(ventaAlcanzoInstalacion).length
       return { nombre:a.nombre, usuario:a.usuario||'', total:mis.length, inst, conv:mis.length?Math.round(inst/mis.length*100):0 }
     }).sort((a,b)=>b.total-a.total),
   [dashVentas, asesoresSala])
@@ -873,7 +877,7 @@ export default function Supervisor() {
                     const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
                     const hoyV = mis.filter(v=>v._fecha===hoy).length
                     const mesV = mis.filter(v=>v._fecha&&v._fecha.startsWith(mesActual())).length
-                    const inst = mis.filter(v=>v._estado==='instalado').length
+                    const inst = mis.filter(ventaAlcanzoInstalacion).length
                     const conv = mis.length?Math.round(inst/mis.length*100):0
                     return (
                       <div key={a.id} className="eq-card">
@@ -948,7 +952,7 @@ export default function Supervisor() {
                 ? <div style={{textAlign:'center',color:'#9ca3af',padding:40,gridColumn:'1/-1'}}>Sin asesores en {salaActual}.</div>
                 : asesoresSala.map(a=>{
                     const mis    = todasVentas.filter(v=>v.asesor===a.nombre)
-                    const inst   = mis.filter(v=>v._estado==='instalado').length
+                    const inst   = mis.filter(ventaAlcanzoInstalacion).length
                     const noVal  = mis.filter(v=>v._estado==='no_validado').length
                     const caida  = mis.filter(v=>['caida','rechazo_campo'].includes(v._estado)).length
                     const conv   = mis.length?Math.round(inst/mis.length*100):0
@@ -983,7 +987,7 @@ export default function Supervisor() {
                   {asesoresSala.length === 0
                     ? <tr className="tabla-empty"><td colSpan={6}>Sin datos</td></tr>
                     : asesoresSala.map((a,i)=>{
-                        const meses = [0,1,2].map(o=>todasVentas.filter(v=>v.asesor===a.nombre&&v._estado==='instalado'&&v._fecha&&v._fecha.startsWith(getMesClave(o))).length)
+                        const meses = [0,1,2].map(o=>todasVentas.filter(v=>v.asesor===a.nombre&&ventaAlcanzoInstalacion(v)&&v._fecha&&v._fecha.startsWith(getMesClave(o))).length)
                         const total = meses.reduce((s,v)=>s+v,0)
                         return (
                           <tr key={a.id}>
@@ -1088,7 +1092,7 @@ export default function Supervisor() {
         const mis  = todasVentas.filter(v=>v.asesor===a.nombre)
         const hoyV = mis.filter(v=>v._fecha===fechaHoy()).length
         const mesV = mis.filter(v=>v._fecha&&v._fecha.startsWith(mesActual())).length
-        const inst = mis.filter(v=>v._estado==='instalado').length
+        const inst = mis.filter(ventaAlcanzoInstalacion).length
         const conv = mis.length?Math.round(inst/mis.length*100):0
         const ult5 = [...mis].sort((a,b)=>b._fecha.localeCompare(a._fecha)).slice(0,5)
         return (

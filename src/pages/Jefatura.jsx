@@ -181,6 +181,11 @@ function labelTipifVendRecl(valor) { return TIPIF_VEND_RECL_LABELS[String(valor|
 // ofrecer estas para filtrar, no cualquier texto libre historico que haya
 // quedado guardado en tipif_vend/tipif_back/tipif_back_2.
 const TIPIF_VEND_VENTAS_ACTUALES = ['VENTA CERRADA','PREVENTA','AGENDADO','EN EJECUCION','INSTALADO','NO CONTESTA','BUZON DE VOZ','CORTA LLAMADA','NO DESEA','NO CALIFICA','SIN COBERTURA','CONTACTO CON TERCEROS','EDIFICIO NO LIBERADO','DESEA MOVIL','SERVICIO ACTIVO','NO ROTAR','SIN TIPIFICAR']
+
+function ventaAlcanzoInstalacion(venta) {
+  const estado = String(venta?.estado || '').trim().toLowerCase().replace(/_/g, ' ')
+  return Boolean(venta?.fecha_instalado) || ['instalado', 'instalado no validado', 'reasignacion'].includes(estado)
+}
 // OJO: toISOString() usa UTC, no la hora local — como Lima va 5h detrás de
 // UTC, entre las 7pm y medianoche (hora Lima) esto devolvía "mañana" en vez
 // de "hoy" (reportes con rango de fechas por defecto vacíos toda esa
@@ -924,7 +929,7 @@ export default function Jefatura() {
         { label:'Grabadas',        val: ventasCache.filter(flujoGrabada).length,   color:'#d97706' },
         { label:'No grabadas',     val: ventasCache.filter(flujoNoGrabada).length, color:'#9ca3af' },
         { label:'No programadas',  val: ventasCache.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length, color:'#6366f1' },
-        { label:'Instaladas',      val: ventasCache.filter(v=>e(v.estado)==='instalado').length, color:'#16a34a' },
+        { label:'Instaladas',      val: ventasCache.filter(ventaAlcanzoInstalacion).length, color:'#16a34a' },
         { label:'Caídas',          val: ventasCache.filter(v=>e(v.estado)==='caida').length,     color:'#dc2626' },
         { label:'Rechazos',        val: ventasCache.filter(v=>e(v.estado)==='rechazo_campo').length, color:'#f97316' },
       ].filter(x => x.val > 0)
@@ -945,7 +950,7 @@ export default function Jefatura() {
       const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&(v.estado||'').toLowerCase()==='instalado').length
+        return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&ventaAlcanzoInstalacion(v)).length
       })
       const caidas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
@@ -993,9 +998,9 @@ export default function Jefatura() {
   const kpis = useMemo(() => {
     const e   = s => (s||'').toLowerCase()
     const hoy = fechaHoy(), mes = mesActual()
-    const inst  = ventasCache.filter(v=>e(v.estado)==='instalado').length
+    const inst  = ventasCache.filter(ventaAlcanzoInstalacion).length
     const caida = ventasCache.filter(v=>['caida','rechazo_campo'].includes(e(v.estado))).length
-    const instM = ventasCache.filter(v=>v._fecha&&v._fecha.startsWith(mes)&&e(v.estado)==='instalado').length
+    const instM = ventasCache.filter(v=>v._fecha&&v._fecha.startsWith(mes)&&ventaAlcanzoInstalacion(v)).length
     const caidM = ventasCache.filter(v=>v._fecha&&v._fecha.startsWith(mes)&&['caida','rechazo_campo'].includes(e(v.estado))).length
     const efect = (instM+caidM)>0?Math.round(instM/(instM+caidM)*100):0
     return {
@@ -1337,12 +1342,12 @@ export default function Jefatura() {
       const nombres = asesFilt.map(a=>a.nombre)
       ventasFilt = ventasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
     }
-    const inst   = ventasFilt.filter(v=>(v.estado||'').toLowerCase()==='instalado').length
+    const inst   = ventasFilt.filter(ventaAlcanzoInstalacion).length
     const caidas = ventasFilt.filter(v=>(v.estado||'').toLowerCase()==='caida').length
     const efect  = ventasFilt.length ? Math.round(inst/ventasFilt.length*100) : 0
     const rendData = asesFilt.map(a => {
       const mis   = ventasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre)
-      const inst2 = mis.filter(v=>(v.estado||'').toLowerCase()==='instalado').length
+      const inst2 = mis.filter(ventaAlcanzoInstalacion).length
       const caid  = mis.filter(v=>(v.estado||'').toLowerCase()==='caida').length
       const ef    = mis.length ? Math.round(inst2/mis.length*100) : 0
       return { ...a, totalVentas:mis.length, instaladas:inst2, caidas:caid, efectividad:ef }
