@@ -1039,6 +1039,9 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
           tipifInternaArea: l.tipif_interna_area || '',
           tipifInternaFecha: l.tipif_interna_fecha || '',
           tipifInternaMotivo: l.tipif_interna_motivo || '',
+          alertaSinCobertura: Number(l.alerta_sin_cobertura || 0) === 1,
+          alertaSinCoberturaDistrito: l.alerta_sin_cobertura_distrito || '',
+          alertaSinCoberturaCoordenadas: l.alerta_sin_cobertura_coordenadas || '',
           obsAsesor:  l.obs_asesor || '',
           historial:  Array.isArray(l.historial) ? l.historial : [],
           // hora de asignación del asesor actual, derivada del historial para que no se pise en rotaciones
@@ -2832,7 +2835,14 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                          // Sin venta real, SIN COBERTURA se muestra fija en la base principal
                          // igual que una tipificacion interna (badge de solo lectura).
                          const esSinCoberturaFija = !r.tipifInterna && tipifActual === 'SIN COBERTURA'
-                         const claseNumero = (r.tipifInterna || esSinCoberturaFija) ? 'num-estado num-estado-interno' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia)
+                         // Un antecedente de cobertura solo advierte visualmente. No altera
+                         // la tipificación ni mueve la fila al grupo protegido hasta que el
+                         // asesor seleccione explícitamente SIN COBERTURA.
+                         const esAlertaSinCobertura = !r.tipifInterna && !esSinCoberturaFija && r.alertaSinCobertura
+                         const alertaCoberturaTooltip = esAlertaSinCobertura
+                           ? ['Motivo: SIN COBERTURA', r.alertaSinCoberturaDistrito ? `Distrito: ${r.alertaSinCoberturaDistrito}` : '', r.alertaSinCoberturaCoordenadas ? `Coordenadas: ${r.alertaSinCoberturaCoordenadas}` : ''].filter(Boolean).join('\n')
+                           : ''
+                         const claseNumero = (r.tipifInterna || esSinCoberturaFija) ? 'num-estado num-estado-interno' : (esAlertaSinCobertura ? 'num-estado num-estado-rojo' : (estadoNumero ? `num-estado ${estadoNumero.clase}` : claseDuplicadoDia))
                          const estiloInterno = r.tipifInterna
                            ? {color:r.tipifInternaColor,background:r.tipifInterna==='INSTALADO'?'#e0f2fe':r.tipifInterna==='VENTA CAIDA'?'#f7e8ef':'#dbeafe'}
                            : esSinCoberturaFija
@@ -2863,7 +2873,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                             <td>
                               <div className="num-cell">
                                 <div className="num-primary">
-                                  <span className={r.n1?claseNumero:''} style={r.n1?estiloInterno:undefined} title={r.n1?(r.tipifInterna?tooltipTipificacionInterna(r):esSinCoberturaFija?'SIN COBERTURA':(estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
+                                  <span className={(r.n1||r.usuarioWhatsapp)?claseNumero:''} style={(r.n1||r.usuarioWhatsapp)?estiloInterno:undefined} title={(r.n1||r.usuarioWhatsapp)?(r.tipifInterna?tooltipTipificacionInterna(r):esSinCoberturaFija?'SIN COBERTURA':(alertaCoberturaTooltip || estadoNumero?.label || (ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del día` : ''))):''}>{r.n1 || (r.usuarioWhatsapp ? `@${r.usuarioWhatsapp}` : '—')}</span>
                                   {(r.n1 || r.usuarioWhatsapp) && <button type="button" className="num-copy-btn" onClick={()=>copiarNumero(r.n1 || r.usuarioWhatsapp)} title={r.n1?'Copiar N1':'Copiar usuario de WhatsApp'}><CopyIcon /></button>}
                                   <button type="button" className="num-copy-btn num-edit-btn" onClick={()=>setNumeroModal({id:r.id,bid:r._backendId,n1:r.n1||'',n2:r.n2||'',guardando:false})} title="Editar N1 y N2"><PencilIcon /></button>
                                 </div>
