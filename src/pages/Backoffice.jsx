@@ -878,13 +878,14 @@ export default function Backoffice() {
       h.motivo === 'Asignacion inicial' || h.motivo === 'Carga inicial' ||
       h.motivo === 'Importacion masiva'
     )
+    const entradaOrigenAutomatico = hist.find(h => h.origenCarga)
     const actorHistorial = hist.find(h => h.realizadoPor || h.reasignadoPor || h.rotadoPor || h.registradoPor)
     setOrigenModal({
       n1: r.n1,
       campana: r.campana,
       cargadoPor: r.creadoPorNombre || entrada?.asignadoPor || entrada?.cargadoPor || actorHistorial?.realizadoPor || actorHistorial?.reasignadoPor || actorHistorial?.rotadoPor || actorHistorial?.registradoPor || null,
       usuario: r.creadoPorUsuario || entrada?.cargadoPorUsuario || actorHistorial?.realizadoPorUsuario || '',
-      origenCarga: entrada?.origenCarga || '',
+      origenCarga: entradaOrigenAutomatico?.origenCarga || entrada?.origenCarga || '',
       ip: r.creadoDesdeIp || entrada?.ip || actorHistorial?.ip || '',
       fecha: entrada?.fecha || actorHistorial?.fecha || normalizarFecha(r.createdAt) || null,
       hora: entrada?.hora || actorHistorial?.hora || (String(r.createdAt||'').match(/T(\d{2}:\d{2})/)?.[1] || null),
