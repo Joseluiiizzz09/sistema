@@ -884,6 +884,7 @@ export default function Backoffice() {
       campana: r.campana,
       cargadoPor: r.creadoPorNombre || entrada?.asignadoPor || entrada?.cargadoPor || actorHistorial?.realizadoPor || actorHistorial?.reasignadoPor || actorHistorial?.rotadoPor || actorHistorial?.registradoPor || null,
       usuario: r.creadoPorUsuario || entrada?.cargadoPorUsuario || actorHistorial?.realizadoPorUsuario || '',
+      origenCarga: entrada?.origenCarga || '',
       ip: r.creadoDesdeIp || entrada?.ip || actorHistorial?.ip || '',
       fecha: entrada?.fecha || actorHistorial?.fecha || normalizarFecha(r.createdAt) || null,
       hora: entrada?.hora || actorHistorial?.hora || (String(r.createdAt||'').match(/T(\d{2}:\d{2})/)?.[1] || null),
@@ -3915,6 +3916,7 @@ const cargarLeads = useCallback(async (todasLasFechas = false, fechaSolicitada =
                 <strong style={{fontSize:13}}>{origenModal.n1||'—'}</strong>
               </div>
               {origenModal.usuario&&<div style={{display:'flex',gap:8,alignItems:'baseline'}}><span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Usuario</span><strong style={{fontSize:13}}>{origenModal.usuario}</strong></div>}
+              {origenModal.origenCarga&&<div style={{display:'flex',gap:8,alignItems:'baseline'}}><span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Origen</span><strong style={{fontSize:13,color:'#7c3aed'}}>{origenModal.origenCarga}</strong></div>}
               {origenModal.ip&&<div style={{display:'flex',gap:8,alignItems:'baseline'}}><span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>IP de carga</span><strong style={{fontSize:12}}>{origenModal.ip}</strong></div>}
               <div style={{display:'flex',gap:8,alignItems:'baseline'}}>
                 <span style={{fontSize:11,color:'#9ca3af',minWidth:90}}>Campaña</span>
