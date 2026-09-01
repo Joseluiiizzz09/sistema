@@ -514,7 +514,7 @@ export default function Backdatareclutamiento() {
   // ── Entrevistas (postulantes que aceptaron la propuesta) ──
   const [entrevistas,        setEntrevistas]        = useState([])
   const [cargandoEntrevistas,setCargandoEntrevistas] = useState(false)
-  const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turno:'', desde:'', hasta:'', busqueda:'', agendadoPor:[] })
+  const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turnos:[], campanas:[], tipificaciones:[], desde:'', hasta:'', busqueda:'', agendadoPor:[] })
   const [modalEntrevista,    setModalEntrevista]      = useState({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
 
   // ── Capacitación (postulantes que asistieron a la entrevista) ──
@@ -1806,8 +1806,16 @@ export default function Backdatareclutamiento() {
   const registrosPagina = registrosFiltrados.slice(baseDesde, baseDesde + basePageSize)
   useEffect(() => { setBasePage(1) }, [fechaActiva, filtros.tip, filtros.tipVend, filtros.asesor, filtros.campana, filtros.numero, filtros.desde, filtros.hasta, filtros.global, filtros.duplicados, tableSort.col, tableSort.dir, basePageSize, grupoAceptaVisible, ordenDiarioActivo])
   const agendadoPorOpciones = [...new Set(entrevistas.map(en => String(en.creado_por_nombre||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const campanasEntrevistaOpciones = [...new Set(entrevistas.map(en => String(en.campana||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const turnosEntrevistaOpciones = [...new Set(entrevistas.map(en => String(en.turno||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  const tipificacionesEntrevistaOpciones = [...new Set(entrevistas.map(en => String(en.tipificacion||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
   const entrevistasFiltradas = entrevistas.filter(en => {
-    if (filtrosEntrevistas.turno && en.turno !== filtrosEntrevistas.turno) return false
+    if (filtrosEntrevistas.turnos.length && !filtrosEntrevistas.turnos.includes(String(en.turno||'').trim())) return false
+    if (filtrosEntrevistas.campanas.length && !filtrosEntrevistas.campanas.includes(String(en.campana||'').trim())) return false
+    if (filtrosEntrevistas.tipificaciones.length) {
+      const tipificacion = String(en.tipificacion||'').trim() || '__pendiente__'
+      if (!filtrosEntrevistas.tipificaciones.includes(tipificacion)) return false
+    }
     if (filtrosEntrevistas.agendadoPor.length && !filtrosEntrevistas.agendadoPor.includes(String(en.creado_por_nombre||'').trim())) return false
     const fecha = String(en.fecha_agendamiento||'').slice(0,10)
     if (filtrosEntrevistas.desde && fecha < filtrosEntrevistas.desde) return false
@@ -2648,13 +2656,6 @@ export default function Backdatareclutamiento() {
 
             <div className="filtros-grid" style={{marginBottom:14}}>
               <div className="bo-input-group"><label>Buscar</label><input className="form-control" value={filtrosEntrevistas.busqueda} onChange={e=>setFiltrosEntrevistas(p=>({...p,busqueda:e.target.value}))} placeholder="Postulante, número o campaña…" /></div>
-              <div className="bo-input-group"><label>Turno</label>
-                <select className="form-select" value={filtrosEntrevistas.turno} onChange={e=>setFiltrosEntrevistas(p=>({...p,turno:e.target.value}))}>
-                  <option value="">Todos</option>
-                  <option value="TURNO 1">TURNO 1</option>
-                  <option value="TURNO 2">TURNO 2</option>
-                </select>
-              </div>
               <div className="bo-input-group"><label>Desde</label><input type="date" className="form-control" value={filtrosEntrevistas.desde} onChange={e=>setFiltrosEntrevistas(p=>({...p,desde:e.target.value}))} /></div>
               <div className="bo-input-group"><label>Hasta</label><input type="date" className="form-control" value={filtrosEntrevistas.hasta} onChange={e=>setFiltrosEntrevistas(p=>({...p,hasta:e.target.value}))} /></div>
             </div>
@@ -2663,9 +2664,18 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Fecha de registro</th><th>Campaña</th><th><FiltroEncabezado label="Agendado por" value={filtrosEntrevistas.agendadoPor} options={agendadoPorOpciones}
-                      onChange={agendadoPor=>setFiltrosEntrevistas(p=>({...p,agendadoPor}))} /></th><th>Turno</th><th>Postulante</th><th>Número</th><th>Número ref</th>
-                    <th>Fecha de agendamiento</th><th>Fecha de entrevista</th><th>Tipificación</th><th>Observación</th>
+                    <th>Fecha de registro</th>
+                    <th><FiltroEncabezado label="Campaña" value={filtrosEntrevistas.campanas} options={campanasEntrevistaOpciones} searchable
+                      onChange={campanas=>setFiltrosEntrevistas(p=>({...p,campanas}))} /></th>
+                    <th><FiltroEncabezado label="Agendado por" value={filtrosEntrevistas.agendadoPor} options={agendadoPorOpciones} searchable
+                      onChange={agendadoPor=>setFiltrosEntrevistas(p=>({...p,agendadoPor}))} /></th>
+                    <th><FiltroEncabezado label="Turno" value={filtrosEntrevistas.turnos} options={turnosEntrevistaOpciones}
+                      onChange={turnos=>setFiltrosEntrevistas(p=>({...p,turnos}))} /></th>
+                    <th>Postulante</th><th>Número</th><th>Número ref</th>
+                    <th>Fecha de agendamiento</th><th>Fecha de entrevista</th>
+                    <th><FiltroEncabezado label="Tipificación" value={filtrosEntrevistas.tipificaciones} options={tipificacionesEntrevistaOpciones} pending
+                      onChange={tipificaciones=>setFiltrosEntrevistas(p=>({...p,tipificaciones}))} /></th>
+                    <th>Observación</th>
                   </tr>
                 </thead>
                 <tbody>
