@@ -600,43 +600,43 @@ export default function Grabaciones() {
           <div className="tabla-scroll">
             <table className="tabla grabaciones-ventas-tabla">
               <colgroup>
-                <col style={{width:310}} />
-                <col style={{width:140}} />
-                <col style={{width:100}} />
+                <col style={{width:295}} />
                 <col style={{width:125}} />
-                <col style={{width:70}} />
-                <col style={{width:105}} />
-                <col style={{width:190}} />
+                <col style={{width:85}} />
                 <col style={{width:95}} />
-                <col style={{width:110}} />
+                <col style={{width:40}} />
+                <col style={{width:75}} />
                 <col style={{width:140}} />
-                <col style={{width:180}} />
-                <col style={{width:80}} />
-                <col style={{width:175}} />
-                <col style={{width:150}} />
-                <col style={{width:130}} />
-                <col style={{width:160}} />
-                <col style={{width:160}} />
+                <col style={{width:70}} />
+                <col style={{width:85}} />
+                <col style={{width:90}} />
+                <col style={{width:125}} />
+                <col style={{width:55}} />
+                <col style={{width:125}} />
+                <col style={{width:105}} />
+                <col style={{width:90}} />
+                <col style={{width:100}} />
+                <col style={{width:100}} />
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{width:310,minWidth:310}}>ACCIONES</th>
-                  <th style={{width:110}}>ESTADO GRAB.</th>
-                  <th style={{width:90}}>CANAL</th>
-                  <th style={{width:130}}>RESULTADO SUP.</th>
-                  <th style={{width:90}}>HORA</th>
-                  <th style={{width:120}}>FECHA</th>
-                  <th style={{width:160}}>NOMBRE Y APELLIDOS</th>
-                  <th style={{width:90}}>DNI / DOC.</th>
-                  <th style={{width:110}}>TEL. CONTACTO</th>
-                  <th style={{width:150}}>DISTRITO</th>
-                  <th style={{width:230}}>DIRECCIÓN</th>
-                  <th style={{width:110}}>SALA</th>
-                  <th style={{width:210}}>EMAIL</th>
-                  <th style={{width:130}}>VENDEDOR</th>
-                  <th style={{width:120}}>SUPERVISOR</th>
-                  <th style={{width:160}}>ARCHIVO AUDIO</th>
-                  <th style={{width:180}}>ÚLTIMA OBS.</th>
+                  <th>ACCIONES</th>
+                  <th>ESTADO GRAB.</th>
+                  <th>CANAL</th>
+                  <th>RESULTADO SUP.</th>
+                  <th>HORA</th>
+                  <th>FECHA</th>
+                  <th>NOMBRE Y APELLIDOS</th>
+                  <th>DNI / DOC.</th>
+                  <th>TEL. CONTACTO</th>
+                  <th>DISTRITO</th>
+                  <th>DIRECCIÓN</th>
+                  <th>SALA</th>
+                  <th>EMAIL</th>
+                  <th>VENDEDOR</th>
+                  <th>SUPERVISOR</th>
+                  <th>ARCHIVO AUDIO</th>
+                  <th>ÚLTIMA OBS.</th>
                 </tr>
               </thead>
               <tbody>
