@@ -601,22 +601,22 @@ export default function Grabaciones() {
             <table className="tabla grabaciones-ventas-tabla">
               <colgroup>
                 <col style={{width:295}} />
-                <col style={{width:125}} />
-                <col style={{width:85}} />
-                <col style={{width:95}} />
-                <col style={{width:40}} />
+                <col style={{width:170}} />
+                <col style={{width:100}} />
+                <col style={{width:135}} />
+                <col style={{width:50}} />
+                <col style={{width:90}} />
+                <col style={{width:160}} />
+                <col style={{width:80}} />
+                <col style={{width:100}} />
+                <col style={{width:115}} />
+                <col style={{width:180}} />
                 <col style={{width:75}} />
-                <col style={{width:140}} />
-                <col style={{width:70}} />
-                <col style={{width:85}} />
-                <col style={{width:90}} />
-                <col style={{width:125}} />
-                <col style={{width:55}} />
-                <col style={{width:125}} />
-                <col style={{width:105}} />
-                <col style={{width:90}} />
-                <col style={{width:100}} />
-                <col style={{width:100}} />
+                <col style={{width:180}} />
+                <col style={{width:150}} />
+                <col style={{width:120}} />
+                <col style={{width:150}} />
+                <col style={{width:160}} />
               </colgroup>
               <thead>
                 <tr>
@@ -679,9 +679,9 @@ export default function Grabaciones() {
                           <td style={{fontFamily:'monospace',fontSize:11}}>{v.dni||'—'}</td>
                           <td style={{fontFamily:'monospace',color:'#185FA5',fontWeight:700}}>{v.telefonoContacto||'—'}</td>
                           <td>{v.distrito||'—'}</td>
-                          <td style={{maxWidth:230,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={v.direccion||''}>{v.direccion||'—'}</td>
+                          <td className="grab-texto-ajustable" title={v.direccion||''}>{v.direccion||'—'}</td>
                           <td style={{fontWeight:600}}>{v.sala||'—'}</td>
-                          <td style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={v.email||''}>{v.email||'—'}</td>
+                          <td className="grab-texto-ajustable" title={v.email||''}>{v.email||'—'}</td>
                           <td style={{fontWeight:600,color:'#7C3AED'}}>{v.vendedor||'—'}</td>
                           <td style={{fontSize:11}}>{v.supervisor||'—'}</td>
                           <td>
