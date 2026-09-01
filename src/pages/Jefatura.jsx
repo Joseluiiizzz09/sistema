@@ -1515,13 +1515,33 @@ export default function Jefatura() {
 
   /* ── meses para select ── */
   const MESES_SALAS = useMemo(() => {
-    const arr = [{ value:'', label:'Mes actual' }]
-    for (let i=1;i<=11;i++) {
-      const d = new Date(); d.setMonth(d.getMonth()-i)
-      arr.push({ value:d.toISOString().slice(0,7), label:d.toLocaleString('es-PE',{month:'long',year:'numeric'}) })
+    const actual = mesActual()
+    const meses = new Set()
+    const agregarMes = valor => {
+      const fecha = soloFecha(valor)
+      const mes = String(fecha || '').slice(0, 7)
+      if (/^\d{4}-\d{2}$/.test(mes)) meses.add(mes)
     }
-    return arr
-  }, [])
+    ventasCache.forEach(v => {
+      agregarMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
+      agregarMes(v.fecha_programada)
+      agregarMes(v.fecha_instalado)
+    })
+    ventasSeg.forEach(v => {
+      agregarMes(v._fecha)
+      agregarMes(v.fecha_programada)
+      agregarMes(v.fecha_instalado)
+    })
+    meses.delete(actual)
+    return [
+      { value:'', label:'Mes actual' },
+      ...[...meses].sort((a,b)=>b.localeCompare(a)).map(mes => {
+        const [anio, numeroMes] = mes.split('-').map(Number)
+        const label = new Date(anio, numeroMes - 1, 1).toLocaleString('es-PE',{month:'long',year:'numeric'})
+        return { value:mes, label:label.charAt(0).toUpperCase()+label.slice(1) }
+      }),
+    ]
+  }, [ventasCache, ventasSeg])
 
   function salir() { logout(); navigate('/login') }
 
@@ -2178,8 +2198,6 @@ export default function Jefatura() {
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label><span>Fecha del día</span><input type="date" value={fvDia} onChange={e=>setFvDia(e.target.value)}/></label>
-                <label><span>Fecha desde</span><input type="date" value={fvDesde} onChange={e=>setFvDesde(e.target.value)}/></label>
-                <label><span>Fecha hasta</span><input type="date" value={fvHasta} onChange={e=>setFvHasta(e.target.value)}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
             </div>
