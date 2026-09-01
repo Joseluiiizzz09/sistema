@@ -911,6 +911,22 @@ export default function Jefatura() {
     if (seccion === 'envio-masivo') cargarMasivo()
   }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGrabRendimiento, cargarMasivo])
 
+  // El dashboard representa el ciclo del mes actual según la fecha real de
+  // cada evento. Una venta puede haberse creado antes y programarse o instalarse
+  // este mes; en ese caso cuenta en la métrica del evento, no en la de altas.
+  const cicloDashboardMes = useMemo(() => {
+    const mes = mesActual()
+    const esMes = valor => String(soloFecha(valor) || '').slice(0, 7) === mes
+    const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
+    const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
+    const instalaciones = ventasCache.filter(v => esMes(v.fecha_instalado))
+    return {
+      ventasNuevas,
+      programaciones,
+      instalaciones,
+    }
+  }, [ventasCache])
+
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
     if (seccion !== 'dashboard') return
@@ -924,14 +940,14 @@ export default function Jefatura() {
       destroy('estados')
       const e  = s => (s || '').toLowerCase()
       const estados = [
-        { label:'Validadas',       val: ventasCache.filter(v=>!['venta','','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length, color:'#7C3AED' },
-        { label:'No validadas',    val: ventasCache.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,        color:'#ef4444' },
-        { label:'Grabadas',        val: ventasCache.filter(flujoGrabada).length,   color:'#d97706' },
-        { label:'No grabadas',     val: ventasCache.filter(flujoNoGrabada).length, color:'#9ca3af' },
-        { label:'No programadas',  val: ventasCache.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length, color:'#6366f1' },
-        { label:'Instaladas',      val: ventasCache.filter(ventaAlcanzoInstalacion).length, color:'#16a34a' },
-        { label:'Caídas',          val: ventasCache.filter(v=>e(v.estado)==='caida').length,     color:'#dc2626' },
-        { label:'Rechazos',        val: ventasCache.filter(v=>e(v.estado)==='rechazo_campo').length, color:'#f97316' },
+        { label:'Validadas',       val: cicloDashboardMes.ventasNuevas.filter(v=>!['venta','','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length, color:'#7C3AED' },
+        { label:'No validadas',    val: cicloDashboardMes.ventasNuevas.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,        color:'#ef4444' },
+        { label:'Grabadas',        val: cicloDashboardMes.ventasNuevas.filter(flujoGrabada).length,   color:'#d97706' },
+        { label:'No grabadas',     val: cicloDashboardMes.ventasNuevas.filter(flujoNoGrabada).length, color:'#9ca3af' },
+        { label:'No programadas',  val: cicloDashboardMes.ventasNuevas.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length, color:'#6366f1' },
+        { label:'Instaladas',      val: cicloDashboardMes.instalaciones.length, color:'#16a34a' },
+        { label:'Caídas',          val: cicloDashboardMes.ventasNuevas.filter(v=>e(v.estado)==='caida').length,     color:'#dc2626' },
+        { label:'Rechazos',        val: cicloDashboardMes.ventasNuevas.filter(v=>e(v.estado)==='rechazo_campo').length, color:'#f97316' },
       ].filter(x => x.val > 0)
       if (estados.length) {
         chartInst.current.estados = new Chart(canvasEstados.current, {
@@ -946,15 +962,15 @@ export default function Jefatura() {
     if (canvasSalas.current) {
       destroy('salas')
       const mesUsar   = mesReporte || mesActual()
-      const ventasMes = ventasCache.filter(v => v._fecha && v._fecha.startsWith(mesUsar))
+      const esMesSeleccionado = valor => String(soloFecha(valor) || '').slice(0, 7) === mesUsar
       const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&ventaAlcanzoInstalacion(v)).length
+        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_instalado)).length
       })
       const caidas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasMes.filter(v=>nombres.includes(v.asesor_nombre||'')&&(v.estado||'').toLowerCase()==='caida').length
+        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&v._fecha?.startsWith(mesUsar)&&(v.estado||'').toLowerCase()==='caida').length
       })
       chartInst.current.salas = new Chart(canvasSalas.current, {
         type: 'bar',
@@ -985,7 +1001,7 @@ export default function Jefatura() {
     }
 
     return () => { destroy('estados'); destroy('salas'); destroy('diario') }
-  }, [seccion, ventasCache, usuarios, mesReporte])
+  }, [seccion, ventasCache, cicloDashboardMes, usuarios, mesReporte])
 
   /* ── navegación ── */
   function irSeccion(id) {
@@ -997,20 +1013,20 @@ export default function Jefatura() {
   /* ── KPIs dashboard ── */
   const kpis = useMemo(() => {
     const e   = s => (s||'').toLowerCase()
-    const hoy = fechaHoy(), mes = mesActual()
-    const inst  = ventasCache.filter(ventaAlcanzoInstalacion).length
-    const caida = ventasCache.filter(v=>['caida','rechazo_campo'].includes(e(v.estado))).length
-    const instM = ventasCache.filter(v=>v._fecha&&v._fecha.startsWith(mes)&&ventaAlcanzoInstalacion(v)).length
-    const caidM = ventasCache.filter(v=>v._fecha&&v._fecha.startsWith(mes)&&['caida','rechazo_campo'].includes(e(v.estado))).length
+    const hoy = fechaHoy()
+    const inst  = cicloDashboardMes.instalaciones.length
+    const caida = cicloDashboardMes.ventasNuevas.filter(v=>['caida','rechazo_campo'].includes(e(v.estado))).length
+    const instM = inst
+    const caidM = caida
     const efect = (instM+caidM)>0?Math.round(instM/(instM+caidM)*100):0
     return {
       ventasHoy:     ventasCache.filter(v=>v._fecha===hoy).length,
-      validadas:     ventasCache.filter(v=>!['venta',''].includes(e(v.estado))).length,
-      noValidadas:   ventasCache.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,
-      grabadas:      ventasCache.filter(flujoGrabada).length,
-      noGrabadas:    ventasCache.filter(flujoNoGrabada).length,
-      enEjecucion:   ventasCache.filter(v=>['aprobado','programado','en_ejecucion','tecnico_casa'].includes(e(v.estado))).length,
-      noProgramadas: ventasCache.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length,
+      validadas:     cicloDashboardMes.ventasNuevas.filter(v=>!['venta',''].includes(e(v.estado))).length,
+      noValidadas:   cicloDashboardMes.ventasNuevas.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,
+      grabadas:      cicloDashboardMes.ventasNuevas.filter(flujoGrabada).length,
+      noGrabadas:    cicloDashboardMes.ventasNuevas.filter(flujoNoGrabada).length,
+      enEjecucion:   cicloDashboardMes.programaciones.filter(v=>['aprobado','programado','en_ejecucion','tecnico_casa'].includes(e(v.estado))).length,
+      noProgramadas: cicloDashboardMes.ventasNuevas.filter(v=>['bloqueado','sin_agenda','caracter_especial','fraude','zona_restringida'].includes(e(v.estado))).length,
       instaladas:    inst,
       caidas:        caida,
       conv:          efect+'%',
@@ -1019,7 +1035,7 @@ export default function Jefatura() {
       asesores:      usuarios.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo).length,
       supervisores:  usuarios.filter(u=>usuarioTieneCargo(u,'supervisor')&&u.activo).length,
     }
-  }, [ventasCache, usuarios])
+  }, [ventasCache, cicloDashboardMes, usuarios])
 
   // Una venta cerrada, en cualquiera de sus 3 estados posteriores, sigue
   // siendo una venta: VENTA CERRADA (recien cerrada), INSTALADO (se completo)
