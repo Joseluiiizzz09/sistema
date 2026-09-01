@@ -1516,21 +1516,15 @@ export default function Jefatura() {
   /* ── meses para select ── */
   const MESES_SALAS = useMemo(() => {
     const actual = mesActual()
+    const inicioOperacion = '2026-08'
     const meses = new Set()
     const agregarMes = valor => {
       const fecha = soloFecha(valor)
       const mes = String(fecha || '').slice(0, 7)
-      if (/^\d{4}-\d{2}$/.test(mes)) meses.add(mes)
+      if (/^\d{4}-\d{2}$/.test(mes) && mes >= inicioOperacion && mes <= actual) meses.add(mes)
     }
     ventasCache.forEach(v => {
       agregarMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
-      agregarMes(v.fecha_programada)
-      agregarMes(v.fecha_instalado)
-    })
-    ventasSeg.forEach(v => {
-      agregarMes(v._fecha)
-      agregarMes(v.fecha_programada)
-      agregarMes(v.fecha_instalado)
     })
     meses.delete(actual)
     return [
@@ -1541,7 +1535,7 @@ export default function Jefatura() {
         return { value:mes, label:label.charAt(0).toUpperCase()+label.slice(1) }
       }),
     ]
-  }, [ventasCache, ventasSeg])
+  }, [ventasCache])
 
   function salir() { logout(); navigate('/login') }
 
