@@ -915,7 +915,7 @@ export default function Jefatura() {
   // cada evento. Una venta puede haberse creado antes y programarse o instalarse
   // este mes; en ese caso cuenta en la métrica del evento, no en la de altas.
   const cicloDashboardMes = useMemo(() => {
-    const mes = mesActual()
+    const mes = mesReporte || mesActual()
     const esMes = valor => String(soloFecha(valor) || '').slice(0, 7) === mes
     const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
     const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
@@ -925,7 +925,7 @@ export default function Jefatura() {
       programaciones,
       instalaciones,
     }
-  }, [ventasCache])
+  }, [ventasCache, mesReporte])
 
   /* charts — siempre en DOM; solo recrear cuando estamos en dashboard */
   useEffect(() => {
@@ -1013,14 +1013,13 @@ export default function Jefatura() {
   /* ── KPIs dashboard ── */
   const kpis = useMemo(() => {
     const e   = s => (s||'').toLowerCase()
-    const hoy = fechaHoy()
     const inst  = cicloDashboardMes.instalaciones.length
     const caida = cicloDashboardMes.ventasNuevas.filter(v=>['caida','rechazo_campo'].includes(e(v.estado))).length
     const instM = inst
     const caidM = caida
     const efect = (instM+caidM)>0?Math.round(instM/(instM+caidM)*100):0
     return {
-      ventasHoy:     ventasCache.filter(v=>v._fecha===hoy).length,
+      ventasMes:     cicloDashboardMes.ventasNuevas.length,
       validadas:     cicloDashboardMes.ventasNuevas.filter(v=>!['venta',''].includes(e(v.estado))).length,
       noValidadas:   cicloDashboardMes.ventasNuevas.filter(v=>['venta','corta_llamada','fraude','no_desea','no_contesta','servicio_activo','no_validado'].includes(e(v.estado))).length,
       grabadas:      cicloDashboardMes.ventasNuevas.filter(flujoGrabada).length,
@@ -1035,7 +1034,7 @@ export default function Jefatura() {
       asesores:      usuarios.filter(u=>usuarioTieneCargo(u,'asesor')&&u.activo).length,
       supervisores:  usuarios.filter(u=>usuarioTieneCargo(u,'supervisor')&&u.activo).length,
     }
-  }, [ventasCache, cicloDashboardMes, usuarios])
+  }, [cicloDashboardMes, usuarios])
 
   // Una venta cerrada, en cualquiera de sus 3 estados posteriores, sigue
   // siendo una venta: VENTA CERRADA (recien cerrada), INSTALADO (se completo)
@@ -1578,11 +1577,16 @@ export default function Jefatura() {
           {/* ===== DASHBOARD ===== */}
           <section className={`section${seccion==='dashboard'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Dashboard General</h2><p>Resumen global del sistema</p></div>
+              <div><h2>Dashboard General</h2><p>Métricas del mes seleccionado</p></div>
+              <select value={mesReporte} onChange={e=>setMesReporte(e.target.value)}
+                aria-label="Mes de las métricas del dashboard"
+                style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:'9px',fontSize:'12px',fontFamily:'inherit',outline:'none',color:'#374151',cursor:'pointer',background:'#fff'}}>
+                {MESES_SALAS.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
             </div>
 
             <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))'}}>
-              <div className="kpi-card k-blue">  <div className="kpi-num">{kpis.ventasHoy}</div>     <div className="kpi-label">Ventas hoy</div>         <div className="kpi-sub">del día</div></div>
+              <div className="kpi-card k-blue">  <div className="kpi-num">{kpis.ventasMes}</div>     <div className="kpi-label">Ventas del mes</div>     <div className="kpi-sub">altas del periodo</div></div>
               <div className="kpi-card k-purple"><div className="kpi-num">{kpis.validadas}</div>     <div className="kpi-label">Validadas</div>          <div className="kpi-sub">pasaron validación</div></div>
               <div className="kpi-card k-red">   <div className="kpi-num">{kpis.noValidadas}</div>   <div className="kpi-label">No validadas</div>       <div className="kpi-sub">rechazadas val.</div></div>
               <div className="kpi-card k-orange"><div className="kpi-num">{kpis.grabadas}</div>      <div className="kpi-label">Grabadas</div>           <div className="kpi-sub">con audio</div></div>
