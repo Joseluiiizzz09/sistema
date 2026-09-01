@@ -1143,9 +1143,19 @@ export default function Jefatura() {
   }
 
   /* ── seguimiento ── */
+  const ventasSegMes = useMemo(() => {
+    const mes = mesReporte || mesActual()
+    return ventasSeg.filter(v => {
+      const fechaEvento = v._seg === 'instalado'
+        ? (v.fecha_instalado || v.fecha_programada || v._fecha)
+        : (v.fecha_programada || v._fecha)
+      return String(soloFecha(fechaEvento) || '').slice(0, 7) === mes
+    })
+  }, [ventasSeg, mesReporte])
+
   const estadosSeg = useMemo(() => {
     const porClave = new Map()
-    ventasSeg.forEach(v => {
+    ventasSegMes.forEach(v => {
       const clave = v._seg
       if (clave && !porClave.has(clave)) {
         porClave.set(clave, (SEG_BADGES[clave] || {}).label || flujoLabelEstado(v.estado))
@@ -1153,10 +1163,10 @@ export default function Jefatura() {
     })
     return [...porClave.entries()].sort((a, b) =>
       (SEG_ORD[a[0]] ?? 99) - (SEG_ORD[b[0]] ?? 99) || a[1].localeCompare(b[1]))
-  }, [ventasSeg])
+  }, [ventasSegMes])
 
   const ventasSegFiltradas = useMemo(() => {
-    let lista = filtroSeg ? ventasSeg.filter(v=>v._seg===filtroSeg) : [...ventasSeg]
+    let lista = filtroSeg ? ventasSegMes.filter(v=>v._seg===filtroSeg) : [...ventasSegMes]
     if (fsAsesor)   lista = lista.filter(v => String(v.asesor_nombre || v.vendedor || '').toLowerCase().includes(fsAsesor.trim().toLowerCase()))
     if (fsSala)     lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fsSala.trim().toLowerCase()))
     if (fsDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fsDistrito.trim().toLowerCase()))
@@ -1176,7 +1186,7 @@ export default function Jefatura() {
         .some(x => String(x || '').toLowerCase().includes(b)))
     }
     return lista.sort((a,b) => (SEG_ORD[a._seg]??5) - (SEG_ORD[b._seg]??5))
-  }, [ventasSeg, filtroSeg, fsAsesor, fsSala, fsDistrito, fsPlan, fsDesde, fsHasta, fsBusqueda])
+  }, [ventasSegMes, filtroSeg, fsAsesor, fsSala, fsDistrito, fsPlan, fsDesde, fsHasta, fsBusqueda])
 
   function limpiarFiltrosSeg() {
     setFiltroSeg(''); try { sessionStorage.setItem(JEF_SEG_FILTRO_KEY, '') } catch {}
@@ -1206,29 +1216,37 @@ export default function Jefatura() {
   }
 
   const kpisSeg = useMemo(() => ({
-    ejecucion: ventasSeg.filter(v=>v._seg==='ejecucion').length,
-    instalado: ventasSeg.filter(v=>v._seg==='instalado').length,
-    rechazo:   ventasSeg.filter(v=>v._seg==='rechazo').length,
-    caida:     ventasSeg.filter(v=>v._seg==='caida').length,
-    tecnico:   ventasSeg.filter(v=>v._seg==='tecnico').length,
-  }), [ventasSeg])
+    ejecucion: ventasSegMes.filter(v=>v._seg==='ejecucion').length,
+    instalado: ventasSegMes.filter(v=>v._seg==='instalado').length,
+    rechazo:   ventasSegMes.filter(v=>v._seg==='rechazo').length,
+    caida:     ventasSegMes.filter(v=>v._seg==='caida').length,
+    tecnico:   ventasSegMes.filter(v=>v._seg==='tecnico').length,
+  }), [ventasSegMes])
 
   /* ── flujo general de ventas ── */
+  const ventasFlujoMes = useMemo(() => {
+    const mes = mesReporte || mesActual()
+    return ventasCache.filter(v => {
+      const fecha = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
+      return String(fecha || '').slice(0, 7) === mes
+    })
+  }, [ventasCache, mesReporte])
+
   const resumenFlujoVentas = useMemo(() => ({
-    todas: ventasCache.length,
-    validadas: ventasCache.filter(flujoValidada).length,
-    noValidadas: ventasCache.filter(flujoNoValidada).length,
-    grabadas: ventasCache.filter(flujoGrabada).length,
-    noGrabadas: ventasCache.filter(flujoNoGrabada).length,
-    seguimiento: ventasCache.filter(v => Boolean(estadoSeguimiento(v))).length,
-  }), [ventasCache])
+    todas: ventasFlujoMes.length,
+    validadas: ventasFlujoMes.filter(flujoValidada).length,
+    noValidadas: ventasFlujoMes.filter(flujoNoValidada).length,
+    grabadas: ventasFlujoMes.filter(flujoGrabada).length,
+    noGrabadas: ventasFlujoMes.filter(flujoNoGrabada).length,
+    seguimiento: ventasFlujoMes.filter(v => Boolean(estadoSeguimiento(v))).length,
+  }), [ventasFlujoMes])
 
   const opcionesFlujo = useMemo(() => ({
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
   }), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
-    let lista = [...ventasCache]
+    let lista = [...ventasFlujoMes]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
     if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
     if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
@@ -1268,7 +1286,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
+  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1661,8 +1679,14 @@ export default function Jefatura() {
           {/* ===== SEGUIMIENTO ===== */}
           <section className={`section${seccion==='seguimiento'?' active':''}`}>
             <div className="sec-header">
-              <div><h2>Seguimiento en campo</h2><p>Estado actual de todas las ventas — se actualiza automáticamente</p></div>
-              <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
+              <div><h2>Seguimiento en campo</h2><p>Estados correspondientes al mes seleccionado</p></div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <select value={mesReporte} onChange={e=>setMesReporte(e.target.value)} aria-label="Mes de seguimiento"
+                  style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:'9px',fontSize:'12px',fontFamily:'inherit',outline:'none',color:'#374151',cursor:'pointer',background:'#fff'}}>
+                  {MESES_SALAS.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <button className="btn-nuevo" style={{background:'#0891b2'}} onClick={cargarSeguimiento}>↻ Actualizar</button>
+              </div>
             </div>
             <div className="kpi-grid seguimiento-kpi-grid">
               <div className="kpi-card k-teal">  <div className="kpi-num">{kpisSeg.ejecucion}</div><div className="kpi-label">En ejecución</div></div>
@@ -2096,8 +2120,15 @@ export default function Jefatura() {
             <div className="sec-header">
               <div>
                 <h2>Ventas generales</h2>
+                <p>Ventas ingresadas en el mes seleccionado</p>
               </div>
-              <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <select value={mesReporte} onChange={e=>setMesReporte(e.target.value)} aria-label="Mes de ventas generales"
+                  style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:'9px',fontSize:'12px',fontFamily:'inherit',outline:'none',color:'#374151',cursor:'pointer',background:'#fff'}}>
+                  {MESES_SALAS.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <button className="btn-nuevo" onClick={cargarVentasCache}>Actualizar</button>
+              </div>
             </div>
 
             <div className="flujo-kpi-grid">
