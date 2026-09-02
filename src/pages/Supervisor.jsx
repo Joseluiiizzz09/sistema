@@ -287,23 +287,25 @@ export default function Supervisor() {
     })
   }, [todasVentas, periodo])
 
-  // "Instaladas" cuenta por la fecha PROGRAMADA (esa fecha determina el mes de
-  // instalación para el reporte), no por la fecha de venta: una venta creada
-  // en agosto pero programada para septiembre debe aparecer en el reporte de
-  // septiembre (mismo criterio que el Dashboard de Jefatura, ver
-  // cicloDashboardMes en Jefatura.jsx).
-  const instaladasPeriodo = useMemo(() => {
+  // Estados de la etapa de campo/instalación: su mes de reporte lo determina
+  // la fecha PROGRAMADA, no la fecha de venta — una venta vendida en agosto
+  // pero programada para septiembre debe aparecer en el reporte de septiembre
+  // (mismo criterio que el Dashboard de Jefatura, ver cicloDashboardMes en
+  // Jefatura.jsx). El resto de estados (Validado, No Validado, Grabado, etc.)
+  // sigue contando por fecha de venta.
+  const ESTADOS_POR_PROGRAMACION = ['en_ejecucion', 'instalado', 'caida', 'tecnico_casa', 'tecnicos_camino']
+  const conteoPorProgramacion = useMemo(() => {
     const hoy = fechaHoy(), mes = mesActual()
     const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
-    return todasVentas.filter(v => {
-      if (v._estado !== 'instalado') return false
+    const conteo = Object.fromEntries(ESTADOS_POR_PROGRAMACION.map(id => [id, 0]))
+    for (const v of todasVentas) {
+      if (!ESTADOS_POR_PROGRAMACION.includes(v._estado)) continue
       const f = (v.fecha_programada || '').slice(0, 10)
-      if (!f) return false
-      if (periodo==='dia')    return f===hoy
-      if (periodo==='semana') return f>=lun && f<=hoy
-      if (periodo==='mes')    return f.startsWith(mes)
-      return true
-    })
+      if (!f) continue
+      const enPeriodo = periodo==='dia' ? f===hoy : periodo==='semana' ? (f>=lun && f<=hoy) : periodo==='mes' ? f.startsWith(mes) : true
+      if (enPeriodo) conteo[v._estado]++
+    }
+    return conteo
   }, [todasVentas, periodo])
 
   const ventasTabla = useMemo(() => {
@@ -630,9 +632,9 @@ export default function Supervisor() {
                 { label:'Validadas',      val:cntEst('validado'),       cls:'k-purple', sub:'pasaron validación' },
                 { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
                 { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
-                { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
-                { label:'Instaladas',     val:instaladasPeriodo.length, cls:'k-green',  sub:'completadas' },
-                { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
+                { label:'En Ejecución',   val:conteoPorProgramacion.en_ejecucion, cls:'k-teal',   sub:'programadas' },
+                { label:'Instaladas',     val:conteoPorProgramacion.instalado,    cls:'k-green',  sub:'completadas' },
+                { label:'Caídas',         val:conteoPorProgramacion.caida,        cls:'k-red',    sub:'fallidas' },
                 { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
               ].map(k=>(
                 <div key={k.label} className={`kpi-card ${k.cls}`}>
@@ -649,7 +651,7 @@ export default function Supervisor() {
                 <div key={e.id} className="estado-chip">
                   <div className="chip-dot" style={{background:e.dot}} />
                   <span>{e.label}</span>
-                  <span className="chip-num" style={{color:e.dot}}>{e.id==='instalado' ? instaladasPeriodo.length : dashVentas.filter(v=>v._estado===e.id).length}</span>
+                  <span className="chip-num" style={{color:e.dot}}>{ESTADOS_POR_PROGRAMACION.includes(e.id) ? conteoPorProgramacion[e.id] : dashVentas.filter(v=>v._estado===e.id).length}</span>
                 </div>
               ))}
             </div>

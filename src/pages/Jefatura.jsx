@@ -920,10 +920,12 @@ export default function Jefatura() {
     const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
     const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
     const instalaciones = ventasCache.filter(v => esMes(v.fecha_programada) && String(v.estado || '').toUpperCase() === 'INSTALADO')
+    const caidasMes = ventasCache.filter(v => esMes(v.fecha_programada) && ['CAIDA', 'RECHAZO_CAMPO'].includes(String(v.estado || '').toUpperCase()))
     return {
       ventasNuevas,
       programaciones,
       instalaciones,
+      caidasMes,
     }
   }, [ventasCache, mesReporte])
 
@@ -970,7 +972,7 @@ export default function Jefatura() {
       })
       const caidas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&v._fecha?.startsWith(mesUsar)&&(v.estado||'').toLowerCase()==='caida').length
+        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toLowerCase()==='caida').length
       })
       chartInst.current.salas = new Chart(canvasSalas.current, {
         type: 'bar',
@@ -1014,7 +1016,7 @@ export default function Jefatura() {
   const kpis = useMemo(() => {
     const e   = s => (s||'').toLowerCase()
     const inst  = cicloDashboardMes.instalaciones.length
-    const caida = cicloDashboardMes.ventasNuevas.filter(v=>['caida','rechazo_campo'].includes(e(v.estado))).length
+    const caida = cicloDashboardMes.caidasMes.length
     const instM = inst
     const caidM = caida
     const efect = (instM+caidM)>0?Math.round(instM/(instM+caidM)*100):0
