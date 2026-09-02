@@ -287,6 +287,24 @@ export default function Supervisor() {
     })
   }, [todasVentas, periodo])
 
+  // "Instaladas" cuenta por la fecha real de instalación, no por la fecha de
+  // venta: una venta creada en agosto que se instala en septiembre debe
+  // aparecer en el reporte de septiembre (mismo criterio que el Dashboard de
+  // Jefatura, ver cicloDashboardMes en Jefatura.jsx).
+  const instaladasPeriodo = useMemo(() => {
+    const hoy = fechaHoy(), mes = mesActual()
+    const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
+    return todasVentas.filter(v => {
+      if (v._estado !== 'instalado') return false
+      const f = (v.fecha_instalado || '').slice(0, 10)
+      if (!f) return false
+      if (periodo==='dia')    return f===hoy
+      if (periodo==='semana') return f>=lun && f<=hoy
+      if (periodo==='mes')    return f.startsWith(mes)
+      return true
+    })
+  }, [todasVentas, periodo])
+
   const ventasTabla = useMemo(() => {
     let vv = [...todasVentas]
     if (filtroAsesor) vv = vv.filter(v=>v.asesor===filtroAsesor)
@@ -612,7 +630,7 @@ export default function Supervisor() {
                 { label:'No Validadas',   val:cntEst('no_validado'),    cls:'k-red',    sub:'rechazadas' },
                 { label:'Grabadas',       val:cntEst('grabado'),        cls:'k-orange', sub:'con audio' },
                 { label:'En Ejecución',   val:cntEst('en_ejecucion'),   cls:'k-teal',   sub:'programadas' },
-                { label:'Instaladas',     val:cntEst('instalado'),      cls:'k-green',  sub:'completadas' },
+                { label:'Instaladas',     val:instaladasPeriodo.length, cls:'k-green',  sub:'completadas' },
                 { label:'Caídas',         val:cntEst('caida'),          cls:'k-red',    sub:'fallidas' },
                 { label:'Asesores',       val:asesoresSala.length,      cls:'k-blue',   sub:salaActual },
               ].map(k=>(
@@ -630,7 +648,7 @@ export default function Supervisor() {
                 <div key={e.id} className="estado-chip">
                   <div className="chip-dot" style={{background:e.dot}} />
                   <span>{e.label}</span>
-                  <span className="chip-num" style={{color:e.dot}}>{dashVentas.filter(v=>v._estado===e.id).length}</span>
+                  <span className="chip-num" style={{color:e.dot}}>{e.id==='instalado' ? instaladasPeriodo.length : dashVentas.filter(v=>v._estado===e.id).length}</span>
                 </div>
               ))}
             </div>
