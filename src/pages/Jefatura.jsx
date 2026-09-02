@@ -919,7 +919,7 @@ export default function Jefatura() {
     const esMes = valor => String(soloFecha(valor) || '').slice(0, 7) === mes
     const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
     const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
-    const instalaciones = ventasCache.filter(v => esMes(v.fecha_instalado))
+    const instalaciones = ventasCache.filter(v => esMes(v.fecha_instalado) && String(v.estado || '').toUpperCase() === 'INSTALADO')
     return {
       ventasNuevas,
       programaciones,
@@ -966,7 +966,7 @@ export default function Jefatura() {
       const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_instalado)).length
+        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_instalado)&&(v.estado||'').toUpperCase()==='INSTALADO').length
       })
       const caidas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)

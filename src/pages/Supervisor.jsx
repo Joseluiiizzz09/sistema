@@ -295,7 +295,7 @@ export default function Supervisor() {
     const hoy = fechaHoy(), mes = mesActual()
     const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
     return todasVentas.filter(v => {
-      if (!ventaAlcanzoInstalacion(v)) return false
+      if (v._estado !== 'instalado') return false
       const f = (v.fecha_instalado || '').slice(0, 10)
       if (!f) return false
       if (periodo==='dia')    return f===hoy
