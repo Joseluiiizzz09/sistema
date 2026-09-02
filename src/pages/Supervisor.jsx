@@ -287,16 +287,17 @@ export default function Supervisor() {
     })
   }, [todasVentas, periodo])
 
-  // "Instaladas" cuenta por la fecha real de instalación, no por la fecha de
-  // venta: una venta creada en agosto que se instala en septiembre debe
-  // aparecer en el reporte de septiembre (mismo criterio que el Dashboard de
-  // Jefatura, ver cicloDashboardMes en Jefatura.jsx).
+  // "Instaladas" cuenta por la fecha PROGRAMADA (esa fecha determina el mes de
+  // instalación para el reporte), no por la fecha de venta: una venta creada
+  // en agosto pero programada para septiembre debe aparecer en el reporte de
+  // septiembre (mismo criterio que el Dashboard de Jefatura, ver
+  // cicloDashboardMes en Jefatura.jsx).
   const instaladasPeriodo = useMemo(() => {
     const hoy = fechaHoy(), mes = mesActual()
     const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
     return todasVentas.filter(v => {
       if (v._estado !== 'instalado') return false
-      const f = (v.fecha_instalado || '').slice(0, 10)
+      const f = (v.fecha_programada || '').slice(0, 10)
       if (!f) return false
       if (periodo==='dia')    return f===hoy
       if (periodo==='semana') return f>=lun && f<=hoy

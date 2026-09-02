@@ -919,7 +919,7 @@ export default function Jefatura() {
     const esMes = valor => String(soloFecha(valor) || '').slice(0, 7) === mes
     const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
     const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
-    const instalaciones = ventasCache.filter(v => esMes(v.fecha_instalado) && String(v.estado || '').toUpperCase() === 'INSTALADO')
+    const instalaciones = ventasCache.filter(v => esMes(v.fecha_programada) && String(v.estado || '').toUpperCase() === 'INSTALADO')
     return {
       ventasNuevas,
       programaciones,
@@ -966,7 +966,7 @@ export default function Jefatura() {
       const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const instaladas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_instalado)&&(v.estado||'').toUpperCase()==='INSTALADO').length
+        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toUpperCase()==='INSTALADO').length
       })
       const caidas = salas.map(s => {
         const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
@@ -1356,7 +1356,7 @@ export default function Jefatura() {
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
-      ['FECHA DE INSTALACIÓN', v => v.fecha_instalado ? formatF(soloFecha(v.fecha_instalado)) : '-'],
+      ['FECHA DE INSTALACIÓN', v => v.fecha_programada ? formatF(soloFecha(v.fecha_programada)) : '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
