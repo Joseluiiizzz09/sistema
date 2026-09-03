@@ -1598,26 +1598,40 @@ export default function Jefatura() {
 
   /* ── reportes ── */
   const { reporteData, repKpis } = useMemo(() => {
+    const esMesReporte = valor => String(soloFecha(valor) || '').slice(0, 7) === mesReporte
     const ventasDelMes = mesReporte
       ? ventasCache.filter(v => {
           const fecha = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
           return fecha && String(fecha).slice(0, 7) === mesReporte
         })
       : ventasCache
+    // Instaladas y caídas pertenecen al mes de su programación, igual que en
+    // el Dashboard General. Así también cuentan ventas creadas el mes anterior
+    // cuya instalación fue programada para el periodo seleccionado.
+    const instaladasDelMes = mesReporte
+      ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && String(v.estado || '').trim().toUpperCase() === 'INSTALADO')
+      : ventasCache.filter(ventaAlcanzoInstalacion)
+    const caidasDelMes = mesReporte
+      ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && ['CAIDA', 'RECHAZO_CAMPO'].includes(String(v.estado || '').trim().toUpperCase()))
+      : ventasCache.filter(v => String(v.estado || '').trim().toUpperCase() === 'CAIDA')
     let asesFilt = usuarios.filter(u=>usuarioTieneCargo(u,'asesor'))
     if (salaReporte !== 'todas') asesFilt = asesFilt.filter(u=>u.sala===salaReporte)
     let ventasFilt = ventasDelMes
+    let instaladasFilt = instaladasDelMes
+    let caidasFilt = caidasDelMes
     if (salaReporte !== 'todas') {
       const nombres = asesFilt.map(a=>a.nombre)
       ventasFilt = ventasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
+      instaladasFilt = instaladasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
+      caidasFilt = caidasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
     }
-    const inst   = ventasFilt.filter(ventaAlcanzoInstalacion).length
-    const caidas = ventasFilt.filter(v=>(v.estado||'').toLowerCase()==='caida').length
+    const inst   = instaladasFilt.length
+    const caidas = caidasFilt.length
     const efect  = ventasFilt.length ? Math.round(inst/ventasFilt.length*100) : 0
     const rendData = asesFilt.map(a => {
       const mis   = ventasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre)
-      const inst2 = mis.filter(ventaAlcanzoInstalacion).length
-      const caid  = mis.filter(v=>(v.estado||'').toLowerCase()==='caida').length
+      const inst2 = instaladasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
+      const caid  = caidasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
       const ef    = mis.length ? Math.round(inst2/mis.length*100) : 0
       return { ...a, totalVentas:mis.length, instaladas:inst2, caidas:caid, efectividad:ef }
     }).sort((a,b)=>
