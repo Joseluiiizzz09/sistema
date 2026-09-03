@@ -1901,7 +1901,7 @@ export default function Jefatura() {
               <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para las áreas de Marketing y Reclutamiento</p></div>
               <div style={{display:'flex',gap:8}}>
                 {marketingVista==='ventas'
-                  ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>
+                  ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button>
                   : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingReclExcel} disabled={!marketingReclData.length}>Exportar Excel</button>}
                 {marketingVista==='ventas'
                   ? <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
@@ -1966,12 +1966,12 @@ export default function Jefatura() {
               </div>
 
               <div className="tabla-wrap marketing-tabla-card">
-                <div className="tabla-header"><span className="tabla-title">Detalle para Marketing</span><span className="tabla-count">{marketingData.length} grupos</span></div>
+                <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><span className="tabla-count">{costosPorCampana.filas.length} campañas</span></div>
                 <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
-                  <thead><tr><th>Campaña</th><th>Tipificación</th><th>Leads</th><th>Primera alta</th><th>Última alta</th></tr></thead>
-                  <tbody>{marketingData.length===0
-                    ? <tr><td colSpan="5" className="tabla-empty">{marketingCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
-                    : marketingData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
+                  <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th></tr></thead>
+                  <tbody>{costosPorCampana.filas.length===0
+                    ? <tr><td colSpan="6" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
+                    : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td></tr>)}</tbody>
                 </table></div>
               </div>
             </div>
@@ -1987,16 +1987,6 @@ export default function Jefatura() {
                 <button type="button" className="btn-nuevo" disabled={gastoGuardando} onClick={guardarGasto}>{gastoGuardando?'Guardando…':(gastoEditandoId?'Actualizar':'Guardar')}</button>
                 {gastoEditandoId && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ setGastoEditandoId(null); setGastoForm({ fecha:fechaHoy(), campana:'', monto:'', notas:'' }) }}>Cancelar</button>}
               </div>
-            </div>
-
-            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}}>
-              <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><button type="button" className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button></div>
-              <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
-                <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th></tr></thead>
-                <tbody>{costosPorCampana.filas.length===0
-                  ? <tr><td colSpan="6" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
-                  : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td></tr>)}</tbody>
-              </table></div>
             </div>
 
             <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}}>
