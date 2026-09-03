@@ -903,7 +903,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
                     {esCobranza && <td>{cliente.cobranza_codigo_pago || '—'}</td>}
-                    {esCobranza && <td>{cliente.cobranza_actualizado_por_nombre || '—'}</td>}
+                    {esCobranza && (
+                      <td>
+                        {cliente.cobranza_actualizado_por_nombre
+                          ? <><div>{cliente.cobranza_actualizado_por_nombre}</div><small style={{color:'#94a3b8'}}>{fechaHoraVisible(cliente.cobranza_gestionado_en)}</small></>
+                          : '—'}
+                      </td>
+                    )}
                     {esCobranza && (
                       <td className="cobranza-gestion-cell">
                         <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
