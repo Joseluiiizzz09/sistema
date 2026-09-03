@@ -202,7 +202,7 @@ function generarRangoFechas(desde, hasta) {
   return fechas
 }
 
-function asignacionesVigentesDelAsesor(historial, asesorNombre) {
+function asignacionesVigentesDelAsesor(historial, asesorNombre, asesorId, titularId) {
   const eventos = Array.isArray(historial) ? historial : []
   const normalizarAsesor = valor => String(valor || '').trim().toUpperCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ')
@@ -212,11 +212,25 @@ function asignacionesVigentesDelAsesor(historial, asesorNombre) {
     const retirado = normalizarAsesor(evento?.asesorQuitado || evento?.asesor_quitado)
     return esRetiro && (!nombre || retirado === nombre) ? i : indice
   }, -1)
-  return eventos.slice(ultimoRetiro + 1).filter(evento =>
+  const esAsignacion = evento =>
     evento?.fecha && evento?.asesor
     && !['TIPIF_VEND','TIPIF_BACK','DERIVADO','QUITAR_ASIGNACION'].includes(String(evento.tipo || '').trim().toUpperCase())
-    && (!nombre || normalizarAsesor(evento.asesor) === nombre)
-  )
+  const asignaciones = eventos.slice(ultimoRetiro + 1).filter(evento =>
+    esAsignacion(evento) && (evento.asesor_id
+      ? Number(evento.asesor_id) === Number(asesorId)
+      : (!nombre || normalizarAsesor(evento.asesor) === nombre)))
+  // Los historiales antiguos guardaban solo el nombre. El ID del titular
+  // confirma a quién pertenece la última asignación aunque haya sido renombrado.
+  // No inferir propietarios anteriores ni revivir una asignación retirada.
+  if (Number(asesorId) > 0 && Number(titularId) === Number(asesorId)) {
+    const ultima = eventos.findLastIndex(esAsignacion)
+    const evento = eventos[ultima]
+    const retiroPosterior = eventos.slice(ultima + 1).some(e =>
+      String(e?.tipo || '').trim().toUpperCase() === 'QUITAR_ASIGNACION')
+    if (evento && !retiroPosterior && (!evento.asesor_id || Number(evento.asesor_id) === Number(asesorId))
+      && !asignaciones.includes(evento)) asignaciones.push(evento)
+  }
+  return asignaciones
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
@@ -369,7 +383,7 @@ export default function Dashboard() {
       const asesorNombreVista = ((vistaJefatura ? asesorObjetivo?.nombre : sesion?.nombre) || '').trim()
       const leadsAsignados = data.data.filter(l => {
         const historial = Array.isArray(l.historial) ? l.historial : []
-        const asignaciones = asignacionesVigentesDelAsesor(historial, asesorNombreVista)
+        const asignaciones = asignacionesVigentesDelAsesor(historial, asesorNombreVista, asesorIdVista, l.asesor_id)
         const ultimaAsignacion = asignaciones[asignaciones.length - 1]
 
         // La fecha del lead identifica la base de origen. Para el asesor
@@ -421,7 +435,7 @@ export default function Dashboard() {
             obs = l.obs_asesor_personal ?? ent?.obsAsesorAntes ?? ''
           }
           const historial = Array.isArray(l.historial) ? l.historial : []
-          const asignacionesDelAsesor = asignacionesVigentesDelAsesor(historial, miNombre)
+          const asignacionesDelAsesor = asignacionesVigentesDelAsesor(historial, miNombre, asesorIdVista, l.asesor_id)
           const asignacionDelAsesor = asignacionesDelAsesor[asignacionesDelAsesor.length - 1]
           const horaAsignacion = asignacionDelAsesor?.hora || (soyActual ? l.hora_asig : '') || ''
           const fechaAsignacion = normalizarFecha(asignacionDelAsesor?.fecha || l.fecha) || ''
