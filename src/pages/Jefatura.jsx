@@ -502,6 +502,9 @@ export default function Jefatura() {
   const [gastoForm, setGastoForm] = useState({ fecha:fechaHoy(), campana:'', monto:'', notas:'' })
   const [gastoGuardando, setGastoGuardando] = useState(false)
   const [gastoEditandoId, setGastoEditandoId] = useState(null)
+  const [historialFiltroCampana, setHistorialFiltroCampana] = useState('')
+  const registrarGastoFormRef = useRef(null)
+  const gastosRegistradosRef = useRef(null)
   // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
   const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingReclData, setMarketingReclData] = useState([])
@@ -793,6 +796,19 @@ export default function Jefatura() {
     } catch (error) {
       setGastosCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
     }
+  }
+
+  function editarGastoDeCampana(campana) {
+    const fechaObjetivo = marketingFiltros.hasta || marketingFiltros.desde || fechaHoy()
+    const match = gastosData.find(g => g.campana === campana && (g.fecha||'').slice(0,10) === fechaObjetivo)
+    if (match) editarGasto(match)
+    else { setGastoEditandoId(null); setGastoForm({ fecha:fechaObjetivo, campana, monto:'', notas:'' }) }
+    registrarGastoFormRef.current?.scrollIntoView({ behavior:'smooth', block:'center' })
+  }
+
+  function verHistorialCampana(campana) {
+    setHistorialFiltroCampana(campana)
+    gastosRegistradosRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })
   }
 
   const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
@@ -1146,6 +1162,10 @@ export default function Jefatura() {
     }).sort((a,b) => b.gasto-a.gasto || b.leads-a.leads || a.campana.localeCompare(b.campana,'es'))
     return { filas, gastoTotalPeriodo, ventasTotalPeriodo }
   }, [gastosData, resumenMarketing])
+
+  const gastosMostrados = useMemo(() => (
+    historialFiltroCampana ? gastosData.filter(g => g.campana === historialFiltroCampana) : gastosData
+  ), [gastosData, historialFiltroCampana])
 
   function exportarCostosExcel() {
     descargarExcel(costosPorCampana.filas, [
@@ -1968,15 +1988,15 @@ export default function Jefatura() {
               <div className="tabla-wrap marketing-tabla-card">
                 <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><span className="tabla-count">{costosPorCampana.filas.length} campañas</span></div>
                 <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
-                  <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th></tr></thead>
+                  <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th><th>Acciones</th></tr></thead>
                   <tbody>{costosPorCampana.filas.length===0
-                    ? <tr><td colSpan="6" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
-                    : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td></tr>)}</tbody>
+                    ? <tr><td colSpan="7" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
+                    : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td><td style={{display:'flex',gap:8}}><button type="button" title="Editar monto" onClick={()=>editarGastoDeCampana(f.campana)} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>✏️</button><button type="button" title="Ver historial" onClick={()=>verHistorialCampana(f.campana)} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>📄</button></td></tr>)}</tbody>
                 </table></div>
               </div>
             </div>
 
-            <div className="filtros-avanzados" style={{marginTop:16}}>
+            <div className="filtros-avanzados" style={{marginTop:16}} ref={registrarGastoFormRef}>
               <div className="filtros-titulo">Registrar gasto publicitario{gastoEditandoId?' (editando)':''}</div>
               {gastosCarga.error && <div className="marketing-error">{gastosCarga.error}</div>}
               <div className="filtros-grid">
@@ -1989,13 +2009,19 @@ export default function Jefatura() {
               </div>
             </div>
 
-            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}}>
-              <div className="tabla-header"><span className="tabla-title">Gastos registrados</span><span className="tabla-count">{gastosData.length} registros</span></div>
+            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}} ref={gastosRegistradosRef}>
+              <div className="tabla-header">
+                <span className="tabla-title">Gastos registrados{historialFiltroCampana?` — ${historialFiltroCampana}`:''}</span>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  {historialFiltroCampana && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setHistorialFiltroCampana('')}>Quitar filtro</button>}
+                  <span className="tabla-count">{gastosMostrados.length} registros</span>
+                </div>
+              </div>
               <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
                 <thead><tr><th>Fecha</th><th>Campaña</th><th>Monto</th><th>Notas</th><th>Registrado por</th><th></th></tr></thead>
-                <tbody>{gastosData.length===0
+                <tbody>{gastosMostrados.length===0
                   ? <tr><td colSpan="6" className="tabla-empty">{gastosCarga.cargando?'Cargando información…':'Sin gastos registrados en el período.'}</td></tr>
-                  : gastosData.map(f=><tr key={f.id}><td>{formatF(soloFecha(f.fecha))}</td><td>{f.campana}</td><td>S/ {Number(f.monto||0).toFixed(2)}</td><td>{f.notas||'—'}</td><td>{f.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGasto(f)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGasto(f.id)}>Eliminar</button></td></tr>)}</tbody>
+                  : gastosMostrados.map(f=><tr key={f.id}><td>{formatF(soloFecha(f.fecha))}</td><td>{f.campana}</td><td>S/ {Number(f.monto||0).toFixed(2)}</td><td>{f.notas||'—'}</td><td>{f.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGasto(f)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGasto(f.id)}>Eliminar</button></td></tr>)}</tbody>
               </table></div>
             </div>
             </>}
