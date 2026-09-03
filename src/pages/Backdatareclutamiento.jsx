@@ -2751,7 +2751,7 @@ export default function Backdatareclutamiento() {
               <table className="base-tabla reclutados-tabla">
                 <thead>
                   <tr>
-                    <th>Campaña</th><th>Registrado por</th><th>Postulante</th><th>Número</th>
+                    <th>Campaña</th><th>Registrado por</th><th>Agendado por</th><th>Postulante</th><th>Número</th>
                     <th>Fecha de inicio</th><th>Fecha de inicio (capacitador)</th>
                     <th>Día 1</th><th>Día 2</th><th>Día 3</th><th>Día 4</th><th>Día 5</th>
                     <th>Sala</th><th>Tipificación final</th>
@@ -2760,13 +2760,14 @@ export default function Backdatareclutamiento() {
                 </thead>
                 <tbody>
                   {cargandoCapacitaciones ? (
-                    <tr><td colSpan="14" className="reclutados-empty">Cargando capacitaciones...</td></tr>
+                    <tr><td colSpan="15" className="reclutados-empty">Cargando capacitaciones...</td></tr>
                   ) : capacitacionesFiltradas.length === 0 ? (
-                    <tr><td colSpan="14" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
+                    <tr><td colSpan="15" className="reclutados-empty">Sin postulantes en capacitación.</td></tr>
                   ) : capacitacionesFiltradas.flatMap(c => ([
                     <tr key={c.id}>
                       <td><CampanaBadge valor={c.campana} /></td>
                       <td className="reclutados-reclutador">{c.creado_por_nombre || '—'}</td>
+                      <td className="reclutados-reclutador entrevistas-agendado-negro">{c.agendado_por_nombre || '—'}</td>
                       <td className="reclutados-nombre">{c.nombre_postulante}</td>
                       <td>{c.numero}</td>
                       <td>{formatFecha(String(c.fecha_inicio_capacitacion).slice(0,10))}</td>
@@ -2798,7 +2799,7 @@ export default function Backdatareclutamiento() {
                       </td>
                     </tr>,
                     <tr key={`hist-cap-${c.id}`} className={`historial-row${histOpenCapacitacion[c.id]?' open':''}`}>
-                      <td colSpan={14}>
+                      <td colSpan={15}>
                         <div className="historial-inner">
                           <div className="hist-label">Trazabilidad — {c.nombre_postulante}</div>
                           {!(c.historial||[]).length
