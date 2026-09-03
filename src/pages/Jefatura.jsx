@@ -496,6 +496,12 @@ export default function Jefatura() {
   const [marketingData, setMarketingData] = useState([])
   const [marketingCatalogos, setMarketingCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingCarga, setMarketingCarga] = useState({ cargando:false, error:'' })
+  // Costos publicitarios por campaña (cruzados con marketingData para CPL/CPV)
+  const [gastosData, setGastosData] = useState([])
+  const [gastosCarga, setGastosCarga] = useState({ cargando:false, error:'' })
+  const [gastoForm, setGastoForm] = useState({ fecha:fechaHoy(), campana:'', monto:'', notas:'' })
+  const [gastoGuardando, setGastoGuardando] = useState(false)
+  const [gastoEditandoId, setGastoEditandoId] = useState(null)
   // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
   const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingReclData, setMarketingReclData] = useState([])
@@ -733,6 +739,62 @@ export default function Jefatura() {
     }
   }, [marketingFiltros])
 
+  const cargarGastos = useCallback(async (filtros = marketingFiltros) => {
+    setGastosCarga({ cargando:true, error:'' })
+    try {
+      const qs = new URLSearchParams()
+      if (filtros.desde) qs.set('desde', filtros.desde)
+      if (filtros.hasta) qs.set('hasta', filtros.hasta)
+      const res = await fetch(`${API}/leads/marketing-gastos?${qs}`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar los gastos publicitarios')
+      setGastosData(Array.isArray(data.data) ? data.data : [])
+      setGastosCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setGastosCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [marketingFiltros])
+
+  async function guardarGasto() {
+    const monto = Number(gastoForm.monto)
+    if (!gastoForm.campana) return setGastosCarga(p => ({ ...p, error:'Selecciona una campaña' }))
+    if (!Number.isFinite(monto) || monto <= 0) return setGastosCarga(p => ({ ...p, error:'El monto debe ser mayor a 0' }))
+    setGastoGuardando(true)
+    try {
+      const res = await fetch(`${API}/leads/marketing-gastos`, {
+        method:'POST', headers:ncHeaders(),
+        body:JSON.stringify({ fecha:gastoForm.fecha, campana:gastoForm.campana, monto, notas:gastoForm.notas }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el gasto')
+      setGastoForm(p => ({ ...p, monto:'', notas:'' }))
+      setGastoEditandoId(null)
+      await cargarGastos()
+    } catch (error) {
+      setGastosCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
+    } finally {
+      setGastoGuardando(false)
+    }
+  }
+
+  function editarGasto(fila) {
+    setGastoEditandoId(fila.id)
+    setGastoForm({ fecha:(fila.fecha || '').slice(0,10), campana:fila.campana, monto:String(fila.monto), notas:fila.notas || '' })
+  }
+
+  async function eliminarGasto(id) {
+    if (!window.confirm('¿Eliminar este registro de gasto?')) return
+    try {
+      const res = await fetch(`${API}/leads/marketing-gastos/${id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el gasto')
+      if (gastoEditandoId === id) { setGastoEditandoId(null); setGastoForm({ fecha:fechaHoy(), campana:'', monto:'', notas:'' }) }
+      await cargarGastos()
+    } catch (error) {
+      setGastosCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
+    }
+  }
+
   const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
     setMarketingReclCarga({ cargando:true, error:'' })
     try {
@@ -906,10 +968,10 @@ export default function Jefatura() {
     if (seccion === 'seguimiento') cargarSeguimiento()
     if (seccion === 'reclutados-generales') { cargarReclutados(); cargarEntrevistados() }
     if (seccion === 'eliminaciones') cargarEliminaciones()
-    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl() }
+    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl(); cargarGastos() }
     if (seccion === 'grab-rendimiento') cargarGrabRendimiento()
     if (seccion === 'envio-masivo') cargarMasivo()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGrabRendimiento, cargarMasivo])
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGastos, cargarGrabRendimiento, cargarMasivo])
 
   // El dashboard representa el ciclo del mes actual según la fecha real de
   // cada evento. Una venta puede haberse creado antes y programarse o instalarse
@@ -1060,6 +1122,41 @@ export default function Jefatura() {
       : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
     return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
   }, [marketingData, ordenCampanas])
+
+  const costosPorCampana = useMemo(() => {
+    const gastoPorCampana = new Map()
+    let gastoTotalPeriodo = 0
+    gastosData.forEach(g => {
+      const monto = Number(g.monto || 0)
+      gastoTotalPeriodo += monto
+      gastoPorCampana.set(g.campana, (gastoPorCampana.get(g.campana) || 0) + monto)
+    })
+    const ventasTotalPeriodo = resumenMarketing.campanas.reduce((acc, c) => acc + c.ventas, 0)
+    const nombres = new Set([...resumenMarketing.campanas.map(c => c.campana), ...gastoPorCampana.keys()])
+    const filas = [...nombres].map(campana => {
+      const info = resumenMarketing.campanas.find(c => c.campana === campana)
+      const leads = info?.total || 0
+      const ventas = info?.ventas || 0
+      const gasto = gastoPorCampana.get(campana) || 0
+      return {
+        campana, leads, ventas, gasto,
+        cpl: leads > 0 ? gasto / leads : null,
+        cpv: ventas > 0 ? gasto / ventas : null,
+      }
+    }).sort((a,b) => b.gasto-a.gasto || b.leads-a.leads || a.campana.localeCompare(b.campana,'es'))
+    return { filas, gastoTotalPeriodo, ventasTotalPeriodo }
+  }, [gastosData, resumenMarketing])
+
+  function exportarCostosExcel() {
+    descargarExcel(costosPorCampana.filas, [
+      ['Campaña', f=>f.campana],
+      ['Leads', f=>f.leads],
+      ['Ventas', f=>f.ventas],
+      ['Gasto (S/)', f=>Number(f.gasto.toFixed(2))],
+      ['Costo por lead (S/)', f=>f.cpl!=null?Number(f.cpl.toFixed(2)):''],
+      ['Costo por venta (S/)', f=>f.cpv!=null?Number(f.cpv.toFixed(2)):''],
+    ], `costos-marketing-${fechaHoy()}.xlsx`)
+  }
 
   function exportarMarketingExcel() {
     descargarExcel(marketingData, [
@@ -1838,6 +1935,8 @@ export default function Jefatura() {
               <div className="kpi-card k-purple"><div className="kpi-num">{resumenMarketing.campanas.length}</div><div className="kpi-label">Campañas</div><div className="kpi-sub">con registros</div></div>
               <div className="kpi-card k-green"><div className="kpi-num">{resumenMarketing.tipificados}</div><div className="kpi-label">Tipificados</div><div className="kpi-sub">con resultado</div></div>
               <div className="kpi-card k-yellow"><div className="kpi-num">{resumenMarketing.sinTipificar}</div><div className="kpi-label">Sin tipificar</div><div className="kpi-sub">pendientes</div></div>
+              <div className="kpi-card k-orange"><div className="kpi-num">S/ {costosPorCampana.gastoTotalPeriodo.toFixed(2)}</div><div className="kpi-label">Gasto total</div><div className="kpi-sub">publicidad, según filtros</div></div>
+              <div className="kpi-card k-red"><div className="kpi-num">{costosPorCampana.ventasTotalPeriodo>0?`S/ ${(costosPorCampana.gastoTotalPeriodo/costosPorCampana.ventasTotalPeriodo).toFixed(2)}`:'—'}</div><div className="kpi-label">Costo por venta</div><div className="kpi-sub">promedio del período</div></div>
             </div>
 
             <div className="marketing-grid">
@@ -1875,6 +1974,39 @@ export default function Jefatura() {
                     : marketingData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
                 </table></div>
               </div>
+            </div>
+
+            <div className="filtros-avanzados" style={{marginTop:16}}>
+              <div className="filtros-titulo">Registrar gasto publicitario{gastoEditandoId?' (editando)':''}</div>
+              {gastosCarga.error && <div className="marketing-error">{gastosCarga.error}</div>}
+              <div className="filtros-grid">
+                <label><span>Fecha</span><input type="date" value={gastoForm.fecha} onChange={e=>setGastoForm(p=>({...p,fecha:e.target.value}))} /></label>
+                <label><span>Campaña</span><select value={gastoForm.campana} onChange={e=>setGastoForm(p=>({...p,campana:e.target.value}))}><option value="">Selecciona…</option>{marketingCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label><span>Monto (S/)</span><input type="number" min="0" step="0.01" value={gastoForm.monto} onChange={e=>setGastoForm(p=>({...p,monto:e.target.value}))} /></label>
+                <label><span>Notas (opcional)</span><input type="text" value={gastoForm.notas} onChange={e=>setGastoForm(p=>({...p,notas:e.target.value}))} /></label>
+                <button type="button" className="btn-nuevo" disabled={gastoGuardando} onClick={guardarGasto}>{gastoGuardando?'Guardando…':(gastoEditandoId?'Actualizar':'Guardar')}</button>
+                {gastoEditandoId && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ setGastoEditandoId(null); setGastoForm({ fecha:fechaHoy(), campana:'', monto:'', notas:'' }) }}>Cancelar</button>}
+              </div>
+            </div>
+
+            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}}>
+              <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><button type="button" className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button></div>
+              <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th></tr></thead>
+                <tbody>{costosPorCampana.filas.length===0
+                  ? <tr><td colSpan="6" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
+                  : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td></tr>)}</tbody>
+              </table></div>
+            </div>
+
+            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}}>
+              <div className="tabla-header"><span className="tabla-title">Gastos registrados</span><span className="tabla-count">{gastosData.length} registros</span></div>
+              <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                <thead><tr><th>Fecha</th><th>Campaña</th><th>Monto</th><th>Notas</th><th>Registrado por</th><th></th></tr></thead>
+                <tbody>{gastosData.length===0
+                  ? <tr><td colSpan="6" className="tabla-empty">{gastosCarga.cargando?'Cargando información…':'Sin gastos registrados en el período.'}</td></tr>
+                  : gastosData.map(f=><tr key={f.id}><td>{formatF(soloFecha(f.fecha))}</td><td>{f.campana}</td><td>S/ {Number(f.monto||0).toFixed(2)}</td><td>{f.notas||'—'}</td><td>{f.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGasto(f)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGasto(f.id)}>Eliminar</button></td></tr>)}</tbody>
+              </table></div>
             </div>
             </>}
 
