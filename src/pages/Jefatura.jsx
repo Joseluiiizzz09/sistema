@@ -459,7 +459,9 @@ export default function Jefatura() {
   const [salaReporte, setSalaReporte] = useState(() => {
     try { return sessionStorage.getItem(JEF_SALA_REPORTE_KEY) || 'todas' } catch { return 'todas' }
   })
-  const [mesReporte, setMesReporte] = useState('')
+  // Los reportes abren en el mes vigente; el histórico completo queda como
+  // una consulta explícita mediante el botón "Ver todos".
+  const [mesReporte, setMesReporte] = useState(() => mesActual())
   const [busqUsuarios, setBusqUsuarios] = useState('')
   const [filtroUsuarioCargo, setFiltroUsuarioCargo] = useState('')
   const [filtroUsuarioSala, setFiltroUsuarioSala] = useState('')
