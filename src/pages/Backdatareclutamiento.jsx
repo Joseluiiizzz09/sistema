@@ -515,6 +515,8 @@ export default function Backdatareclutamiento() {
   const [entrevistas,        setEntrevistas]        = useState([])
   const [cargandoEntrevistas,setCargandoEntrevistas] = useState(false)
   const [filtrosEntrevistas, setFiltrosEntrevistas]  = useState({ turnos:[], campanas:[], tipificaciones:[], desde:'', hasta:'', busqueda:'', agendadoPor:[] })
+  const [entrevistasPage,    setEntrevistasPage]     = useState(1)
+  const [entrevistasPageSize,setEntrevistasPageSize] = useState(25)
   const [modalEntrevista,    setModalEntrevista]      = useState({ open:false, regId:null, nombrePostulante:'', numero:'', numeroRef:'', turno:'', fechaAgendamiento:'', observacion:'', guardando:false, error:'' })
 
   // ── Capacitación (postulantes que asistieron a la entrevista) ──
@@ -1824,6 +1826,11 @@ export default function Backdatareclutamiento() {
     if (!texto) return true
     return [en.nombre_postulante, en.numero, en.numero_ref, en.campana].some(v => String(v||'').toLowerCase().includes(texto))
   })
+  const entrevistasTotalPages = Math.max(1, Math.ceil(entrevistasFiltradas.length / entrevistasPageSize))
+  const entrevistasPageSafe = Math.min(entrevistasPage, entrevistasTotalPages)
+  const entrevistasDesde = (entrevistasPageSafe - 1) * entrevistasPageSize
+  const entrevistasPagina = entrevistasFiltradas.slice(entrevistasDesde, entrevistasDesde + entrevistasPageSize)
+  useEffect(() => { setEntrevistasPage(1) }, [filtrosEntrevistas, entrevistasPageSize])
 
   const capacitacionesFiltradas = capacitaciones.filter(c => {
     const fecha = String(c.fecha_inicio_capacitacion||'').slice(0,10)
@@ -2683,7 +2690,7 @@ export default function Backdatareclutamiento() {
                     <tr><td colSpan="11" className="reclutados-empty">Cargando entrevistas...</td></tr>
                   ) : entrevistasFiltradas.length === 0 ? (
                     <tr><td colSpan="11" className="reclutados-empty">Sin entrevistas agendadas.</td></tr>
-                  ) : entrevistasFiltradas.map(en => (
+                  ) : entrevistasPagina.map(en => (
                     <tr key={en.id}>
                       <td>{normalizarFecha(en.created_at) || '—'}</td>
                       <td><CampanaBadge valor={en.campana} /></td>
@@ -2705,6 +2712,19 @@ export default function Backdatareclutamiento() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,padding:'10px 2px'}}>
+              <div className="paginacion-info">
+                Mostrando {entrevistasFiltradas.length ? entrevistasDesde + 1 : 0}–{Math.min(entrevistasDesde + entrevistasPageSize, entrevistasFiltradas.length)} de {entrevistasFiltradas.length}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <select className="select-por-pagina" value={entrevistasPageSize} onChange={e=>setEntrevistasPageSize(Number(e.target.value))} aria-label="Entrevistas por página">
+                  {[10,25,50,100].map(n=><option key={n} value={n}>{n} / pág.</option>)}
+                </select>
+                <button type="button" className="fnav-btn" disabled={entrevistasPageSafe<=1} onClick={()=>setEntrevistasPage(p=>Math.max(1,p-1))}>‹</button>
+                <span className="paginacion-info">Página {entrevistasPageSafe} de {entrevistasTotalPages}</span>
+                <button type="button" className="fnav-btn" disabled={entrevistasPageSafe>=entrevistasTotalPages} onClick={()=>setEntrevistasPage(p=>Math.min(entrevistasTotalPages,p+1))}>›</button>
+              </div>
             </div>
           </section>
 
