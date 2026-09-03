@@ -1042,10 +1042,15 @@ export default function Dashboard() {
   const kpiLlamadas   = llamadas
   const kpiVentas     = vHoy.length
 
-  // Instaladas y caidas: total global (historico), no se filtran por el
-  // periodo del grafico ni por la fecha de venta.
-  const kpiInstaladas = ventasSubidas.filter(v => v.fecha_instalado).length
-  const kpiCaidas     = ventasSubidas.filter(v => v.fecha_caida).length
+  // Instaladas y caidas: se reinician cada mes, igual que en Jefatura/Supervisor.
+  // El mes de reporte lo determina la fecha PROGRAMADA (mismo criterio que
+  // cicloDashboardMes en Jefatura.jsx), no la fecha de venta ni el periodo del
+  // grafico: una venta vendida en agosto pero programada para septiembre debe
+  // reportarse en septiembre.
+  const mesActual = hoy.slice(0, 7)
+  const vProgramadasMes = ventasSubidas.filter(v => normalizarFecha(v.fecha_programada).slice(0, 7) === mesActual)
+  const kpiInstaladas = vProgramadasMes.filter(v => v.fecha_instalado).length
+  const kpiCaidas     = vProgramadasMes.filter(v => v.fecha_caida).length
   const totalResultado = kpiInstaladas + kpiCaidas
   const kpiEfect      = totalResultado ? Math.round(kpiInstaladas / totalResultado * 100) : 0
   const kpiPct        = Math.min(Math.round(kpiVentas / META_DIARIA * 100), 100)
