@@ -892,7 +892,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>CÓDIGO DE PAGO</th>}{esCobranza && <th>COBRANZA</th>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>CÓDIGO DE PAGO</th>}{esCobranza && <th>ASESOR DE COBRANZA</th>}{esCobranza && <th>COBRANZA</th>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -904,6 +904,13 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     <td>{cliente.paquete || '—'}</td>
                     {esCobranza && <td>{cliente.cobranza_codigo_pago || '—'}</td>}
                     {esCobranza && (
+                      <td>
+                        {cliente.cobranza_actualizado_por_nombre
+                          ? <><div>{cliente.cobranza_actualizado_por_nombre}</div><small style={{color:'#94a3b8'}}>{fechaHoraVisible(cliente.cobranza_gestionado_en)}</small></>
+                          : '—'}
+                      </td>
+                    )}
+                    {esCobranza && (
                       <td className="cobranza-gestion-cell">
                         <button className={`cobranza-gestion-btn ${resumenCobranza(cliente) === 'COMPLETADO' ? 'completo' : resumenCobranza(cliente) === 'SIN CICLO' ? 'alerta' : ''}`} onClick={() => abrirCobranza(cliente)}>
                           <span>Gestionar cobranza</span><small>{resumenCobranza(cliente)}</small>
@@ -912,8 +919,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     )}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 11 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCobranza ? 11 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 12 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCobranza ? 12 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
