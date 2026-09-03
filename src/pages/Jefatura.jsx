@@ -516,6 +516,12 @@ export default function Jefatura() {
   const [marketingReclData, setMarketingReclData] = useState([])
   const [marketingReclCatalogos, setMarketingReclCatalogos] = useState({ campanas:[], tipificaciones:[] })
   const [marketingReclCarga, setMarketingReclCarga] = useState({ cargando:false, error:'' })
+  const [gastosReclData, setGastosReclData] = useState([])
+  const [gastosReclCarga, setGastosReclCarga] = useState({ cargando:false, error:'' })
+  const [gastoReclForm, setGastoReclForm] = useState({ fecha:fechaHoy(), campana:'', monto:'', notas:'' })
+  const [gastoReclGuardando, setGastoReclGuardando] = useState(false)
+  const [gastoReclEditandoId, setGastoReclEditandoId] = useState(null)
+  const [filaReclAbierta, setFilaReclAbierta] = useState('')
   /* ranking de Grabaciones: quién grabó más ventas hoy/semana/mes */
   const [grabRanking, setGrabRanking] = useState([])
   const [grabCarga, setGrabCarga] = useState({ cargando:false, error:'' })
@@ -751,7 +757,7 @@ export default function Jefatura() {
   const cargarGastos = useCallback(async (filtros = marketingFiltros) => {
     setGastosCarga({ cargando:true, error:'' })
     try {
-      const qs = new URLSearchParams()
+      const qs = new URLSearchParams({ tipo:'ventas' })
       if (filtros.desde) qs.set('desde', filtros.desde)
       if (filtros.hasta) qs.set('hasta', filtros.hasta)
       const res = await fetch(`${API}/leads/marketing-gastos?${qs}`, { headers:ncHeaders() })
@@ -772,7 +778,7 @@ export default function Jefatura() {
     try {
       const res = await fetch(`${API}/leads/marketing-gastos`, {
         method:'POST', headers:ncHeaders(),
-        body:JSON.stringify({ fecha:gastoForm.fecha, campana:gastoForm.campana, monto, notas:gastoForm.notas }),
+        body:JSON.stringify({ fecha:gastoForm.fecha, campana:gastoForm.campana, tipo:'ventas', monto, notas:gastoForm.notas }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el gasto')
@@ -816,6 +822,77 @@ export default function Jefatura() {
       setGastoForm({ fecha:marketingFiltros.hasta || marketingFiltros.desde || fechaHoy(), campana, monto:'', notas:'' })
     }
     setFilaAbierta(campana)
+  }
+
+  // ===== Espejo de lo anterior, para las campañas de Reclutamiento =====
+  const cargarGastosRecl = useCallback(async (filtros = marketingReclFiltros) => {
+    setGastosReclCarga({ cargando:true, error:'' })
+    try {
+      const qs = new URLSearchParams({ tipo:'reclutamiento' })
+      if (filtros.desde) qs.set('desde', filtros.desde)
+      if (filtros.hasta) qs.set('hasta', filtros.hasta)
+      const res = await fetch(`${API}/leads/marketing-gastos?${qs}`, { headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar los gastos publicitarios')
+      setGastosReclData(Array.isArray(data.data) ? data.data : [])
+      setGastosReclCarga({ cargando:false, error:'' })
+    } catch (error) {
+      setGastosReclCarga({ cargando:false, error:error.message || 'Error de conexión' })
+    }
+  }, [marketingReclFiltros])
+
+  async function guardarGastoRecl() {
+    const monto = Number(gastoReclForm.monto)
+    if (!gastoReclForm.campana) return setGastosReclCarga(p => ({ ...p, error:'Selecciona una campaña' }))
+    if (!Number.isFinite(monto) || monto <= 0) return setGastosReclCarga(p => ({ ...p, error:'El monto debe ser mayor a 0' }))
+    setGastoReclGuardando(true)
+    try {
+      const res = await fetch(`${API}/leads/marketing-gastos`, {
+        method:'POST', headers:ncHeaders(),
+        body:JSON.stringify({ fecha:gastoReclForm.fecha, campana:gastoReclForm.campana, tipo:'reclutamiento', monto, notas:gastoReclForm.notas }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el gasto')
+      setGastoReclForm(p => ({ ...p, monto:'', notas:'' }))
+      setGastoReclEditandoId(null)
+      await cargarGastosRecl()
+    } catch (error) {
+      setGastosReclCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
+    } finally {
+      setGastoReclGuardando(false)
+    }
+  }
+
+  function editarGastoRecl(fila) {
+    setGastoReclEditandoId(fila.id)
+    setGastoReclForm({ fecha:(fila.fecha || '').slice(0,10), campana:fila.campana, monto:String(fila.monto), notas:fila.notas || '' })
+  }
+
+  async function eliminarGastoRecl(id) {
+    if (!window.confirm('¿Eliminar este registro de gasto?')) return
+    try {
+      const res = await fetch(`${API}/leads/marketing-gastos/${id}`, { method:'DELETE', headers:ncHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el gasto')
+      if (gastoReclEditandoId === id) { setGastoReclEditandoId(null); setGastoReclForm(p => ({ ...p, monto:'', notas:'' })) }
+      await cargarGastosRecl()
+    } catch (error) {
+      setGastosReclCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
+    }
+  }
+
+  function abrirPanelCampanaRecl(campana, modo) {
+    if (filaReclAbierta === campana) { setFilaReclAbierta(''); return }
+    if (modo === 'editar') {
+      const fechaObjetivo = marketingReclFiltros.hasta || marketingReclFiltros.desde || fechaHoy()
+      const match = gastosReclData.find(g => g.campana === campana && (g.fecha||'').slice(0,10) === fechaObjetivo)
+      if (match) { setGastoReclEditandoId(match.id); setGastoReclForm({ fecha:(match.fecha||'').slice(0,10), campana:match.campana, monto:String(match.monto), notas:match.notas||'' }) }
+      else { setGastoReclEditandoId(null); setGastoReclForm({ fecha:fechaObjetivo, campana, monto:'', notas:'' }) }
+    } else {
+      setGastoReclEditandoId(null)
+      setGastoReclForm({ fecha:marketingReclFiltros.hasta || marketingReclFiltros.desde || fechaHoy(), campana, monto:'', notas:'' })
+    }
+    setFilaReclAbierta(campana)
   }
 
   const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
@@ -991,10 +1068,10 @@ export default function Jefatura() {
     if (seccion === 'seguimiento') cargarSeguimiento()
     if (seccion === 'reclutados-generales') { cargarReclutados(); cargarEntrevistados() }
     if (seccion === 'eliminaciones') cargarEliminaciones()
-    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl(); cargarGastos() }
+    if (seccion === 'marketing-leads') { cargarMarketing(); cargarMarketingRecl(); cargarGastos(); cargarGastosRecl() }
     if (seccion === 'grab-rendimiento') cargarGrabRendimiento()
     if (seccion === 'envio-masivo') cargarMasivo()
-  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGastos, cargarGrabRendimiento, cargarMasivo])
+  }, [seccion, cargarSeguimiento, cargarReclutados, cargarEntrevistados, cargarEliminaciones, cargarMarketing, cargarMarketingRecl, cargarGastos, cargarGastosRecl, cargarGrabRendimiento, cargarMasivo])
 
   // El dashboard representa el ciclo del mes actual según la fecha real de
   // cada evento. Una venta puede haberse creado antes y programarse o instalarse
@@ -1210,6 +1287,41 @@ export default function Jefatura() {
       : (b.total-a.total || a.campana.localeCompare(b.campana,'es')))
     return { total, sinTipificar, tipificados:total-sinTipificar, campanas, max:Math.max(1,...campanas.map(c=>c.total)), maxVentas:Math.max(1,...campanas.map(c=>c.ventas)) }
   }, [marketingReclData, ordenCampanas])
+
+  const costosPorCampanaRecl = useMemo(() => {
+    const gastoPorCampana = new Map()
+    let gastoTotalPeriodo = 0
+    gastosReclData.forEach(g => {
+      const monto = Number(g.monto || 0)
+      gastoTotalPeriodo += monto
+      gastoPorCampana.set(g.campana, (gastoPorCampana.get(g.campana) || 0) + monto)
+    })
+    const aceptacionesTotalPeriodo = resumenMarketingRecl.campanas.reduce((acc, c) => acc + c.ventas, 0)
+    const nombres = new Set([...resumenMarketingRecl.campanas.map(c => c.campana), ...gastoPorCampana.keys()])
+    const filas = [...nombres].map(campana => {
+      const info = resumenMarketingRecl.campanas.find(c => c.campana === campana)
+      const leads = info?.total || 0
+      const aceptaciones = info?.ventas || 0
+      const gasto = gastoPorCampana.get(campana) || 0
+      return {
+        campana, leads, aceptaciones, gasto,
+        cpl: leads > 0 ? gasto / leads : null,
+        cpa: aceptaciones > 0 ? gasto / aceptaciones : null,
+      }
+    }).sort((a,b) => b.gasto-a.gasto || b.leads-a.leads || a.campana.localeCompare(b.campana,'es'))
+    return { filas, gastoTotalPeriodo, aceptacionesTotalPeriodo }
+  }, [gastosReclData, resumenMarketingRecl])
+
+  function exportarCostosReclExcel() {
+    descargarExcel(costosPorCampanaRecl.filas, [
+      ['Campaña', f=>f.campana],
+      ['Leads', f=>f.leads],
+      ['Aceptaciones', f=>f.aceptaciones],
+      ['Gasto (S/)', f=>Number(f.gasto.toFixed(2))],
+      ['Costo por lead (S/)', f=>f.cpl!=null?Number(f.cpl.toFixed(2)):''],
+      ['Costo por aceptación (S/)', f=>f.cpa!=null?Number(f.cpa.toFixed(2)):''],
+    ], `costos-reclutamiento-${fechaHoy()}.xlsx`)
+  }
 
   function exportarMarketingReclExcel() {
     descargarExcel(marketingReclData, [
@@ -1925,10 +2037,10 @@ export default function Jefatura() {
               <div style={{display:'flex',gap:8}}>
                 {marketingVista==='ventas'
                   ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button>
-                  : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingReclExcel} disabled={!marketingReclData.length}>Exportar Excel</button>}
+                  : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosReclExcel} disabled={!costosPorCampanaRecl.filas.length}>Exportar Excel</button>}
                 {marketingVista==='ventas'
-                  ? <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>
-                  : <button className="btn-nuevo" onClick={()=>cargarMarketingRecl(marketingReclFiltros)}>Actualizar</button>}
+                  ? <button className="btn-nuevo" onClick={()=>{ cargarMarketing(marketingFiltros); cargarGastos(marketingFiltros) }}>Actualizar</button>
+                  : <button className="btn-nuevo" onClick={()=>{ cargarMarketingRecl(marketingReclFiltros); cargarGastosRecl(marketingReclFiltros) }}>Actualizar</button>}
               </div>
             </div>
 
@@ -2054,6 +2166,8 @@ export default function Jefatura() {
               <div className="kpi-card k-purple"><div className="kpi-num">{resumenMarketingRecl.campanas.length}</div><div className="kpi-label">Campañas</div><div className="kpi-sub">con registros</div></div>
               <div className="kpi-card k-green"><div className="kpi-num">{resumenMarketingRecl.tipificados}</div><div className="kpi-label">Tipificados</div><div className="kpi-sub">con resultado</div></div>
               <div className="kpi-card k-yellow"><div className="kpi-num">{resumenMarketingRecl.sinTipificar}</div><div className="kpi-label">Sin tipificar</div><div className="kpi-sub">pendientes</div></div>
+              <div className="kpi-card k-orange"><div className="kpi-num">S/ {costosPorCampanaRecl.gastoTotalPeriodo.toFixed(2)}</div><div className="kpi-label">Gasto total</div><div className="kpi-sub">publicidad, según filtros</div></div>
+              <div className="kpi-card k-red"><div className="kpi-num">{costosPorCampanaRecl.aceptacionesTotalPeriodo>0?`S/ ${(costosPorCampanaRecl.gastoTotalPeriodo/costosPorCampanaRecl.aceptacionesTotalPeriodo).toFixed(2)}`:'—'}</div><div className="kpi-label">Costo por aceptación</div><div className="kpi-sub">promedio del período</div></div>
             </div>
 
             <div className="marketing-grid">
@@ -2083,12 +2197,49 @@ export default function Jefatura() {
               </div>
 
               <div className="tabla-wrap marketing-tabla-card">
-                <div className="tabla-header"><span className="tabla-title">Detalle para Reclutamiento</span><span className="tabla-count">{marketingReclData.length} grupos</span></div>
+                <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><span className="tabla-count">{costosPorCampanaRecl.filas.length} campañas</span></div>
+                {gastosReclCarga.error && <div className="marketing-error">{gastosReclCarga.error}</div>}
                 <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
-                  <thead><tr><th>Campaña</th><th>Tipificación</th><th>Leads</th><th>Primera alta</th><th>Última alta</th></tr></thead>
-                  <tbody>{marketingReclData.length===0
-                    ? <tr><td colSpan="5" className="tabla-empty">{marketingReclCarga.cargando?'Cargando información…':'Sin resultados.'}</td></tr>
-                    : marketingReclData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{labelTipifVendRecl(f.tipificacion)}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
+                  <thead><tr><th>Campaña</th><th>Leads</th><th>Aceptaciones</th><th>Gasto</th><th>Costo por lead</th><th>Costo por aceptación</th><th>Acciones</th></tr></thead>
+                  <tbody>{costosPorCampanaRecl.filas.length===0
+                    ? <tr><td colSpan="7" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
+                    : costosPorCampanaRecl.filas.flatMap(f => {
+                        const filas = [
+                          <tr key={f.campana}>
+                            <td><strong>{f.campana}</strong></td>
+                            <td>{f.leads}</td>
+                            <td>{f.aceptaciones}</td>
+                            <td>S/ {f.gasto.toFixed(2)}</td>
+                            <td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td>
+                            <td>{f.cpa!=null?`S/ ${f.cpa.toFixed(2)}`:'—'}</td>
+                            <td style={{display:'flex',gap:10}}>
+                              <button type="button" title="Editar monto" onClick={()=>abrirPanelCampanaRecl(f.campana,'editar')} style={{border:'none',background:'none',cursor:'pointer',color:filaReclAbierta===f.campana?'#0f172a':'#64748b',padding:2}}><IconLapiz /></button>
+                              <button type="button" title="Ver historial" onClick={()=>abrirPanelCampanaRecl(f.campana,'historial')} style={{border:'none',background:'none',cursor:'pointer',color:filaReclAbierta===f.campana?'#0f172a':'#64748b',padding:2}}><IconHoja /></button>
+                            </td>
+                          </tr>
+                        ]
+                        if (filaReclAbierta === f.campana) {
+                          const entradas = gastosReclData.filter(g => g.campana === f.campana)
+                          filas.push(
+                            <tr key={`${f.campana}-panel`}>
+                              <td colSpan="7" style={{background:'#f8fafc',padding:'12px 16px'}}>
+                                <div className="filtros-grid" style={{marginBottom:entradas.length?12:0}}>
+                                  <label><span>Fecha</span><input type="date" value={gastoReclForm.fecha} onChange={e=>setGastoReclForm(p=>({...p,fecha:e.target.value}))} /></label>
+                                  <label><span>Monto (S/)</span><input type="number" min="0" step="0.01" value={gastoReclForm.monto} onChange={e=>setGastoReclForm(p=>({...p,monto:e.target.value}))} /></label>
+                                  <label><span>Notas (opcional)</span><input type="text" value={gastoReclForm.notas} onChange={e=>setGastoReclForm(p=>({...p,notas:e.target.value}))} /></label>
+                                  <button type="button" className="btn-nuevo" disabled={gastoReclGuardando} onClick={guardarGastoRecl}>{gastoReclGuardando?'Guardando…':(gastoReclEditandoId?'Actualizar':'Guardar')}</button>
+                                  {gastoReclEditandoId && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ setGastoReclEditandoId(null); setGastoReclForm(p=>({...p,monto:'',notas:''})) }}>Cancelar edición</button>}
+                                </div>
+                                {entradas.length>0 && <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                                  <thead><tr><th>Fecha</th><th>Monto</th><th>Notas</th><th>Registrado por</th><th></th></tr></thead>
+                                  <tbody>{entradas.map(g=><tr key={g.id}><td>{formatF(soloFecha(g.fecha))}</td><td>S/ {Number(g.monto||0).toFixed(2)}</td><td>{g.notas||'—'}</td><td>{g.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGastoRecl(g)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGastoRecl(g.id)}>Eliminar</button></td></tr>)}</tbody>
+                                </table></div>}
+                              </td>
+                            </tr>
+                          )
+                        }
+                        return filas
+                      })}</tbody>
                 </table></div>
               </div>
             </div>
