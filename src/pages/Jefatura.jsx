@@ -123,6 +123,14 @@ function ModuloIcon({ tipo, size = 24 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{display:'block', margin:'auto', flex:'0 0 auto'}}>{trazos[tipo] || trazos.activity}</svg>
 }
 
+function IconLapiz({ size = 15 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+}
+
+function IconHoja({ size = 15 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+}
+
 // Filtro estilo Excel: checkbox por opción + "Todos" para marcar/desmarcar en bloque.
 // seleccionados === null significa "todos" (sin filtro); un array es la selección puntual.
 function MasivoFiltroColumna({ titulo, opciones, seleccionados, onChange, buscable = false }) {
@@ -502,9 +510,7 @@ export default function Jefatura() {
   const [gastoForm, setGastoForm] = useState({ fecha:fechaHoy(), campana:'', monto:'', notas:'' })
   const [gastoGuardando, setGastoGuardando] = useState(false)
   const [gastoEditandoId, setGastoEditandoId] = useState(null)
-  const [historialFiltroCampana, setHistorialFiltroCampana] = useState('')
-  const registrarGastoFormRef = useRef(null)
-  const gastosRegistradosRef = useRef(null)
+  const [filaAbierta, setFilaAbierta] = useState('')
   // Mismo dashboard, pero para las campañas de Reclutamiento (leads_reclutamiento)
   const [marketingReclFiltros, setMarketingReclFiltros] = useState({ desde:fechaHoy(), hasta:fechaHoy(), campana:'', tipificacion:'' })
   const [marketingReclData, setMarketingReclData] = useState([])
@@ -791,24 +797,25 @@ export default function Jefatura() {
       const res = await fetch(`${API}/leads/marketing-gastos/${id}`, { method:'DELETE', headers:ncHeaders() })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo eliminar el gasto')
-      if (gastoEditandoId === id) { setGastoEditandoId(null); setGastoForm({ fecha:fechaHoy(), campana:'', monto:'', notas:'' }) }
+      if (gastoEditandoId === id) { setGastoEditandoId(null); setGastoForm(p => ({ ...p, monto:'', notas:'' })) }
       await cargarGastos()
     } catch (error) {
       setGastosCarga(p => ({ ...p, error:error.message || 'Error de conexión' }))
     }
   }
 
-  function editarGastoDeCampana(campana) {
-    const fechaObjetivo = marketingFiltros.hasta || marketingFiltros.desde || fechaHoy()
-    const match = gastosData.find(g => g.campana === campana && (g.fecha||'').slice(0,10) === fechaObjetivo)
-    if (match) editarGasto(match)
-    else { setGastoEditandoId(null); setGastoForm({ fecha:fechaObjetivo, campana, monto:'', notas:'' }) }
-    registrarGastoFormRef.current?.scrollIntoView({ behavior:'smooth', block:'center' })
-  }
-
-  function verHistorialCampana(campana) {
-    setHistorialFiltroCampana(campana)
-    gastosRegistradosRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })
+  function abrirPanelCampana(campana, modo) {
+    if (filaAbierta === campana) { setFilaAbierta(''); return }
+    if (modo === 'editar') {
+      const fechaObjetivo = marketingFiltros.hasta || marketingFiltros.desde || fechaHoy()
+      const match = gastosData.find(g => g.campana === campana && (g.fecha||'').slice(0,10) === fechaObjetivo)
+      if (match) { setGastoEditandoId(match.id); setGastoForm({ fecha:(match.fecha||'').slice(0,10), campana:match.campana, monto:String(match.monto), notas:match.notas||'' }) }
+      else { setGastoEditandoId(null); setGastoForm({ fecha:fechaObjetivo, campana, monto:'', notas:'' }) }
+    } else {
+      setGastoEditandoId(null)
+      setGastoForm({ fecha:marketingFiltros.hasta || marketingFiltros.desde || fechaHoy(), campana, monto:'', notas:'' })
+    }
+    setFilaAbierta(campana)
   }
 
   const cargarMarketingRecl = useCallback(async (filtros = marketingReclFiltros) => {
@@ -1162,10 +1169,6 @@ export default function Jefatura() {
     }).sort((a,b) => b.gasto-a.gasto || b.leads-a.leads || a.campana.localeCompare(b.campana,'es'))
     return { filas, gastoTotalPeriodo, ventasTotalPeriodo }
   }, [gastosData, resumenMarketing])
-
-  const gastosMostrados = useMemo(() => (
-    historialFiltroCampana ? gastosData.filter(g => g.campana === historialFiltroCampana) : gastosData
-  ), [gastosData, historialFiltroCampana])
 
   function exportarCostosExcel() {
     descargarExcel(costosPorCampana.filas, [
@@ -1987,42 +1990,50 @@ export default function Jefatura() {
 
               <div className="tabla-wrap marketing-tabla-card">
                 <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><span className="tabla-count">{costosPorCampana.filas.length} campañas</span></div>
+                {gastosCarga.error && <div className="marketing-error">{gastosCarga.error}</div>}
                 <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
                   <thead><tr><th>Campaña</th><th>Leads</th><th>Ventas</th><th>Gasto</th><th>Costo por lead</th><th>Costo por venta</th><th>Acciones</th></tr></thead>
                   <tbody>{costosPorCampana.filas.length===0
                     ? <tr><td colSpan="7" className="tabla-empty">Sin datos para los filtros seleccionados.</td></tr>
-                    : costosPorCampana.filas.map(f=><tr key={f.campana}><td><strong>{f.campana}</strong></td><td>{f.leads}</td><td>{f.ventas}</td><td>S/ {f.gasto.toFixed(2)}</td><td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td><td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td><td style={{display:'flex',gap:8}}><button type="button" title="Editar monto" onClick={()=>editarGastoDeCampana(f.campana)} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>✏️</button><button type="button" title="Ver historial" onClick={()=>verHistorialCampana(f.campana)} style={{border:'none',background:'none',cursor:'pointer',fontSize:14}}>📄</button></td></tr>)}</tbody>
+                    : costosPorCampana.filas.flatMap(f => {
+                        const filas = [
+                          <tr key={f.campana}>
+                            <td><strong>{f.campana}</strong></td>
+                            <td>{f.leads}</td>
+                            <td>{f.ventas}</td>
+                            <td>S/ {f.gasto.toFixed(2)}</td>
+                            <td>{f.cpl!=null?`S/ ${f.cpl.toFixed(2)}`:'—'}</td>
+                            <td>{f.cpv!=null?`S/ ${f.cpv.toFixed(2)}`:'—'}</td>
+                            <td style={{display:'flex',gap:10}}>
+                              <button type="button" title="Editar monto" onClick={()=>abrirPanelCampana(f.campana,'editar')} style={{border:'none',background:'none',cursor:'pointer',color:filaAbierta===f.campana?'#0f172a':'#64748b',padding:2}}><IconLapiz /></button>
+                              <button type="button" title="Ver historial" onClick={()=>abrirPanelCampana(f.campana,'historial')} style={{border:'none',background:'none',cursor:'pointer',color:filaAbierta===f.campana?'#0f172a':'#64748b',padding:2}}><IconHoja /></button>
+                            </td>
+                          </tr>
+                        ]
+                        if (filaAbierta === f.campana) {
+                          const entradas = gastosData.filter(g => g.campana === f.campana)
+                          filas.push(
+                            <tr key={`${f.campana}-panel`}>
+                              <td colSpan="7" style={{background:'#f8fafc',padding:'12px 16px'}}>
+                                <div className="filtros-grid" style={{marginBottom:entradas.length?12:0}}>
+                                  <label><span>Fecha</span><input type="date" value={gastoForm.fecha} onChange={e=>setGastoForm(p=>({...p,fecha:e.target.value}))} /></label>
+                                  <label><span>Monto (S/)</span><input type="number" min="0" step="0.01" value={gastoForm.monto} onChange={e=>setGastoForm(p=>({...p,monto:e.target.value}))} /></label>
+                                  <label><span>Notas (opcional)</span><input type="text" value={gastoForm.notas} onChange={e=>setGastoForm(p=>({...p,notas:e.target.value}))} /></label>
+                                  <button type="button" className="btn-nuevo" disabled={gastoGuardando} onClick={guardarGasto}>{gastoGuardando?'Guardando…':(gastoEditandoId?'Actualizar':'Guardar')}</button>
+                                  {gastoEditandoId && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ setGastoEditandoId(null); setGastoForm(p=>({...p,monto:'',notas:''})) }}>Cancelar edición</button>}
+                                </div>
+                                {entradas.length>0 && <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
+                                  <thead><tr><th>Fecha</th><th>Monto</th><th>Notas</th><th>Registrado por</th><th></th></tr></thead>
+                                  <tbody>{entradas.map(g=><tr key={g.id}><td>{formatF(soloFecha(g.fecha))}</td><td>S/ {Number(g.monto||0).toFixed(2)}</td><td>{g.notas||'—'}</td><td>{g.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGasto(g)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGasto(g.id)}>Eliminar</button></td></tr>)}</tbody>
+                                </table></div>}
+                              </td>
+                            </tr>
+                          )
+                        }
+                        return filas
+                      })}</tbody>
                 </table></div>
               </div>
-            </div>
-
-            <div className="filtros-avanzados" style={{marginTop:16}} ref={registrarGastoFormRef}>
-              <div className="filtros-titulo">Registrar gasto publicitario{gastoEditandoId?' (editando)':''}</div>
-              {gastosCarga.error && <div className="marketing-error">{gastosCarga.error}</div>}
-              <div className="filtros-grid">
-                <label><span>Fecha</span><input type="date" value={gastoForm.fecha} onChange={e=>setGastoForm(p=>({...p,fecha:e.target.value}))} /></label>
-                <label><span>Campaña</span><select value={gastoForm.campana} onChange={e=>setGastoForm(p=>({...p,campana:e.target.value}))}><option value="">Selecciona…</option>{marketingCatalogos.campanas.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label><span>Monto (S/)</span><input type="number" min="0" step="0.01" value={gastoForm.monto} onChange={e=>setGastoForm(p=>({...p,monto:e.target.value}))} /></label>
-                <label><span>Notas (opcional)</span><input type="text" value={gastoForm.notas} onChange={e=>setGastoForm(p=>({...p,notas:e.target.value}))} /></label>
-                <button type="button" className="btn-nuevo" disabled={gastoGuardando} onClick={guardarGasto}>{gastoGuardando?'Guardando…':(gastoEditandoId?'Actualizar':'Guardar')}</button>
-                {gastoEditandoId && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>{ setGastoEditandoId(null); setGastoForm({ fecha:fechaHoy(), campana:'', monto:'', notas:'' }) }}>Cancelar</button>}
-              </div>
-            </div>
-
-            <div className="tabla-wrap marketing-tabla-card" style={{marginTop:16}} ref={gastosRegistradosRef}>
-              <div className="tabla-header">
-                <span className="tabla-title">Gastos registrados{historialFiltroCampana?` — ${historialFiltroCampana}`:''}</span>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {historialFiltroCampana && <button type="button" className="flujo-clear filtro-limpiar" onClick={()=>setHistorialFiltroCampana('')}>Quitar filtro</button>}
-                  <span className="tabla-count">{gastosMostrados.length} registros</span>
-                </div>
-              </div>
-              <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
-                <thead><tr><th>Fecha</th><th>Campaña</th><th>Monto</th><th>Notas</th><th>Registrado por</th><th></th></tr></thead>
-                <tbody>{gastosMostrados.length===0
-                  ? <tr><td colSpan="6" className="tabla-empty">{gastosCarga.cargando?'Cargando información…':'Sin gastos registrados en el período.'}</td></tr>
-                  : gastosMostrados.map(f=><tr key={f.id}><td>{formatF(soloFecha(f.fecha))}</td><td>{f.campana}</td><td>S/ {Number(f.monto||0).toFixed(2)}</td><td>{f.notas||'—'}</td><td>{f.registrado_por_nombre||'—'}</td><td style={{display:'flex',gap:6}}><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>editarGasto(f)}>Editar</button><button type="button" className="flujo-clear filtro-limpiar" onClick={()=>eliminarGasto(f.id)}>Eliminar</button></td></tr>)}</tbody>
-              </table></div>
             </div>
             </>}
 
