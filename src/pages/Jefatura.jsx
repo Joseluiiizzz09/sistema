@@ -2051,12 +2051,12 @@ export default function Jefatura() {
             <div className="sec-header">
               <div><h2>Dashboard de Leads por Campaña</h2><p>Información de altas y resultados para las áreas de Marketing y Reclutamiento</p></div>
               <div style={{display:'flex',gap:8}}>
-                {marketingVista==='ventas'
-                  ? <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button>
-                  : <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosReclExcel} disabled={!costosPorCampanaRecl.filas.length}>Exportar Excel</button>}
-                {marketingVista==='ventas'
-                  ? <button className="btn-nuevo" onClick={()=>{ cargarMarketing(marketingFiltros); cargarGastos(marketingFiltros) }}>Actualizar</button>
-                  : <button className="btn-nuevo" onClick={()=>{ cargarMarketingRecl(marketingReclFiltros); cargarGastosRecl(marketingReclFiltros) }}>Actualizar</button>}
+                {marketingVista==='ventas' && <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingExcel} disabled={!marketingData.length}>Exportar Excel</button>}
+                {marketingVista==='reclutamiento' && <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarMarketingReclExcel} disabled={!marketingReclData.length}>Exportar Excel</button>}
+                {marketingVista==='costos' && <button className="btn-nuevo" style={{background:'#0f766e'}} onClick={exportarCostosExcel} disabled={!costosPorCampana.filas.length}>Exportar Excel</button>}
+                {marketingVista==='ventas' && <button className="btn-nuevo" onClick={()=>cargarMarketing(marketingFiltros)}>Actualizar</button>}
+                {marketingVista==='reclutamiento' && <button className="btn-nuevo" onClick={()=>cargarMarketingRecl(marketingReclFiltros)}>Actualizar</button>}
+                {marketingVista==='costos' && <button className="btn-nuevo" onClick={()=>{ cargarMarketing(marketingFiltros); cargarGastos(marketingFiltros) }}>Actualizar</button>}
               </div>
             </div>
 
@@ -2067,8 +2067,12 @@ export default function Jefatura() {
               <button type="button" className={`btn-nuevo${marketingVista==='reclutamiento'?'':' btn-tab-inactivo'}`}
                 style={marketingVista==='reclutamiento'?{}:{background:'#e5e7eb',color:'#374151'}}
                 onClick={()=>setMarketingVista('reclutamiento')}>Reclutamiento</button>
+              <button type="button" className={`btn-nuevo${marketingVista==='costos'?'':' btn-tab-inactivo'}`}
+                style={marketingVista==='costos'?{}:{background:'#e5e7eb',color:'#374151'}}
+                onClick={()=>setMarketingVista('costos')}>Costos</button>
             </div>
 
+            {(marketingVista==='ventas'||marketingVista==='costos') && <>
             {marketingVista==='ventas' && <>
             <div className="filtros-avanzados marketing-filtros">
               <div className="filtros-titulo">Filtros del reporte</div>
@@ -2125,8 +2129,10 @@ export default function Jefatura() {
                     : marketingData.map((f,i)=><tr key={`${f.campana}-${f.tipificacion}-${i}`}><td><strong>{f.campana}</strong></td><td><span className="marketing-tipif">{f.tipificacion}</span></td><td><strong>{f.cantidad}</strong></td><td>{f.primera_alta?new Date(f.primera_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td><td>{f.ultima_alta?new Date(f.ultima_alta).toLocaleString('es-PE',{timeZone:'America/Lima'}):'—'}</td></tr>)}</tbody>
                 </table></div>
               </div>
+            </div>
+            </>}
 
-              <div className="tabla-wrap marketing-tabla-card" style={{gridColumn:'1 / -1'}}>
+            {marketingVista==='costos' && <div className="tabla-wrap marketing-tabla-card">
                 <div className="tabla-header"><span className="tabla-title">Costos por campaña</span><span className="tabla-count">{costosPorCampana.filas.length} campañas</span></div>
                 {gastosCarga.error && <div className="marketing-error">{gastosCarga.error}</div>}
                 <div style={{overflowX:'auto'}}><table className="tabla marketing-tabla">
@@ -2171,8 +2177,7 @@ export default function Jefatura() {
                         return filas
                       })}</tbody>
                 </table></div>
-              </div>
-            </div>
+              </div>}
             </>}
 
             {marketingVista==='reclutamiento' && <>
