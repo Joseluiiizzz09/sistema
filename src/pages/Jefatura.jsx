@@ -1627,12 +1627,16 @@ export default function Jefatura() {
     }
     const inst   = instaladasFilt.length
     const caidas = caidasFilt.length
-    const efect  = ventasFilt.length ? Math.round(inst/ventasFilt.length*100) : 0
+    // Efectividad = Instaladas / (Instaladas + Caídas), igual que en el
+    // Dashboard del asesor. No se divide entre el total de ventas del mes:
+    // eso mezclaba ventas todavía en curso (en ejecución, técnico en casa,
+    // etc.) en el denominador y hacía bajar la efectividad artificialmente.
+    const efect  = (inst + caidas) ? Math.round(inst/(inst+caidas)*100) : 0
     const rendData = asesFilt.map(a => {
       const mis   = ventasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre)
       const inst2 = instaladasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
       const caid  = caidasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
-      const ef    = mis.length ? Math.round(inst2/mis.length*100) : 0
+      const ef    = (inst2 + caid) ? Math.round(inst2/(inst2+caid)*100) : 0
       return { ...a, totalVentas:mis.length, instaladas:inst2, caidas:caid, efectividad:ef }
     }).sort((a,b)=>
       b.instaladas-a.instaladas ||
