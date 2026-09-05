@@ -953,7 +953,12 @@ export default function Backdatareclutamiento() {
     cargarAsesores()
     cargarLeads()
     cargarReclutados()
-    const t = setVisibleInterval(cargarLeads, 1000)
+    // Piso mas bajo que el resto de la app (ver utils/polling.js): esta base
+    // la trabajan varias personas en simultaneo sobre los mismos candidatos,
+    // y con el piso general de 30s alguien podia tardar hasta 2 minutos en ver
+    // que un companero ya habia reasignado/tipificado, generando reasignaciones
+    // y tipificaciones cruzadas sobre el mismo numero.
+    const t = setVisibleInterval(cargarLeads, 3000, 3000)
     return () => clearVisibleInterval(t)
   }, [cargarAsesores, cargarLeads, cargarReclutados])
 
