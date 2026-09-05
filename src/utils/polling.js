@@ -18,12 +18,12 @@ function instalarDetectorInteraccion() {
   window.addEventListener('wheel', marcar, { passive:true, capture:true })
 }
 
-export function setVisibleInterval(task, delay) {
+export function setVisibleInterval(task, delay, pisoMinimo = MIN_POLL_DELAY) {
   instalarDetectorInteraccion()
   let running = false
   let cancelado = false
   let sinCambios = 0
-  const intervaloBase = Math.max(Number(delay) || MIN_POLL_DELAY, MIN_POLL_DELAY)
+  const intervaloBase = Math.max(Number(delay) || pisoMinimo, pisoMinimo)
   let timer = 0
 
   const programar = () => {
