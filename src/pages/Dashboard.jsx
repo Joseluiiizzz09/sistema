@@ -294,6 +294,10 @@ export default function Dashboard() {
   const [filtroDni,   setFiltroDni]   = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
+  // Paginación de la tabla: sin esto se pintaban de golpe todas las ventas
+  // históricas del asesor (sin límite ni virtualización), lo que traba la
+  // pantalla a medida que crece el histórico de meses.
+  const [paginaVentas, setPaginaVentas] = useState(0)
 
   // Filtros gráficos rendimiento
   const [grafDesde, setGrafDesde] = useState(fechaHoy())
@@ -1019,6 +1023,7 @@ export default function Dashboard() {
   // ── Filtros ventas subidas ────────────────────────────────────────────────
   function buscarVentas() {
     const fil = filtroDni.toLowerCase()
+    setPaginaVentas(0)
     setVentasMostradas(ventasSubidas.filter(v => {
       const ok1 = !fil   || (v.dni||'').toLowerCase().includes(fil)
       const fv   = normalizarFecha(v.created_at)
@@ -1030,6 +1035,7 @@ export default function Dashboard() {
 
   function borrarFiltros() {
     setFiltroDni(''); setFiltroDesde(''); setFiltroHasta('')
+    setPaginaVentas(0)
     setVentasMostradas(ventasSubidas)
   }
 
@@ -1279,6 +1285,14 @@ export default function Dashboard() {
 
         <div className="vs-barra-info"><span>{ventasMostradas.length} registros</span></div>
 
+        {(() => {
+          const VENTAS_POR_PAGINA = 100
+          const totalPaginasVentas = Math.max(1, Math.ceil(ventasMostradas.length / VENTAS_POR_PAGINA))
+          const paginaVentasSegura = Math.min(paginaVentas, totalPaginasVentas - 1)
+          const inicioVentas = paginaVentasSegura * VENTAS_POR_PAGINA
+          const ventasPagina = ventasMostradas.slice(inicioVentas, inicioVentas + VENTAS_POR_PAGINA)
+          return (
+        <>
         <div className="vs-tabla-wrap">
           <table className="vs-tabla">
             <thead>
@@ -1298,7 +1312,9 @@ export default function Dashboard() {
             <tbody>
               {ventasMostradas.length === 0 ? (
                 <tr className="vs-empty"><td colSpan={30}>Sin registros. Usa los filtros para buscar.</td></tr>
-              ) : ventasMostradas.map((v, i) => (
+              ) : ventasPagina.map((v, iLocal) => {
+                const i = inicioVentas + iLocal
+                return (
                 <tr key={v.id || i}>
                   <td><BadgeVS e={v.estado} sup={v.estado_supgrab || v.estado_grab} estadoGrab={v.estado_grab} grabandoPorNombre={v.grabando_por_nombre} /></td>
                   <td><ObsSeguimientoCell
@@ -1341,10 +1357,23 @@ export default function Dashboard() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
+        {totalPaginasVentas > 1 && (
+          <div className="vs-paginacion" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,padding:'10px 0'}}>
+            <button type="button" className="vs-btn" disabled={paginaVentasSegura === 0}
+              onClick={() => setPaginaVentas(p => Math.max(0, p - 1))}>‹ Anterior</button>
+            <span style={{fontSize:12,color:'#6b7280'}}>Página {paginaVentasSegura + 1} de {totalPaginasVentas}</span>
+            <button type="button" className="vs-btn" disabled={paginaVentasSegura >= totalPaginasVentas - 1}
+              onClick={() => setPaginaVentas(p => Math.min(totalPaginasVentas - 1, p + 1))}>Siguiente ›</button>
+          </div>
+        )}
+        </>
+          )
+        })()}
       </div>
 
       {/* ── FRASES ─────────────────────────────────────────────────────── */}
