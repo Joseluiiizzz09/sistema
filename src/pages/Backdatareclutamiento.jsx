@@ -468,6 +468,8 @@ export default function Backdatareclutamiento() {
   // ── Form (agregar registro) ──
   const [form,     setForm]     = useState({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', tipoContacto:'LLAMADA', direccion:'', coordenadas:'', obsBack:'', tipifBack:'', asesor:'' })
   const [n1Error,  setN1Error]  = useState(false)
+  const [agregandoRegistro, setAgregandoRegistro] = useState(false)
+  const agregandoRegistroRef = useRef(false)
   const [calPicker,   setCalPicker]   = useState('')
   const [cmCalPicker, setCmCalPicker] = useState('')
 
@@ -1022,9 +1024,14 @@ export default function Backdatareclutamiento() {
 
   // ── Form (agregar registro individual) ───────────────────────────────────
   async function agregarRegistro() {
+    // El ref bloquea inmediatamente un segundo clic, incluso antes de que React
+    // alcance a renderizar el estado disabled del botón.
+    if (agregandoRegistroRef.current) return
     const n1 = form.n1.trim()
     const usuarioWhatsapp = form.usuarioWhatsapp.trim().replace(/^@+/, '')
     if (!n1 && !usuarioWhatsapp) { setN1Error(true); mostrarToast('Ingresa un N1 o un usuario de WhatsApp'); return }
+    agregandoRegistroRef.current = true
+    setAgregandoRegistro(true)
     setN1Error(false)
     const campana  = form.campana.trim() || '—'
     const distrito = '—'
@@ -1041,21 +1048,24 @@ export default function Backdatareclutamiento() {
     setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
       const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, departamento:'Lima', provincia:'Lima', distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, asesor_nombre:asesor, fecha, hora_asig:hora }) })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el registro')
       const bid  = data.ids?.[0] || data.id
-      if (bid) {
-        setBaseData(prev => {
-          const next = { ...prev }
-          const arr  = [...(next[fecha] || [])]
-          const idx  = arr.findIndex(r => r.id === reg.id)
-          if (idx >= 0) { arr[idx] = { ...arr[idx], _backendId: bid }; next[fecha] = arr }
-          return next
-        })
-      }
+      if (!bid) throw new Error('El servidor no devolvió el identificador del registro')
+      setBaseData(prev => {
+        const next = { ...prev }
+        const arr  = [...(next[fecha] || [])]
+        const idx  = arr.findIndex(r => r.id === reg.id)
+        if (idx >= 0) { arr[idx] = { ...arr[idx], _backendId: bid }; next[fecha] = arr }
+        return next
+      })
       setForm({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', asesor:'' })
     } catch(e) {
       setBaseData(prev => ({ ...prev, [fecha]:(prev[fecha] || []).filter(r => r.id !== reg.id) }))
       mostrarToast(e.message || 'No se pudo guardar el registro')
+    } finally {
+      agregandoRegistroRef.current = false
+      setAgregandoRegistro(false)
     }
   }
 
@@ -1991,7 +2001,9 @@ export default function Backdatareclutamiento() {
             <div className="bo-input-group"><label>Usuario WhatsApp</label><input className={`form-control${n1Error?' obligatorio-error':''}`} value={form.usuarioWhatsapp} onChange={e=>{ setN1Error(false); setForm(p=>({...p,usuarioWhatsapp:e.target.value})) }} placeholder="Si no tiene N1, ej. usuario_cliente" maxLength={100} /></div>
             <div className="bo-sidebar-registro-acciones">
               <button className="bo-btn-limpiar" onClick={()=>setForm({campana:'',distrito:'',n1:'',n2:'',usuarioWhatsapp:'',asesor:''})}>Limpiar</button>
-              <button className="bo-btn-agregar" onClick={agregarRegistro}>+ Agregar</button>
+              <button className="bo-btn-agregar" onClick={agregarRegistro} disabled={agregandoRegistro}>
+                {agregandoRegistro ? 'Agregando…' : '+ Agregar'}
+              </button>
             </div>
           </div>
           )}
