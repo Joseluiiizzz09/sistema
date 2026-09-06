@@ -1044,24 +1044,17 @@ export default function Backdatareclutamiento() {
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
       historial: asesor ? [{asesor, hora, fecha, motivo:'Asignacion inicial'}] : [],
     }
-    setBaseData(prev => ({ ...prev, [fecha]: [reg, ...(prev[fecha] || [])] }))
-    setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
     try {
       const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify({ campana, departamento:'Lima', provincia:'Lima', distrito, n1, n2, usuario_whatsapp:usuarioWhatsapp, asesor_nombre:asesor, fecha, hora_asig:hora }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el registro')
       const bid  = data.ids?.[0] || data.id
       if (!bid) throw new Error('El servidor no devolvió el identificador del registro')
-      setBaseData(prev => {
-        const next = { ...prev }
-        const arr  = [...(next[fecha] || [])]
-        const idx  = arr.findIndex(r => r.id === reg.id)
-        if (idx >= 0) { arr[idx] = { ...arr[idx], _backendId: bid }; next[fecha] = arr }
-        return next
-      })
+      const regGuardado = { ...reg, _backendId:bid }
+      setBaseData(prev => ({ ...prev, [fecha]: [regGuardado, ...(prev[fecha] || [])] }))
+      setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
       setForm({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', asesor:'' })
     } catch(e) {
-      setBaseData(prev => ({ ...prev, [fecha]:(prev[fecha] || []).filter(r => r.id !== reg.id) }))
       mostrarToast(e.message || 'No se pudo guardar el registro')
     } finally {
       agregandoRegistroRef.current = false
