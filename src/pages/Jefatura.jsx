@@ -12,6 +12,7 @@ import CanalBadge from '../components/CanalBadge'
 import RangoFechasPicker from '../components/RangoFechasPicker'
 import { API, ncHeaders } from '../services/api'
 import { permisosDeUsuario, usuarioTieneCargo } from '../utils/roles'
+import { CAMPANAS } from '../utils/campanas'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
@@ -481,6 +482,7 @@ export default function Jefatura() {
   const [fvValidacion, setFvValidacion] = useState('')
   const [fvGrabacion,  setFvGrabacion]  = useState('')
   const [fvCanal,      setFvCanal]      = useState('')
+  const [fvCampana,    setFvCampana]    = useState([])
   const [fvAsesor,     setFvAsesor]     = useState('')
   const [fvSala,       setFvSala]       = useState('')
   const [fvDistrito,   setFvDistrito]   = useState('')
@@ -1481,6 +1483,15 @@ export default function Jefatura() {
     estados: opcionesUnicas(ventasCache.map(v => v.estado || v.estado_venta)),
   }), [ventasCache])
 
+  // Union de la lista maestra de campañas con lo que realmente aparece en los
+  // datos, igual que campanasFiltroBase en Backoffice.jsx — asi una campaña
+  // vieja que ya no esta en utils/campanas.js pero sigue en ventas antiguas
+  // no queda invisible para filtrar.
+  const campanasFlujoOpciones = useMemo(() => [...new Set([
+    ...CAMPANAS,
+    ...ventasCache.map(v => String(v.campana || '').trim()).filter(Boolean),
+  ])].sort((a, b) => a.localeCompare(b, 'es')), [ventasCache])
+
   const ventasFlujoFiltradas = useMemo(() => {
     let lista = [...ventasFlujoMes]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
@@ -1494,6 +1505,7 @@ export default function Jefatura() {
     if (fvValidacion) lista = lista.filter(v => coincideFiltroValidacion(v, fvValidacion))
     if (fvGrabacion) lista = lista.filter(v => categoriaFiltroGrabacion(v) === fvGrabacion)
     if (fvCanal) lista = lista.filter(v => String(v.canal || '').toUpperCase() === fvCanal)
+    if (fvCampana.length) lista = lista.filter(v => fvCampana.some(c => c.toUpperCase() === String(v.campana || '').trim().toUpperCase()))
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
@@ -1522,7 +1534,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
+  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1530,13 +1542,13 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
     setFiltroFlujoVentas('todas')
     setBusqFlujoVentas('')
-    setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal('')
+    setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal(''); setFvCampana([])
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
     setFvDia(''); setFvDesde(''); setFvHasta('')
   }
@@ -2535,6 +2547,7 @@ export default function Jefatura() {
                 <label><span>Validación</span><select value={fvValidacion} onChange={e=>setFvValidacion(e.target.value)}><option value="">TODAS</option><option value="validado">VALIDADO</option><option value="no_validado">NO VALIDADO</option><option value="ventas">VENTAS</option></select></label>
                 <label><span>Grabación</span><select value={fvGrabacion} onChange={e=>setFvGrabacion(e.target.value)}><option value="">TODAS</option><option value="GRABADO">GRABADO</option><option value="GRABANDO">GRABANDO</option><option value="NO GRABADO">NO GRABADO</option></select></label>
                 <label><span>Canal</span><select value={fvCanal} onChange={e=>setFvCanal(e.target.value)}><option value="">TODOS</option><option value="NETCONTACT">NETCONTACT</option><option value="KELS">KELS</option></select></label>
+                <label><span>Campaña</span><FiltroEstadoMultiple opciones={campanasFlujoOpciones} seleccionados={fvCampana} onChange={setFvCampana} /></label>
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
