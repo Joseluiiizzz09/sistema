@@ -1440,36 +1440,33 @@ export default function Backdatareclutamiento() {
     const asesor  = masivaAsesor
     const hora    = asesor ? horaAhora() : ''
     const fecha   = fechaActiva
-    const leadsParaBackend = []
-    const nuevosRegs = []
-    lista.forEach(f => {
-      const yaExiste = f.esNumero
-        ? (baseData[fecha]||[]).find(r=>r.n1===f.n1)
-        : (baseData[fecha]||[]).find(r=>r.usuarioWhatsapp===f.usuarioWhatsapp)
-      if (yaExiste) return
-      const reg = { id:idCntRef.current++, _backendId:null, campana, distrito:'—', n1:f.n1, n2:'', usuarioWhatsapp:f.usuarioWhatsapp, tipifBack:'', asesor, horaAsig:hora, sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:asesor?[{asesor,hora,fecha,motivo:'Carga masiva'}]:[] }
-      nuevosRegs.push(reg)
-      leadsParaBackend.push({ campana, distrito:'—', n1:f.n1||null, n2:'', usuario_whatsapp:f.usuarioWhatsapp||null, tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora })
-    })
-    if (nuevosRegs.length) {
-      setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevosRegs] }))
+    // Antes se re-filtraba aqui contra baseData comparando solo N1+fecha (sin
+    // campaña), duplicando lo que ya decidio el usuario en la vista previa de
+    // arriba (que si compara igual que el backend) — y podia descartar en
+    // silencio, sin ningun aviso, un numero que en realidad era valido para
+    // otra campaña. Ahora se manda la lista tal cual la aprobo el usuario y
+    // el backend es la unica fuente de verdad sobre que es duplicado.
+    const leadsParaBackend = lista.map(f => ({
+      campana, distrito:'—', n1:f.n1||null, n2:'', usuario_whatsapp:f.usuarioWhatsapp||null,
+      tipif_back:'', asesor_nombre:asesor, fecha, hora_asig:hora,
+    }))
+    try {
+      const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsParaBackend) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar la base')
+      // Se recarga desde el servidor en vez de pintar filas optimistas: con
+      // lotes, algunas filas pueden quedar omitidas (duplicado del dia/campaña)
+      // y antes se mostraban igual como si se hubieran guardado, hasta que el
+      // siguiente refresco automatico las hacia desaparecer sin explicacion.
+      await cargarLeads()
       setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
-      try {
-        const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsParaBackend) })
-        const data = await res.json()
-        if (data.ok && data.ids) {
-          setBaseData(prev => {
-            const next = { ...prev }
-            const arr  = [...(next[fecha]||[])]
-            const off  = arr.length - nuevosRegs.length
-            data.ids.forEach((bid,i) => { if(arr[off+i]) arr[off+i]={...arr[off+i],_backendId:bid} })
-            next[fecha] = arr
-            return next
-          })
-        }
-      } catch(e) {}
+      mostrarToast(data.omitidos
+        ? `${data.creados} cargado(s), ${data.omitidos} omitido(s) por ya existir ese número en la misma fecha y campaña`
+        : `${data.creados} cargado(s)`)
+      setMasivaNums(''); setMasivaFilas([]); setInclDup(false)
+    } catch(e) {
+      mostrarToast(e.message || 'No se pudo cargar la base')
     }
-    setMasivaNums(''); setMasivaFilas([]); setInclDup(false)
   }
 
   function procesarArchivo(file) {
@@ -1503,16 +1500,25 @@ export default function Backdatareclutamiento() {
   async function ejecutarCargaArchivo() {
     if (!archivoRows.length) { mostrarToast('No hay datos'); return }
     const fecha = fechaActiva
-    const nuevos = []; const leadsBackend = []
-    archivoRows.forEach(r => {
-      if ((baseData[fecha]||[]).find(x=>x.n1===r.n1)) return
-      nuevos.push({ id:idCntRef.current++, _backendId:null, campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipifBack:r.tipif, asesor:'', horaAsig:'', sinAsignar:true, rotaciones:0, _tipifVend:'', _tipifHora:'', historial:[] })
-      leadsBackend.push({ campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipif_back:r.tipif, asesor_nombre:'', fecha, hora_asig:'' })
-    })
-    const omitidos = archivoRows.length - nuevos.length
-    if (nuevos.length) {
-      setBaseData(prev => ({ ...prev, [fecha]:[...(prev[fecha]||[]), ...nuevos] }))
-      try { await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsBackend) }) } catch(e) {}
+    // Mismo criterio que ejecutarCargaMasiva: no se pre-filtra localmente
+    // contra baseData (comparaba solo N1+fecha, sin campaña, y descartaba en
+    // silencio filas validas), y no se pintan filas optimistas — se espera la
+    // respuesta real del servidor y se recarga desde ahi.
+    const leadsBackend = archivoRows.map(r => ({
+      campana:r.camp, distrito:r.dist, n1:r.n1, n2:r.n2, tipif_back:r.tipif,
+      asesor_nombre:'', fecha, hora_asig:'',
+    }))
+    try {
+      const res  = await fetch(`${API}/leads-reclutamiento`, { method:'POST', headers:ncHeaders(), body:JSON.stringify(leadsBackend) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cargar el archivo')
+      await cargarLeads()
+      setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
+      mostrarToast(data.omitidos
+        ? `${data.creados} cargado(s), ${data.omitidos} omitido(s) por ya existir ese número en la misma fecha y campaña`
+        : `${data.creados} cargado(s)`)
+    } catch(e) {
+      mostrarToast(e.message || 'No se pudo cargar el archivo')
     }
     setArchivoRows([]); setArchivoInfo(''); setArchivoStatus('')
     if (archivoInputRef.current) archivoInputRef.current.value = ''
@@ -1763,6 +1769,22 @@ export default function Backdatareclutamiento() {
     if (n) mapa.set(n, (mapa.get(n)||0)+1)
     return mapa
   }, new Map())
+  // Numera cada aparicion de un mismo N1 dentro del alcance actual (mismo
+  // criterio y mismos colores que Backoffice.jsx): la 2da-3ra vez se resalta
+  // morado, la 4ta en adelante guinda — para que Back Data vea de un vistazo
+  // qué números ya vienen repetidos sin tener que activar el filtro.
+  const ocurrenciaDiariaPorId = (() => {
+    const conteoPorNumero = new Map()
+    const ocurrencias = new Map()
+    for (let i = registrosActivos.length - 1; i >= 0; i--) {
+      const n1 = String(registrosActivos[i].n1 || '').replace(/\D/g, '')
+      if (!n1) continue
+      const ocurrencia = (conteoPorNumero.get(n1) || 0) + 1
+      conteoPorNumero.set(n1, ocurrencia)
+      ocurrencias.set(registrosActivos[i].id, ocurrencia)
+    }
+    return ocurrencias
+  })()
   const bloquePrioridadReg = r => {
     if (!String(r.asesor||'').trim() || r.sinAsignar) return 0
     if (!String(r._tipifVend||'').trim()) return 1
@@ -2221,12 +2243,14 @@ export default function Backdatareclutamiento() {
                     ? <tr><td colSpan={filtros.verTipVend?10:9} className="bo-empty">{filtros.global ? 'Sin registros para los filtros seleccionados.' : `Sin registros en ${formatFecha(fechaActiva)}.`}</td></tr>
                     : registrosPagina.map((r,i) => {
                         const esExclusiva = esLeadProhibido(r)
+                        const ocurrenciaDia = ocurrenciaDiariaPorId.get(r.id) || 1
+                        const claseDuplicadoDia = ocurrenciaDia >= 4 ? 'num-duplicado-limite' : (ocurrenciaDia >= 2 ? 'num-duplicado' : '')
                         return [
                           <tr key={r.id} id={`fila-${r.id}`}>
                             <td style={{color:'#9ca3af',fontSize:10}}>{baseDesde+i+1}</td>
                             <td><div className="numero-copiar"><CampanaBadge valor={r.campana} /><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'campana')} title="Editar campaña" aria-label="Editar campaña"><PencilIcon /></button><button type="button" onClick={()=>setHistOpen(p=>({...p,[r.id]:!p[r.id]}))} title="Ver historial (quién cargó esta campaña y número)" aria-label="Ver historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button></div></td>
                             <td>{r.n1
-                              ? <div className="numero-copiar"><span>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
+                              ? <div className="numero-copiar"><span className={claseDuplicadoDia} title={ocurrenciaDia >= 2 ? `Aparición ${ocurrenciaDia} del alcance actual` : ''}>{r.n1}</span><button type="button" onClick={()=>copiarNumero(r.n1)} title="Copiar N1" aria-label={`Copiar ${r.n1}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
                               : r.usuarioWhatsapp
                                 ? <div className="numero-copiar" title="Sin número — usuario de WhatsApp"><span>@{r.usuarioWhatsapp}</span><button type="button" onClick={()=>copiarNumero(r.usuarioWhatsapp)} title="Copiar usuario" aria-label={`Copiar ${r.usuarioWhatsapp}`}><CopyIcon /></button><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>
                                 : <div className="numero-copiar"><span style={{color:'#ccc'}}>—</span><button type="button" className="btn-editar-inline" onClick={()=>abrirModalEditar(r.id,'contacto')} title="Editar contacto" aria-label="Editar contacto"><PencilIcon /></button></div>}
