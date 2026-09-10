@@ -8,7 +8,7 @@ import ObsSeguimientoCell from '../components/ObsSeguimientoCell'
 import ProgramacionInfoCell from '../components/ProgramacionInfoCell'
 import CambiarAreaMenu from '../components/CambiarAreaMenu'
 import CanalBadge from '../components/CanalBadge'
-import { API, ncHeaders } from '../services/api'
+import { API, NC_API, ncHeaders, ncHeadersFile } from '../services/api'
 import { responseChanged, setVisibleInterval, clearVisibleInterval } from '../utils/polling'
 import { usuarioTieneCargo } from '../utils/roles'
 import '../styles/supervisor.css'
@@ -245,8 +245,47 @@ export default function Supervisor() {
   const [ventaReasignar, setVentaReasignar] = useState(null)
   const [ventaEditar, setVentaEditar] = useState(null)
   const [obsValidacionDetalle, setObsValidacionDetalle] = useState('')
+  const [modalFotos, setModalFotos] = useState({ open:false, ventaId:null, nombre:'' })
+  const [fotos, setFotos] = useState([])
 
   // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Fotos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async function abrirFotos(v) {
+    if (!v) return
+    setModalFotos({ open:true, ventaId:v.id, nombre:v.nombre||'--' })
+    await recargarFotos(v.id)
+  }
+
+  async function recargarFotos(ventaId) {
+    try {
+      const res  = await fetch(`${API}/ventas/${ventaId}/fotos`, { headers:ncHeaders() })
+      const data = await res.json()
+      setFotos(data.ok ? data.data : [])
+    } catch(e) { setFotos([]) }
+  }
+
+  async function adjuntarFotos(files, ventaId) {
+    for (const file of Array.from(files)) {
+      const fd = new FormData(); fd.append('foto', file)
+      try {
+        const res  = await fetch(`${API}/ventas/${ventaId}/fotos`, {
+          method:'POST', headers:ncHeadersFile(), body:fd,
+        })
+        const data = await res.json()
+        if (!data.ok) mostrarToast('Error subiendo: ' + (data.mensaje || ''))
+      } catch(e) { mostrarToast('Error de conexión al subir foto') }
+    }
+    await recargarFotos(ventaId)
+  }
+
+  async function eliminarFoto(fotoId, ventaId) {
+    if (!confirm('¿Eliminar esta foto?')) return
+    try {
+      await fetch(`${API}/ventas/${ventaId}/fotos/${fotoId}`, { method:'DELETE', headers:ncHeaders() })
+      await recargarFotos(ventaId)
+    } catch(e) { mostrarToast('Error eliminando foto') }
+  }
+
   function mostrarToast(msg) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast(msg)
@@ -803,7 +842,7 @@ export default function Supervisor() {
                           <td style={{fontSize:11,color:'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{v.observacion||v.obs_backoffice||'—'}</td>
                           <td>
                             <div className="venta-actions">
-                              <button className="btn-fotos" onClick={()=>mostrarToast('Fotos — ver módulo de validación')}>Fotos</button>
+                              <button type="button" className="btn-fotos" onClick={()=>abrirFotos(v)}>Fotos</button>
                               <button type="button" className="venta-action-btn" onClick={()=>setVentaEditar(v)}>Editar</button>
                               <button type="button" className="venta-action-btn reassign" onClick={()=>setVentaReasignar(v)}>Reasignar</button>
                               <button type="button" className="venta-action-btn delete" onClick={()=>eliminarVenta(v.id)}>Eliminar</button>
@@ -1250,6 +1289,72 @@ export default function Supervisor() {
               <button type="button" onClick={()=>setObsValidacionDetalle('')} aria-label="Cerrar">×</button>
             </div>
             <div className="obs-validacion-modal-mensaje">{obsValidacionDetalle}</div>
+          </div>
+        </div>
+      )}
+
+      {modalFotos.open && (
+        <div
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}
+          onClick={e => { if (e.target === e.currentTarget) setModalFotos(p => ({...p,open:false})) }}
+        >
+          <div style={{background:'#fff',borderRadius:'20px',width:'min(600px,96vw)',maxHeight:'88vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 32px 80px rgba(0,0,0,.25)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid #f3f4f6'}}>
+              <div>
+                <div style={{fontSize:'15px',fontWeight:700,color:'#111827'}}>Fotos de la venta</div>
+                <div style={{fontSize:'12px',color:'#9ca3af',marginTop:'2px'}}>{modalFotos.nombre}</div>
+              </div>
+              <button onClick={() => setModalFotos(p => ({...p,open:false}))}
+                style={{width:'30px',height:'30px',border:'none',borderRadius:'8px',background:'#f3f4f6',color:'#6b7280',fontSize:'16px',cursor:'pointer'}}>×</button>
+            </div>
+            <div style={{padding:'20px 22px',overflowY:'auto',flex:1}}>
+              <div style={{marginBottom:'20px'}}>
+                <label style={{fontSize:'11px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.4px',display:'block',marginBottom:'8px'}}>
+                  Adjuntar foto
+                </label>
+                <label
+                  style={{border:'2px dashed #e5e7eb',borderRadius:'12px',padding:'24px',textAlign:'center',cursor:'pointer',display:'block'}}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='#111827' }}
+                  onDragLeave={e => { e.currentTarget.style.borderColor='#e5e7eb' }}
+                  onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor='#e5e7eb'; adjuntarFotos(e.dataTransfer.files, modalFotos.ventaId) }}
+                >
+                  <input type="file" accept="image/*,.pdf" multiple style={{display:'none'}}
+                    onChange={e => { adjuntarFotos(e.target.files, modalFotos.ventaId); e.target.value='' }} />
+                  <div style={{fontSize:'13px',color:'#9ca3af',fontWeight:500}}>Arrastra fotos aquí o haz clic para seleccionar</div>
+                  <div style={{fontSize:'11px',color:'#d1d5db',marginTop:'4px'}}>JPG, PNG, PDF</div>
+                </label>
+              </div>
+              <div style={{fontSize:'11px',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'10px'}}>Fotos adjuntas</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:'10px'}}>
+                {fotos.length === 0 ? (
+                  <div style={{gridColumn:'1/-1',textAlign:'center',padding:'30px',color:'#d1d5db',fontSize:'13px'}}>Sin fotos adjuntas aún.</div>
+                ) : fotos.map(f => {
+                  const url   = f.ruta ? `${NC_API}/${f.ruta}` : (f.url || '')
+                  const tipo  = f.mimetype || f.tipo || ''
+                  const fecha = (f.created_at || f.fecha || '').split(' ')[0]
+                  return (
+                    <div key={f.id || f.url} style={{border:'1px solid #e5e7eb',borderRadius:'12px',overflow:'hidden',background:'#f9fafb'}}>
+                      {tipo.startsWith('image')
+                        ? <img src={url} alt={f.nombre} onClick={() => window.open(url)}
+                            style={{width:'100%',height:'100px',objectFit:'cover',display:'block',cursor:'pointer'}} />
+                        : <div onClick={() => window.open(url)}
+                            style={{height:'100px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#6b7280',cursor:'pointer'}}>Archivo</div>
+                      }
+                      <div style={{padding:'6px 8px'}}>
+                        <div style={{fontSize:'10px',fontWeight:600,color:'#374151',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.nombre}</div>
+                        <div style={{fontSize:'9px',color:'#9ca3af'}}>{fecha}</div>
+                      </div>
+                      {f.id && (
+                        <button onClick={() => eliminarFoto(f.id, modalFotos.ventaId)}
+                          style={{width:'100%',padding:'4px',border:'none',background:'#fff5f5',color:'#dc2626',fontSize:'10px',fontWeight:700,cursor:'pointer'}}>
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
