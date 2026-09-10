@@ -378,12 +378,18 @@ export default function Supervisor() {
   // Igual que conteoPorProgramacion: una instalada pertenece al mes de su
   // fecha PROGRAMADA, no al mes en que se vendió, si no el ranking del
   // supervisor no coincide con "Instaladas" del propio dashboard del asesor.
+  // Usa el mismo criterio de "instalada" que Dashboard.jsx (esVentaInstalada)
+  // y el reporte de Jefatura: estado ACTUAL instalado/instalado no
+  // validado/reasignación. A diferencia de ventaAlcanzoInstalacion (usada en
+  // las tarjetas históricas de este archivo), no cuenta ventas que llegaron a
+  // instalarse pero cuyo estado actual ya cambió a caída — si no, este
+  // ranking mensual no coincidiría con esos otros dos reportes.
   const instaladasPorAsesor = useMemo(() => {
     const hoy = fechaHoy(), mes = mesActual()
     const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
     const mapa = new Map()
     for (const v of todasVentas) {
-      if (!ventaAlcanzoInstalacion(v)) continue
+      if (!['instalado','instalado_no_validado','reasignacion'].includes(v._estado)) continue
       const f = (v.fecha_programada || '').slice(0, 10)
       if (!f) continue
       const enPeriodo = periodo==='dia' ? f===hoy : periodo==='semana' ? (f>=lun && f<=hoy) : periodo==='mes' ? f.startsWith(mes) : true

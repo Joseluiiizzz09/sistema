@@ -1624,8 +1624,17 @@ export default function Jefatura() {
     // Instaladas y caídas pertenecen al mes de su programación, igual que en
     // el Dashboard General. Así también cuentan ventas creadas el mes anterior
     // cuya instalación fue programada para el periodo seleccionado.
+    // El criterio de "instalada" (instalado/instalado no validado/reasignación)
+    // debe coincidir con esVentaInstalada de Dashboard.jsx y con el ranking de
+    // Supervisor.jsx: si solo se exige estado exacto "INSTALADO" aquí, una
+    // reasignación o un "instalado no validado" cuenta en esos otros reportes
+    // pero no en este, y el mismo asesor sale con dos totales distintos.
+    const esInstaladaDelMes = v => {
+      const estado = String(v.estado || '').trim().toUpperCase().replace(/_/g, ' ')
+      return estado === 'INSTALADO' || estado === 'INSTALADO NO VALIDADO' || estado === 'REASIGNACION'
+    }
     const instaladasDelMes = mesReporte
-      ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && String(v.estado || '').trim().toUpperCase() === 'INSTALADO')
+      ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && esInstaladaDelMes(v))
       : ventasCache.filter(ventaAlcanzoInstalacion)
     const caidasDelMes = mesReporte
       ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && ['CAIDA', 'RECHAZO_CAMPO'].includes(String(v.estado || '').trim().toUpperCase()))
