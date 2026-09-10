@@ -171,6 +171,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [clienteCobranza, setClienteCobranza] = useState(null)
   const [cicloInput, setCicloInput] = useState('')
   const [codigoPagoInput, setCodigoPagoInput] = useState('')
+  const [montoInput, setMontoInput] = useState('')
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState('')
+  const [ordenVencimientoPrimero, setOrdenVencimientoPrimero] = useState(false)
   const [comentarioCobranza, setComentarioCobranza] = useState('')
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroCodigoPago, setFiltroCodigoPago] = useState('')
@@ -269,10 +272,23 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       if (filtroEstados !== null && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
       if (filtroCodigoPago === 'con' && !String(cliente.cobranza_codigo_pago || '').trim()) return false
       if (filtroCodigoPago === 'sin' && String(cliente.cobranza_codigo_pago || '').trim()) return false
+      if (filtroEstadoPago === 'pendiente' && cliente.cobranza_monto_adeudado == null) return false
+      if (filtroEstadoPago === 'pagado' && !cliente.cobranza_monto_pagado_en) return false
       if (!texto) return true
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
     })
+    if (ordenVencimientoPrimero) {
+      // Los que no tienen fecha calculable (sin ciclo, o los 6 recibos pagados)
+      // quedan al final; entre los que sí tienen, el más próximo primero.
+      return [...resultado].sort((a, b) => {
+        const fa = proximoVencimiento(a), fb = proximoVencimiento(b)
+        if (!fa && !fb) return 0
+        if (!fa) return 1
+        if (!fb) return -1
+        return fa < fb ? -1 : fa > fb ? 1 : 0
+      })
+    }
     if (!ordenPendientesPrimero) return resultado
     // Pendientes arriba, satisfechos al final; el resto de estados queda en medio
     // conservando su orden original (sort estable).
@@ -283,9 +299,9 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       return 1
     }
     return [...resultado].sort((a, b) => rangoEstado(a) - rangoEstado(b))
-  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago, modoSupervisorCalidad, pestanaCalidad, ordenPendientesPrimero])
+  }, [clientes, busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago, filtroEstadoPago, modoSupervisorCalidad, pestanaCalidad, ordenPendientesPrimero, ordenVencimientoPrimero])
 
-  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago])
+  useEffect(() => { setPagina(1) }, [busqueda, desde, hasta, filtroVendedores, filtroEstados, filtroCodigoPago, filtroEstadoPago])
 
   const vendedoresFiltro = useMemo(() => [...new Set(clientes.map(cliente => String(cliente.vendedor_nombre || 'SIN VENDEDOR').trim()))].sort((a, b) => a.localeCompare(b, 'es')), [clientes])
   const estadosFiltro = useMemo(() => [...new Set([
@@ -470,7 +486,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   useEffect(() => () => { instEvolucion.current?.destroy() }, [])
 
   function salir() { logout(); navigate('/login') }
-  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null); setFiltroCodigoPago('') }
+  function limpiar() { setBusqueda(''); setDesde(''); setHasta(''); setFiltroVendedores(null); setFiltroEstados(null); setFiltroCodigoPago(''); setFiltroEstadoPago('') }
 
   async function guardarCalidad(cliente, campo, valor) {
     const propiedad = `calidad_${campo}`
@@ -538,11 +554,25 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
     return pagados === 6 ? 'COMPLETADO' : `${pagados}/6 PAGADOS`
   }
 
+  // Reutiliza calcularVencimientosRecibos (ya usado en el modal para las 6
+  // fechas de recibo): la "fecha de vencimiento" del cliente es la del primer
+  // recibo que todavia no este PAGADO.
+  function proximoVencimiento(cliente) {
+    if (!cliente.cobranza_ciclo_facturacion) return null
+    const fechas = calcularVencimientosRecibos(cliente.fecha_instalacion, cliente.cobranza_ciclo_facturacion)
+    for (let n = 1; n <= 6; n++) {
+      const estado = cliente[`cobranza_recibo${n}_tipificacion`] || 'PENDIENTE'
+      if (estado !== 'PAGADO') return fechas[n - 1] || null
+    }
+    return null
+  }
+
   function abrirCobranza(cliente) {
     setClienteCobranza(cliente)
     setCicloInput(cliente.cobranza_ciclo_facturacion || '')
     setCodigoPagoInput(cliente.cobranza_codigo_pago || '')
     setComentarioCobranza(cliente.cobranza_comentario || '')
+    setMontoInput(cliente.cobranza_monto_adeudado != null ? String(cliente.cobranza_monto_adeudado) : '')
   }
 
   async function guardarCiclo(cliente) {
@@ -580,6 +610,50 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
     } catch (error) {
       const revertir = actual => actual?.id === cliente.id ? { ...actual, cobranza_codigo_pago: anterior } : actual
       setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally { setGuardando('') }
+  }
+
+  async function guardarMonto(cliente) {
+    const montoTexto = montoInput.trim()
+    const monto = montoTexto === '' ? null : Number(montoTexto)
+    if (monto != null && (!Number.isFinite(monto) || monto < 0)) { setMensaje('Ingresa un monto válido (mayor o igual a 0)'); return }
+    const anteriorMonto = cliente.cobranza_monto_adeudado ?? null
+    const anteriorPagadoEn = cliente.cobranza_monto_pagado_en ?? null
+    const clave = `${cliente.id}-monto`
+    setMensaje('')
+    setGuardando(clave)
+    const aplicar = actual => actual?.id === cliente.id ? { ...actual, cobranza_monto_adeudado: monto, cobranza_monto_pagado_en: monto != null ? null : actual.cobranza_monto_pagado_en } : actual
+    setClientes(actuales => actuales.map(aplicar)); setClienteCobranza(aplicar)
+    try {
+      const res = await fetch(`${API}/ventas/cobranza/${cliente.id}/monto`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ monto }) })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar el monto adeudado')
+    } catch (error) {
+      const revertir = actual => actual?.id === cliente.id ? { ...actual, cobranza_monto_adeudado: anteriorMonto, cobranza_monto_pagado_en: anteriorPagadoEn } : actual
+      setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally { setGuardando('') }
+  }
+
+  async function marcarPagado(cliente) {
+    const anteriorMonto = cliente.cobranza_monto_adeudado ?? null
+    const anteriorPagadoEn = cliente.cobranza_monto_pagado_en ?? null
+    const clave = `${cliente.id}-marcar-pagado`
+    setMensaje('')
+    setGuardando(clave)
+    const ahoraIso = new Date().toISOString()
+    const aplicar = actual => actual?.id === cliente.id ? { ...actual, cobranza_monto_adeudado: null, cobranza_monto_pagado_en: ahoraIso } : actual
+    setClientes(actuales => actuales.map(aplicar)); setClienteCobranza(aplicar)
+    setMontoInput('')
+    try {
+      const res = await fetch(`${API}/ventas/cobranza/${cliente.id}/marcar-pagado`, { method: 'PATCH', headers: ncHeaders() })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo marcar como pagado')
+    } catch (error) {
+      const revertir = actual => actual?.id === cliente.id ? { ...actual, cobranza_monto_adeudado: anteriorMonto, cobranza_monto_pagado_en: anteriorPagadoEn } : actual
+      setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
+      setMontoInput(anteriorMonto != null ? String(anteriorMonto) : '')
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally { setGuardando('') }
   }
@@ -777,6 +851,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
               </select>
             </label>
           )}
+          {esCobranza && (
+            <label><span>ESTADO DE PAGO</span>
+              <select value={filtroEstadoPago} onChange={e=>setFiltroEstadoPago(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="pagado">Ya pagaron</option>
+              </select>
+            </label>
+          )}
           <button onClick={limpiar}>Limpiar</button>
         </section>
 
@@ -892,7 +975,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
           {mensaje && <div className="cobranzas-error">{mensaje}</div>}
           <div className="cobranzas-table-scroll">
             <table>
-              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th>CÓDIGO DE PAGO</th>}{esCobranza && <th>ASESOR DE COBRANZA</th>}{esCobranza && <th>COBRANZA</th>}</tr></thead>
+              <thead><tr><th>#</th><th>NOMBRE DEL CLIENTE</th><th>DOCUMENTO</th><th>SOT</th><th>N1</th><th>N2</th><th>VENDEDOR</th><th>FECHA DE INSTALACIÓN</th><th>PAQUETE CONTRATADO</th>{esCobranza && <th><div style={{display:'flex',alignItems:'center',gap:4}}><span>FECHA DE VENCIMIENTO</span><button type="button" className={`calidad-orden-btn${ordenVencimientoPrimero?' activo':''}`} onClick={()=>setOrdenVencimientoPrimero(v=>!v)} title="Ordenar por próximo a vencer">⇅</button></div></th>}{esCobranza && <th>MONTO ADEUDADO</th>}{esCobranza && <th>CÓDIGO DE PAGO</th>}{esCobranza && <th>ASESOR DE COBRANZA</th>}{esCobranza && <th>COBRANZA</th>}</tr></thead>
               <tbody>
                 {!cargando && visibles.map((cliente, index) => (
                   <tr key={cliente.id}>
@@ -902,6 +985,16 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     <td>{cliente.telefono1 || '—'}</td><td>{cliente.telefono2 || '—'}</td><td className="cobranzas-vendedor">{cliente.vendedor_nombre || '—'}</td>
                     <td className="cobranzas-date">{fechaVisible(cliente.fecha_instalacion)}</td>
                     <td>{cliente.paquete || '—'}</td>
+                    {esCobranza && (() => { const venc = proximoVencimiento(cliente); const vencido = venc && venc < hoy; return <td style={vencido?{color:'#dc2626',fontWeight:700}:undefined}>{venc ? fechaVisible(venc) : '—'}</td> })()}
+                    {esCobranza && (
+                      <td>
+                        {cliente.cobranza_monto_adeudado != null
+                          ? <strong style={{color:'#dc2626'}}>S/ {Number(cliente.cobranza_monto_adeudado).toFixed(2)}</strong>
+                          : cliente.cobranza_monto_pagado_en
+                            ? <span style={{color:'#16a34a',fontWeight:600}}>Pagado</span>
+                            : '—'}
+                      </td>
+                    )}
                     {esCobranza && <td>{cliente.cobranza_codigo_pago || '—'}</td>}
                     {esCobranza && (
                       <td>
@@ -919,8 +1012,8 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                     )}
                   </tr>
                 ))}
-                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 12 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
-                {cargando && <tr><td colSpan={esCobranza ? 12 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
+                {!cargando && !visibles.length && <tr><td colSpan={esCobranza ? 14 : 9} className="cobranzas-empty">No hay clientes instalados para los filtros seleccionados.</td></tr>}
+                {cargando && <tr><td colSpan={esCobranza ? 14 : 9} className="cobranzas-empty">Cargando clientes instalados…</td></tr>}
               </tbody>
             </table>
           </div>
@@ -1121,6 +1214,18 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                   <input type="text" maxLength={60} value={codigoPagoInput} disabled={!puedeEditarCobranza} onChange={e => setCodigoPagoInput(e.target.value)} placeholder="Código de pago del cliente" />
                   {puedeEditarCobranza && <button disabled={guardando === `${clienteCobranza.id}-codigo`} onClick={() => guardarCodigoPago(clienteCobranza)}>{guardando === `${clienteCobranza.id}-codigo` ? 'Guardando…' : 'Guardar'}</button>}
                 </div>
+              </label>
+              <label><span>MONTO ADEUDADO (S/)</span>
+                <div className="cobranza-input-row">
+                  <input type="number" min="0" step="0.01" value={montoInput} disabled={!puedeEditarCobranza} onChange={e => setMontoInput(e.target.value)} placeholder="Ej. 120.00" />
+                  {puedeEditarCobranza && <button disabled={guardando === `${clienteCobranza.id}-monto`} onClick={() => guardarMonto(clienteCobranza)}>{guardando === `${clienteCobranza.id}-monto` ? 'Guardando…' : 'Guardar'}</button>}
+                  {puedeEditarCobranza && clienteCobranza.cobranza_monto_adeudado != null && (
+                    <button disabled={guardando === `${clienteCobranza.id}-marcar-pagado`} onClick={() => marcarPagado(clienteCobranza)} style={{background:'#16a34a'}}>{guardando === `${clienteCobranza.id}-marcar-pagado` ? 'Guardando…' : 'Marcar como pagado'}</button>
+                  )}
+                </div>
+                {clienteCobranza.cobranza_monto_adeudado == null && clienteCobranza.cobranza_monto_pagado_en && (
+                  <span style={{color:'#16a34a',fontWeight:600,fontSize:12}}>Pagado el {fechaHoraVisible(clienteCobranza.cobranza_monto_pagado_en)}</span>
+                )}
               </label>
             </div>
             {clienteCobranza.cobranza_ciclo_facturacion ? (
