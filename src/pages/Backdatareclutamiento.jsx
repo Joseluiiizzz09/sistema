@@ -1038,7 +1038,9 @@ export default function Backdatareclutamiento() {
     const n2       = form.n2.trim()
     const asesor   = '' // el formulario de alta rapida ya no asigna asesor — se hace desde la Base
     const hora     = ''
-    const fecha    = fechaActiva
+    // Un alta rápida siempre pertenece al día actual de Lima. La pestaña
+    // activa puede ser histórica porque el usuario estaba revisando otro día.
+    const fecha    = fechaHoy()
     const reg = {
       id:idCntRef.current++, _backendId:null, campana, distrito, n1, n2, usuarioWhatsapp, asesor, horaAsig:hora,
       sinAsignar:!asesor, rotaciones:0, _tipifVend:'', _tipifHora:'',
@@ -1050,9 +1052,11 @@ export default function Backdatareclutamiento() {
       if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo guardar el registro')
       const bid  = data.ids?.[0] || data.id
       if (!bid) throw new Error('El servidor no devolvió el identificador del registro')
+      const fechaGuardada = normalizarFecha(data.fecha) || fecha
       const regGuardado = { ...reg, _backendId:bid }
-      setBaseData(prev => ({ ...prev, [fecha]: [regGuardado, ...(prev[fecha] || [])] }))
-      setFechaPestanas(prev => prev.includes(fecha) ? prev : [...prev, fecha].sort().reverse())
+      setBaseData(prev => ({ ...prev, [fechaGuardada]: [regGuardado, ...(prev[fechaGuardada] || [])] }))
+      setFechaPestanas(prev => prev.includes(fechaGuardada) ? prev : [...prev, fechaGuardada].sort().reverse())
+      setFechaActiva(fechaGuardada)
       setForm({ campana:'', distrito:'', n1:'', n2:'', usuarioWhatsapp:'', asesor:'' })
     } catch(e) {
       mostrarToast(e.message || 'No se pudo guardar el registro')
