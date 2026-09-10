@@ -375,13 +375,30 @@ export default function Supervisor() {
   const ventasPaginaData = ventasTabla.slice((ventasPaginaSegura-1)*ventasPorPagina, ventasPaginaSegura*ventasPorPagina)
   useEffect(() => { setVentasPagina(1) }, [filtroAsesor, filtroEstado, filtroFecha, tablaSearch])
 
+  // Igual que conteoPorProgramacion: una instalada pertenece al mes de su
+  // fecha PROGRAMADA, no al mes en que se vendió, si no el ranking del
+  // supervisor no coincide con "Instaladas" del propio dashboard del asesor.
+  const instaladasPorAsesor = useMemo(() => {
+    const hoy = fechaHoy(), mes = mesActual()
+    const lun = (() => { const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)).toISOString().split('T')[0] })()
+    const mapa = new Map()
+    for (const v of todasVentas) {
+      if (!ventaAlcanzoInstalacion(v)) continue
+      const f = (v.fecha_programada || '').slice(0, 10)
+      if (!f) continue
+      const enPeriodo = periodo==='dia' ? f===hoy : periodo==='semana' ? (f>=lun && f<=hoy) : periodo==='mes' ? f.startsWith(mes) : true
+      if (enPeriodo) mapa.set(v.asesor, (mapa.get(v.asesor)||0) + 1)
+    }
+    return mapa
+  }, [todasVentas, periodo])
+
   const dashRendData = useMemo(() =>
     asesoresSala.map(a => {
       const mis = dashVentas.filter(v=>v.asesor===a.nombre)
-      const inst = mis.filter(ventaAlcanzoInstalacion).length
+      const inst = instaladasPorAsesor.get(a.nombre) || 0
       return { nombre:a.nombre, usuario:a.usuario||'', total:mis.length, inst, conv:mis.length?Math.round(inst/mis.length*100):0 }
     }).sort((a,b)=>b.total-a.total),
-  [dashVentas, asesoresSala])
+  [dashVentas, asesoresSala, instaladasPorAsesor])
 
   // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cargandoDatosRef = useRef(false)
