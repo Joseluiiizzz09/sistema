@@ -1294,6 +1294,15 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                   <input type="number" min="1" max="31" value={cicloInput} disabled={!puedeEditarCobranza} onChange={e => setCicloInput(e.target.value)} placeholder="Ej. 5" />
                   {puedeEditarCobranza && <button disabled={guardando === `${clienteCobranza.id}-ciclo`} onClick={() => guardarCiclo(clienteCobranza)}>{guardando === `${clienteCobranza.id}-ciclo` ? 'Guardando…' : 'Guardar'}</button>}
                 </div>
+                {puedeEditarCobranza && (
+                  <div className="cobranza-ciclo-o-fecha">
+                    <span>o la fecha en que vence el recibo 1:</span>
+                    <div className="cobranza-input-row">
+                      <input type="date" value={fechaRecibo1Input} onChange={e => setFechaRecibo1Input(e.target.value)} />
+                      <button disabled={calculandoCiclo} onClick={() => calcularCicloDesdeFecha1(clienteCobranza)}>{calculandoCiclo ? 'Calculando…' : 'Calcular ciclo'}</button>
+                    </div>
+                  </div>
+                )}
               </label>
               <label><span>CÓDIGO DE PAGO</span>
                 <div className="cobranza-input-row">
@@ -1366,15 +1375,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                 })}
               </div>
             ) : (
-              <div className="cobranza-sin-ciclo">
-                <p>Ingresa el ciclo de facturación para calcular los vencimientos de los 6 recibos, o directamente la fecha en la que vence el recibo 1 y se calcula solo.</p>
-                {puedeEditarCobranza && (
-                  <div className="cobranza-input-row">
-                    <input type="date" value={fechaRecibo1Input} onChange={e => setFechaRecibo1Input(e.target.value)} />
-                    <button disabled={calculandoCiclo} onClick={() => calcularCicloDesdeFecha1(clienteCobranza)}>{calculandoCiclo ? 'Calculando…' : 'Calcular ciclo'}</button>
-                  </div>
-                )}
-              </div>
+              <p className="cobranza-sin-ciclo">Ingresa el ciclo de facturación (o la fecha del recibo 1, arriba) para calcular los vencimientos de los 6 recibos.</p>
             )}
             <div className="calidad-comentario-box">
               <label><span>COMENTARIO (OPCIONAL)</span><textarea maxLength="1500" value={comentarioCobranza} disabled={!puedeEditarCobranza} onChange={e => setComentarioCobranza(e.target.value)} placeholder="Escribe aquí una observación de la gestión…" /></label>

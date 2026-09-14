@@ -1008,6 +1008,8 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranza-recibo-historial li{font-size:10px;color:#475569;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
 .cobranza-recibo-historial b{color:#334155}
 .cobranza-recibo-historial time{margin-left:auto;color:#94a3b8;font-size:9px;white-space:nowrap}
+.cobranza-ciclo-o-fecha{margin-top:8px;padding-top:8px;border-top:1px dashed #99e6d7}
+.cobranza-ciclo-o-fecha>span{display:block;margin-bottom:4px;font-size:10px;color:#0f766e;font-weight:700}
 .cobranza-sin-ciclo{margin:0;padding:24px 22px;text-align:center;color:#94a3b8;font-size:12px}
 @media(max-width:620px){.cobranza-datos-box{grid-template-columns:1fr}.cobranza-input-row{flex-direction:column}.cobranza-input-row button{width:100%}.cobranza-recibo-row{flex-direction:column;align-items:stretch}.cobranza-recibo-row select{width:100%}}
 .cobranza-recibo-info{gap:2px}
