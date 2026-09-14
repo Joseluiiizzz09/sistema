@@ -686,8 +686,8 @@ body{
 .kpi-item.k-tec{border-left-color:#ec4899!important;}
 
 .seguimiento-ventas-tabla {
-  width: 2990px !important;
-  min-width: 2990px !important;
+  width: 3010px !important;
+  min-width: 3010px !important;
   table-layout: fixed !important;
 }
 
@@ -695,6 +695,8 @@ body{
 .seguimiento-ventas-tabla td {
   box-sizing: border-box;
   vertical-align: middle !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .seguimiento-ventas-tabla th:first-child,
@@ -711,6 +713,34 @@ body{
   max-width: none !important;
   flex-wrap: nowrap !important;
 }
+
+/* Ancho explicito por columna: sin esto, table-layout:fixed repartia el
+   espacio sobrante de forma arbitraria entre las columnas sin className
+   propio y el texto largo (direccion, comentario, coordenadas) quedaba
+   amontonado/encimado con la columna vecina. */
+.seguimiento-ventas-tabla .th-fecha  { width: 110px !important; }
+.seguimiento-ventas-tabla .th-obs    { width: 190px !important; }
+.seguimiento-ventas-tabla .th-est    { width: 110px !important; }
+.seguimiento-ventas-tabla .th-canal  { width: 130px !important; }
+.seguimiento-ventas-tabla .th-sot    { width: 110px !important; }
+.seguimiento-ventas-tabla .th-tramo  { width: 70px  !important; }
+.seguimiento-ventas-tabla .th-comment{ width: 280px !important; }
+.seguimiento-ventas-tabla .th-cliente{ width: 170px !important; }
+.seguimiento-ventas-tabla .th-dni    { width: 100px !important; }
+.seguimiento-ventas-tabla .th-dist   { width: 130px !important; }
+.seguimiento-ventas-tabla .th-dir    { width: 260px !important; }
+.seguimiento-ventas-tabla .th-coord  { width: 190px !important; }
+.seguimiento-ventas-tabla .th-vend   { width: 130px !important; }
+.seguimiento-ventas-tabla .th-sala   { width: 110px !important; }
+.seguimiento-ventas-tabla .th-hogar  { width: 110px !important; }
+.seguimiento-ventas-tabla .th-olt    { width: 90px  !important; }
+.seguimiento-ventas-tabla .th-plan   { width: 130px !important; }
+.seguimiento-ventas-tabla .th-codigo { width: 110px !important; }
+.seguimiento-ventas-tabla .th-motivo { width: 140px !important; }
+
+/* Deja aire despues de la ultima columna para que no quede pegada/cortada
+   contra el borde del área con scroll horizontal. */
+.tabla-scroll { padding-right: 18px; }
 .badge-canal{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap;}
 .badge-canal-netcontact{background:#eef2ff;color:#4338ca;}
 .badge-canal-kels{background:#fdf4ff;color:#a21caf;}

@@ -671,10 +671,10 @@ export default function Seguimiento() {
                 <tr>
                   <th className="th-acc">ACCIÓN</th>
                   <th className="th-fecha">FECHA PREVENTA</th>
-                  <th>OBS. PROGRAMACIÓN</th>
+                  <th className="th-obs">OBS. PROGRAMACIÓN</th>
                   <th className="th-est">ESTADO</th>
-                  <th>CANAL</th>
-                  <th>SOT</th>
+                  <th className="th-canal">CANAL</th>
+                  <th className="th-sot">SOT</th>
                   <th className="th-tramo">TRAMO</th>
                   <th className="th-comment">COMENTARIO</th>
                   <th className="th-cliente">NOMBRE Y APELLIDOS</th>
@@ -683,7 +683,7 @@ export default function Seguimiento() {
                   <th className="th-dir">DIRECCIÓN</th>
                   <th className="th-coord">COORDENADAS</th>
                   <th className="th-vend">VENDEDOR</th>
-                  <th>SALA</th>
+                  <th className="th-sala">SALA</th>
                   <th className="th-hogar">CLARO HOGAR</th>
                   <th className="th-olt">OLT</th>
                   <th className="th-plan">PLAN</th>
