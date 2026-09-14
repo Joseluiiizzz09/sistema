@@ -91,12 +91,6 @@ const PROG_STYLES = {
   RECHAZO_CAMPO:    { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
   RECHAZO_MESA:     { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
 }
-// Una vez que la venta avanza mas alla de Programacion (a Seguimiento/campo),
-// el estado_prog derivado del historial se queda "congelado" en la ultima
-// tipificacion de Programacion (ej. BLOQUEADO) aunque despues se haya
-// instalado o caido — esos modulos no siempre re-taggean el historial como
-// 'Programación'. Se prioriza el estado REAL de la venta cuando ya avanzo.
-const ESTADOS_POST_PROGRAMACION = new Set(['en_ejecucion','instalado','caida','tecnico_casa','tecnicos_camino','reasignacion','instalado_no_validado','rechazo_campo','rechazo_mesa'])
 function estadoProg(raw) {
   const s = (raw || '').toUpperCase()
   if (!s) return { key:'PENDIENTE', label:'PENDIENTE' }
@@ -105,6 +99,11 @@ function estadoProg(raw) {
     EN_EJECUCION:'EN EJECUCIÓN', INSTALADO:'INSTALADO', INSTALADO_NO_VALIDADO:'INSTALADO (NO VALIDADO)', CAIDA:'CAÍDA',
     TECNICO_CASA:'TÉCNICO EN CASA', TECNICOS_CAMINO:'TÉCNICOS EN CAMINO', REASIGNACION:'REASIGNACIÓN', RECHAZO_CAMPO:'RECHAZO CAMPO', RECHAZO_MESA:'RECHAZO MESA' }
   return { key:s, label:m[s]||s }
+}
+function estadoProgramacionFlujo(venta) {
+  if (venta?.estado_prog) return estadoProg(venta.estado_prog)
+  if (venta?.fecha_programada || venta?.fecha_prog || venta?.fecha_programado) return estadoProg('PROGRAMADO')
+  return estadoProg('')
 }
 
 const ACCESOS_MODS = [
@@ -1635,7 +1634,7 @@ export default function Jefatura() {
       ['SALA',              v => v.sala || '-'],
       ['VALIDACIÓN',        v => estadoValidacion(v)],
       ['GRABACIÓN',         v => estadoGrabacion(v)],
-      ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
+      ['PROGRAMACIÓN',      v => estadoProgramacionFlujo(v).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
       ['FECHA PROGRAMACIÓN', v => soloFecha(v.fecha_programada || v.fecha_prog || v.fecha_programado) ? formatF(soloFecha(v.fecha_programada || v.fecha_prog || v.fecha_programado)) : '-'],
       ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
       ['FECHA DE INSTALACIÓN', v => soloFecha(v.fecha_instalado) ? formatF(soloFecha(v.fecha_instalado)) : '-'],
@@ -2642,9 +2641,8 @@ export default function Jefatura() {
                     {ventasFlujoFiltradas.length === 0 ? (
                       <tr><td colSpan="12" className="tabla-empty">No hay ventas registradas.</td></tr>
                     ) : ventasFlujoPagina.map((v, i) => {
-                      const estado = normEstado(v.estado || v.estado_venta)
                       const estadoSeg = estadoSeguimiento(v)
-                      const pInfo = ESTADOS_POST_PROGRAMACION.has(estado) ? estadoProg(v.estado || v.estado_venta) : estadoProg(v.estado_prog)
+                      const pInfo = estadoProgramacionFlujo(v)
                       const pSt   = PROG_STYLES[pInfo.key] || PROG_STYLES.PENDIENTE
                       const fpParts = (v.fecha_prog || '').split(' ')
                       const fpStr = fpParts[0] ? formatF(fpParts[0]) + (fpParts[1] ? ' ' + fpParts[1].slice(0,5) : '') : ''
