@@ -986,7 +986,8 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranza-input-row button{height:40px;padding:0 14px;border:0;border-radius:9px;background:#0f766e;color:#fff;font:inherit;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}
 .cobranza-input-row button:disabled{opacity:.6}
 .cobranza-modal-recibos{display:flex;flex-direction:column;gap:8px;padding:18px 22px}
-.cobranza-recibo-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+.cobranza-recibo-row{display:flex;flex-direction:column;gap:8px;padding:10px 13px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+.cobranza-recibo-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .cobranza-recibo-info{display:flex;flex-direction:column;gap:2px}
 .cobranza-recibo-info b{font-size:11px;color:#334155;letter-spacing:.3px}
 .cobranza-recibo-info span{font-size:10px;color:#64748b}
@@ -997,6 +998,16 @@ Gestión de Calidad compacta: ficha anterior descartada durante la integración.
 .cobranza-tipificacion-vencido{border-color:#fca5a5!important;background:#fef2f2!important;color:#b91c1c!important}
 .cobranza-tipificacion-suspendido{border-color:#fdba74!important;background:#fff7ed!important;color:#c2410c!important}
 .cobranza-tipificacion-baja{border-color:#cbd5e1!important;background:#f1f5f9!important;color:#475569!important}
+.cobranza-tipificacion-por-vencer{border-color:#93c5fd!important;background:#eff6ff!important;color:#1d4ed8!important}
+.cobranza-recibo-comentario{display:flex;gap:8px}
+.cobranza-recibo-comentario input{flex:1;min-width:0;height:32px;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-size:11px;outline:none}
+.cobranza-recibo-comentario input:disabled{cursor:default;opacity:1;-webkit-text-fill-color:currentColor}
+.cobranza-recibo-comentario button{height:32px;padding:0 12px;border:0;border-radius:8px;background:#0f766e;color:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
+.cobranza-recibo-comentario button:disabled{opacity:.6}
+.cobranza-recibo-historial{list-style:none;margin:0;padding:6px 10px;background:#fff;border:1px solid #eef2f7;border-radius:8px;max-height:110px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.cobranza-recibo-historial li{font-size:10px;color:#475569;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.cobranza-recibo-historial b{color:#334155}
+.cobranza-recibo-historial time{margin-left:auto;color:#94a3b8;font-size:9px;white-space:nowrap}
 .cobranza-sin-ciclo{margin:0;padding:24px 22px;text-align:center;color:#94a3b8;font-size:12px}
 @media(max-width:620px){.cobranza-datos-box{grid-template-columns:1fr}.cobranza-input-row{flex-direction:column}.cobranza-input-row button{width:100%}.cobranza-recibo-row{flex-direction:column;align-items:stretch}.cobranza-recibo-row select{width:100%}}
 .cobranza-recibo-info{gap:2px}

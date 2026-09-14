@@ -21,7 +21,7 @@ const TIPIFICACIONES_CALIDAD = {
   estado_cliente: ['PENDIENTE', 'SATISFECHO', 'REGULAR', 'INSATISFECHO', 'OBSERVADO', 'NO RECONOCE EL SERVICIO', 'BAJA'],
 }
 
-const COBRANZA_TIPIFICACIONES = ['PAGADO', 'PENDIENTE', 'BAJA', 'SUSPENDIDO', 'VENCIDO']
+const COBRANZA_TIPIFICACIONES = ['PAGADO', 'PENDIENTE', 'POR VENCER', 'BAJA']
 
 // Resultado de la llamada de cobranza a un recibo (distinto del estado de pago de arriba).
 const TIPIFICACIONES_LLAMADA_COBRANZA = [
@@ -174,6 +174,10 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
   const [montoInput, setMontoInput] = useState('')
   const [filtroEstadoPago, setFiltroEstadoPago] = useState('')
   const [ordenVencimientoPrimero, setOrdenVencimientoPrimero] = useState(false)
+  const [historialCobranza, setHistorialCobranza] = useState([])
+  const [comentarioRecibosInput, setComentarioRecibosInput] = useState({})
+  const [fechaRecibo1Input, setFechaRecibo1Input] = useState('')
+  const [calculandoCiclo, setCalculandoCiclo] = useState(false)
   const [comentarioCobranza, setComentarioCobranza] = useState('')
   const [filtroVendedores, setFiltroVendedores] = useState(null)
   const [filtroCodigoPago, setFiltroCodigoPago] = useState('')
@@ -272,8 +276,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       if (filtroEstados !== null && !filtroEstados.includes(String(cliente.calidad_estado_cliente || 'PENDIENTE').trim().toUpperCase())) return false
       if (filtroCodigoPago === 'con' && !String(cliente.cobranza_codigo_pago || '').trim()) return false
       if (filtroCodigoPago === 'sin' && String(cliente.cobranza_codigo_pago || '').trim()) return false
-      if (filtroEstadoPago === 'pendiente' && cliente.cobranza_monto_adeudado == null) return false
-      if (filtroEstadoPago === 'pagado' && !cliente.cobranza_monto_pagado_en) return false
+      if (filtroEstadoPago && estadoPagoCliente(cliente) !== filtroEstadoPago) return false
       if (!texto) return true
       return [cliente.nombre, cliente.dni, cliente.sot, cliente.telefono1, cliente.telefono2, cliente.vendedor_nombre, cliente.paquete]
         .some(valor => String(valor || '').toLowerCase().includes(texto))
@@ -567,16 +570,56 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
     return null
   }
 
+  // "Pendiente" = tiene al menos un recibo ya vencido y sin pagar (le
+  // correspondia pagar y no lo hizo). "Pagado" = esta al dia con todo lo que
+  // ya vencio, aunque falten recibos futuros. Sin ciclo no es evaluable.
+  function estadoPagoCliente(cliente) {
+    if (!cliente.cobranza_ciclo_facturacion) return null
+    const hoyIso = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+    const fechas = calcularVencimientosRecibos(cliente.fecha_instalacion, cliente.cobranza_ciclo_facturacion)
+    for (let n = 1; n <= 6; n++) {
+      const estado = cliente[`cobranza_recibo${n}_tipificacion`] || 'PENDIENTE'
+      if (estado !== 'PAGADO' && fechas[n - 1] && fechas[n - 1] <= hoyIso) return 'pendiente'
+    }
+    return 'pagado'
+  }
+
+  // Fuerza bruta sobre las 31 combinaciones posibles: reutiliza
+  // calcularVencimientosRecibos tal cual esta, sin reimplementar su formula.
+  function inferirCicloDesdeVencimiento1(fechaInstalacion, fechaRecibo1Iso) {
+    for (let ciclo = 1; ciclo <= 31; ciclo++) {
+      const fechas = calcularVencimientosRecibos(fechaInstalacion, ciclo)
+      if (fechas[0] === fechaRecibo1Iso) return ciclo
+    }
+    return null
+  }
+
   function abrirCobranza(cliente) {
     setClienteCobranza(cliente)
     setCicloInput(cliente.cobranza_ciclo_facturacion || '')
     setCodigoPagoInput(cliente.cobranza_codigo_pago || '')
     setComentarioCobranza(cliente.cobranza_comentario || '')
     setMontoInput(cliente.cobranza_monto_adeudado != null ? String(cliente.cobranza_monto_adeudado) : '')
+    setComentarioRecibosInput({
+      1: cliente.cobranza_recibo1_comentario || '', 2: cliente.cobranza_recibo2_comentario || '',
+      3: cliente.cobranza_recibo3_comentario || '', 4: cliente.cobranza_recibo4_comentario || '',
+      5: cliente.cobranza_recibo5_comentario || '', 6: cliente.cobranza_recibo6_comentario || '',
+    })
+    setFechaRecibo1Input('')
+    setHistorialCobranza([])
+    cargarHistorialCobranza(cliente.id)
   }
 
-  async function guardarCiclo(cliente) {
-    const ciclo = Number(cicloInput)
+  async function cargarHistorialCobranza(ventaId) {
+    try {
+      const res = await fetch(`${API}/ventas/cobranza/${ventaId}/historial`, { headers: ncHeaders() })
+      const json = await res.json()
+      if (res.ok && json.ok) setHistorialCobranza(Array.isArray(json.data) ? json.data : [])
+    } catch { /* si falla, el historial simplemente queda vacío */ }
+  }
+
+  async function guardarCiclo(cliente, cicloOverride) {
+    const ciclo = cicloOverride != null ? cicloOverride : Number(cicloInput)
     if (!Number.isInteger(ciclo) || ciclo < 1 || ciclo > 31) { setMensaje('Ingresa un ciclo de facturación válido (1-31)'); return }
     const anterior = cliente.cobranza_ciclo_facturacion
     const clave = `${cliente.id}-ciclo`
@@ -593,6 +636,21 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally { setGuardando('') }
+  }
+
+  async function calcularCicloDesdeFecha1(cliente) {
+    if (!fechaRecibo1Input) { setMensaje('Ingresa la fecha de vencimiento del recibo 1'); return }
+    setCalculandoCiclo(true)
+    setMensaje('')
+    const ciclo = inferirCicloDesdeVencimiento1(cliente.fecha_instalacion, fechaRecibo1Input)
+    if (ciclo == null) {
+      setMensaje('No se pudo calcular el ciclo con esa fecha. Revísala e intenta de nuevo.')
+      setCalculandoCiclo(false)
+      return
+    }
+    setCicloInput(String(ciclo))
+    await guardarCiclo(cliente, ciclo)
+    setCalculandoCiclo(false)
   }
 
   async function guardarCodigoPago(cliente) {
@@ -670,6 +728,7 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       const res = await fetch(`${API}/ventas/cobranza/${cliente.id}/recibo`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ numero, valor }) })
       const json = await res.json()
       if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar la tipificación del recibo')
+      cargarHistorialCobranza(cliente.id)
     } catch (error) {
       const revertir = actual => actual?.id === cliente.id ? { ...actual, [propiedad]: anterior } : actual
       setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
@@ -691,8 +750,30 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
       const res = await fetch(`${API}/ventas/cobranza/${cliente.id}/recibo-llamada`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ numero, valor }) })
       const json = await res.json()
       if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar la tipificación de la llamada')
+      cargarHistorialCobranza(cliente.id)
     } catch (error) {
       const revertir = actual => actual?.id === cliente.id ? { ...actual, [propiedad]: anterior, [propiedadFecha]: anteriorFecha } : actual
+      setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
+      setMensaje(error.message || 'Error conectando con el servidor')
+    } finally { setGuardando('') }
+  }
+
+  async function guardarReciboComentario(cliente, numero) {
+    const propiedad = `cobranza_recibo${numero}_comentario`
+    const comentario = (comentarioRecibosInput[numero] || '').trim()
+    const anterior = cliente[propiedad] || ''
+    const clave = `${cliente.id}-recibo${numero}-comentario`
+    setMensaje('')
+    setGuardando(clave)
+    const aplicar = actual => actual?.id === cliente.id ? { ...actual, [propiedad]: comentario } : actual
+    setClientes(actuales => actuales.map(aplicar)); setClienteCobranza(aplicar)
+    try {
+      const res = await fetch(`${API}/ventas/cobranza/${cliente.id}/recibo-comentario`, { method: 'PATCH', headers: ncHeaders(), body: JSON.stringify({ numero, comentario }) })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.mensaje || 'No se pudo guardar el comentario del recibo')
+      cargarHistorialCobranza(cliente.id)
+    } catch (error) {
+      const revertir = actual => actual?.id === cliente.id ? { ...actual, [propiedad]: anterior } : actual
       setClientes(actuales => actuales.map(revertir)); setClienteCobranza(revertir)
       setMensaje(error.message || 'Error conectando con el servidor')
     } finally { setGuardando('') }
@@ -1235,39 +1316,60 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
                   const valorActual = clienteCobranza[`cobranza_recibo${numero}_tipificacion`] || 'PENDIENTE'
                   const valorLlamada = clienteCobranza[`cobranza_recibo${numero}_tipificacion_llamada`] || ''
                   const fechaLlamada = clienteCobranza[`cobranza_recibo${numero}_fecha_llamada`]
+                  const entradasHistorial = historialCobranza.filter(h => h.campo === `recibo${numero}_tipificacion` || h.campo === `recibo${numero}_tipificacion_llamada` || h.campo === `recibo${numero}_comentario`)
                   return (
                     <div className="cobranza-recibo-row" key={numero}>
-                      <div className="cobranza-recibo-info">
-                        <b>RECIBO {numero}</b><span>Vence {fechaVisible(fecha)}</span>
-                        {fechaLlamada && <span className="cobranza-recibo-ultima-llamada">Última llamada: {fechaHoraVisible(fechaLlamada)}</span>}
+                      <div className="cobranza-recibo-top">
+                        <div className="cobranza-recibo-info">
+                          <b>RECIBO {numero}</b><span>Vence {fechaVisible(fecha)}</span>
+                          {fechaLlamada && <span className="cobranza-recibo-ultima-llamada">Última llamada: {fechaHoraVisible(fechaLlamada)}</span>}
+                        </div>
+                        <div className="cobranza-recibo-selects">
+                          <select
+                            value={valorActual}
+                            disabled={!puedeEditarCobranza || guardando === `${clienteCobranza.id}-recibo${numero}`}
+                            onChange={e => guardarRecibo(clienteCobranza, numero, e.target.value)}
+                            className={`cobranza-tipificacion-${valorActual.toLowerCase().replace(/\s+/g,'-')}`}
+                            title="Estado de pago"
+                          >
+                            {!COBRANZA_TIPIFICACIONES.includes(valorActual) && <option value={valorActual}>{valorActual} (antiguo)</option>}
+                            {COBRANZA_TIPIFICACIONES.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
+                          </select>
+                          <select
+                            value={valorLlamada}
+                            disabled={!puedeEditarCobranza || guardando === `${clienteCobranza.id}-recibo${numero}-llamada`}
+                            onChange={e => guardarReciboLlamada(clienteCobranza, numero, e.target.value)}
+                            className={`cobranza-select-llamada ${claseLlamadaCobranza(valorLlamada)}`}
+                            title="Resultado de la llamada"
+                          >
+                            <option value="">— Sin gestionar —</option>
+                            {TIPIFICACIONES_LLAMADA_COBRANZA.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
+                          </select>
+                        </div>
                       </div>
-                      <div className="cobranza-recibo-selects">
-                        <select
-                          value={valorActual}
-                          disabled={!puedeEditarCobranza || guardando === `${clienteCobranza.id}-recibo${numero}`}
-                          onChange={e => guardarRecibo(clienteCobranza, numero, e.target.value)}
-                          className={`cobranza-tipificacion-${valorActual.toLowerCase()}`}
-                          title="Estado de pago"
-                        >
-                          {COBRANZA_TIPIFICACIONES.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
-                        </select>
-                        <select
-                          value={valorLlamada}
-                          disabled={!puedeEditarCobranza || guardando === `${clienteCobranza.id}-recibo${numero}-llamada`}
-                          onChange={e => guardarReciboLlamada(clienteCobranza, numero, e.target.value)}
-                          className={`cobranza-select-llamada ${claseLlamadaCobranza(valorLlamada)}`}
-                          title="Resultado de la llamada"
-                        >
-                          <option value="">— Sin gestionar —</option>
-                          {TIPIFICACIONES_LLAMADA_COBRANZA.map(opcion => <option value={opcion} key={opcion}>{opcion}</option>)}
-                        </select>
+                      <div className="cobranza-recibo-comentario">
+                        <input type="text" maxLength={1500} value={comentarioRecibosInput[numero] || ''} disabled={!puedeEditarCobranza} onChange={e => setComentarioRecibosInput(p => ({ ...p, [numero]: e.target.value }))} placeholder="Comentario de este recibo…" />
+                        {puedeEditarCobranza && <button disabled={guardando === `${clienteCobranza.id}-recibo${numero}-comentario`} onClick={() => guardarReciboComentario(clienteCobranza, numero)}>{guardando === `${clienteCobranza.id}-recibo${numero}-comentario` ? 'Guardando…' : 'Guardar'}</button>}
                       </div>
+                      {entradasHistorial.length > 0 && (
+                        <ul className="cobranza-recibo-historial">
+                          {entradasHistorial.map(h => <li key={h.id}><b>{h.usuario_nombre || '—'}</b><span>{h.valor_nuevo || '—'}</span><time>{fechaHoraVisible(h.created_at)}</time></li>)}
+                        </ul>
+                      )}
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <p className="cobranza-sin-ciclo">Ingresa el ciclo de facturación para calcular los vencimientos de los 6 recibos.</p>
+              <div className="cobranza-sin-ciclo">
+                <p>Ingresa el ciclo de facturación para calcular los vencimientos de los 6 recibos, o directamente la fecha en la que vence el recibo 1 y se calcula solo.</p>
+                {puedeEditarCobranza && (
+                  <div className="cobranza-input-row">
+                    <input type="date" value={fechaRecibo1Input} onChange={e => setFechaRecibo1Input(e.target.value)} />
+                    <button disabled={calculandoCiclo} onClick={() => calcularCicloDesdeFecha1(clienteCobranza)}>{calculandoCiclo ? 'Calculando…' : 'Calcular ciclo'}</button>
+                  </div>
+                )}
+              </div>
             )}
             <div className="calidad-comentario-box">
               <label><span>COMENTARIO (OPCIONAL)</span><textarea maxLength="1500" value={comentarioCobranza} disabled={!puedeEditarCobranza} onChange={e => setComentarioCobranza(e.target.value)} placeholder="Escribe aquí una observación de la gestión…" /></label>
