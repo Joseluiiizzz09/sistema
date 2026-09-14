@@ -81,12 +81,29 @@ const PROG_STYLES = {
   FRAUDE:           { bg:'#1f2937',color:'#f9fafb',border:'rgba(75,85,99,.4)'    },
   ZONA_RESTRINGIDA: { bg:'#ffedd5',color:'#9a3412',border:'rgba(251,146,60,.4)'  },
   PENDIENTE:        { bg:'#f3f4f6',color:'#6b7280',border:'rgba(156,163,175,.4)' },
+  EN_EJECUCION:     { bg:'#dbeafe',color:'#1e3a8a',border:'rgba(96,165,250,.4)'  },
+  INSTALADO:        { bg:'#dcfce7',color:'#15803d',border:'rgba(74,222,128,.4)'  },
+  INSTALADO_NO_VALIDADO:{ bg:'#dcfce7',color:'#15803d',border:'rgba(74,222,128,.4)' },
+  CAIDA:            { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
+  TECNICO_CASA:     { bg:'#e0f2fe',color:'#075985',border:'rgba(56,189,248,.4)'  },
+  TECNICOS_CAMINO:  { bg:'#e0f2fe',color:'#075985',border:'rgba(56,189,248,.4)'  },
+  REASIGNACION:     { bg:'#fef9c3',color:'#854d0e',border:'rgba(250,204,21,.4)'  },
+  RECHAZO_CAMPO:    { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
+  RECHAZO_MESA:     { bg:'#fee2e2',color:'#991b1b',border:'rgba(248,113,113,.4)' },
 }
+// Una vez que la venta avanza mas alla de Programacion (a Seguimiento/campo),
+// el estado_prog derivado del historial se queda "congelado" en la ultima
+// tipificacion de Programacion (ej. BLOQUEADO) aunque despues se haya
+// instalado o caido — esos modulos no siempre re-taggean el historial como
+// 'Programación'. Se prioriza el estado REAL de la venta cuando ya avanzo.
+const ESTADOS_POST_PROGRAMACION = new Set(['en_ejecucion','instalado','caida','tecnico_casa','tecnicos_camino','reasignacion','instalado_no_validado','rechazo_campo','rechazo_mesa'])
 function estadoProg(raw) {
   const s = (raw || '').toUpperCase()
   if (!s) return { key:'PENDIENTE', label:'PENDIENTE' }
   if (s === 'VALIDADO') return { key:'RECHAZADO', label:'RECHAZADO' }
-  const m = { PROGRAMADO:'PROGRAMADO',BLOQUEADO:'BLOQUEADO',RECHAZADO:'RECHAZADO',SIN_AGENDA:'SIN AGENDA',CARACTER_ESPECIAL:'CARÁCTER ESPECIAL',FRAUDE:'FRAUDE',ZONA_RESTRINGIDA:'ZONA RESTRINGIDA' }
+  const m = { PROGRAMADO:'PROGRAMADO',BLOQUEADO:'BLOQUEADO',RECHAZADO:'RECHAZADO',SIN_AGENDA:'SIN AGENDA',CARACTER_ESPECIAL:'CARÁCTER ESPECIAL',FRAUDE:'FRAUDE',ZONA_RESTRINGIDA:'ZONA RESTRINGIDA',
+    EN_EJECUCION:'EN EJECUCIÓN', INSTALADO:'INSTALADO', INSTALADO_NO_VALIDADO:'INSTALADO (NO VALIDADO)', CAIDA:'CAÍDA',
+    TECNICO_CASA:'TÉCNICO EN CASA', TECNICOS_CAMINO:'TÉCNICOS EN CAMINO', REASIGNACION:'REASIGNACIÓN', RECHAZO_CAMPO:'RECHAZO CAMPO', RECHAZO_MESA:'RECHAZO MESA' }
   return { key:s, label:m[s]||s }
 }
 
@@ -2614,7 +2631,7 @@ export default function Jefatura() {
                     ) : ventasFlujoPagina.map((v, i) => {
                       const estado = normEstado(v.estado || v.estado_venta)
                       const estadoSeg = estadoSeguimiento(v)
-                      const pInfo = estadoProg(v.estado_prog)
+                      const pInfo = ESTADOS_POST_PROGRAMACION.has(estado) ? estadoProg(v.estado || v.estado_venta) : estadoProg(v.estado_prog)
                       const pSt   = PROG_STYLES[pInfo.key] || PROG_STYLES.PENDIENTE
                       const fpParts = (v.fecha_prog || '').split(' ')
                       const fpStr = fpParts[0] ? formatF(fpParts[0]) + (fpParts[1] ? ' ' + fpParts[1].slice(0,5) : '') : ''
