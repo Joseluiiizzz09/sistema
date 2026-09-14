@@ -31,8 +31,9 @@ function ModalBase({ title, subtitle, onClose, children, footer }) {
   )
 }
 
-export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', onClose, onSuccess }) {
+export function ReasignarVentaModal({ venta, asesores = [], salas = [], alcance = 'global', onClose, onSuccess }) {
   const [asesorId, setAsesorId] = useState('')
+  const [salaAtribuida, setSalaAtribuida] = useState(venta?.sala_atribucion || '')
   const [busqueda, setBusqueda] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -46,20 +47,47 @@ export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', 
     if (!termino) return opciones
     return opciones.filter(asesor => `${asesor.nombre || ''} ${asesor.sala || ''}`.toLocaleUpperCase('es-PE').includes(termino))
   }, [opciones, busqueda])
+  const salasOpciones = useMemo(() => [...new Set([
+    ...salas,
+    ...asesores.map(asesor => asesor.sala),
+    venta?.sala,
+    venta?.asesor_sala_actual,
+    venta?.sala_atribucion,
+  ].map(sala => String(sala || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es')),
+  [asesores, salas, venta?.asesor_sala_actual, venta?.sala, venta?.sala_atribucion])
 
   async function guardar() {
-    if (!asesorId) { setError('Selecciona el asesor de destino.'); return }
+    const cambiarAsesor = Boolean(asesorId)
+    const salaInicial = String(venta?.sala_atribucion || '').trim().toUpperCase()
+    const salaFinal = String(salaAtribuida || '').trim().toUpperCase()
+    const cambiarSala = salaFinal !== salaInicial
+    if (!cambiarAsesor && !cambiarSala) { setError('Selecciona un asesor o una sala para guardar el cambio.'); return }
     setGuardando(true)
     setError('')
     try {
-      const res = await fetch(`${API}/ventas/${venta.id}/reasignar`, {
-        method: 'PATCH',
-        headers: ncHeaders(),
-        body: JSON.stringify({ asesor_id: Number(asesorId) }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar la venta.')
-      onSuccess?.(data)
+      const mensajes = []
+      if (cambiarAsesor) {
+        const res = await fetch(`${API}/ventas/${venta.id}/reasignar`, {
+          method: 'PATCH',
+          headers: ncHeaders(),
+          body: JSON.stringify({ asesor_id: Number(asesorId) }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo reasignar la venta.')
+        mensajes.push(data.mensaje)
+      }
+      if (cambiarSala) {
+        const res = await fetch(`${API}/ventas/${venta.id}/sala-atribucion`, {
+          method: 'PATCH',
+          headers: ncHeaders(),
+          body: JSON.stringify({ sala: salaFinal }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo cambiar la sala atribuida.')
+        mensajes.push(data.mensaje)
+      }
+      onSuccess?.({ mensaje: mensajes.filter(Boolean).join(' ') || 'Venta actualizada.' })
     } catch (err) {
       setError(err.message || 'No se pudo conectar con el servidor.')
     } finally {
@@ -72,7 +100,7 @@ export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', 
       title="Reasignar venta"
       subtitle={`${venta?.nombre || 'Cliente'} · DNI ${venta?.dni || '—'}`}
       onClose={onClose}
-      footer={<><button type="button" className="va-button secondary" onClick={onClose} disabled={guardando}>Cancelar</button><button type="button" className="va-button primary" onClick={guardar} disabled={guardando || !opciones.length}>{guardando ? 'Guardando...' : 'Confirmar reasignación'}</button></>}
+      footer={<><button type="button" className="va-button secondary" onClick={onClose} disabled={guardando}>Cancelar</button><button type="button" className="va-button primary" onClick={guardar} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar cambios'}</button></>}
     >
       <div className="va-current">
         <span>Asesor actual</span>
@@ -92,6 +120,13 @@ export function ReasignarVentaModal({ venta, asesores = [], alcance = 'global', 
       {busqueda && !opcionesFiltradas.length && <div className="va-alert">No se encontraron trabajadores con esa búsqueda.</div>}
       <p className="va-help">{alcance === 'sala' ? 'Solo se muestran asesores activos de tu sala.' : 'Puedes elegir un asesor activo de cualquier sala.'}</p>
       {!opciones.length && <div className="va-alert">No hay otro asesor activo disponible para esta venta.</div>}
+      <div className="va-divider" />
+      <label className="va-label" htmlFor="va-sala">Sala atribuida para reportes</label>
+      <select id="va-sala" className="va-select" value={salaAtribuida} onChange={event => { setSalaAtribuida(event.target.value); setError('') }}>
+        <option value="">Usar sala actual del asesor</option>
+        {salasOpciones.map(sala => <option key={sala} value={sala}>{sala.toLocaleUpperCase('es-PE')}</option>)}
+      </select>
+      <p className="va-help">Usa este campo cuando la venta debe contar para una sala específica aunque el asesor haya vuelto a otra sala.</p>
       {error && <div className="va-alert error">{error}</div>}
     </ModalBase>
   )

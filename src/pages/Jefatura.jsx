@@ -2607,7 +2607,7 @@ export default function Jefatura() {
                   Limpiar filtros
                 </button>
               </div>
-              <div style={{overflowX:'auto'}}>
+              <div className="flujo-tabla-scroll">
                 <table className="tabla">
                   <thead>
                     <tr>
@@ -3196,6 +3196,7 @@ export default function Jefatura() {
         <ReasignarVentaModal
           venta={ventaReasignar}
           asesores={usuarios.filter(usuario => usuarioTieneCargo(usuario, 'asesor') && usuario.activo)}
+          salas={salasUsuariosDisponibles}
           alcance="global"
           onClose={()=>setVentaReasignar(null)}
           onSuccess={completarReasignacion}
