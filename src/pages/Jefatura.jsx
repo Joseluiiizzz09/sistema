@@ -507,6 +507,8 @@ export default function Jefatura() {
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
   const [fvDia,        setFvDia]        = useState('')
+  const [fvFechaProgramacion, setFvFechaProgramacion] = useState('')
+  const [fvFechaInstalacion,  setFvFechaInstalacion]  = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
   const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
@@ -1532,6 +1534,12 @@ export default function Jefatura() {
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
+    if (fvFechaProgramacion) {
+      lista = lista.filter(v => [v.fecha_programada, v.fecha_prog, v.fecha_programado].some(fecha => soloFecha(fecha) === fvFechaProgramacion))
+    }
+    if (fvFechaInstalacion) {
+      lista = lista.filter(v => soloFecha(v.fecha_instalado) === fvFechaInstalacion)
+    }
     if (fvDia || fvDesde || fvHasta) {
       lista = lista.filter(v => {
         const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
@@ -1557,7 +1565,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta])
+  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1565,7 +1573,7 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvDia, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
@@ -1573,6 +1581,7 @@ export default function Jefatura() {
     setBusqFlujoVentas('')
     setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal(''); setFvCampana([])
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
+    setFvFechaProgramacion(''); setFvFechaInstalacion('')
     setFvDia(''); setFvDesde(''); setFvHasta('')
   }
 
@@ -1626,8 +1635,9 @@ export default function Jefatura() {
       ['VALIDACIÓN',        v => estadoValidacion(v)],
       ['GRABACIÓN',         v => estadoGrabacion(v)],
       ['PROGRAMACIÓN',      v => estadoProg(v.estado_prog).label + (v.usuario_prog ? ` (Por: ${v.usuario_prog})` : '')],
+      ['FECHA PROGRAMACIÓN', v => soloFecha(v.fecha_programada || v.fecha_prog || v.fecha_programado) ? formatF(soloFecha(v.fecha_programada || v.fecha_prog || v.fecha_programado)) : '-'],
       ['SEGUIMIENTO',       v => estadoSeguimiento(v) ? flujoLabelEstado(estadoSeguimiento(v)) : '-'],
-      ['FECHA DE INSTALACIÓN', v => v.fecha_programada ? formatF(soloFecha(v.fecha_programada)) : '-'],
+      ['FECHA DE INSTALACIÓN', v => soloFecha(v.fecha_instalado) ? formatF(soloFecha(v.fecha_instalado)) : '-'],
     ], `ventas_generales_${fechaHoy()}.xlsx`)
   }
 
@@ -2589,6 +2599,8 @@ export default function Jefatura() {
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label><span>Fecha del día</span><input type="date" value={fvDia} onChange={e=>setFvDia(e.target.value)}/></label>
+                <label><span>Fecha programación</span><input type="date" value={fvFechaProgramacion} onChange={e=>setFvFechaProgramacion(e.target.value)}/></label>
+                <label><span>Fecha instalación</span><input type="date" value={fvFechaInstalacion} onChange={e=>setFvFechaInstalacion(e.target.value)}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
             </div>
