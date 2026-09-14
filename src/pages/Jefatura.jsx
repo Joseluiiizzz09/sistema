@@ -1535,7 +1535,10 @@ export default function Jefatura() {
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
     if (fvFechaProgramacion) {
-      lista = lista.filter(v => [v.fecha_programada, v.fecha_prog, v.fecha_programado].some(fecha => soloFecha(fecha) === fvFechaProgramacion))
+      lista = lista.filter(v =>
+        estadoProgramacionFlujo(v).key === 'PROGRAMADO' &&
+        [v.fecha_programada, v.fecha_prog, v.fecha_programado].some(fecha => soloFecha(fecha) === fvFechaProgramacion)
+      )
     }
     if (fvFechaInstalacion) {
       lista = lista.filter(v => soloFecha(v.fecha_instalado) === fvFechaInstalacion)
