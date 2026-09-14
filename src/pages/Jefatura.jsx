@@ -1518,7 +1518,8 @@ export default function Jefatura() {
   ])].sort((a, b) => a.localeCompare(b, 'es')), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
-    let lista = [...ventasFlujoMes]
+    const usaFechaOperativa = Boolean(fvFechaProgramacion || fvFechaInstalacion)
+    let lista = usaFechaOperativa ? [...ventasCache] : [...ventasFlujoMes]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
     if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
     if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
@@ -1565,7 +1566,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta])
+  }, [ventasCache, ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
