@@ -577,11 +577,16 @@ export default function Cobranzas({ areaNombre = 'Cobranzas', modoSupervisorCali
     if (!cliente.cobranza_ciclo_facturacion) return null
     const hoyIso = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
     const fechas = calcularVencimientosRecibos(cliente.fecha_instalacion, cliente.cobranza_ciclo_facturacion)
+    let algunoVencido = false
     for (let n = 1; n <= 6; n++) {
+      if (!fechas[n - 1] || fechas[n - 1] > hoyIso) continue
+      algunoVencido = true
       const estado = cliente[`cobranza_recibo${n}_tipificacion`] || 'PENDIENTE'
-      if (estado !== 'PAGADO' && fechas[n - 1] && fechas[n - 1] <= hoyIso) return 'pendiente'
+      if (estado !== 'PAGADO') return 'pendiente'
     }
-    return 'pagado'
+    // Si todavia no vence ni el recibo 1, no hay nada que evaluar como
+    // "pagado" — recien no tiene ninguna cuota pendiente por cobrar.
+    return algunoVencido ? 'pagado' : null
   }
 
   // Fuerza bruta sobre las 31 combinaciones posibles: reutiliza
