@@ -1090,10 +1090,11 @@ button.export-kpi-card:hover {
 /* El selector operativo conserva la apariencia y el ancho del filtro de
    Seguimiento: no corta "Programados" y no fuerza mayúsculas. */
 .filtros-grid-ventas label.fv-operativo,
-.filtros-grid-ventas label.fv-fecha {
+.filtros-grid-ventas label.fv-rango {
   flex: 0 0 130px;
   min-width: 130px;
 }
+.filtros-grid-ventas label.fv-rango { flex-basis: 160px; min-width: 160px; }
 .filtros-grid-ventas label.fv-operativo select,
 .filtros-grid-ventas label.fv-operativo select option {
   text-transform: none;

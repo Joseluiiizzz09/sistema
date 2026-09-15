@@ -2623,14 +2623,16 @@ export default function Jefatura() {
                     <option value="programacion">Programados</option>
                   </select>
                 </label>
-                <label className="fv-fecha"><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvDesde} onChange={e=>{
-                  if (fvTipoFecha==='programacion') setFvProgDesde(e.target.value)
-                  else setFvDesde(e.target.value)
-                }}/></label>
-                <label className="fv-fecha"><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvHasta} onChange={e=>{
-                  if (fvTipoFecha==='programacion') setFvProgHasta(e.target.value)
-                  else setFvHasta(e.target.value)
-                }}/></label>
+                <label className="fv-rango"><span>{fvTipoFecha==='programacion' ? 'Día(s) de programación' : 'Día(s) de venta'}</span>
+                  <RangoFechasPicker
+                    desde={fvTipoFecha==='programacion' ? fvProgDesde : fvDesde}
+                    hasta={fvTipoFecha==='programacion' ? fvProgHasta : fvHasta}
+                    onChange={({desde,hasta})=>{
+                      if (fvTipoFecha==='programacion') { setFvProgDesde(desde); setFvProgHasta(hasta) }
+                      else { setFvDesde(desde); setFvHasta(hasta) }
+                    }}
+                  />
+                </label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
             </div>
