@@ -1095,6 +1095,32 @@ button.export-kpi-card:hover {
   box-shadow: 0 0 0 3px rgba(229, 62, 62, .1);
 }
 
+/* El boton de RangoFechasPicker (.form-control) solo trae estilos inline
+   basicos — sin esto no calza con el resto de los recuadros del filtro
+   (padding/tamaño de letra distintos) y el texto se ve envuelto en dos
+   lineas mientras los demas campos quedan en una sola. */
+.filtros-grid .form-control {
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, .12) !important;
+  border-radius: 9px !important;
+  background: #f8fafc !important;
+  padding: 7px 11px !important;
+  color: #0f172a;
+  font-size: 12px !important;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all .18s;
+}
+
+.filtros-grid .form-control:hover,
+.filtros-grid .form-control:focus {
+  outline: none;
+  border-color: #e53e3e !important;
+  background: #fff !important;
+}
+
 .filtro-limpiar {
   padding: 7px 13px;
   background: #fff;
