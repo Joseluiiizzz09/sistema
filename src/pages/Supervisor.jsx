@@ -311,7 +311,19 @@ export default function Supervisor() {
   const todasVentas = useMemo(() => {
     if (!salaActual) return ventas
     const idsASala = new Set(asesoresSala.map(a => Number(a.id)))
-    return ventas.filter(v => idsASala.has(Number(v.asesor_id)) || normalizarSala(v.sala) === normalizarSala(salaActual))
+    // v.sala ya resuelve la sala ATRIBUIDA de la venta (ver PATCH
+    // /ventas/:id/sala-atribucion) — se confia en ella cuando existe. Antes
+    // se aceptaba la venta con solo que el asesor perteneciera hoy a esta
+    // sala, sin mirar v.sala: una venta que el asesor hizo para otra sala y
+    // que luego volvio a la suya seguia contando (con instaladas y todo)
+    // para la sala nueva en vez de la sala a la que se atribuyo, inflando
+    // la cuota de un supervisor y quitandole la suya al otro. El fallback
+    // por roster solo aplica cuando la venta no trae sala resuelta.
+    return ventas.filter(v => {
+      const sala = normalizarSala(v.sala)
+      if (sala) return sala === normalizarSala(salaActual)
+      return idsASala.has(Number(v.asesor_id))
+    })
   }, [ventas, asesoresSala, salaActual])
 
   const dashVentas = useMemo(() => {
@@ -398,13 +410,25 @@ export default function Supervisor() {
     return mapa
   }, [todasVentas, periodo])
 
-  const dashRendData = useMemo(() =>
-    asesoresSala.map(a => {
+  const dashRendData = useMemo(() => {
+    // Ademas del roster actual de la sala, incluye a cualquier asesor que ya
+    // no esta en esta sala pero que tiene ventas o instaladas atribuidas
+    // aqui este periodo (ver todasVentas) — si no, esas ventas suman en el
+    // KPI general de la sala pero desaparecen del ranking por asesor.
+    const nombresExtra = [...new Set([
+      ...dashVentas.map(v=>v.asesor),
+      ...instaladasPorAsesor.keys(),
+    ])].filter(n => n && !asesoresSala.some(a=>a.nombre===n))
+    const filas = [
+      ...asesoresSala,
+      ...nombresExtra.map(n => asesores.find(a=>a.nombre===n) || { nombre:n, usuario:'' }),
+    ]
+    return filas.map(a => {
       const mis = dashVentas.filter(v=>v.asesor===a.nombre)
       const inst = instaladasPorAsesor.get(a.nombre) || 0
       return { nombre:a.nombre, usuario:a.usuario||'', total:mis.length, inst, conv:mis.length?Math.round(inst/mis.length*100):0 }
-    }).sort((a,b)=>b.total-a.total),
-  [dashVentas, asesoresSala, instaladasPorAsesor])
+    }).sort((a,b)=>b.total-a.total)
+  }, [dashVentas, asesoresSala, asesores, instaladasPorAsesor])
 
   // â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cargandoDatosRef = useRef(false)

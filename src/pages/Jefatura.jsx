@@ -505,9 +505,16 @@ export default function Jefatura() {
   const [fvDistrito,   setFvDistrito]   = useState('')
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
-  const [fvDia,        setFvDia]        = useState('')
-  const [fvFechaProgramacion, setFvFechaProgramacion] = useState('')
-  const [fvFechaInstalacion,  setFvFechaInstalacion]  = useState('')
+  // Un solo selector "Filtrar por" (venta/programación/instalación) en vez de
+  // tres campos de fecha sueltos, cada uno con su propio rango desde-hasta:
+  // un solo dia clickeado en RangoFechasPicker deja "desde" puesto y "hasta"
+  // vacio, lo que el filtro de abajo interpreta como "ese dia exacto"; un
+  // segundo clic en otro dia completa el rango.
+  const [fvTipoFecha,  setFvTipoFecha]  = useState('venta')
+  const [fvProgDesde,  setFvProgDesde]  = useState('')
+  const [fvProgHasta,  setFvProgHasta]  = useState('')
+  const [fvInstDesde,  setFvInstDesde]  = useState('')
+  const [fvInstHasta,  setFvInstHasta]  = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
   const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
@@ -1152,14 +1159,16 @@ export default function Jefatura() {
       const mesUsar   = mesReporte || mesActual()
       const esMesSeleccionado = valor => String(soloFecha(valor) || '').slice(0, 7) === mesUsar
       const salas     = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
-      const instaladas = salas.map(s => {
-        const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toUpperCase()==='INSTALADO').length
-      })
-      const caidas = salas.map(s => {
-        const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return ventasCache.filter(v=>nombres.includes(v.asesor_nombre||'')&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toLowerCase()==='caida').length
-      })
+      // Se agrupa por v.sala (ya resuelve sala_atribucion en el backend), no
+      // por la sala ACTUAL del asesor en usuarios: si no, una venta que un
+      // asesor hizo para otra sala y que luego se movio de sala seguia
+      // contando para su sala nueva en vez de la sala a la que se atribuyo.
+      const instaladas = salas.map(s =>
+        ventasCache.filter(v=>String(v.sala||'').toUpperCase()===s&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toUpperCase()==='INSTALADO').length
+      )
+      const caidas = salas.map(s =>
+        ventasCache.filter(v=>String(v.sala||'').toUpperCase()===s&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toLowerCase()==='caida').length
+      )
       chartInst.current.salas = new Chart(canvasSalas.current, {
         type: 'bar',
         data: { labels:salas, datasets:[
@@ -1177,10 +1186,9 @@ export default function Jefatura() {
       for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().split('T')[0]) }
       const salas  = ['SALA 1','SALA 2','SALA 3','SALA 4','SALA CHANCAY','SALA 5','SALA 6']
       const colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#06b6d4','#f43f5e','#eab308']
-      const datasets = salas.map((s,i) => {
-        const nombres = usuarios.filter(u=>u.sala===s).map(u=>u.nombre)
-        return { label:s, data:dias.map(d=>ventasCache.filter(v=>v._fecha===d&&nombres.includes(v.asesor_nombre||'')).length), borderColor:colors[i], backgroundColor:colors[i]+'22', fill:true, tension:.4, borderWidth:2, pointRadius:4 }
-      })
+      const datasets = salas.map((s,i) =>
+        ({ label:s, data:dias.map(d=>ventasCache.filter(v=>v._fecha===d&&String(v.sala||'').toUpperCase()===s).length), borderColor:colors[i], backgroundColor:colors[i]+'22', fill:true, tension:.4, borderWidth:2, pointRadius:4 })
+      )
       chartInst.current.diario = new Chart(canvasDiario.current, {
         type: 'line',
         data: { labels:dias.map(d=>{const p=d.split('-');return `${p[2]}/${p[1]}`}), datasets },
@@ -1517,7 +1525,7 @@ export default function Jefatura() {
   ])].sort((a, b) => a.localeCompare(b, 'es')), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
-    const usaFechaOperativa = Boolean(fvFechaProgramacion || fvFechaInstalacion)
+    const usaFechaOperativa = fvTipoFecha !== 'venta'
     let lista = usaFechaOperativa ? [...ventasCache] : [...ventasFlujoMes]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
     if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
@@ -1534,24 +1542,27 @@ export default function Jefatura() {
     if (fvAsesor) lista = lista.filter(v => String(v.asesor_nombre || v.asesor || v.vendedor || '').toLowerCase().includes(fvAsesor.trim().toLowerCase()))
     if (fvSala) lista = lista.filter(v => String(v.sala || '').toLowerCase().includes(fvSala.trim().toLowerCase()))
     if (fvDistrito) lista = lista.filter(v => String(v.distrito || '').toLowerCase().includes(fvDistrito.trim().toLowerCase()))
-    if (fvFechaProgramacion) {
-      lista = lista.filter(v =>
-        estadoProgramacionFlujo(v).key === 'PROGRAMADO' &&
-        [v.fecha_programada, v.fecha_prog, v.fecha_programado].some(fecha => soloFecha(fecha) === fvFechaProgramacion)
-      )
+    // Con solo "desde" puesto (un clic en el calendario) se filtra ese dia
+    // exacto; con "desde" y "hasta" (dos clics) se filtra el rango completo.
+    const enRangoOFecha = (f, desde, hasta) => {
+      if (!f || (!desde && !hasta)) return !desde && !hasta
+      if (desde && !hasta) return f === desde
+      if (desde && f < desde) return false
+      if (hasta && f > hasta) return false
+      return true
     }
-    if (fvFechaInstalacion) {
-      lista = lista.filter(v => soloFecha(v.fecha_instalado) === fvFechaInstalacion)
-    }
-    if (fvDia || fvDesde || fvHasta) {
+    if (fvTipoFecha === 'programacion' && (fvProgDesde || fvProgHasta)) {
       lista = lista.filter(v => {
-        const f = soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at)
-        if (!f) return false
-        if (fvDia && f !== fvDia) return false
-        if (fvDesde && f < fvDesde) return false
-        if (fvHasta && f > fvHasta) return false
-        return true
+        if (estadoProgramacionFlujo(v).key !== 'PROGRAMADO') return false
+        const f = [v.fecha_programada, v.fecha_prog, v.fecha_programado].map(soloFecha).find(Boolean)
+        return enRangoOFecha(f, fvProgDesde, fvProgHasta)
       })
+    }
+    if (fvTipoFecha === 'instalacion' && (fvInstDesde || fvInstHasta)) {
+      lista = lista.filter(v => enRangoOFecha(soloFecha(v.fecha_instalado), fvInstDesde, fvInstHasta))
+    }
+    if (fvTipoFecha === 'venta' && (fvDesde || fvHasta)) {
+      lista = lista.filter(v => enRangoOFecha(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at), fvDesde, fvHasta))
     }
 
     const b = busqFlujoVentas.trim().toLowerCase()
@@ -1568,7 +1579,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta])
+  }, [ventasCache, ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, fvDesde, fvHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1576,7 +1587,7 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvFechaProgramacion, fvFechaInstalacion, fvDia, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, fvDesde, fvHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
@@ -1584,8 +1595,10 @@ export default function Jefatura() {
     setBusqFlujoVentas('')
     setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal(''); setFvCampana([])
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
-    setFvFechaProgramacion(''); setFvFechaInstalacion('')
-    setFvDia(''); setFvDesde(''); setFvHasta('')
+    setFvTipoFecha('venta')
+    setFvDesde(''); setFvHasta('')
+    setFvProgDesde(''); setFvProgHasta('')
+    setFvInstDesde(''); setFvInstHasta('')
   }
 
   // Pegado desde Excel/Sheets: cada línea trae 5 columnas separadas por TAB —
@@ -1673,15 +1686,16 @@ export default function Jefatura() {
       : ventasCache.filter(v => String(v.estado || '').trim().toUpperCase() === 'CAIDA')
     let asesFilt = usuarios.filter(u=>usuarioTieneCargo(u,'asesor'))
     if (salaReporte !== 'todas') asesFilt = asesFilt.filter(u=>u.sala===salaReporte)
-    let ventasFilt = ventasDelMes
-    let instaladasFilt = instaladasDelMes
-    let caidasFilt = caidasDelMes
-    if (salaReporte !== 'todas') {
-      const nombres = asesFilt.map(a=>a.nombre)
-      ventasFilt = ventasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
-      instaladasFilt = instaladasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
-      caidasFilt = caidasDelMes.filter(v=>nombres.includes(v.asesor_nombre||''))
-    }
+    // Al filtrar por sala, se agrupa por v.sala (sala ATRIBUIDA de la venta,
+    // ver PATCH /ventas/:id/sala-atribucion) y no por la sala actual del
+    // asesor en usuarios. Si un asesor vendio 4 de sus 20 instaladas para
+    // otra sala y luego volvio a la suya, esas 4 deben contar para la sala
+    // a la que se atribuyeron (con su nombre), no para la sala donde esta
+    // hoy — si no, la sala actual se queda con ventas que no le tocan y la
+    // sala atribuida pierde la cuota que sus supervisores si deben recibir.
+    const ventasFilt       = salaReporte === 'todas' ? ventasDelMes       : ventasDelMes.filter(v=>String(v.sala||'').toUpperCase()===salaReporte)
+    const instaladasFilt   = salaReporte === 'todas' ? instaladasDelMes   : instaladasDelMes.filter(v=>String(v.sala||'').toUpperCase()===salaReporte)
+    const caidasFilt       = salaReporte === 'todas' ? caidasDelMes       : caidasDelMes.filter(v=>String(v.sala||'').toUpperCase()===salaReporte)
     const inst   = instaladasFilt.length
     const caidas = caidasFilt.length
     // Efectividad = Instaladas / (Instaladas + Caídas), igual que en el
@@ -1689,10 +1703,23 @@ export default function Jefatura() {
     // eso mezclaba ventas todavía en curso (en ejecución, técnico en casa,
     // etc.) en el denominador y hacía bajar la efectividad artificialmente.
     const efect  = (inst + caidas) ? Math.round(inst/(inst+caidas)*100) : 0
-    const rendData = asesFilt.map(a => {
-      const mis   = ventasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre)
-      const inst2 = instaladasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
-      const caid  = caidasDelMes.filter(v=>(v.asesor_nombre||'')===a.nombre).length
+    // Filas del ranking: los asesores del roster actual de la sala (para que
+    // se vean aunque tengan 0 ventas atribuidas) mas cualquier otro nombre
+    // que sí tenga una venta atribuida a esta sala este mes (por ejemplo, un
+    // asesor que ya se movio a otra sala pero dejo ventas atribuidas aqui).
+    const nombresConVentaAqui = [...new Set(ventasFilt.map(v=>v.asesor_nombre).filter(Boolean))]
+    const filasBase = salaReporte === 'todas'
+      ? asesFilt
+      : [...asesFilt, ...nombresConVentaAqui
+          .filter(n=>!asesFilt.some(a=>a.nombre===n))
+          .map(n=>{
+            const u = usuarios.find(u=>u.nombre===n)
+            return u ? { ...u, sala: salaReporte } : { nombre:n, sala:salaReporte, usuario:'' }
+          })]
+    const rendData = filasBase.map(a => {
+      const mis   = ventasFilt.filter(v=>(v.asesor_nombre||'')===a.nombre)
+      const inst2 = instaladasFilt.filter(v=>(v.asesor_nombre||'')===a.nombre).length
+      const caid  = caidasFilt.filter(v=>(v.asesor_nombre||'')===a.nombre).length
       const ef    = (inst2 + caid) ? Math.round(inst2/(inst2+caid)*100) : 0
       return { ...a, totalVentas:mis.length, instaladas:inst2, caidas:caid, efectividad:ef }
     }).sort((a,b)=>
@@ -2601,9 +2628,24 @@ export default function Jefatura() {
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
-                <label><span>Fecha del día</span><input type="date" value={fvDia} onChange={e=>setFvDia(e.target.value)}/></label>
-                <label><span>Fecha programación</span><input type="date" value={fvFechaProgramacion} onChange={e=>setFvFechaProgramacion(e.target.value)}/></label>
-                <label><span>Fecha instalación</span><input type="date" value={fvFechaInstalacion} onChange={e=>setFvFechaInstalacion(e.target.value)}/></label>
+                <label><span>Filtrar por</span>
+                  <select value={fvTipoFecha} onChange={e=>setFvTipoFecha(e.target.value)}>
+                    <option value="venta">Fecha de venta</option>
+                    <option value="programacion">Fecha de programación</option>
+                    <option value="instalacion">Fecha de instalación</option>
+                  </select>
+                </label>
+                <label><span>{fvTipoFecha==='programacion'?'Día(s) de programación':fvTipoFecha==='instalacion'?'Día(s) de instalación':'Día(s) de venta'}</span>
+                  <RangoFechasPicker
+                    desde={fvTipoFecha==='programacion'?fvProgDesde:fvTipoFecha==='instalacion'?fvInstDesde:fvDesde}
+                    hasta={fvTipoFecha==='programacion'?fvProgHasta:fvTipoFecha==='instalacion'?fvInstHasta:fvHasta}
+                    onChange={({desde,hasta})=>{
+                      if (fvTipoFecha==='programacion') { setFvProgDesde(desde); setFvProgHasta(hasta) }
+                      else if (fvTipoFecha==='instalacion') { setFvInstDesde(desde); setFvInstHasta(hasta) }
+                      else { setFvDesde(desde); setFvHasta(hasta) }
+                    }}
+                  />
+                </label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
             </div>
