@@ -2617,17 +2617,17 @@ export default function Jefatura() {
                 <label><span>Asesor</span><input value={fvAsesor} onChange={e=>setFvAsesor(e.target.value)} placeholder="Escribir asesor..."/></label>
                 <label><span>Sala</span><input value={fvSala} onChange={e=>setFvSala(e.target.value)} placeholder="Escribir sala..."/></label>
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
-                <label><span>Filtrar por</span>
+                <label className="fv-operativo"><span>Filtrar por</span>
                   <select value={fvTipoFecha} onChange={e=>setFvTipoFecha(e.target.value)}>
                     <option value="programacion">Programados</option>
                     <option value="instalacion">Instalados</option>
                   </select>
                 </label>
-                <label><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvInstDesde} onChange={e=>{
+                <label className="fv-fecha"><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvInstDesde} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgDesde(e.target.value)
                   else setFvInstDesde(e.target.value)
                 }}/></label>
-                <label><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvInstHasta} onChange={e=>{
+                <label className="fv-fecha"><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvInstHasta} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgHasta(e.target.value)
                   else setFvInstHasta(e.target.value)
                 }}/></label>
