@@ -505,11 +505,8 @@ export default function Jefatura() {
   const [fvDistrito,   setFvDistrito]   = useState('')
   const [fvDesde,      setFvDesde]      = useState('')
   const [fvHasta,      setFvHasta]      = useState('')
-  // Un solo selector "Filtrar por" (venta/programación/instalación) en vez de
-  // tres campos de fecha sueltos, cada uno con su propio rango desde-hasta:
-  // un solo dia clickeado en RangoFechasPicker deja "desde" puesto y "hasta"
-  // vacio, lo que el filtro de abajo interpreta como "ese dia exacto"; un
-  // segundo clic en otro dia completa el rango.
+  // Cada criterio conserva su propio rango para que al alternar entre fecha,
+  // programados e instalación no se pierda el filtro anterior.
   const [fvTipoFecha,  setFvTipoFecha]  = useState('venta')
   const [fvProgDesde,  setFvProgDesde]  = useState('')
   const [fvProgHasta,  setFvProgHasta]  = useState('')
@@ -2630,22 +2627,21 @@ export default function Jefatura() {
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label><span>Filtrar por</span>
                   <select value={fvTipoFecha} onChange={e=>setFvTipoFecha(e.target.value)}>
-                    <option value="venta">Fecha de venta</option>
-                    <option value="programacion">Fecha de programación</option>
+                    <option value="venta">Fecha</option>
+                    <option value="programacion">Programados</option>
                     <option value="instalacion">Fecha de instalación</option>
                   </select>
                 </label>
-                <label><span>{fvTipoFecha==='programacion'?'Día(s) de programación':fvTipoFecha==='instalacion'?'Día(s) de instalación':'Día(s) de venta'}</span>
-                  <RangoFechasPicker
-                    desde={fvTipoFecha==='programacion'?fvProgDesde:fvTipoFecha==='instalacion'?fvInstDesde:fvDesde}
-                    hasta={fvTipoFecha==='programacion'?fvProgHasta:fvTipoFecha==='instalacion'?fvInstHasta:fvHasta}
-                    onChange={({desde,hasta})=>{
-                      if (fvTipoFecha==='programacion') { setFvProgDesde(desde); setFvProgHasta(hasta) }
-                      else if (fvTipoFecha==='instalacion') { setFvInstDesde(desde); setFvInstHasta(hasta) }
-                      else { setFvDesde(desde); setFvHasta(hasta) }
-                    }}
-                  />
-                </label>
+                <label><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvTipoFecha==='instalacion'?fvInstDesde:fvDesde} onChange={e=>{
+                  if (fvTipoFecha==='programacion') setFvProgDesde(e.target.value)
+                  else if (fvTipoFecha==='instalacion') setFvInstDesde(e.target.value)
+                  else setFvDesde(e.target.value)
+                }}/></label>
+                <label><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvTipoFecha==='instalacion'?fvInstHasta:fvHasta} onChange={e=>{
+                  if (fvTipoFecha==='programacion') setFvProgHasta(e.target.value)
+                  else if (fvTipoFecha==='instalacion') setFvInstHasta(e.target.value)
+                  else setFvHasta(e.target.value)
+                }}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
             </div>

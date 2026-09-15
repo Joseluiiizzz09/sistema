@@ -173,10 +173,7 @@ export default function Seguimiento() {
   const [fSala, setFSala]         = useState('')
   const [fDistrito, setFDistrito] = useState('')
   const [fTramo, setFTramo]       = useState('')
-  // Se usa la misma nomenclatura y los mismos criterios de fecha que en
-  // Jefatura > Ventas generales. La fecha de instalación proviene del
-  // historial de estados, no de la fecha programada.
-  const [fTipoFecha, setFTipoFecha] = useState('venta')
+  const [fTipoFecha, setFTipoFecha] = useState('fecha')
   const [fDesde, setFDesde]       = useState('')
   const [fHasta, setFHasta]       = useState('')
   const [busqueda, setBusqueda]   = useState('')
@@ -296,11 +293,9 @@ export default function Seguimiento() {
     if (fSala && !(v.sala || '').toLowerCase().includes(fSala.toLowerCase())) return false
     if (fDistrito && !(v.distrito || '').toLowerCase().includes(fDistrito.toLowerCase())) return false
     if (fTramo   && v._tramo !== fTramo) return false
-    const f = fTipoFecha === 'programacion'
+    const f = fTipoFecha === 'programados'
       ? String(v.fecha_programada || '').slice(0, 10)
-      : fTipoFecha === 'instalacion'
-        ? String(v.fecha_instalado || '').slice(0, 10)
-        : (v.fechaIngreso || '')
+      : (v.fechaIngreso || '')
     if (fDesde && f < fDesde) return false
     if (fHasta && f > fHasta) return false
     if (busqueda) {
@@ -345,7 +340,7 @@ export default function Seguimiento() {
 
   function limpiarFiltros() {
     setFiltroLeyenda(''); setFEstados([]); setFVendedor(''); setFSala(''); setFDistrito('')
-    setFTramo(''); setFTipoFecha('venta'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
+    setFTramo(''); setFTipoFecha('fecha'); setFDesde(''); setFHasta(''); setBusqueda(''); setPagina(1)
     try { sessionStorage.setItem(SEG_FILTRO_KEY, '') } catch {}
   }
 
@@ -608,9 +603,8 @@ export default function Seguimiento() {
             <div className="fg fg-tipo-fecha">
               <label>Filtrar por</label>
               <select value={fTipoFecha} onChange={e => { setFTipoFecha(e.target.value); setPagina(1) }}>
-                <option value="venta">Fecha de venta</option>
-                <option value="programacion">Fecha de programación</option>
-                <option value="instalacion">Fecha de instalación</option>
+                <option value="fecha">Fecha</option>
+                <option value="programados">Programados</option>
               </select>
             </div>
             <div className="fg">
