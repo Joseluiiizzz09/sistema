@@ -1112,7 +1112,7 @@ export default function Jefatura() {
     const esMes = valor => String(soloFecha(valor) || '').slice(0, 7) === mes
     const ventasNuevas = ventasCache.filter(v => esMes(v._fecha || v.fecha_ingreso || v.fecha || v.created_at))
     const programaciones = ventasCache.filter(v => esMes(v.fecha_programada))
-    const instalaciones = ventasCache.filter(v => esMes(v.fecha_programada) && String(v.estado || '').toUpperCase() === 'INSTALADO')
+    const instalaciones = ventasCache.filter(v => esMes(v.fecha_instalado) && ventaAlcanzoInstalacion(v))
     const caidasMes = ventasCache.filter(v => esMes(v.fecha_programada) && ['CAIDA', 'RECHAZO_CAMPO'].includes(String(v.estado || '').toUpperCase()))
     return {
       ventasNuevas,
@@ -1164,7 +1164,7 @@ export default function Jefatura() {
       // asesor hizo para otra sala y que luego se movio de sala seguia
       // contando para su sala nueva en vez de la sala a la que se atribuyo.
       const instaladas = salas.map(s =>
-        ventasCache.filter(v=>String(v.sala||'').toUpperCase()===s&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toUpperCase()==='INSTALADO').length
+        ventasCache.filter(v=>String(v.sala||'').toUpperCase()===s&&esMesSeleccionado(v.fecha_instalado)&&ventaAlcanzoInstalacion(v)).length
       )
       const caidas = salas.map(s =>
         ventasCache.filter(v=>String(v.sala||'').toUpperCase()===s&&esMesSeleccionado(v.fecha_programada)&&(v.estado||'').toLowerCase()==='caida').length
@@ -1666,9 +1666,9 @@ export default function Jefatura() {
           return fecha && String(fecha).slice(0, 7) === mesReporte
         })
       : ventasCache
-    // Instaladas y caídas pertenecen al mes de su programación, igual que en
-    // el Dashboard General. Así también cuentan ventas creadas el mes anterior
-    // cuya instalación fue programada para el periodo seleccionado.
+    // Instaladas pertenecen al mes en que Seguimiento las marco como
+    // instaladas. Asi coincide con el filtro "Fecha de instalacion" de
+    // Ventas generales y no mezcla instalaciones reales con fecha programada.
     // El criterio de "instalada" (instalado/instalado no validado/reasignación)
     // debe coincidir con esVentaInstalada de Dashboard.jsx y con el ranking de
     // Supervisor.jsx: si solo se exige estado exacto "INSTALADO" aquí, una
@@ -1679,7 +1679,7 @@ export default function Jefatura() {
       return estado === 'INSTALADO' || estado === 'INSTALADO NO VALIDADO' || estado === 'REASIGNACION'
     }
     const instaladasDelMes = mesReporte
-      ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && esInstaladaDelMes(v))
+      ? ventasCache.filter(v => esMesReporte(v.fecha_instalado) && esInstaladaDelMes(v))
       : ventasCache.filter(ventaAlcanzoInstalacion)
     const caidasDelMes = mesReporte
       ? ventasCache.filter(v => esMesReporte(v.fecha_programada) && ['CAIDA', 'RECHAZO_CAMPO'].includes(String(v.estado || '').trim().toUpperCase()))
