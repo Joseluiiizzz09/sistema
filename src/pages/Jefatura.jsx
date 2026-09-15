@@ -503,13 +503,13 @@ export default function Jefatura() {
   const [fvAsesor,     setFvAsesor]     = useState('')
   const [fvSala,       setFvSala]       = useState('')
   const [fvDistrito,   setFvDistrito]   = useState('')
-  // Cada criterio operativo conserva su propio rango al alternar entre
-  // programados e instalados.
-  const [fvTipoFecha,  setFvTipoFecha]  = useState('programacion')
+  // Cada criterio conserva su propio rango al alternar entre la fecha de
+  // ingreso de la venta y la fecha de programación.
+  const [fvTipoFecha,  setFvTipoFecha]  = useState('venta')
+  const [fvDesde,      setFvDesde]      = useState('')
+  const [fvHasta,      setFvHasta]      = useState('')
   const [fvProgDesde,  setFvProgDesde]  = useState('')
   const [fvProgHasta,  setFvProgHasta]  = useState('')
-  const [fvInstDesde,  setFvInstDesde]  = useState('')
-  const [fvInstHasta,  setFvInstHasta]  = useState('')
   const [paginaFlujo, setPaginaFlujo] = useState(1)
   const [porPaginaFlujo, setPorPaginaFlujo] = useState(18)
 
@@ -1520,7 +1520,7 @@ export default function Jefatura() {
   ])].sort((a, b) => a.localeCompare(b, 'es')), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
-    let lista = [...ventasCache]
+    let lista = fvTipoFecha === 'venta' ? [...ventasFlujoMes] : [...ventasCache]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
     if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
     if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
@@ -1552,8 +1552,8 @@ export default function Jefatura() {
         return enRangoOFecha(f, fvProgDesde, fvProgHasta)
       })
     }
-    if (fvTipoFecha === 'instalacion' && (fvInstDesde || fvInstHasta)) {
-      lista = lista.filter(v => enRangoOFecha(soloFecha(v.fecha_instalado), fvInstDesde, fvInstHasta))
+    if (fvTipoFecha === 'venta' && (fvDesde || fvHasta)) {
+      lista = lista.filter(v => enRangoOFecha(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at), fvDesde, fvHasta))
     }
     const b = busqFlujoVentas.trim().toLowerCase()
     if (b) {
@@ -1569,7 +1569,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta])
+  }, [ventasCache, ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvDesde, fvHasta, fvProgDesde, fvProgHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1577,7 +1577,7 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvDesde, fvHasta, fvProgDesde, fvProgHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
@@ -1585,9 +1585,9 @@ export default function Jefatura() {
     setBusqFlujoVentas('')
     setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal(''); setFvCampana([])
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
-    setFvTipoFecha('programacion')
+    setFvTipoFecha('venta')
+    setFvDesde(''); setFvHasta('')
     setFvProgDesde(''); setFvProgHasta('')
-    setFvInstDesde(''); setFvInstHasta('')
   }
 
   // Pegado desde Excel/Sheets: cada línea trae 5 columnas separadas por TAB —
@@ -2619,17 +2619,17 @@ export default function Jefatura() {
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label className="fv-operativo"><span>Filtrar por</span>
                   <select value={fvTipoFecha} onChange={e=>setFvTipoFecha(e.target.value)}>
+                    <option value="venta">Venta</option>
                     <option value="programacion">Programados</option>
-                    <option value="instalacion">Instalados</option>
                   </select>
                 </label>
-                <label className="fv-fecha"><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvInstDesde} onChange={e=>{
+                <label className="fv-fecha"><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvDesde} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgDesde(e.target.value)
-                  else setFvInstDesde(e.target.value)
+                  else setFvDesde(e.target.value)
                 }}/></label>
-                <label className="fv-fecha"><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvInstHasta} onChange={e=>{
+                <label className="fv-fecha"><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvHasta} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgHasta(e.target.value)
-                  else setFvInstHasta(e.target.value)
+                  else setFvHasta(e.target.value)
                 }}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
