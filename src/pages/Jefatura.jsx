@@ -503,11 +503,9 @@ export default function Jefatura() {
   const [fvAsesor,     setFvAsesor]     = useState('')
   const [fvSala,       setFvSala]       = useState('')
   const [fvDistrito,   setFvDistrito]   = useState('')
-  const [fvDesde,      setFvDesde]      = useState('')
-  const [fvHasta,      setFvHasta]      = useState('')
-  // Cada criterio conserva su propio rango para que al alternar entre fecha,
-  // programados e instalación no se pierda el filtro anterior.
-  const [fvTipoFecha,  setFvTipoFecha]  = useState('venta')
+  // Cada criterio operativo conserva su propio rango al alternar entre
+  // programados e instalados.
+  const [fvTipoFecha,  setFvTipoFecha]  = useState('programacion')
   const [fvProgDesde,  setFvProgDesde]  = useState('')
   const [fvProgHasta,  setFvProgHasta]  = useState('')
   const [fvInstDesde,  setFvInstDesde]  = useState('')
@@ -1522,8 +1520,7 @@ export default function Jefatura() {
   ])].sort((a, b) => a.localeCompare(b, 'es')), [ventasCache])
 
   const ventasFlujoFiltradas = useMemo(() => {
-    const usaFechaOperativa = fvTipoFecha !== 'venta'
-    let lista = usaFechaOperativa ? [...ventasCache] : [...ventasFlujoMes]
+    let lista = [...ventasCache]
     if (filtroFlujoVentas === 'validadas') lista = lista.filter(flujoValidada)
     if (filtroFlujoVentas === 'noValidadas') lista = lista.filter(flujoNoValidada)
     if (filtroFlujoVentas === 'grabadas') lista = lista.filter(flujoGrabada)
@@ -1558,10 +1555,6 @@ export default function Jefatura() {
     if (fvTipoFecha === 'instalacion' && (fvInstDesde || fvInstHasta)) {
       lista = lista.filter(v => enRangoOFecha(soloFecha(v.fecha_instalado), fvInstDesde, fvInstHasta))
     }
-    if (fvTipoFecha === 'venta' && (fvDesde || fvHasta)) {
-      lista = lista.filter(v => enRangoOFecha(soloFecha(v._fecha || v.fecha_ingreso || v.fecha || v.created_at), fvDesde, fvHasta))
-    }
-
     const b = busqFlujoVentas.trim().toLowerCase()
     if (b) {
       lista = lista.filter(v => [
@@ -1576,7 +1569,7 @@ export default function Jefatura() {
       const fa = String(a._fecha || a.fecha_ingreso || a.fecha || a.created_at || '')
       return fb.localeCompare(fa) || Number(b.id || 0) - Number(a.id || 0)
     })
-  }, [ventasCache, ventasFlujoMes, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, fvDesde, fvHasta])
+  }, [ventasCache, filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta])
 
   const totalPaginasFlujo = Math.max(1, Math.ceil(ventasFlujoFiltradas.length / porPaginaFlujo))
   const ventasFlujoPagina = useMemo(() => {
@@ -1584,7 +1577,7 @@ export default function Jefatura() {
     return ventasFlujoFiltradas.slice(inicio, inicio + porPaginaFlujo)
   }, [ventasFlujoFiltradas, paginaFlujo, porPaginaFlujo])
 
-  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, fvDesde, fvHasta, porPaginaFlujo])
+  useEffect(() => { setPaginaFlujo(1) }, [filtroFlujoVentas, busqFlujoVentas, fvEstados, fvValidacion, fvGrabacion, fvCanal, fvCampana, fvAsesor, fvSala, fvDistrito, fvTipoFecha, fvProgDesde, fvProgHasta, fvInstDesde, fvInstHasta, porPaginaFlujo])
   useEffect(() => { if (paginaFlujo > totalPaginasFlujo) setPaginaFlujo(totalPaginasFlujo) }, [paginaFlujo, totalPaginasFlujo])
 
   function limpiarFiltrosFlujo() {
@@ -1592,8 +1585,7 @@ export default function Jefatura() {
     setBusqFlujoVentas('')
     setFvEstados([]); setFvValidacion(''); setFvGrabacion(''); setFvCanal(''); setFvCampana([])
     setFvAsesor(''); setFvSala(''); setFvDistrito('')
-    setFvTipoFecha('venta')
-    setFvDesde(''); setFvHasta('')
+    setFvTipoFecha('programacion')
     setFvProgDesde(''); setFvProgHasta('')
     setFvInstDesde(''); setFvInstHasta('')
   }
@@ -2627,20 +2619,17 @@ export default function Jefatura() {
                 <label><span>Distrito</span><input value={fvDistrito} onChange={e=>setFvDistrito(e.target.value)} placeholder="Escribir distrito..."/></label>
                 <label><span>Filtrar por</span>
                   <select value={fvTipoFecha} onChange={e=>setFvTipoFecha(e.target.value)}>
-                    <option value="venta">Fecha</option>
                     <option value="programacion">Programados</option>
-                    <option value="instalacion">Fecha de instalación</option>
+                    <option value="instalacion">Instalados</option>
                   </select>
                 </label>
-                <label><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvTipoFecha==='instalacion'?fvInstDesde:fvDesde} onChange={e=>{
+                <label><span>Desde</span><input type="date" value={fvTipoFecha==='programacion'?fvProgDesde:fvInstDesde} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgDesde(e.target.value)
-                  else if (fvTipoFecha==='instalacion') setFvInstDesde(e.target.value)
-                  else setFvDesde(e.target.value)
+                  else setFvInstDesde(e.target.value)
                 }}/></label>
-                <label><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvTipoFecha==='instalacion'?fvInstHasta:fvHasta} onChange={e=>{
+                <label><span>Hasta</span><input type="date" value={fvTipoFecha==='programacion'?fvProgHasta:fvInstHasta} onChange={e=>{
                   if (fvTipoFecha==='programacion') setFvProgHasta(e.target.value)
-                  else if (fvTipoFecha==='instalacion') setFvInstHasta(e.target.value)
-                  else setFvHasta(e.target.value)
+                  else setFvInstHasta(e.target.value)
                 }}/></label>
                 <button type="button" className="flujo-clear filtro-limpiar" onClick={limpiarFiltrosFlujo}>Limpiar</button>
               </div>
